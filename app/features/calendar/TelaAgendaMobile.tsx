@@ -130,7 +130,7 @@ export function TelaAgendaMobile({ accessToken }: {
         body: JSON.stringify(corpo),
       });
       if (r.status === 401) { setSessaoExpirada(true); return false; }
-      const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string };
+      const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
       if (!r.ok || !j.success) {
         console.error("agenda: falha ao gravar", corpo.action, j.error);
         /* A API da Agenda devolve mensagens operacionais já tratadas. Mostrar
@@ -141,7 +141,7 @@ export function TelaAgendaMobile({ accessToken }: {
       }
       setEditando(null); setCriando(false); setConfirmandoCancelamento(false);
       setMotivo(""); setHorarioRemarcado(""); setHorarioCriacao("");
-      setAviso(textoDoAviso);
+      setAviso(j.message?.trim() || textoDoAviso);
       recarregar();
       return true;
     } catch {

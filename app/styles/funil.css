@@ -2186,11 +2186,13 @@ body .f2-indicadores button span { font-size:12px; font-weight:600; }
 .f2-horarios-periodo{margin-top:14px}
 .f2-horarios-periodo h4{margin:0 0 7px;color:var(--fg-3);font-size:10px;font-weight:var(--weight-bold);text-transform:uppercase;letter-spacing:.06em}
 .f2-horarios-grade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-2)}
-.f2-horarios-grade .f2-horario{min-width:0;min-height:48px;display:flex;align-items:center;justify-content:center;padding:6px;border:1px solid var(--border-default);border-radius:var(--radius-sm);background:var(--bg-sunken);color:var(--fg-3);box-shadow:none;cursor:not-allowed}
+.f2-horarios-grade .f2-horario{min-width:0;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;border:1px solid var(--border-default);border-radius:var(--radius-sm);background:var(--bg-sunken);color:var(--fg-3);box-shadow:none;cursor:not-allowed}
 .f2-horarios-grade .f2-horario strong{font-size:15px}
 .f2-horarios-grade .f2-horario small{overflow:hidden;max-width:100%;font-size:11px;font-weight:var(--weight-bold);text-overflow:ellipsis;white-space:nowrap}
 .f2-horarios-grade .f2-horario.disponivel{border-color:color-mix(in srgb,var(--success) 42%,var(--border-default));background:var(--success-bg);color:var(--success);cursor:pointer}
 .f2-horarios-grade .f2-horario.disponivel:hover{border-color:var(--success);background:color-mix(in srgb,var(--success-bg) 82%,var(--bg-surface))}
+.f2-horarios-grade .f2-horario.sem_gerente{border-color:color-mix(in srgb,var(--ape-orange) 48%,var(--border-default));background:var(--bg-tint-orange);color:var(--ape-orange-700);cursor:pointer}
+.f2-horarios-grade .f2-horario.sem_gerente:hover{border-color:var(--ape-orange);background:color-mix(in srgb,var(--bg-tint-orange) 82%,var(--bg-surface))}
 .f2-horarios-grade .f2-horario.meu{border-color:color-mix(in srgb,var(--ape-orange) 48%,var(--border-default));background:var(--bg-tint-orange);color:var(--ape-orange-700)}
 .f2-horarios-grade .f2-horario.selecionado{outline:3px solid color-mix(in srgb,var(--success) 25%,transparent);border-color:var(--success);background:color-mix(in srgb,var(--success-bg) 74%,var(--bg-surface))}
 .f2-horarios-aviso,.f2-horarios-erro{margin:var(--space-3) 0 0;font-size:11px;line-height:var(--leading-normal)}

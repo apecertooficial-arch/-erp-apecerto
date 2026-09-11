@@ -12621,6 +12621,15 @@ export type Database = {
         Args: { p_visita_id: string }
         Returns: undefined
       }
+      f2_disponibilidade_visitas: {
+        Args: {
+          p_data: string
+          p_gerente_id?: number
+          p_lead_id: string
+          p_visita_id?: string
+        }
+        Returns: Json
+      }
       f2_gerente_ocupado: {
         Args: {
           p_fim?: string

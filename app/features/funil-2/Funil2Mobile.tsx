@@ -295,7 +295,7 @@ function AgendarVisitaMobile({
 }: {
   lead: LeadFunil2;
   accessToken: string;
-  onSalvo: () => void;
+  onSalvo: (mensagem?: string) => void;
   abertoInicial?: boolean;
   onFechar?: () => void;
 }) {
@@ -354,7 +354,7 @@ function AgendarVisitaMobile({
           status: "agendada",
         }),
       });
-      const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string; erro?: string } | null;
+      const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string; erro?: string; resultado?: { gerente_removido?: boolean } } | null;
       if (!resposta.ok || dados?.ok === false) {
         setErro(dados?.error || (dados?.erro === "gerente_ocupado"
           ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
@@ -363,7 +363,10 @@ function AgendarVisitaMobile({
       }
       setAberto(false); setQuando(""); setEmpreendimento(""); setUnidade("");
       setComGerente(false); setGerente("");
-      onSalvo(); onFechar?.();
+      onSalvo(dados?.resultado?.gerente_removido === true
+        ? "A visita foi salva sem gerente porque o gerente escolhido já está ocupado nesse horário."
+        : undefined);
+      onFechar?.();
     } catch {
       setErro("Não foi possível agendar. Tente de novo.");
     } finally {
@@ -652,7 +655,7 @@ function FichaLead({
   notas: NotaFunil2[];
   onFechar: () => void;
   accessToken: string;
-  onSalvo: () => void;
+  onSalvo: (mensagem?: string) => void;
   onRecarregar: () => void;
   tagCatalogo: TagCatalogoFunil2[];
 }) {
@@ -1023,7 +1026,7 @@ export function Funil2Mobile({
       tagCatalogo={dados?.tagCatalogo ?? []}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}
-      onSalvo={() => { setSucesso("Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
+      onSalvo={(mensagem) => { setSucesso(mensagem ?? "Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
       onRecarregar={() => { void recarregar(); }}
     />}
 

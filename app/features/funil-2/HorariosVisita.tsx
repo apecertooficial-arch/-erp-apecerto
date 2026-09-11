@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type EstadoHorario = "disponivel" | "indisponivel" | "meu";
+type EstadoHorario = "disponivel" | "indisponivel" | "meu" | "sem_gerente";
 type Horario = { inicio: string; fim: string; estado: EstadoHorario };
 
 const SEM_HORARIOS: Horario[] = [];
@@ -88,7 +88,7 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
   const dataHoje = hoje();
   const horariosDisponiveis = useMemo(() => horarios.filter((horario) => {
     const horarioEncerrado = data === dataHoje && horario.inicio <= horaAgora();
-    return horario.estado === "disponivel" && !horarioEncerrado;
+    return (horario.estado === "disponivel" || horario.estado === "sem_gerente") && !horarioEncerrado;
   }), [data, dataHoje, horarios]);
   const horariosIndisponiveis = horarios.length - horariosDisponiveis.length;
 
@@ -127,13 +127,14 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
             return <button
               key={horario.inicio}
               type="button"
-              className={`f2-horario disponivel${selecionado ? " selecionado" : ""}`}
+              className={`f2-horario ${horario.estado}${selecionado ? " selecionado" : ""}`}
               disabled={disabled}
               aria-pressed={selecionado}
-              aria-label={`${horario.inicio}, disponível`}
+              aria-label={`${horario.inicio}, ${horario.estado === "sem_gerente" ? "disponível sem gerente" : "disponível"}`}
               onClick={() => onChange(`${data}T${horario.inicio}`)}
             >
               <strong>{horario.inicio}</strong>
+              {horario.estado === "sem_gerente" ? <small>Sem gerente</small> : null}
             </button>;
           })}
         </div>
@@ -143,7 +144,9 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
     {horarioSelecionado && <div className="f2-horarios-resumo" role="status">
       <span>DATA E HORÁRIO ESCOLHIDOS</span>
       <strong>{dataAmigavel(data)}, às {horarioSelecionado}</strong>
-      <small>Horário de Brasília</small>
+      <small>{horarios.find((horario) => horario.inicio === horarioSelecionado)?.estado === "sem_gerente"
+        ? "O gerente está ocupado; a visita será salva sem gerente."
+        : "Horário de Brasília"}</small>
     </div>}
   </fieldset>;
 }

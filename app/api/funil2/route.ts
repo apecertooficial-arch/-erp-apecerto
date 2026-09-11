@@ -412,7 +412,7 @@ export async function POST(request: Request) {
         ? "Este lead não pertence à sua carteira."
         : gerenteInvalido ? "Gerente indisponível." : "Lead não encontrado." }, { status: proibido ? 403 : gerenteInvalido ? 409 : 404 });
     }
-    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const estados = new Set(["disponivel", "indisponivel", "meu", "sem_gerente"]);
     const horarios = (resultado.horarios ?? []).flatMap((horario) => {
       const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
       const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;

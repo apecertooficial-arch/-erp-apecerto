@@ -191,7 +191,7 @@ export async function PATCH(request: Request) {
         ? "Esta visita não pertence à sua agenda."
         : "Não foi possível consultar esta visita." }, { status: resultado.erro === "sem_permissao" ? 403 : 409 });
     }
-    const estados = new Set(["disponivel", "indisponivel", "meu"]);
+    const estados = new Set(["disponivel", "indisponivel", "meu", "sem_gerente"]);
     const horarios = (resultado.horarios ?? []).flatMap((horario) => {
       const inicio = typeof horario.inicio === "string" && /^\d{2}:\d{2}$/.test(horario.inicio) ? horario.inicio : null;
       const fim = typeof horario.fim === "string" && /^\d{2}:\d{2}$/.test(horario.fim) ? horario.fim : null;
@@ -246,9 +246,17 @@ export async function PATCH(request: Request) {
       p_empreendimento_id: product?.id ?? null, p_unidade: null,
       p_com_gerente: comGerente, p_gerente_id: gerenteId, p_fim_em: fimEm,
     } as never);
-    const outcome = result as { ok?: boolean; id?: string; erro?: string } | null;
+    const outcome = result as { ok?: boolean; id?: string; erro?: string; gerente_removido?: boolean } | null;
     if (error || !outcome?.ok) return falhaDaVisita(error, outcome?.erro, "Não foi possível agendar a visita.");
-    return Response.json({ success: true, visitaId: outcome.id ?? null });
+    const semGerente = outcome.gerente_removido === true;
+    return Response.json({
+      success: true,
+      visitaId: outcome.id ?? null,
+      semGerente,
+      message: semGerente
+        ? "Visita agendada sem gerente porque o gerente escolhido já está ocupado nesse horário."
+        : "Visita agendada com sucesso.",
+    });
   }
 
   if (action === "updateVisit") {
@@ -309,10 +317,17 @@ export async function PATCH(request: Request) {
       p_unidade: merged.unidade, p_com_gerente: merged.com_gerente === true,
       p_gerente_id: merged.gerente_id,
     } as never);
-    const outcome = result as { ok?: boolean; erro?: string } | null;
+    const outcome = result as { ok?: boolean; erro?: string; gerente_removido?: boolean } | null;
+    const semGerente = outcome?.gerente_removido === true;
     return error || !outcome?.ok
       ? falhaDaVisita(error, outcome?.erro, "Não foi possível atualizar a visita.")
-      : Response.json({ success: true, message: "Visita remarcada com sucesso." });
+      : Response.json({
+        success: true,
+        semGerente,
+        message: semGerente
+          ? "Visita remarcada sem gerente porque o gerente escolhido já está ocupado nesse horário."
+          : "Visita remarcada com sucesso.",
+      });
   }
 
   if (action === "gerenteDisponibilidade") {

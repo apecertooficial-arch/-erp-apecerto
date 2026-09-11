@@ -113,11 +113,13 @@ test("confirmar visita exige um horário disponível selecionado", () => {
   assert.match(funilMobile, /<HorariosVisita/);
 });
 
-test("app mostra a mensagem humana da API e os dois formatos confirmam o destino", () => {
+test("app mostra a mensagem humana da API e confirma o fallback sem gerente", () => {
   assert.match(funilMobile, /dados\?\.error/);
   assert.match(funilMobile, /Visita agendada com sucesso[\s\S]*Abrir Agenda/);
   assert.match(funilDesktop, /Visita agendada com sucesso[\s\S]*Ver visitas/);
-  assert.match(funilApi, /gerente_ocupado:\s*"Esse gerente já tem uma visita nesse horário/);
+  assert.match(funilMobile, /resultado\?\.gerente_removido/);
+  assert.match(funilDesktop, /resultado\?\.gerente_removido/);
+  assert.match(agendaApi, /Visita remarcada sem gerente porque o gerente escolhido já está ocupado/);
 });
 
 test("convite de notificações não cobre a ficha nem o agendamento no aplicativo", () => {

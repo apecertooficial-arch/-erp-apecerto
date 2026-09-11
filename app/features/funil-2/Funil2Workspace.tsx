@@ -285,7 +285,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       const resposta = await api(accessToken, { method: "POST", body: JSON.stringify({ action, ...body }) });
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível concluir a ação."); return false; }
       setModal(null);
-      if (action === "salvarVisita") setSucesso("Visita agendada com sucesso. Ela já está na Agenda.");
+      const resultado = resposta.json.resultado as { gerente_removido?: boolean } | undefined;
+      if (action === "salvarVisita") setSucesso(resultado?.gerente_removido === true
+        ? "Visita agendada sem gerente porque o gerente escolhido já está ocupado nesse horário."
+        : "Visita agendada com sucesso. Ela já está na Agenda.");
       await carregar(); return true;
     } catch {
       setErro("Não foi possível falar com o servidor. Confira a conexão e tente novamente.");
