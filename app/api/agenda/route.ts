@@ -10,6 +10,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 import { instanteSaoPaulo } from "../../lib/timezone";
+import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,23 @@ export async function GET(request: Request) {
   if (result.ok === false) {
     return Response.json({ ok: false, erro: result.erro }, { status: result.erro === "nao_autenticado" ? 403 : 409 });
   }
+  /* A agenda continua carregando durante uma implantacao gradual, mesmo antes
+     de a RPC nova existir. Depois da migration, a fila passa a vir no mesmo
+     payload sem alterar o contrato antigo de `itens`. */
+  const diaReferencia = typeof result.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(result.dia) ? result.dia : null;
+  const inicioMes = diaReferencia ? `${diaReferencia.slice(0, 7)}-01` : null;
+  const fimMes = inicioMes
+    ? new Date(Date.UTC(Number(inicioMes.slice(0, 4)), Number(inicioMes.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    : null;
+  const pendencias = await supabase.rpc("f2_visitas_resultado_pendente", {
+    p_inicio: inicioMes,
+    p_fim: fimMes,
+  } as never);
+  const resultadoPendencias = pendencias.error
+    ? { itens: [], resumo: {} }
+    : (pendencias.data ?? {}) as { itens?: unknown[]; resumo?: Record<string, unknown> };
+  result.pendencias_resultado = resultadoPendencias.itens ?? [];
+  result.resumo_resultados = resultadoPendencias.resumo ?? {};
   if (params.get("workspace") !== "1") {
     /* A RPC histórica entrega a agenda inteira, mas não informa o acompanhamento.
        Enriquecemos somente os IDs já autorizados por ela, sem ampliar o escopo. */
@@ -346,6 +364,35 @@ export async function PATCH(request: Request) {
       p_fim: texto(body.endTime, 8) || startTime, p_exclude: texto(body.visitId, 40) || undefined,
     });
     return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conflitos ?? [] });
+  }
+
+  if (action === "registerVisitResult") {
+    const visitId = texto(body.visitId, 40);
+    const status = texto(body.status, 30);
+    const resultadoCodigo = texto(body.resultadoCodigo, 60);
+    const justificativa = texto(body.justificativa, 800);
+    const erroResultado = validarResultadoVisita(status, resultadoCodigo, justificativa);
+    if (!visitId || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
+    const denied = guard("editar", "Você não tem permissão para registrar o resultado de visitas.");
+    if (denied) return denied;
+
+    const { data: result, error } = await (auth.supabase as unknown as SupabaseClient).rpc("f2_registrar_resultado_visita", {
+      p_visita_id: visitId,
+      p_status: status,
+      p_resultado_codigo: resultadoCodigo,
+      p_justificativa: justificativa,
+    } as never);
+    const outcome = result as { ok?: boolean; erro?: string; resultado_rotulo?: string } | null;
+    if (error || !outcome?.ok) {
+      const mensagens: Record<string, string> = {
+        sem_permissao: "Esta visita não pertence à sua agenda.",
+        resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
+        resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
+        visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
+      };
+      return Response.json({ error: mensagens[outcome?.erro ?? ""] ?? "Não foi possível registrar o resultado da visita." }, { status: outcome?.erro === "sem_permissao" ? 403 : 422 });
+    }
+    return Response.json({ success: true, message: `Resultado registrado: ${outcome.resultado_rotulo ?? "visita atualizada"}.` });
   }
 
   if (action === "updateVisitStatus") {

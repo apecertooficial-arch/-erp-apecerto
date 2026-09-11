@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
 import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
+import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -480,16 +481,25 @@ export async function POST(request: Request) {
       p_ordem: Number(body.ordem), p_exige_dapi: body.exigeDapi === true, p_ativo: body.ativo !== false,
     };
   } else if (action === "salvarVisita") {
+    const statusVisita = String(body.status || "agendada");
     const inicio = normalizarInstanteSaoPaulo(String(body.inicioEm ?? ""));
     if (!inicio) return Response.json({ error: "Data da visita inválida." }, { status: 422 });
     const fim = body.fimEm ? normalizarInstanteSaoPaulo(String(body.fimEm)) : null;
     if (body.fimEm && !fim) return Response.json({ error: "Horário final da visita inválido." }, { status: 422 });
-    rpc = "f2_salvar_visita";
-    args = {
+    if (["realizada", "cancelada", "nao_compareceu"].includes(statusVisita)) {
+      const resultadoCodigo = String(body.resultadoCodigo ?? "").slice(0, 60);
+      const justificativa = String(body.justificativa ?? "").trim().slice(0, 800);
+      const erroResultado = validarResultadoVisita(statusVisita, resultadoCodigo, justificativa);
+      if (!body.id || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
+      rpc = "f2_registrar_resultado_visita";
+      args = { p_visita_id: body.id, p_status: statusVisita, p_resultado_codigo: resultadoCodigo, p_justificativa: justificativa };
+    } else {
+      rpc = "f2_salvar_visita";
+      args = {
       p_id: body.id || null, p_lead_id: body.leadId,
       p_inicio_em: inicio,
       p_imovel: String(body.imovel ?? "").slice(0, 120),
-      p_status: body.status || "agendada",
+      p_status: statusVisita,
       p_observacao: body.observacao ? String(body.observacao).slice(0, 500) : null,
       /* Campos que o CRM antigo sempre teve e o Funil 2.0 tinha perdido:
          produto, unidade e presenca do gerente. Sem eles a visita vira um
@@ -499,7 +509,8 @@ export async function POST(request: Request) {
       p_com_gerente: body.comGerente === true,
       p_gerente_id: body.gerenteId ? Number(body.gerenteId) : null,
       p_fim_em: fim,
-    };
+      };
+    }
   } else if (action === "salvarNota") {
     const leadId = String(body.leadId ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(leadId)) return Response.json({ error: "Lead inválido." }, { status: 422 });
@@ -585,6 +596,9 @@ const RECUSAS: Record<string, string> = {
   ja_descartado: "Este lead já foi descartado.",
   motivo_obrigatorio: "Escolha o motivo do descarte.",
   motivo_invalido: "Motivo de descarte desconhecido.",
+  resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
+  resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
+  visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
   texto_vazio: "Escreva a nota antes de salvar.",
   texto_muito_longo: "A nota passou de 2000 caracteres.",
   temperatura_invalida: "Escolha uma temperatura válida.",

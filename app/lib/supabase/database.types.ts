@@ -4090,6 +4090,10 @@ export type Database = {
           inicio_em: string
           observacao: string | null
           origem_visita_id: string | null
+          resultado_codigo: string | null
+          resultado_em: string | null
+          resultado_justificativa: string | null
+          resultado_por: string | null
           status: string
           unidade: string | null
         }
@@ -4109,6 +4113,10 @@ export type Database = {
           inicio_em: string
           observacao?: string | null
           origem_visita_id?: string | null
+          resultado_codigo?: string | null
+          resultado_em?: string | null
+          resultado_justificativa?: string | null
+          resultado_por?: string | null
           status?: string
           unidade?: string | null
         }
@@ -4128,6 +4136,10 @@ export type Database = {
           inicio_em?: string
           observacao?: string | null
           origem_visita_id?: string | null
+          resultado_codigo?: string | null
+          resultado_em?: string | null
+          resultado_justificativa?: string | null
+          resultado_por?: string | null
           status?: string
           unidade?: string | null
         }
@@ -10779,7 +10791,9 @@ export type Database = {
           participantes: string | null
           produto: string | null
           resultado: string | null
+          resultado_detalhe_codigo: string | null
           resultado_em: string | null
+          resultado_justificativa: string | null
           resultado_por: string | null
           status: string
           unidade: string | null
@@ -10808,7 +10822,9 @@ export type Database = {
           participantes?: string | null
           produto?: string | null
           resultado?: string | null
+          resultado_detalhe_codigo?: string | null
           resultado_em?: string | null
+          resultado_justificativa?: string | null
           resultado_por?: string | null
           status?: string
           unidade?: string | null
@@ -10837,7 +10853,9 @@ export type Database = {
           participantes?: string | null
           produto?: string | null
           resultado?: string | null
+          resultado_detalhe_codigo?: string | null
           resultado_em?: string | null
+          resultado_justificativa?: string | null
           resultado_por?: string | null
           status?: string
           unidade?: string | null
@@ -12727,6 +12745,19 @@ export type Database = {
           p_status?: string
           p_unidade?: string
         }
+        Returns: Json
+      }
+      f2_registrar_resultado_visita: {
+        Args: {
+          p_justificativa: string
+          p_resultado_codigo: string
+          p_status: string
+          p_visita_id: string
+        }
+        Returns: Json
+      }
+      f2_visitas_resultado_pendente: {
+        Args: { p_fim?: string; p_inicio?: string }
         Returns: Json
       }
       f2_sara_aplicar_leitura: {

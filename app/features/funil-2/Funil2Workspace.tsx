@@ -22,6 +22,7 @@ import { Funil2BoardToolbar } from "./Funil2BoardToolbar";
 import { HorariosVisita } from "./HorariosVisita";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
+import { RESULTADOS_VISITA, type StatusResultadoVisita, validarResultadoVisita } from "../calendar/resultadoVisita";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -755,10 +756,13 @@ function PipeVisitas({ visitas, leads, momentos, busy, onAbrir, onSalvar }: { vi
 function VisitaCard({ visita, lead, momentoRotulo, agora, busy, onAbrir, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; momentoRotulo?: string; agora: number; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
   const [editando, setEditando] = useState(false);
   const [status, setStatus] = useState(visita.status);
-  const [feedback, setFeedback] = useState(visita.observacao ?? "");
+  const statusInicial = (["realizada", "cancelada", "nao_compareceu"].includes(visita.status) ? visita.status : "realizada") as StatusResultadoVisita;
+  const [resultadoCodigo, setResultadoCodigo] = useState(RESULTADOS_VISITA[statusInicial][0].codigo);
+  const [justificativa, setJustificativa] = useState("");
   const [inicio, setInicio] = useState(paraCampoLocal(visita.inicio_em));
   const [imovel, setImovel] = useState(visita.imovel ?? "");
-  const precisaFeedback = status === "realizada";
+  const precisaResultado = ["realizada", "cancelada", "nao_compareceu"].includes(status);
+  const erroResultado = precisaResultado ? validarResultadoVisita(status, resultadoCodigo, justificativa) : null;
   const precisaAtualizar = ["agendada", "confirmada"].includes(visita.status) && +new Date(visita.inicio_em) < agora;
   const rotulos: Record<VisitaFunil2["status"], string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
   return <article className={!lead ? "f2-visita-vinculo-ausente" : precisaAtualizar ? "f2-visita-atrasada" : ""}><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Correção administrativa"}</h4><p>{visita.imovel || "Imóvel não informado"}</p><em className={`f2-visita-status status-${visita.status}`}>{precisaAtualizar ? "Precisa atualizar" : rotulos[visita.status]}</em>
@@ -768,9 +772,9 @@ function VisitaCard({ visita, lead, momentoRotulo, agora, busy, onAbrir, onSalva
     {!editando && <button type="button" className={`f2-visita-editar${precisaAtualizar || !lead ? " primario" : ""}`} onClick={() => setEditando(true)}>{precisaAtualizar || !lead ? "Atualizar situação" : "Editar visita"}</button>}
     {editando && <div className="f2-visita-form"><input type="datetime-local" style={CAMPO_VISITA} disabled={busy} value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Data e hora da visita" />
     <input type="text" style={CAMPO_VISITA} disabled={busy} value={imovel} onChange={(e) => setImovel(e.target.value)} maxLength={120} placeholder="Imóvel ou unidade" aria-label="Imóvel da visita" />
-    <select disabled={busy} value={status} onChange={(e) => setStatus(e.target.value as VisitaFunil2["status"])}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
-    {precisaFeedback && <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback obrigatório: interesse, objeção e próximo passo" maxLength={500} />}
-    <div className="f2-visita-form-acoes"><button type="button" onClick={() => setEditando(false)}>Cancelar</button><button type="button" disabled={busy || !inicio || (precisaFeedback && feedback.trim().length < 10)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: feedback || null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaFeedback && !visita.feedback_em ? "Registrar resultado" : "Salvar atualização"}</button></div></div>}
+    <select disabled={busy} value={status} onChange={(e) => { const proximo = e.target.value as VisitaFunil2["status"]; setStatus(proximo); if (["realizada", "cancelada", "nao_compareceu"].includes(proximo)) setResultadoCodigo(RESULTADOS_VISITA[proximo as StatusResultadoVisita][0].codigo); }}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
+    {precisaResultado && <><select aria-label="Resultado da visita" value={resultadoCodigo} onChange={(e) => setResultadoCodigo(e.target.value)}>{RESULTADOS_VISITA[status as StatusResultadoVisita].map((opcao) => <option value={opcao.codigo} key={opcao.codigo}>{opcao.rotulo}</option>)}</select><textarea value={justificativa} onChange={(e) => setJustificativa(e.target.value)} placeholder="Justificativa obrigatória: o que aconteceu e qual será o próximo passo" minLength={10} maxLength={800} /></>}
+    <div className="f2-visita-form-acoes"><button type="button" onClick={() => setEditando(false)}>Cancelar</button><button type="button" disabled={busy || !inicio || Boolean(erroResultado)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: visita.observacao, resultadoCodigo: precisaResultado ? resultadoCodigo : null, justificativa: precisaResultado ? justificativa.trim() : null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaResultado ? "Registrar resultado" : "Salvar atualização"}</button></div></div>}
     {visita.status === "realizada" && <small>{visita.feedback_em ? "Feedback concluído" : "Feedback pendente — novos leads podem ser bloqueados"}</small>}
   </article>;
 }

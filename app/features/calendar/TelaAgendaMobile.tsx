@@ -2,7 +2,7 @@
 /* AGENDA NO CELULAR.
  *
  * Leitura: GET /api/agenda (RPC ncrm_agenda_corretor).
- * Escrita: PATCH /api/agenda — `updateVisitStatus` (realizada / cancelada),
+ * Escrita: PATCH /api/agenda — `registerVisitResult` (desfecho justificado),
  * `updateVisit` (remarcar) e `createVisit` (marcar visita nova). Sao as mesmas
  * acoes que o desktop usa; nada aqui grava direto em tabela.
  *
@@ -28,6 +28,8 @@ import {
 } from "./telaAgenda.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { HorariosVisita } from "../funil-2/HorariosVisita";
+import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
+import type { StatusResultadoVisita } from "./resultadoVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
 type LeadAgenda = { id: number; nome: string };
@@ -79,8 +81,9 @@ export function TelaAgendaMobile({ accessToken }: {
   const [salvando, setSalvando] = useState(false);
   const [erroEscrita, setErroEscrita] = useState("");
   const [aviso, setAviso] = useState("");
-  const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
-  const [motivo, setMotivo] = useState("");
+  const [resultadoPendente, setResultadoPendente] = useState<Compromisso | null>(null);
+  const [pendenciasResultado, setPendenciasResultado] = useState<Compromisso[]>([]);
+  const [resumoResultados, setResumoResultados] = useState<{ pendentes?: number; justificadas?: number }>({});
   const [horarioRemarcado, setHorarioRemarcado] = useState("");
   const [remarcarComGerente, setRemarcarComGerente] = useState(false);
   const [horarioCriacao, setHorarioCriacao] = useState("");
@@ -98,8 +101,8 @@ export function TelaAgendaMobile({ accessToken }: {
     });
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json();
-    return (j.itens as Compromisso[]) ?? [];
+    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number } };
+    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {} };
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -108,7 +111,7 @@ export function TelaAgendaMobile({ accessToken }: {
     /* NAO zeramos a lista aqui: manter o que ja esta na tela enquanto a nova
        chega evita o pisca-e-encolhe ao trocar de aba. */
     carregar(ctrl.signal)
-      .then((l) => { if (vivo) { setItens(l); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
@@ -139,8 +142,8 @@ export function TelaAgendaMobile({ accessToken }: {
         setErroEscrita(j.error?.trim() || "Não foi possível salvar. Tente de novo em instantes.");
         return false;
       }
-      setEditando(null); setCriando(false); setConfirmandoCancelamento(false);
-      setMotivo(""); setHorarioRemarcado(""); setHorarioCriacao("");
+      setEditando(null); setCriando(false);
+      setHorarioRemarcado(""); setHorarioCriacao("");
       setAviso(j.message?.trim() || textoDoAviso);
       recarregar();
       return true;
@@ -153,9 +156,9 @@ export function TelaAgendaMobile({ accessToken }: {
   }, [accessToken, recarregar]);
 
   const abrirEdicao = useCallback((c: Compromisso) => {
-    setEditando(c); setErroEscrita(""); setConfirmandoCancelamento(false);
+    setEditando(c); setErroEscrita("");
     setRemarcarComGerente(c.com_gerente === true && c.gerente_id != null);
-    setMotivo(""); setHorarioRemarcado(`${c.data}T${c.hora.slice(0, 5)}`);
+    setHorarioRemarcado(`${c.data}T${c.hora.slice(0, 5)}`);
   }, []);
 
   const abrirNovaVisita = useCallback(() => {
@@ -169,7 +172,7 @@ export function TelaAgendaMobile({ accessToken }: {
         setCatalogo({ leads: j.leads ?? [], deals: j.deals ?? [], cards: j.cards ?? [], products: j.products ?? [] });
       })
       .catch(() => setErroEscrita("Não foi possível carregar seus clientes agora."));
-  }, [accessToken, catalogo, dia]);
+  }, [accessToken, catalogo]);
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
@@ -212,6 +215,11 @@ export function TelaAgendaMobile({ accessToken }: {
   return (
     <div className="ape-agenda">
       <AppMobileOffline atualizadoEm={atualizadoEm} />
+      {pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
+        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas precisam da sua resposta</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+        <p>Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa.</p>
+        <div>{pendenciasResultado.map((item) => <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button>)}</div>
+      </section>}
       {prox ? (
         <section className="ape-agenda-proximo" aria-label="Próximo compromisso">
           <p className="ape-agenda-eyebrow">
@@ -400,12 +408,9 @@ export function TelaAgendaMobile({ accessToken }: {
                 type="button"
                 className="ape-agenda-realizada"
                 disabled={salvando}
-                onClick={() => void gravar(
-                  { action: "updateVisitStatus", visitId: editando.id, status: "realizada" },
-                  "Visita marcada como realizada.",
-                )}
+                onClick={() => { setResultadoPendente(editando); setEditando(null); setErroEscrita(""); }}
               >
-                {salvando ? "Salvando…" : "Aconteceu — marcar como realizada"}
+                Informar o resultado da visita
               </button>
 
               <section className="f2m-agendar">
@@ -459,38 +464,25 @@ export function TelaAgendaMobile({ accessToken }: {
                 </div>
               </section>
 
-              {confirmandoCancelamento ? (
-                <section className="f2m-agendar f2m-descartar">
-                  <h3>Cancelar a visita</h3>
-                  <p>Ela fica registrada como cancelada, com o motivo. Nada é apagado.</p>
-                  <label>Motivo <small>(opcional)</small>
-                    <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} maxLength={500}
-                              placeholder="O cliente desmarcou? Remarcou por telefone?" />
-                  </label>
-                  <div className="f2m-agendar-acoes">
-                    <button type="button" className="f2m-agendar-nao" disabled={salvando} onClick={() => setConfirmandoCancelamento(false)}>Voltar</button>
-                    <button
-                      type="button"
-                      className="f2m-agendar-ok"
-                      disabled={salvando}
-                      onClick={() => void gravar(
-                        { action: "updateVisitStatus", visitId: editando.id, status: "cancelada", reason: motivo.trim() || undefined },
-                        "Visita cancelada.",
-                      )}
-                    >
-                      {salvando ? "Cancelando…" : "Confirmar cancelamento"}
-                    </button>
-                  </div>
-                </section>
-              ) : (
-                <button type="button" className="ape-agenda-cancelar" onClick={() => setConfirmandoCancelamento(true)}>Cancelar a visita</button>
-              )}
+              <button type="button" className="ape-agenda-cancelar" onClick={() => { setResultadoPendente({ ...editando, status: "cancelada" }); setEditando(null); setErroEscrita(""); }}>Cancelar ou informar que o cliente faltou</button>
             </div>
 
             <p className="ape-ficha-nota">Marcar como realizada vale para a agenda e para o relatório de visitas. Isso é diferente de contato pelo WhatsApp, que só conta quando a mensagem aparece no histórico.</p>
           </section>
         </div>
       )}
+
+      {resultadoPendente && <div className="ape-folha" role="dialog" aria-modal="true" aria-label={`Resultado da visita de ${resultadoPendente.cliente}`}>
+        <section className="ape-ficha resultado-visita-mobile"><ResultadoVisitaForm
+          cliente={resultadoPendente.cliente}
+          dataHora={`${diaPorExtenso(resultadoPendente.data)} · ${horaCurta(resultadoPendente.hora)}`}
+          statusInicial={(["realizada", "cancelada", "nao_compareceu"].includes(String(resultadoPendente.status)) ? resultadoPendente.status : "realizada") as StatusResultadoVisita}
+          busy={salvando}
+          erro={erroEscrita}
+          onCancelar={() => setResultadoPendente(null)}
+          onSalvar={(dados) => { void gravar({ action: "registerVisitResult", visitId: resultadoPendente.id, ...dados }, "Resultado da visita registrado com sucesso.").then((ok) => { if (ok) setResultadoPendente(null); }); }}
+        /></section>
+      </div>}
 
       {/* ---------- Folha: marcar visita nova ---------- */}
       {criando && (

@@ -17,6 +17,27 @@
   display: flex; align-items: flex-end;
   background: rgba(31, 28, 26, .42);
 }
+
+@media (max-width: 900px) {
+  .ape-agenda-resultados { margin: 12px 0 16px; border: 1px solid #F3C9C9; border-radius: 18px; background: #FFF9F8; padding: 14px; box-shadow: 0 3px 10px rgba(163,44,44,.07); }
+  .ape-agenda-resultados > header { display: flex; align-items: flex-start; gap: 10px; }
+  .ape-agenda-resultados header small { color: #D93E3E; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+  .ape-agenda-resultados header h2 { margin: 3px 0 0; font-size: 17px; line-height: 1.25; }
+  .ape-agenda-resultados header > strong { margin-left: auto; flex: none; border-radius: 999px; background: #FBE5E5; padding: 5px 8px; color: #A32C2C; font-size: 10px; }
+  .ape-agenda-resultados > p { margin: 8px 0 12px; color: #6B635C; font-size: 12px; line-height: 1.45; }
+  .ape-agenda-resultados > div { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
+  .ape-agenda-resultados > div > button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: #fff; padding: 11px; color: #1F1C1A; text-align: left; box-shadow: 0 1px 3px rgba(31,28,26,.05); }
+  .ape-agenda-resultados button span { min-width: 0; }
+  .ape-agenda-resultados button b,.ape-agenda-resultados button small { display: block; }
+  .ape-agenda-resultados button small { margin-top: 3px; color: #9A918A; font-size: 10px; line-height: 1.35; }
+  .ape-agenda-resultados button > strong { margin-left: auto; flex: none; color: #CC5800; font-size: 11px; }
+  .resultado-visita-mobile { padding: 0 0 calc(16px + env(safe-area-inset-bottom,0px)); }
+  .resultado-visita-mobile .resultado-visita-form { width: 100%; max-height: none; border-radius: 0; padding: 20px; box-shadow: none; }
+  .resultado-visita-mobile .resultado-visita-status { grid-template-columns: 1fr; }
+  .resultado-visita-mobile .resultado-visita-status button { min-height: 50px; }
+  .resultado-visita-mobile .resultado-visita-form select,.resultado-visita-mobile .resultado-visita-form textarea { min-height: 50px; font-size: 16px; }
+  .resultado-visita-mobile .resultado-visita-form > footer { position: sticky; bottom: 0; margin: 18px -20px -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom,0px)); border-top: 1px solid #E4DFD9; background: rgba(255,255,255,.97); }
+}
 @keyframes ape-mais-sobe { from { transform: translateY(100%); } to { transform: none; } }
 .ape-mais-folha {
   width: 100%; max-height: 88dvh; overflow-y: auto;
