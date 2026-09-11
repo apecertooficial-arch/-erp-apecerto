@@ -1,0 +1,12 @@
+/* Hotfix do modal "Trazer para o Funil 2.0".
+   As classes abaixo eram usadas no JSX mas nao existiam em nenhuma folha:
+   - .f2-modal-confirmar: o botao de confirmar (por isso renderizava como
+     texto solto, sem cara de botao — o "nao tem botao" relatado).
+   - .f2-form-grid: a grade de Etapa/Momento.
+   - .f2-nota-modal: a nota explicativa do modal.
+   Espelha .f2-modal-primary (folha funil-2.css). Importada por ultimo no
+   layout, entao vence a cascata sem tocar nas outras folhas. */
+.f2-modal-confirmar{width:100%;margin-top:15px;border:0;border-radius:11px;background:var(--f2-orange,#ff5d00);color:#fff;padding:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px #ff5a0025}
+.f2-modal-confirmar:disabled{opacity:.45;cursor:not-allowed}
+.f2-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.f2-nota-modal{margin:10px 0 0;color:var(--f2-muted,#817972);font-size:10px;line-height:1.5}
