@@ -23,7 +23,11 @@ export async function GET(request: Request) {
     const { data: roleProfile } = await supabase.from("perfis").select("permissoes").eq("id", profile.role).maybeSingle();
     effectivePermissions = (roleProfile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null;
   }
-  const managerRoles = new Set(["gestor", "executivo", "gestor_comercial", "gestor_equipe", "gerente"]);
+  /* Onda 5.8 — "diretor" estava de fora desta lista e por isso era normalizado
+     para "corretor", perdendo Central de Comando e Minha Equipe (gateadas por
+     papel, nao por slug) apesar de o perfil `diretor` ter quase todas as
+     permissoes. Corrigido em 14/09/2026. */
+  const managerRoles = new Set(["gestor", "executivo", "gestor_comercial", "gestor_equipe", "gerente", "diretor"]);
   const role = profile?.role === "admin" ? "admin" : profile?.role && managerRoles.has(profile.role) ? "gestor" : "corretor";
   return Response.json({
     userId: authData.user.id,
