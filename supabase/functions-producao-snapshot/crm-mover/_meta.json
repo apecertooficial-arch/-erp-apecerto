@@ -1,0 +1,8 @@
+{
+  "slug": "crm-mover",
+  "version": 15,
+  "verify_jwt": false,
+  "updated_at": 1783804251895,
+  "ezbr_sha256": "3590c73df7b2d696b3017a3a993ab8da1c1ceb6bd03115ef3fb0d040944c30a0",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_5585482d-2255-4e40-a7d1-6a5243f00167_3/source/index.ts"
+}

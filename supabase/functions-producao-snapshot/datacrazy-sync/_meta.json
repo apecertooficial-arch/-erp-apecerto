@@ -1,0 +1,8 @@
+{
+  "slug": "datacrazy-sync",
+  "version": 19,
+  "verify_jwt": false,
+  "updated_at": 1783804249196,
+  "ezbr_sha256": "66070c530ed23d8c709289806754c08229f54ebb14a39329549856ccf4e67bd2",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_fe42cf71-1e48-42de-af2c-0ea800cf6e90_7/source/index.ts"
+}

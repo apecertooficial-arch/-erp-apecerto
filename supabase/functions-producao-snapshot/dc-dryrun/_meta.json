@@ -1,0 +1,8 @@
+{
+  "slug": "dc-dryrun",
+  "version": 16,
+  "verify_jwt": true,
+  "updated_at": 1784650389725,
+  "ezbr_sha256": "1e13a8fd62b796cdd8e074f246fb098da162e2232585472468209be23e8cdc4b",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_81338ab6-799e-45d3-8002-1630c6095028_4/source/index.ts"
+}

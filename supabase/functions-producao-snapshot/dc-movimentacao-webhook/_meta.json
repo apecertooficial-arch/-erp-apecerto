@@ -1,0 +1,8 @@
+{
+  "slug": "dc-movimentacao-webhook",
+  "version": 13,
+  "verify_jwt": false,
+  "updated_at": 1784049211525,
+  "ezbr_sha256": "ccc388d6477ab53f63cf38f1a61561a47456b44480ee023c9a732af160ba171b",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_884b6342-405d-48d2-8e17-6afa01c17f8c_1/source/index.ts"
+}

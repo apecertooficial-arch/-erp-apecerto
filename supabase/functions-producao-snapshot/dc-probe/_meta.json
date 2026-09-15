@@ -1,0 +1,8 @@
+{
+  "slug": "dc-probe",
+  "version": 24,
+  "verify_jwt": true,
+  "updated_at": 1784657612826,
+  "ezbr_sha256": "2371477630d4deaa2e905e2514556a792202b0d9bc56dbb6373f0eaacc1910c8",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_57cbc8ed-de5d-4598-8346-19692c1ac3dd_12/source/index.ts"
+}

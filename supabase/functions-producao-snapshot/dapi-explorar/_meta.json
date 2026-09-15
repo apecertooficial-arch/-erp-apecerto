@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-explorar",
+  "version": 11,
+  "verify_jwt": true,
+  "updated_at": 1786638156722,
+  "ezbr_sha256": "6ccb2ef6ad43a04af81454e3c0f9d0e7f035a657ddaddde41cecbae51e19e58a",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_f92c4eaf-32a8-479d-9af4-6d8321510311_2/source/index.ts"
+}

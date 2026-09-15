@@ -1,0 +1,8 @@
+{
+  "slug": "produtos-smoke-storage-cleanup",
+  "version": 2,
+  "verify_jwt": true,
+  "updated_at": 1787856094404,
+  "ezbr_sha256": "e3328b2936418cbc2970ab4a3e1706cc6cf76f94dc8de2444f779bc9aa723739",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_3ff4374b-fe54-4aac-b87c-298f9c460672_2/source/index.ts"
+}

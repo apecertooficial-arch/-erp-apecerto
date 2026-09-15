@@ -1,0 +1,8 @@
+{
+  "slug": "codex-media-upload-once",
+  "version": 9,
+  "verify_jwt": true,
+  "updated_at": 1787358533781,
+  "ezbr_sha256": "6d243d54815f38136d41f6a2687484276efea6c985b1a7b1d254102ec51f9b33",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_ac4f9c06-3484-4f8a-bf35-fb7d22367ea3_2/source/index.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "slug": "dc-scan",
+  "version": 18,
+  "verify_jwt": true,
+  "updated_at": 1784657607293,
+  "ezbr_sha256": "d36b43eaaead4421dbf133c0163b41918103167184ca917d58f7cd8ac27cba9d",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_2ae3f392-3e1b-41cf-94e8-6a16d5ed7dd3_6/source/index.ts"
+}
