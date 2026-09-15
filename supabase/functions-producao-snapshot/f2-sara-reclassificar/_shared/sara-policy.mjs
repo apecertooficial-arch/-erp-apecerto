@@ -64,7 +64,7 @@ export function normalizarPrazoSugerido(valor, agora = Date.now()) {
   const texto = valor.trim();
   const absoluto = Date.parse(texto);
   if (!Number.isNaN(absoluto)) return new Date(absoluto).toISOString();
-  const relativo = texto.normalize("NFD").replace(/[̀-ͯ]/g, "")
+  const relativo = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/^em\s+/, "").match(
       /^(\d{1,4})\s*(min|minuto|minutos|h|hora|horas|d|dia|dias)$/,
     );
