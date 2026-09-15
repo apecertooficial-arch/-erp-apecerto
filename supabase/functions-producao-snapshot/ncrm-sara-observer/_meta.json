@@ -1,0 +1,8 @@
+{
+  "slug": "ncrm-sara-observer",
+  "version": 18,
+  "verify_jwt": false,
+  "updated_at": 1785791598684,
+  "ezbr_sha256": "ecbe2f433c3ae66a721b4b5f9253fff40768365188a9dfe318ebc48e5a6b1719",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_52a98492-e0ea-4f0c-a259-1b1ef93f10d0_9/source/supabase/functions/ncrm-sara-observer/index.ts"
+}

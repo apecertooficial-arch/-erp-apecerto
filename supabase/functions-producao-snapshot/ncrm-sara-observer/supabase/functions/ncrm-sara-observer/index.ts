@@ -1,0 +1,167 @@
+// CRM Nova Era — Edge Function do RUNNER da Sara em modo OBSERVADOR (v2: percepção aguçada + composição).
+// IMPLANTADA em produção (versão 8, 31/07) — este arquivo é o espelho versionado.
+// -----------------------------------------------------------------------------
+// Autenticação (config.toml: verify_jwt=false): EXIGE `x-cron-secret` (Vault) validado em
+// tempo ~constante ANTES de qualquer leitura (401 se ausente/incorreto). service_role SÓ
+// dentro da Edge (para o banco); nunca Bearer cron→Edge; nunca no frontend.
+// Reusa o NÚCLEO TESTADO: analisa em observer e pode ORGANIZAR Momento + Ação +
+// Prazo pelo catálogo oficial. Nunca executa ação comercial nem envia mensagem.
+// Idempotente por (negocio_id, context_hash), lote/timeout/retry, fila justa com backoff,
+// falha isolada por negócio, contrato real da Sara (saraSchema), FAIL-CLOSED no contexto.
+// Dependência FIXADA (evita import flutuante).
+// @ts-nocheck
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.2";
+import { tratarRequisicaoObserver, sanitizarErro } from "../../../app/features/crm-nova-era/lib/saraObserverRunner.ts";
+import { carregarContextoAdaptador, mapearSugestaoParaAnalise } from "../../../app/features/crm-nova-era/lib/saraContexto.ts";
+import { normalizarSugestaoSara } from "../../../app/api/ncrm/saraSchema.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
+const VERSAO_PROMPT = "sara-conduta-v4";
+const VERSAO_MODELO = Deno.env.get("SARA_MODELO") ?? "ia-router";
+const OPTS = { lote: Number(Deno.env.get("SARA_LOTE") ?? 3), timeoutMs: 20000, maxRetries: 1 }; // piloto: lote 3 por padrão
+
+const OVERRIDE =
+  "Você é a Sara, gestora comercial sênior de imobiliária — o nível de leitura de quem já fechou " +
+  "centenas de vendas. Analise a CONVERSA REAL do input como fonte primária (as ferramentas " +
+  "consultar_lead e avaliar_conversa são complementares). PERCEPÇÃO AGUÇADA: leia o que o cliente " +
+  "NÃO disse — sinais de compra (pergunta de preço, condição, prazo de entrega), urgência real vs " +
+  "curiosidade, objeção escondida atrás de 'vou pensar', esfriamento no tom e no tempo de resposta, " +
+  "quem decide de verdade. Diagnóstico direto, sem genérico: 'entender a necessidade' não é ação; " +
+  "'perguntar se a compra é para morar ou investir, porque ele citou aluguel' é. " +
+  "COMPONHA com a ANÁLISE ANTERIOR quando o input trouxer uma: diga o que MUDOU desde ela, " +
+  "ajuste temperatura e confiança em vez de recomeçar do zero — a nota evolui, não reinicia. " +
+  "PADRÃO OFICIAL: escolha exatamente um momento e a ação correspondente: " +
+  "PRIMEIRA_ABORDAGEM→PRIMEIRA_ABORDAGEM; CADENCIA_SEM_RESPOSTA→ENVIAR_CADENCIA; " +
+  "CONVERSANDO_QUALIFICANDO→RESPONDER_E_QUALIFICAR; BUSCANDO_PRODUTO→BUSCAR_E_ENVIAR_IMOVEIS; " +
+  "PRODUTO_ENVIADO→PEDIR_RETORNO_PRODUTO; TENTANDO_AGENDAMENTO→AGENDAR_VISITA; " +
+  "VISITA_AGENDADA→CONFIRMAR_VISITA; RETORNO_PROGRAMADO→RETOMAR_NO_COMBINADO; " +
+  "FEEDBACK_POS_VISITA→REGISTRAR_RESULTADO_VISITA; DECISAO_POS_VISITA→AVANCAR_POS_VISITA. " +
+  "Não crie ações ou momentos fora desta lista. Responda SOMENTE um JSON válido com as chaves: etapa_sugerida " +
+  "(novo|tentando_contato|em_atendimento|em_acompanhamento), momento_sugerido, acao_padrao_codigo, temperatura (frio|morno|quente|negociando), " +
+  "intencao_detectada, proxima_acao (1 frase concreta e específica), prazo_sugerido (ISO 8601, sempre " +
+  "posterior à data de HOJE do input), objecoes (array), risco_abandono (baixo|medio|alto), " +
+  "possibilidade_visita (baixa|media|alta), possibilidade_proposta (baixa|media|alta), justificativa " +
+  "(o diagnóstico em 1-2 frases, citando o sinal que o sustenta), confianca (0..1), " +
+  "evidencias (array de trechos REAIS da conversa). REGRA DE OURO: evidência é o que o CLIENTE disse — " +
+  "oferta, campanha ou anúncio não valem como fala do cliente. NUNCA invente; com pouca evidência, " +
+  "confiança baixa e ação de descoberta. Nada além do JSON. Você apenas sugere.";
+
+function comTimeout(p, ms) {
+  return Promise.race([Promise.resolve(p), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+}
+
+Deno.serve(async (req: Request) => {
+  const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  const runId = crypto.randomUUID();
+
+  // Consultas REAIS (nomes de colunas do database.types.ts), cada uma devolvendo {data,error}.
+  const queries = {
+    estado: async (negocioId: number) => {
+      const { data, error } = await comTimeout(
+        db.from("ncrm_estado").select("etapa,proxima_acao_titulo,ultima_interacao_em,negocios(lead_id,leads(nome),corretores(nome))").eq("negocio_id", negocioId).maybeSingle(), 10000);
+      if (error) return { data: null, error };
+      if (!data) return { data: null, error: null };
+      return { data: { etapa: data.etapa, proxima_acao_titulo: data.proxima_acao_titulo, ultima_interacao_em: data.ultima_interacao_em, lead_id: data.negocios?.lead_id ?? null, lead_nome: data.negocios?.leads?.nome ?? null, corretor_nome: data.negocios?.corretores?.nome ?? null }, error: null };
+    },
+    contatos: async (leadId: number) => await db.from("wa_contatos").select("id").eq("lead_id", leadId),
+    conversas: async (cids: string[]) => await db.from("wa_conversas").select("id").in("contato_id", cids),
+    mensagens: async (convIds: string[]) => {
+      // enviado_em pode ser NULL (DESC poria NULLs primeiro, roubando o limit). Ordena por
+      // criado_em (NOT NULL, ordem de chegada) e mapeia DATA EFETIVA = enviado_em ?? criado_em;
+      // montarContexto reordena pela data efetiva => 20 mais recentes corretas.
+      const { data, error } = await comTimeout(db.from("wa_mensagens").select("id,direcao,tipo,conteudo,transcricao,enviado_em,criado_em").in("conversa_id", convIds).order("criado_em", { ascending: false }).limit(20), 10000);
+      return { data: (data ?? []).map((m: any) => ({ id: m.id, direcao: m.direcao, tipo: m.tipo, conteudo: m.conteudo, transcricao: m.transcricao, enviadoEm: m.enviado_em ?? m.criado_em })), error };
+    },
+    // lead_avaliacoes REAL: nota, contexto (Json), feedbacks (Json), criado_em. NÃO existe "resumo".
+    avaliacoes: async (leadId: number) => await db.from("lead_avaliacoes").select("nota,contexto,feedbacks,criado_em").eq("lead_id", leadId).limit(5),
+    // Última análise da Sara: entra SÓ no texto (composição) — nunca no hash.
+    analiseAnterior: async (negocioId: number) => await db.from("ncrm_sara_analise")
+      .select("proxima_acao_sugerida,justificativa,prazo_sugerido,confianca,analisado_em")
+      .eq("negocio_id", negocioId).order("analisado_em", { ascending: false }).limit(1).maybeSingle(),
+  };
+
+  const deps = {
+    // ERRO ao consultar modo => LANÇA (não executa; nunca assume observer). Config ausente idem.
+    getModo: async () => {
+      const { data, error } = await db.from("ncrm_sara_config").select("modo").eq("id", true).maybeSingle();
+      if (error || !data) throw new Error("erro_modo");
+      return data.modo;
+    },
+    listarElegiveis: async (lote: number) => {
+      const { data, error } = await db.rpc("ncrm_sara_elegiveis", { p_lote: lote });
+      if (error || data?.ok === false) throw new Error("elegiveis_falhou");
+      return (data?.negocios ?? []).map((negocioId: number) => ({ negocioId }));
+    },
+    lerContexto: async (negocioId: number) => await carregarContextoAdaptador(negocioId, queries), // null => sem_contexto; lança => erro
+    jaAnalisado: async (negocioId: number, hash: string) => {
+      const { data, error } = await db.from("ncrm_sara_analise").select("id").eq("negocio_id", negocioId).eq("context_hash", hash).maybeSingle();
+      if (error) throw new Error("erro_ja_analisado");
+      return !!data;
+    },
+    chamarIaRouter: async ({ texto }: { texto: string }) => {
+      const r = await comTimeout(fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
+        method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ agente_slug: "sara", input: texto, override_prompt: OVERRIDE }),
+      }), OPTS.timeoutMs);
+      if (!r.ok) throw new Error(`ia_router_http_${r.status}`);
+      const j = await r.json();
+      return (j && typeof j.saida === "object") ? j.saida : (j.resposta ?? j);
+    },
+    validar: (raw: unknown, ctx: any) => {
+      const n = normalizarSugestaoSara(raw);
+      if (!n.ok) return { ok: false };                         // inválida => sem análise falsa
+      const a = mapearSugestaoParaAnalise(n.sugestao as any, ctx);
+      return a ? { ok: true, analise: { ...a, etapaAtual: ctx.etapaAtual } } : { ok: false };
+    },
+    registrar: async (negocioId: number, hash: string, analise: any) => {
+      const { data, error } = await db.rpc("ncrm_sara_registrar_analise", {
+        p_run_id: runId, p_context_hash: hash, p_negocio_id: negocioId,
+        p_etapa_atual: analise.etapaAtual ?? null, p_etapa_sugerida: analise.etapaSugerida ?? null,
+        p_proxima_acao_sugerida: analise.proximaAcaoSugerida ?? null, p_prazo_sugerido: analise.prazoSugerido ?? null,
+        p_justificativa: analise.justificativa, p_evidencias: analise.evidencias ?? [], p_confianca: analise.confianca,
+        p_cliente_aguardando: !!analise.clienteAguardando, p_promessa_retorno: !!analise.promessaRetorno,
+        p_visita_mencionada: !!analise.visitaMencionada, p_proposta_mencionada: !!analise.propostaMencionada,
+        p_versao_prompt: VERSAO_PROMPT, p_versao_modelo: VERSAO_MODELO,
+      });
+      if (error) throw new Error("registro_falhou");
+      if (data?.ok !== false && data?.analise_id && analise.momentoSugerido && analise.acaoPadraoCodigo) {
+        const { data: organizada, error: organizarErro } = await db.rpc("ncrm_sara_aplicar_conduta_automatica", {
+          p_negocio_id: negocioId,
+          p_analise_id: data.analise_id,
+          p_momento_codigo: analise.momentoSugerido,
+          p_acao_codigo: analise.acaoPadraoCodigo,
+        });
+        if (organizarErro) throw new Error("organizacao_falhou");
+        if (organizada?.ok === false && !["analise_sem_base", "confianca_insuficiente", "estado_mudou", "acao_humana_mais_recente"].includes(organizada?.erro)) {
+          throw new Error("organizacao_recusada");
+        }
+      }
+      return { ok: data?.ok !== false, ja: !!data?.ja_analisado };
+    },
+    // Marca TODO negócio processado (fila justa / backoff). Best-effort mas NÃO silencioso:
+    // supabase-js NÃO lança em erro de RPC — verificamos {data,error} e LANÇAMOS para o runner
+    // logar sanitizado e contar em marcacoes_falhas (falha aqui compromete a rotação da fila).
+    marcarResultado: async (negocioId: number, status: string, erro?: string) => {
+      const { data, error } = await db.rpc("ncrm_sara_runner_marcar_item", { p_negocio_id: negocioId, p_status: status, p_run_id: runId, p_erro: erro ?? null });
+      if (error) throw new Error(`marcar_item_rpc: ${error.message ?? "erro"}`);
+      if (data?.ok === false) throw new Error(`marcar_item_recusado: ${data?.erro ?? "erro"}`);
+    },
+    log: (m: string) => console.log(m),
+  };
+
+  try {
+    const { status, body } = await tratarRequisicaoObserver(
+      { segredoRecebido: req.headers.get("x-cron-secret"), segredoEsperado: CRON_SECRET },
+      deps, OPTS,
+    );
+    if (status === 200 && body?.executou) {
+      try { await db.rpc("ncrm_sara_runner_marcar_execucao", { p_run_id: runId, p_ultimo_negocio_id: body.ultimoNegocioId ?? null, p_processados: body.processados ?? 0 }); } catch { /* best-effort */ }
+    }
+    return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("ncrm-sara-observer:", sanitizarErro(e)); // detalhe sanitizado só no log
+    return new Response(JSON.stringify({ ok: false, erro: "falha_interna" }), { status: 500, headers: { "Content-Type": "application/json" } });
+  }
+});
