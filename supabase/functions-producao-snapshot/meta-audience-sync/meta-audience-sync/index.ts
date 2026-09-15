@@ -33,7 +33,7 @@ async function sameSecret(received: string | null, expected: string) {
 
 function safeMetaError(payload: any) {
   return String(payload?.error?.message ?? "Meta recusou a adição ao público")
-    .replace(/[\\u0000-\\u001f\\u007f]/g, " ")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
     .slice(0, 300);
 }
 

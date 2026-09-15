@@ -65,7 +65,7 @@ export function sanitizeCurrentCategory(value: unknown): string | null {
 
 export function normalizePropertyType(value: unknown): string {
   if (typeof value !== "string") return "imóvel residencial";
-  return PROPERTY_TYPES.get(value.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase())
+  return PROPERTY_TYPES.get(value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase())
     ?? PROPERTY_TYPES.get(value.trim().toLowerCase())
     ?? "imóvel residencial";
 }
