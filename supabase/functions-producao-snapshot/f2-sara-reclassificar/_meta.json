@@ -1,0 +1,8 @@
+{
+  "slug": "f2-sara-reclassificar",
+  "version": 32,
+  "verify_jwt": false,
+  "updated_at": 1788287677917,
+  "ezbr_sha256": "f9976ce321ef832d746aaa003acdb7b01c73657a1bbf836d81a367f50d7b8236",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_77b87f4b-cf58-482a-b832-f0181b0e0a41_32/source/f2-sara-reclassificar/index.ts"
+}
