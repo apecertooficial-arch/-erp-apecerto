@@ -1,0 +1,8 @@
+{
+  "slug": "wa-varredura-numeros",
+  "version": 12,
+  "verify_jwt": false,
+  "updated_at": 1786477411950,
+  "ezbr_sha256": "f369094080fd1740043ad3369cc230f3b51d4ea38ce90cc9b72194f5800af197",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_9ec6c1be-a0df-42cd-a927-e6c6bfe603ab_3/source/index.ts"
+}

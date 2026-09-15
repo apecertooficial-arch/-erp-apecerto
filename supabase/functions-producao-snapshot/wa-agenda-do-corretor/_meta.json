@@ -1,0 +1,8 @@
+{
+  "slug": "wa-agenda-do-corretor",
+  "version": 10,
+  "verify_jwt": false,
+  "updated_at": 1786637646137,
+  "ezbr_sha256": "b4161aae214449e7f5242d3f4883157f47fe43518d94cf8bf036449e179f60a6",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_77859f64-112d-4d3e-b95b-8246df9673d7_1/source/index.ts"
+}
