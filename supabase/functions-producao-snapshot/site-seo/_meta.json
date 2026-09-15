@@ -1,0 +1,8 @@
+{
+  "slug": "site-seo",
+  "version": 11,
+  "verify_jwt": false,
+  "updated_at": 1787938922897,
+  "ezbr_sha256": "c5c81427804032ec41ef267012f8fdaa333af49b3516f68dc163996a8612f5b9",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_3c794740-45fa-4d84-9f90-fb7d892ffa7d_11/source/index.ts"
+}
