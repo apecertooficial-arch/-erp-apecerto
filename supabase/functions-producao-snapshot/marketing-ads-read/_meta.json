@@ -1,0 +1,8 @@
+{
+  "slug": "marketing-ads-read",
+  "version": 11,
+  "verify_jwt": true,
+  "updated_at": 1788230113251,
+  "ezbr_sha256": "ef4a161ac2971771e124bffdc7b61ac9021675119929da5950833ddfbdc4369b",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_cafa34ce-653d-474b-b26a-e5e2663fd02d_11/source/index.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "slug": "social-publisher",
+  "version": 2,
+  "verify_jwt": true,
+  "updated_at": 1787850107685,
+  "ezbr_sha256": "d636051562859b1cc6232e0e389048c5cc681fb409686b98806c623d079f7375",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_da239663-265b-4857-aeb7-b8523f085d4e_1/source/index.ts"
+}

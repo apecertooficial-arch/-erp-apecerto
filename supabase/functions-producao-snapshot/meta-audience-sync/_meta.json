@@ -1,0 +1,8 @@
+{
+  "slug": "meta-audience-sync",
+  "version": 4,
+  "verify_jwt": true,
+  "updated_at": 1788989695844,
+  "ezbr_sha256": "473b7ba3aca6cc4f0c5211b98b6b341534234839e4def5698724897b2b7c8cc1",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_76fd54cc-7ad8-4523-8123-6cbaa58ff9b8_4/source/meta-audience-sync/index.ts"
+}

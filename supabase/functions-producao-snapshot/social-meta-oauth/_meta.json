@@ -1,0 +1,8 @@
+{
+  "slug": "social-meta-oauth",
+  "version": 2,
+  "verify_jwt": true,
+  "updated_at": 1787850111469,
+  "ezbr_sha256": "ff0e68d34ea0e5d2e4b08d8741362b230e8cc8a456f6113d48c7df8a4cb2cab1",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_520a22a2-8915-482d-8afc-72754f67432a_1/source/index.ts"
+}
