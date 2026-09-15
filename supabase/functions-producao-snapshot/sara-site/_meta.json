@@ -1,0 +1,8 @@
+{
+  "slug": "sara-site",
+  "version": 17,
+  "verify_jwt": true,
+  "updated_at": 1787358248395,
+  "ezbr_sha256": "6d1f12e498db89486a6b30931997b9f853d11da3ac109eca954e09bf1e4d6006",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_8db880de-8b25-4eba-b8bd-1ee5a1c586db_10/source/index.ts"
+}

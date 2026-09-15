@@ -1,0 +1,8 @@
+{
+  "slug": "site-media",
+  "version": 1,
+  "verify_jwt": false,
+  "updated_at": 1787923363623,
+  "ezbr_sha256": "8483786b49c75b53a6e630493bbc53f15bf412bfaf3dc781be8f2c6f75118b95",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_0bb94037-9cd0-44d1-81f2-a2c99ab7cea6_1/source/index.ts"
+}

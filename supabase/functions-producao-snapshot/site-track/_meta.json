@@ -1,0 +1,8 @@
+{
+  "slug": "site-track",
+  "version": 16,
+  "verify_jwt": false,
+  "updated_at": 1788983383737,
+  "ezbr_sha256": "06ccaaa2beaf330c6d139c5dddbd6df34e40f8d02c174f1498baa460c7b66491",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_c09b0f38-1dbd-40e3-9b88-00e5ed0e9847_16/source/index.ts"
+}
