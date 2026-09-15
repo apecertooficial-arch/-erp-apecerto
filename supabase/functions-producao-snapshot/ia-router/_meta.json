@@ -1,0 +1,8 @@
+{
+  "slug": "ia-router",
+  "version": 33,
+  "verify_jwt": true,
+  "updated_at": 1787977087159,
+  "ezbr_sha256": "812c4d6cdca459d64d59eb44cb3c4d12a8892bd8ae1174fff1c3bf2d2aa29a35",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_6479f45c-280f-44a4-bb5f-e814b4062014_33/source/index.ts"
+}
