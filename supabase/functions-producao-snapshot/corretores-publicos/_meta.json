@@ -1,0 +1,8 @@
+{
+  "slug": "corretores-publicos",
+  "version": 12,
+  "verify_jwt": false,
+  "updated_at": 1785344282565,
+  "ezbr_sha256": "9875c352e4ed1419fc02152665e7fb92613b6645f095ae532d59f568775513f0",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_1fe44fb2-a4b6-4cee-a7a6-d505c304c758_1/source/index.ts"
+}

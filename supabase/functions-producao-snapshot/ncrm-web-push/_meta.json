@@ -1,0 +1,8 @@
+{
+  "slug": "ncrm-web-push",
+  "version": 14,
+  "verify_jwt": false,
+  "updated_at": 1785721046078,
+  "ezbr_sha256": "289add5bc9008b85523416c41e77a917b3c35ea94989d6cb964237a9d0e2b04b",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_5f1ec9f9-8528-4fc8-9d42-029b6187e36f_5/source/index.ts"
+}

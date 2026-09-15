@@ -1,0 +1,8 @@
+{
+  "slug": "enviar-produto",
+  "version": 15,
+  "verify_jwt": false,
+  "updated_at": 1785469623382,
+  "ezbr_sha256": "ce7225e4065e310e3a357e65be3496f09f5203137d2f998c52c0a7030b10ee39",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_6dc72b3c-b59a-4556-8e03-aa166707c163_6/source/index.ts"
+}
