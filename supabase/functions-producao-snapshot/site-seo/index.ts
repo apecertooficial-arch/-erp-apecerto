@@ -65,11 +65,11 @@ function escapeXml(value) {
 
 function safeJson(value) {
   return JSON.stringify(value)
-    .replace(/</g, "\\\\u003c")
-    .replace(/>/g, "\\\\u003e")
-    .replace(/&/g, "\\\\u0026")
-    .replace(/\\u2028/g, "\\\\u2028")
-    .replace(/\\u2029/g, "\\\\u2029");
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }
 
 function compactObject(value) {
@@ -95,7 +95,7 @@ function finiteNumber(value, minimum = 0, maximum = 1_000_000_000) {
 function slugify(value) {
   return String(value ?? "")
     .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -113,7 +113,7 @@ function entitySlug(entity) {
 function decodeRequestedSlug(pathValue) {
   let decoded;
   try { decoded = decodeURIComponent(pathValue); } catch { return ""; }
-  if (decoded.length > 180 || decoded.includes("/") || /[\\u0000-\\u001f\\u007f]/.test(decoded)) return "";
+  if (decoded.length > 180 || decoded.includes("/") || /[\u0000-\u001f\u007f]/.test(decoded)) return "";
   const normalized = slugify(decoded);
   return normalized === decoded.toLowerCase() && SLUG_PATTERN.test(normalized) ? normalized : "";
 }
@@ -176,7 +176,7 @@ async function fetchLegacyResolution({ fetchImpl, env, supabaseUrl, slug }) {
 
 function storageImage(value, supabaseUrl) {
   const raw = String(value ?? "").trim();
-  if (!raw || /[\\u0000-\\u001f\\u007f"'\\()]/.test(raw)) return "";
+  if (!raw || /[\u0000-\u001f\u007f"'\\()]/.test(raw)) return "";
   if (raw.startsWith("midia:")) {
     const id = raw.slice(6);
     return UUID_PATTERN.test(id) ? `${supabaseUrl}/functions/v1/site-media/${id.toLowerCase()}` : "";
