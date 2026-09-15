@@ -67,7 +67,7 @@ function response(origin: string | null, body: unknown, status = 200) {
 }
 
 function clean(value: unknown, max: number) {
-  return String(value ?? "").replace(/[\\u0000-\\u001f\\u007f]/g, " ").trim().slice(0, max);
+  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
 }
 
 Deno.serve(async (request: Request) => {

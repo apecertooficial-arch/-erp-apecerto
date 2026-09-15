@@ -66,7 +66,7 @@ const blankFilters = (): Filters => ({
 
 const normalize = (value: unknown) => String(value ?? "")
   .normalize("NFD")
-  .replace(/[\\u0300-\\u036f]/g, "")
+  .replace(/[\u0300-\u036f]/g, "")
   .toLowerCase()
   .trim();
 
@@ -306,7 +306,7 @@ Deno.serve(async (request: Request) => {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const question = String(body?.pergunta ?? "").replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\s+/g, " ").trim();
+    const question = String(body?.pergunta ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
     if (question.length < 3 || question.length > 240) {
       return json(origin, { ok: false, erro: "pergunta_invalida" }, 400);
     }
