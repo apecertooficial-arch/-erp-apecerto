@@ -1,0 +1,8 @@
+{
+  "slug": "site-financing-lead",
+  "version": 8,
+  "verify_jwt": false,
+  "updated_at": 1787411985377,
+  "ezbr_sha256": "7ed1d60fd11093ad59a3f6e8af0ecb2a6128583ff36e5ee2826d95c62aac297c",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_582544c3-9350-4023-a9dc-b8ab371df2a4_1/source/index.ts"
+}
