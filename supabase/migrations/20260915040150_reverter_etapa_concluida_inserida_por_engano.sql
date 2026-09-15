@@ -1,0 +1,30 @@
+-- REVERSAO DE UM ERRO MEU, registrado de proposito.
+--
+-- Numa tentativa anterior eu afirmei que a tabela esteira_etapas estava VAZIA e
+-- inseri um fluxo novo. Estava errado.
+--
+-- De onde veio o erro: consultei pg_stat_user_tables.n_live_tup, que e uma
+-- ESTIMATIVA e estava desatualizada (zerada apos as alteracoes do dia). A tabela
+-- sempre teve 10 etapas configuradas. O `on conflict (slug) do nothing` salvou
+-- 5 das 6 linhas que tentei inserir, mas 'concluida' nao existia e entrou --
+-- criando uma etapa terminal duplicada e colidindo na ordem 6 com 'minuta_cnd'.
+--
+-- LICAO, que vale para o resto do trabalho: contagem de linha so vale com
+-- count(*). n_live_tup serve para estimativa de planejador, nao para decisao.
+--
+-- O fluxo REAL ja existente, apos a renumeracao da migracao seguinte:
+--   1 inicio ......... Pedido aprovado
+--   2 proposta ....... Proposta            (libera condicoes, comissao)
+--   3 doc_comp ....... Doc. do comprador
+--   4 doc_vend ....... Doc. do vendedor    <- 4 processos aqui
+--   5 doc_imovel ..... Doc. do imovel
+--   6 contrato ....... Contrato em geracao
+--   7 minuta_cnd ..... Minuta + CNDs
+--   8 minuta_env ..... Contrato enviado
+--   9 pagamento ...... Aguardando pagamento
+--  10 registrada ..... Venda registrada    <- 18 processos, conclui_venda = true
+--
+-- Ou seja: os 18 processos em 'registrada' estao na etapa FINAL e corretos.
+-- Nao havia "esteira parada" no sentido que eu tinha escrito.
+
+delete from public.esteira_etapas where slug = 'concluida';
