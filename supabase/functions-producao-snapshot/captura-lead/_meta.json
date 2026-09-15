@@ -1,0 +1,8 @@
+{
+  "slug": "captura-lead",
+  "version": 9,
+  "verify_jwt": false,
+  "updated_at": 1787103078928,
+  "ezbr_sha256": "cd5857de18480727cc65a0a6950ff3b2fad285122093137b361d96b10d8e15fa",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_e669447b-ba09-4462-a445-344915600c11_1/source/index.ts"
+}

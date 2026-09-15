@@ -1,0 +1,8 @@
+{
+  "slug": "entrada",
+  "version": 22,
+  "verify_jwt": false,
+  "updated_at": 1787256475971,
+  "ezbr_sha256": "019ef84158897e87d0a44c299e851d63fdabbe78b6506c02d10d14a831e0b14e",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_2e1cea42-5805-44c1-802d-22cbbdcdf2a3_15/source/index.ts"
+}

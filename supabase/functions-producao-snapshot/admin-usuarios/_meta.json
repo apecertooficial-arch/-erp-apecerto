@@ -1,0 +1,8 @@
+{
+  "slug": "admin-usuarios",
+  "version": 13,
+  "verify_jwt": true,
+  "updated_at": 1784904619253,
+  "ezbr_sha256": "5c8920ad475fe72dbc6896de60b09e1cdf4b747bcaafe11274a740ac1a7f4591",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_5859ee91-24d0-424f-8971-843dda9a8024_1/source/index.ts"
+}

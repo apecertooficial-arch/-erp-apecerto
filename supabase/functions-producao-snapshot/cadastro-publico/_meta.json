@@ -1,0 +1,8 @@
+{
+  "slug": "cadastro-publico",
+  "version": 13,
+  "verify_jwt": false,
+  "updated_at": 1785164412127,
+  "ezbr_sha256": "718a6651ffdff26ae999dabb575ce43fe9325b42934c89ee8f31722b5f80cd5b",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_6b7cd650-5a4f-43c3-a6f8-ada03c982e2e_1/source/index.ts"
+}
