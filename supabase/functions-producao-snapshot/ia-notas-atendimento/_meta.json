@@ -1,0 +1,8 @@
+{
+  "slug": "ia-notas-atendimento",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1784566588954,
+  "ezbr_sha256": "b8d3d376b57918731fb1faadeed63d6011a5242b3f83fc5d656fb45fbc99e640",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_32eb2f98-0fc1-425d-899d-54c1ab4799e4_2/source/index.ts"
+}

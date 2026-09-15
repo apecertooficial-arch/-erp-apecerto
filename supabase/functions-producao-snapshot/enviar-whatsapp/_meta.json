@@ -1,0 +1,8 @@
+{
+  "slug": "enviar-whatsapp",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1785471382142,
+  "ezbr_sha256": "7b1f19b92db00d61c4e7c2ebba20e25a66aae5264173717edbfebd2bfdf8434f",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_e5593b5a-3144-4061-be38-aa05c7f18019_5/source/index.ts"
+}

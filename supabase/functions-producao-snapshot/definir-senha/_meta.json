@@ -1,0 +1,8 @@
+{
+  "slug": "definir-senha",
+  "version": 13,
+  "verify_jwt": false,
+  "updated_at": 1784554051368,
+  "ezbr_sha256": "5058ab49fb81430b0285ed2b1df988eaf7f5a052063c06ef179b82847c270512",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_9bdcf005-1d1a-4150-9a0e-89217c033936_1/source/index.ts"
+}

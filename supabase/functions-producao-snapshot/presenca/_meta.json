@@ -1,0 +1,8 @@
+{
+  "slug": "presenca",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1787348431798,
+  "ezbr_sha256": "4c3b906bb6429ca90479411d85559c301f34ce83efdb48d81583747dc7c0c9a0",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_0a257f76-4147-4194-a5ed-86090a1465f1_7/source/index.ts"
+}

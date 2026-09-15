@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-chat-history",
+  "version": 17,
+  "verify_jwt": true,
+  "updated_at": 1784216268753,
+  "ezbr_sha256": "7ee717fb7552ba960735cef2e8181725c3308913a9e3dae4fded0068c8003f81",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_e73272f1-57f2-4c44-afda-87658323590d_5/source/index.ts"
+}

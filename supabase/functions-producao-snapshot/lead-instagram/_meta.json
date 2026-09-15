@@ -1,0 +1,8 @@
+{
+  "slug": "lead-instagram",
+  "version": 10,
+  "verify_jwt": false,
+  "updated_at": 1785521932145,
+  "ezbr_sha256": "4788a91e46b325480b5675ff2c1acb197cfaa3e4da1a0b856b904af2d09f3a2e",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_194c3618-3ffb-446e-baba-ca38b10810fe_1/source/index.ts"
+}
