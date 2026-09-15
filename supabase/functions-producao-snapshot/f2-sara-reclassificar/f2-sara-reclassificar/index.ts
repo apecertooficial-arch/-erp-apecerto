@@ -127,7 +127,7 @@ class IaIndisponivelError extends Error {
 }
 
 function normalizarEvidencia(v: unknown) {
-  return String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
