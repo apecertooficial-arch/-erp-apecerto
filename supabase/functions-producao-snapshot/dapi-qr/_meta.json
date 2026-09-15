@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-qr",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1784566208105,
+  "ezbr_sha256": "9788ea508a4a07e5899ef68c1928aa3f0af8b21fb34e9a6ab32623b9eb0fb189",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_49034e24-7966-4a0a-a237-c9d0d8b20f8d_2/source/index.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "slug": "render-proxy",
+  "version": 16,
+  "verify_jwt": true,
+  "updated_at": 1785174978451,
+  "ezbr_sha256": "e1806af7ab0860046d47507f5cebc69529bdb6c876a6d1ab8abf99dd804a8f7d",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_bf344770-fb65-4dc5-a045-3a5122e0bc18_4/source/index.ts"
+}

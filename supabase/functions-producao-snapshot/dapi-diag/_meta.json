@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-diag",
+  "version": 19,
+  "verify_jwt": true,
+  "updated_at": 1784582337792,
+  "ezbr_sha256": "0a28e77ae07406f2a13e25ea30a7f5f20042155878720bd251e52c4e533b2674",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_a5cebcdf-ab14-4fa8-984b-e4f874141fd8_7/source/index.ts"
+}

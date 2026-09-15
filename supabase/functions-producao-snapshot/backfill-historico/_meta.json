@@ -1,0 +1,8 @@
+{
+  "slug": "backfill-historico",
+  "version": 15,
+  "verify_jwt": true,
+  "updated_at": 1786035735347,
+  "ezbr_sha256": "a382ee67d45751a143d1aba0916698d4a979ad0a1bce6707e7bb256e6327e307",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_7fe20adf-1026-434f-b080-ab013e9cfe41_6/source/index.ts"
+}
