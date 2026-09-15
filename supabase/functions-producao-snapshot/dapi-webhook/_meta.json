@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-webhook",
+  "version": 20,
+  "verify_jwt": false,
+  "updated_at": 1787361500893,
+  "ezbr_sha256": "60240fc951d52c85e1b6f42f0307cd6ce757b951119d2bfd9e15880110a20ed8",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_ecf75fd0-0b3f-4e34-b345-35db135c30fb_13/source/index.ts"
+}

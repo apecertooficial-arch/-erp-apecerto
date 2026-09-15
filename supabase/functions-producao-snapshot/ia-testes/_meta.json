@@ -1,0 +1,8 @@
+{
+  "slug": "ia-testes",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1787614303527,
+  "ezbr_sha256": "33f7c8282651e53cc03e72699e28106a14a5f4c42c060af178d41491d8def93e",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_778b69d2-36b2-410f-b14d-af217b93f00f_11/source/index.ts"
+}

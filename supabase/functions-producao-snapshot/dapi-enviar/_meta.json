@@ -1,0 +1,8 @@
+{
+  "slug": "dapi-enviar",
+  "version": 24,
+  "verify_jwt": false,
+  "updated_at": 1785762838354,
+  "ezbr_sha256": "a20cdead4953a3e1e170dcc87ca3e04639d442a1ae7e5628cec248b314d96bf0",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_8dae144b-3042-4c5e-852a-a44e7d289c84_15/source/index.ts"
+}
