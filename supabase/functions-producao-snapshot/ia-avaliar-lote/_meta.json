@@ -1,0 +1,8 @@
+{
+  "slug": "ia-avaliar-lote",
+  "version": 16,
+  "verify_jwt": true,
+  "updated_at": 1785992565673,
+  "ezbr_sha256": "bdca0e874674513ee6b398ad006a303e54d6da09cf1b0fa1c20c3dfdf80bdc67",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_4d5d25b3-b8e5-4fa6-9378-e0b4eb903175_7/source/index.ts"
+}

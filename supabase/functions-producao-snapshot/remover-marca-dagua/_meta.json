@@ -1,0 +1,8 @@
+{
+  "slug": "remover-marca-dagua",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1787253959011,
+  "ezbr_sha256": "fca580324bc7c050684be649710f9366dfba9dcee89dba57631ae9f090de37fa",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_ed64eee1-3caf-4704-abec-6bb14da07cc1_7/source/index.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "slug": "distribuir-lead",
+  "version": 14,
+  "verify_jwt": true,
+  "updated_at": 1783456078749,
+  "ezbr_sha256": "9082576e9ff67779c61cc791dec40ef48a4ff4eaa2f5d4fd750eb71338c19c1a",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_30207361-7b7d-4821-a58b-2066778cff9f_2/source/index.ts"
+}
