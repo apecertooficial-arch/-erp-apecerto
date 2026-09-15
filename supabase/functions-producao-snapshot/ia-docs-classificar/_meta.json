@@ -1,0 +1,8 @@
+{
+  "slug": "ia-docs-classificar",
+  "version": 13,
+  "verify_jwt": true,
+  "updated_at": 1784915660104,
+  "ezbr_sha256": "5a787f82df02f92b4678ec4e502e76b7a8d1c61ce21d6000ef2986ddee61f0f7",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_7f0bac95-bf4d-4d38-8d96-5518d498e49f_1/source/index.ts"
+}

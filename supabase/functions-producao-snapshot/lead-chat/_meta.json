@@ -1,0 +1,8 @@
+{
+  "slug": "lead-chat",
+  "version": 29,
+  "verify_jwt": false,
+  "updated_at": 1784906650679,
+  "ezbr_sha256": "df00fd80b8de0e477504656bb39c292659909f89af31b42c262d84b4345fd52f",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_9da5587a-dab1-4916-bc80-a60baa1f0c96_17/source/index.ts"
+}

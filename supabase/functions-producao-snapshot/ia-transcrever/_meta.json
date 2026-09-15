@@ -1,0 +1,8 @@
+{
+  "slug": "ia-transcrever",
+  "version": 16,
+  "verify_jwt": true,
+  "updated_at": 1785983270792,
+  "ezbr_sha256": "65af63ea0fe56132c5442ceecb3dda81a16b5b5cc2821d74e363f14e73c917ab",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_070d0af6-6a28-4114-ab3d-d177ce0f3ece_7/source/index.ts"
+}

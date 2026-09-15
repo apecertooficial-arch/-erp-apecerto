@@ -1,0 +1,8 @@
+{
+  "slug": "f2-sara-interpretar",
+  "version": 12,
+  "verify_jwt": true,
+  "updated_at": 1786446516725,
+  "ezbr_sha256": "db5f2efe10b1baac8e6ffe59e60f0e84b84dbacb7a95651d6ab63eeafb10a59e",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_2737ee22-c52b-4f7a-b8df-77bfaca3286a_3/source/index.ts"
+}
