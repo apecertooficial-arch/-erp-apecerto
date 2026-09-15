@@ -1,0 +1,8 @@
+{
+  "slug": "meta-capi",
+  "version": 17,
+  "verify_jwt": true,
+  "updated_at": 1788976801086,
+  "ezbr_sha256": "67893cf8c1a71a233bccc5bce934139da576f751844fc29e137ad38b405f4cad",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_62ba99a8-3b1a-49af-86e7-23faf3a05e6f_17/source/meta-capi/index.ts"
+}

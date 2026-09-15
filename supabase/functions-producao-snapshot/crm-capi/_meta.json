@@ -1,0 +1,8 @@
+{
+  "slug": "crm-capi",
+  "version": 24,
+  "verify_jwt": true,
+  "updated_at": 1788976818798,
+  "ezbr_sha256": "bf5e4c199d1487915efc0999847ae47787c62f0f583a045e014041841facb045",
+  "entrypoint_path": "/tmp/user_fn_diaegvfveqezispcthwk_7faa582f-76d2-42bd-868e-fb98224a7002_24/source/crm-capi/index.ts"
+}
