@@ -1,9 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { papelNoGrupo } from "../_shared/papeis.ts";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const GOOGLE_ADS = "https://googleads.googleapis.com/v25";
-const GESTAO = new Set(["admin", "gerente", "diretor", "executivo"]);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
@@ -144,7 +144,7 @@ Deno.serve(async (request: Request) => {
   const { data: userData } = await supabase.auth.getUser(auth.replace(/^Bearer\s+/i, ""));
   if (!userData.user) return json({ ok: false, error: "unauthorized" }, 401);
   const { data: me } = await supabase.from("usuarios").select("role,ativo").eq("id", userData.user.id).maybeSingle();
-  if (!me?.ativo || !GESTAO.has(String(me.role))) return json({ ok: false, error: "forbidden" }, 403);
+  if (!me?.ativo || !papelNoGrupo(me.role, "gestao")) return json({ ok: false, error: "forbidden" }, 403);
   const body = await request.json().catch(() => ({}));
   const days = Math.max(1, Math.min(Number(body?.days ?? 30) || 30, 365));
   const [metaAds, googleAds] = await Promise.all([meta(days), google(days)]);
