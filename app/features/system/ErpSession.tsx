@@ -18,6 +18,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { GRUPOS, papelNoGrupo } from "../../lib/papeis";
 import { SupabaseLogin } from "../../components/SupabaseLogin";
 import { ResetPassword } from "../../components/ResetPassword";
 
@@ -33,9 +34,11 @@ export type SessionProfile = {
   permissoes?: Record<string, string[]> | null;
 };
 
-/* Mesmo conjunto que ProductCatalog usava. Papel de gestao nao vem de slug de
-   permissao, vem do perfil real -- por isso fica separado. */
-export const MANAGER_ROLES = new Set(["admin", "gestor", "executivo", "gestor_comercial", "gestor_equipe"]);
+/* isManager = grupo `acesso_total` (admin, executivo) de app/lib/papeis.ts.
+   E o mesmo conjunto que valia antes (os demais nomes da lista antiga nao eram
+   papeis reais). Gerente e diretor continuam entrando como gestao pela classe
+   de sessao role === "gestor". */
+export const MANAGER_ROLES: ReadonlySet<string> = new Set(GRUPOS.acesso_total);
 
 export type EstadoDados = "loading" | "live" | "auth" | "error";
 
@@ -155,7 +158,7 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
     perfilCarregado,
     estado,
     role: profile?.role ?? "corretor",
-    isManager: MANAGER_ROLES.has(profile?.perfil ?? ""),
+    isManager: papelNoGrupo(profile?.perfil, "acesso_total"),
     permissoes: profile?.permissoes ?? null,
     badges,
     publicarBadge,
