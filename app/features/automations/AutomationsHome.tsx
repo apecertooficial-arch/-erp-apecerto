@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CentralOperationsPanel } from "./CentralOperationsPanel";
+import { statusPublicacao } from "./statusPublicacao";
 import { ExplicadorAutomacoes } from "./ExplicadorAutomacoes";
 
 type Automacao = {
@@ -81,8 +82,8 @@ function passaFiltro(a: Automacao, filtro: Filtro) {
   if (filtro === "arquivadas") return a.arquivada === true;
   if (a.arquivada) return false;
   if (filtro === "ativas") return a.ativa === true;
-  if (filtro === "publicadas") return (a.status || "publicado") === "publicado";
-  if (filtro === "rascunhos") return (a.status || "publicado") === "rascunho";
+  if (filtro === "publicadas") return statusPublicacao(a) === "publicado";
+  if (filtro === "rascunhos") return statusPublicacao(a) === "rascunho";
   return true;
 }
 
@@ -138,7 +139,7 @@ export function AutomationsHome({ accessToken, supabaseUrl, publishableKey, onOp
   const totais = useMemo(() => ({
     disponiveis: automacoes.filter((a) => !a.arquivada).length,
     ativas: automacoes.filter((a) => !a.arquivada && a.ativa).length,
-    rascunhos: automacoes.filter((a) => !a.arquivada && (a.status || "publicado") === "rascunho").length,
+    rascunhos: automacoes.filter((a) => !a.arquivada && statusPublicacao(a) === "rascunho").length,
     arquivadas: automacoes.filter((a) => a.arquivada).length,
   }), [automacoes]);
 
@@ -184,7 +185,7 @@ export function AutomationsHome({ accessToken, supabaseUrl, publishableKey, onOp
         <div className="automation-table" role="table" aria-label={`Automações de ${nomeGrupo}`}>
           <div className="automation-table-head" role="row"><span>Automação</span><span>Publicação</span><span>Operação</span><span>Modificada</span><span aria-label="Ações" /></div>
           {itens.map((a) => {
-            const publicada = (a.status || "publicado") === "publicado";
+            const publicada = statusPublicacao(a) === "publicado";
             return <article key={a.id} className="automation-row" role="row">
               <button type="button" className="automation-row-main" onClick={() => onOpen(a.id)} role="cell"><span className={`automation-card-mark ${a.ativa ? "running" : publicada ? "published" : "draft"}`}><Icon name="flow" /></span><span><strong>{a.nome}</strong><small>ID {a.id} · {nomeGrupo}</small></span></button>
               <span role="cell" className={`state-chip ${publicada ? "published" : "draft"}`}>{publicada ? "Publicada" : "Rascunho"}</span>
