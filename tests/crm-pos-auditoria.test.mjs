@@ -56,7 +56,7 @@ test("API liga crm_tarefas ao lead original e não mascara falha como vazio", ()
   assert.match(api, /Não foi possível carregar as atividades deste atendimento/);
   assert.match(api, /visitas: visitas \?\? \[\], atividades/);
   assert.match(workspace, /atividadesCompletas = combinarAtividades\(atividades, visitas\)/);
-  assert.match(mobile, /atividadesCompletas = combinarAtividades\(atividades, visitas\)/);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
 });
 
 test("Ganho e Perdido não conseguem mais fechar somente a cópia operacional", () => {
@@ -83,7 +83,7 @@ test("falhas auxiliares ficam visíveis sem inventar um fallback", () => {
   assert.match(api, /instancia_origem: daConversa \? "conversa" : instancia \? "padrao" : "indisponivel"/);
   assert.match(workspace, /Sara temporariamente indisponível/);
   assert.match(workspace, /Configuração operacional indisponível/);
-  assert.match(mobile, /Sara indisponível/);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
 });
 
 test("Kanban desktop usa largura medida sem duplicar contagem no cabeçalho", () => {
@@ -93,17 +93,8 @@ test("Kanban desktop usa largura medida sem duplicar contagem no cabeçalho", ()
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);
 });
 
-test("menu Mais mobile replica as quatro áreas aprovadas sem duplicar a navegação inferior", () => {
-  assert.match(mobile, /aria-label="Mais áreas do Funil"/);
-  for (const item of ["Esteira de vendas", "Painel gerencial", "Configurações", "Matriz de validação"]) {
-    assert.match(mobile, new RegExp(`>${item}<`));
-  }
-  const menuMais = mobile.match(/aria-label="Mais áreas do Funil"[\s\S]*?<\/nav>/)?.[0] ?? "";
-  assert.doesNotMatch(menuMais, />Meu Dia<|>Agenda<|>Produtos<|>Sara</);
-});
-
 test("superfície inteira do cartão abre a ficha sem botão invisível sobreposto", () => {
   assert.match(workspace, /<article key=\{item\.id\}[^>]*tabIndex=\{0\}[^>]*onClick=/);
-  assert.match(mobile, /<article className="ape-card" tabIndex=\{0\}[^>]*onClick=/);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
   assert.doesNotMatch(`${workspace}\n${mobile}`, /card-abrir/);
 });

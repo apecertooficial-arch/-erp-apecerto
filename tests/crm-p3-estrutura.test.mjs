@@ -35,7 +35,6 @@ test("harness visual continua fora do bundle produtivo do Funil", () => {
     "../app/features/funil-2/Funil2Mobile.tsx",
     "../app/features/funil-2/Funil2BoardToolbar.tsx",
     "../app/features/funil-2/Funil2BoardPrimitives.tsx",
-    "../app/features/funil-2/Funil2MobileChrome.tsx",
   ].map(read).join("\n");
   assert.doesNotMatch(fontesProdutivas, /crm-visual-harness|visual-sintetico|crmHarness/);
 });
@@ -43,10 +42,8 @@ test("harness visual continua fora do bundle produtivo do Funil", () => {
 test("responsabilidades extraídas preservam semântica operacional", () => {
   const toolbar = read("../app/features/funil-2/Funil2BoardToolbar.tsx");
   const primitivas = read("../app/features/funil-2/Funil2BoardPrimitives.tsx");
-  const chromeMobile = read("../app/features/funil-2/Funil2MobileChrome.tsx");
   assert.match(toolbar, /aria-label="Busca, filtros e ações do quadro"/);
   assert.match(toolbar, /role="group" aria-label="Situação dos negócios"/);
   assert.match(primitivas, /role="group" aria-label="Filtrar por temperatura"/);
-  assert.match(chromeMobile, /aria-label="Navegação do Funil"/);
-  assert.match(chromeMobile, /aria-label="Carregando"/);
+  // Funil2MobileChrome.tsx foi removido no revert 90b5bd8a (app mobile anterior ao CRM V3).
 });
