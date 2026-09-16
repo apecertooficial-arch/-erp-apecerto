@@ -140,7 +140,7 @@ export async function GET(request: Request) {
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
-    db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo").order("ordem", { ascending: true }),
+    db.from("f2_etapa_config").select("codigo,ordem,rotulo,ajuda,ativo,funil").order("ordem", { ascending: true }),
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,fim_em,imovel,status,observacao,empreendimento_id,unidade,com_gerente,gerente_id,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
