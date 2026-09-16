@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
+import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -97,7 +98,7 @@ export async function PATCH(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const action = clean(body.action, 40);
 
-  // Acesso efetivo resolvido uma vez; admin passa e, sem mapa, libera (RLS é a trava dura).
+  // Acesso efetivo resolvido uma vez; acesso_total passa e, sem mapa, nega (fail-closed).
   // Observação: a venda iniciada pelo corretor passa por /api/crm/sales — este balcão
   // financeiro (venda manual, caixa, recebimentos) exige permissão financeira.
   const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
@@ -105,7 +106,7 @@ export async function PATCH(request: Request) {
 
   if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
+    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
     const validNatureza = (value: string) => ["normal", "comissao_recebida", "comissao_paga"].includes(value) ? value : "normal";
     if (action === "createCategory") {
       const nome = clean(body.nome, 80);
@@ -769,7 +770,7 @@ export async function PATCH(request: Request) {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
+    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
     await auth.supabase.from("comissoes").delete().eq("venda_id", saleId);
     await auth.supabase.from("recebimentos").delete().eq("venda_id", saleId);
     await auth.supabase.from("lancamentos_caixa").update({ venda_id: null }).eq("venda_id", saleId);
@@ -780,7 +781,7 @@ export async function PATCH(request: Request) {
   }
   if (action === "addCommission" || action === "updateCommission" || action === "deleteCommission") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
+    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
 
     if (action === "addCommission") {
       const vendaId = clean(body.saleId, 50); const papelBruto = clean(body.papel, 40); const valor = Number(body.valor);
