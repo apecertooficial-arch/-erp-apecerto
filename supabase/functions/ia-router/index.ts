@@ -12,10 +12,11 @@ import {
 } from "./photo-organizer.ts";
 
 // Precos por 1M de tokens. Sem a entrada aqui, o custo gravado sai errado.
-const PRICES: Record<string,{in:number;out:number}> = {
+const PRICES: Record<string,{in:number;cached?:number;out:number}> = {
   "gpt-4o-mini":{in:0.15,out:0.60}, "gpt-4o":{in:2.50,out:10.00},
   "gpt-5.4-mini":{in:0.75,out:4.50}, "gpt-5.4-nano":{in:0.20,out:1.25},
   "gpt-5.4":{in:2.50,out:15.00}, "gpt-5.5":{in:5.00,out:30.00},
+  "gpt-5.6-luna":{in:0.20,cached:0.02,out:1.20},
   "gpt-5.6-sol":{in:4.00,out:20.00},
 };
 // Modelos que a casa aceita usar. Fora desta lista, cai no padrao -- e o que
@@ -212,6 +213,17 @@ function segredoIgual(recebido: string | null, esperado: string) {
   return diff === 0;
 }
 
+function responseFormatInterno(raw: unknown) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, any>;
+  if (value.type !== "json_schema" || !value.json_schema ||
+      typeof value.json_schema !== "object" || value.json_schema.strict !== true ||
+      typeof value.json_schema.name !== "string" ||
+      !/^[a-zA-Z0-9_-]{1,64}$/.test(value.json_schema.name) ||
+      !value.json_schema.schema || typeof value.json_schema.schema !== "object") return null;
+  return value;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, s=200) => new Response(JSON.stringify(b), { status:s, headers:{...cors, "Content-Type":"application/json"} });
@@ -220,6 +232,22 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey, { auth:{persistSession:false} });
+    const persistExecution = async (record:Record<string,unknown>, returning=false) => {
+      const execute = (value:Record<string,unknown>) => {
+        const query = supabase.from("agente_execucoes").insert(value);
+        return returning ? query.select("id").maybeSingle() : query;
+      };
+      let result = await execute(record);
+      const schemaEmTransicao = result.error &&
+        /tokens_cache_entrada|provider_request_id/i.test(String(result.error.message ?? ""));
+      if (schemaEmTransicao) {
+        const fallback = { ...record };
+        delete fallback.tokens_cache_entrada;
+        delete fallback.provider_request_id;
+        result = await execute(fallback);
+      }
+      return result;
+    };
     const chamadaInterna = segredoIgual(req.headers.get("apikey"), serviceRoleKey);
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -293,7 +321,11 @@ Deno.serve(async (req: Request) => {
 
     // A versao anterior travava em gpt-4o: qualquer modelo novo cadastrado no
     // banco era silenciosamente trocado por gpt-4o-mini, e a troca nao pegava.
-    const modelo = MODELOS_OK.has(agente.modelo) ? agente.modelo : MODELO_PADRAO;
+    const modelOverride = chamadaInterna && typeof b.model_override === "string"
+      ? b.model_override : null;
+    if (modelOverride && !MODELOS_OK.has(modelOverride))
+      return json({ok:false,reason:"model_override_invalido"},422);
+    const modelo = modelOverride ?? (MODELOS_OK.has(agente.modelo) ? agente.modelo : MODELO_PADRAO);
     const cfg = agente.config || {};
 
     const fontesUsadas: {id:number;titulo:string;versao:string}[] = [];
@@ -514,10 +546,14 @@ Deno.serve(async (req: Request) => {
     const agoraSaoPaulo = new Intl.DateTimeFormat("pt-BR", {
       timeZone:"America/Sao_Paulo", dateStyle:"full", timeStyle:"long",
     }).format(new Date());
-    const systemPrompt = (b.override_prompt || agente.system_prompt || "") +
+    const contextoSessao = chamadaInterna
+      ? "\n\n=== CONTEXTO DA AUTOMACAO ===\nUse somente datas, fatos e evidencias presentes no input estruturado."
+      : `\n\n=== CONTEXTO DA SESSAO ===\nAgora em America/Sao_Paulo: ${agoraSaoPaulo}. Perfil: ${perfil}. ` +
+        "Entenda datas relativas nesse fuso. Nunca escolha sozinho uma hora vaga como 'de tarde': pergunte o horario exato. ";
+    const overridePermitido = (chamadaInterna === true || perfil === "admin") && typeof b.override_prompt === "string" && b.override_prompt;
+    const systemPrompt = (overridePermitido ? b.override_prompt : (agente.system_prompt || "")) +
       (conhecimento ? `\n\n=== BASE DE CONHECIMENTO (use como verdade; nunca contradiga) ===${conhecimento}` : "") +
-      `\n\n=== CONTEXTO DA SESSAO ===\nAgora em America/Sao_Paulo: ${agoraSaoPaulo}. Perfil: ${perfil}. ` +
-      "Entenda datas relativas nesse fuso. Nunca escolha sozinho uma hora vaga como 'de tarde': pergunte o horario exato. " +
+      contextoSessao +
       (tools.length ? "\n\n=== FERRAMENTAS ===\nConsulte dados reais antes de responder. Acoes de escrita sempre usam previa exata, de uso unico: primeiro confirmar=false; depois confirmar=true somente apos sim explicito. Preserve o preview_id retornado. Uma confirmacao antiga, expirada, ja usada ou de payload diferente nunca vale. A agenda permite consultar, reagendar e cancelar; conflito bloqueia a gravacao. WhatsApp so e entregue/lido quando consultar_comprovante_whatsapp comprovar; apenas o envio nao e comprovante. Desfazer exige nova previa." : "") +
       (corretorId || chamadaInterna ? "" : "\n\nEste perfil tem visao gerencial autorizada; deixe claro quando a resposta usar o escopo geral.");
 
@@ -527,7 +563,7 @@ Deno.serve(async (req: Request) => {
 
     const ferramentasUsadas: {ferramenta:string;args:any;encontrados:number}[] = [];
     const previewsGeradas: {preview_id:string;acao:string;expira_em?:string}[] = [];
-    let tin=0, tout=0; const t0=Date.now();
+    let tin=0, tinCached=0, tout=0; const t0=Date.now();
     let messages = baseMsgs; let finalText="";
     const limite = cfg.max_tokens ?? 800;
     for (let round=0; round<4; round++) {
@@ -544,10 +580,13 @@ Deno.serve(async (req: Request) => {
       }
       if (usaMaxCompletion(modelo)) body.max_completion_tokens = limite; else body.max_tokens = limite;
       if (tools.length) { body.tools = tools; body.tool_choice = "auto"; }
-      const resp = await fetch("https://api.openai.com/v1/chat/completions", { method:"POST", headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"}, body:JSON.stringify(body) });
+      const responseFormat = chamadaInterna ? responseFormatInterno(b.response_format) : null;
+      if (responseFormat) body.response_format = responseFormat;
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", { method:"POST", headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"}, body:JSON.stringify(body), signal:AbortSignal.timeout(60000) });
       const data = await resp.json();
-      if (!resp.ok) { await supabase.from("agente_execucoes").insert({ agente_id:agente.id, agente_slug:agente.slug, entrada:{input:b.input,messages:b.messages}, saida:data, modelo, status:"erro", erro:data?.error?.message }); return json({ok:false,reason:"erro_openai",detalhe:data?.error?.message},502); }
+      if (!resp.ok) { await persistExecution({ agente_id:agente.id, agente_slug:agente.slug, entrada:{input:b.input,messages:b.messages}, saida:data, modelo, status:"erro", erro:data?.error?.message, provider_request_id:resp.headers.get("x-request-id") }); return json({ok:false,reason:"erro_openai",detalhe:data?.error?.message},502); }
       tin += data.usage?.prompt_tokens ?? 0; tout += data.usage?.completion_tokens ?? 0;
+      tinCached += data.usage?.prompt_tokens_details?.cached_tokens ?? 0;
       const msg = data.choices?.[0]?.message;
       if (msg?.tool_calls?.length) {
         messages = [...messages, msg];
@@ -563,10 +602,12 @@ Deno.serve(async (req: Request) => {
       finalText = msg?.content ?? ""; break;
     }
 
-    const p = PRICES[modelo] || PRICES[MODELO_PADRAO]; const custo = (tin/1e6)*p.in + (tout/1e6)*p.out;
+    const p = PRICES[modelo] || PRICES[MODELO_PADRAO];
+    const cached = Math.min(tin, tinCached);
+    const custo = ((tin-cached)/1e6)*p.in + (cached/1e6)*(p.cached ?? p.in) + (tout/1e6)*p.out;
     let saida:unknown = finalText; try { saida = JSON.parse(finalText); } catch {}
-    const { data: exec } = await supabase.from("agente_execucoes").insert({ agente_id:agente.id, agente_slug:agente.slug, agente_versao:agente.versao_atual, entrada:{input:b.input,messages:b.messages}, saida, modelo, tokens_entrada:tin, tokens_saida:tout, custo_usd:custo, status:"ok", fontes_consultadas: fontesUsadas, ferramentas_acionadas: ferramentasUsadas, latencia_ms: Date.now()-t0, usuario:usuarioId, tela:typeof b.tela==="string"?b.tela.slice(0,120):null }).select("id").maybeSingle();
+    const { data: exec } = await persistExecution({ agente_id:agente.id, agente_slug:agente.slug, agente_versao:agente.versao_atual, entrada:{input:b.input,messages:b.messages}, saida, modelo, tokens_entrada:tin, tokens_cache_entrada:cached, tokens_saida:tout, custo_usd:custo, status:"ok", fontes_consultadas: fontesUsadas, ferramentas_acionadas: ferramentasUsadas, latencia_ms: Date.now()-t0, usuario:usuarioId, tela:typeof b.tela==="string"?b.tela.slice(0,120):null }, true);
 
-    return json({ ok:true, execucao_id: exec?.id ?? null, agente:agente.slug, corretor_id:corretorId, resposta:finalText, saida, pending_preview_id:previewsGeradas.at(-1)?.preview_id ?? null, previews:previewsGeradas, tokens:{entrada:tin,saida:tout}, custo_usd:Number(custo.toFixed(6)), ms:Date.now()-t0, fontes:fontesUsadas.map(f=>f.titulo), ferramentas:ferramentasUsadas });
+    return json({ ok:true, execucao_id: exec?.id ?? null, agente:agente.slug, modelo, corretor_id:corretorId, resposta:finalText, saida, pending_preview_id:previewsGeradas.at(-1)?.preview_id ?? null, previews:previewsGeradas, tokens:{entrada:tin,cache_entrada:cached,saida:tout}, custo_usd:Number(custo.toFixed(6)), ms:Date.now()-t0, fontes:fontesUsadas.map(f=>f.titulo), ferramentas:ferramentasUsadas });
   } catch (e) { return json({ok:false,reason:"excecao",detalhe:String(e)},500); }
 });
