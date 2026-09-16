@@ -37,13 +37,6 @@ test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha"
   assert.ok(MOBILE.includes("esperam você agora"), "a manchete precisa contar quem espera agora");
 });
 
-test("cartão do Meu Dia expõe etapa, corretor e WhatsApp direto", () => {
-  assert.match(MOBILE, /mostrarWhatsappDireto: boolean/);
-  assert.match(MOBILE, /mostrarWhatsappDireto\s*\?\s*`\$\{nomeEtapa\(lead\.etapa\)\} · \$\{lead\.corretor_nome \?\? "Aguardando responsável"\}`/);
-  assert.match(MOBILE, /mostrarWhatsappDireto[\s\S]*<BotaoWhatsApp[^>]*rotulo="Chamar no WhatsApp"/);
-  assert.match(MOBILE, /mostrarWhatsappDireto=\{modo === "inicio"\}/);
-});
-
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
   const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
   const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
@@ -57,21 +50,13 @@ test("a folha mobile antiga não mantém estruturas mortas do aplicativo", () =>
   }
 });
 
-test("CRM mobile troca o quadro de desktop por busca, filtros e cartões", () => {
-  assert.match(MOBILE, /placeholder="Buscar"/);
-  assert.match(MOBILE, /className="ape-filtros-menu"/);
+test("CRM mobile oferece as etapas do Funil como filtro nos dois modos", () => {
+  // Busca, menu de filtros, CTA fixo "Novo negócio", valor compacto e atalho da Sara eram do app
+  // mobile do CRM V3, desfeito nos reverts 90b5bd8a / 29fc970d. Fica o contrato que o app atual cumpre.
   for (const etapa of ["Lead novo", "Tentando contato", "Em atendimento", "Pós-visita"]) {
     assert.ok(MOBILE.includes(etapa), `falta filtro ${etapa}`);
   }
   assert.match(MOBILE, /modo: "inicio" \| "crm"/);
-  assert.ok(MOBILE.includes('className="ape-novo-negocio-fixo"'));
-  assert.match(MOBILE, />Novo negócio<\/button>/);
-  assert.match(MOBILE, /GerarNegociacaoMobile lead=\{leadNovoNegocio\}/);
-  assert.match(MOBILE, /valorCompacto\(lead\)/);
-  assert.doesNotMatch(MOBILE, />Ativos<\/button>/);
-  assert.match(MOBILE, /rotuloEtapaMobile/);
-  assert.match(MOBILE, /acaoCompactaMobile/);
-  assert.match(MOBILE, /aria-label="Abrir a Sara"/);
 });
 
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {

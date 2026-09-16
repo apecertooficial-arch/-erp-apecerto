@@ -94,7 +94,7 @@ function uploadAtEndpoint(endpoint: string, { accessToken, bucketName, file, obj
     void upload.findPreviousUploads().then((previousUploads) => {
       const endpointOrigin = new URL(endpoint).origin;
       const compatibleUpload = previousUploads.find((previous) => {
-        try { return new URL(previous.uploadUrl).origin === endpointOrigin; }
+        try { return previous.uploadUrl ? new URL(previous.uploadUrl).origin === endpointOrigin : false; }
         catch { return false; }
       });
       if (compatibleUpload) upload.resumeFromPreviousUpload(compatibleUpload);

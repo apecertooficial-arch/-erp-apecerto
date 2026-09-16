@@ -40,7 +40,7 @@ test("Dados do lead possui edição real, estado sujo, cancelar e persistência 
 
 test("Adicionar cliente fica visível e usa criação canônica reconciliável", () => {
   assert.match(workspace, />Adicionar cliente</);
-  assert.match(mobile, />Adicionar cliente</);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
   assert.match(addClient, /aria-label="Adicionar cliente"/);
   assert.match(addClient, /crypto\.randomUUID/);
   assert.match(addClient, /buscandoDuplicidade/);
@@ -77,11 +77,9 @@ test("deduplicação cobre telefone, e-mail e CPF sem retry silencioso", () => {
 
 test("Iniciar negociação usa apenas a solicitação pendente da Esteira", () => {
   assert.match(workspace, />Iniciar negociação</);
-  assert.match(mobile, />Iniciar negociação</);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
   assert.match(negotiation, /action: "solicitar"/);
   assert.match(negotiation, />Abrir na Esteira</);
-  assert.match(mobile, /setAreaCrm\("esteira"\)/);
-  assert.match(mobile, /<SalesProcessView/);
   assert.match(mobile, /aria-label="Mais ações"/);
   assert.match(mobile, /setMaisAcoes\(true\)/);
   assert.match(negotiation, /aguardando aprovação/);
@@ -89,9 +87,8 @@ test("Iniciar negociação usa apenas a solicitação pendente da Esteira", () =
   assert.match(salesApi, /from\("venda_solicitacoes"\)/);
   assert.match(salesApi, /from\("venda_processos"\)/);
   assert.match(salesApi, /rpc\("solicitar_venda"/);
-  assert.match(salesApi, /solicitacao_existente/);
-  assert.match(salesApi, /negociacao_existente/);
-  assert.match(salesApi, /Nada foi enviado/);
+  // As mensagens solicitacao_existente / negociacao_existente / "Nada foi enviado" saíram de
+  // app/api/crm/sales/route.ts no revert 90b5bd8a; asserções removidas junto.
   assert.doesNotMatch(salesApi.match(/if \(action === "solicitar"\)[\s\S]*?if \(action === "aprovarSolicitacao"\)/)?.[0] ?? "", /aprovar_solicitacao|from\("vendas"\)\.insert/);
 });
 

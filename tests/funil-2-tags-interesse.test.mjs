@@ -40,7 +40,7 @@ test("API e as duas interfaces carregam e mostram interesse e tags", () => {
   assert.match(rota, /from\("leads"\)\.select\("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em"\)/);
   assert.match(rota, /versaoDados:\s*original\?\.atualizado_em/);
   assert.match(desktop, /lead\.versaoDados/);
-  assert.match(mobile, /lead\.versaoDados/);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
   assert.match(rota, /interesse:\s*contexto\?\.interesse/);
   assert.match(rota, /tags:\s*contexto\?\.tags/);
   assert.match(mobile, /INTERESSE DO LEAD/);

@@ -47,8 +47,7 @@ test("offline não gera rejeição solta nem mantém mutações disponíveis", (
   assert.match(workspace, /try \{[\s\S]*await fetch\("\/api\/funil2"[\s\S]*catch \{/);
   assert.match(workspace, /Sem conexão — nenhum dado em cache está disponível/);
   assert.match(workspace, /!carregando && !erro && aba === "quadro"/);
-  assert.match(mobile, /dados && !erro && !leadAberto/);
-  assert.match(mobile, /As ações ficam indisponíveis até reconectar/);
+  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
 });
 
 test("Funil móvel remove junto o cabeçalho global oculto e o espaço reservado", () => {
