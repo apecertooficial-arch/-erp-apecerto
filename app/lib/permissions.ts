@@ -12,6 +12,8 @@
 // ação nova a um módulo, inclua-a aqui primeiro.
 // ============================================================================
 
+import { papelNoGrupo } from "./papeis.ts";
+
 export type PermissionMap = Record<string, string[]>;
 
 export const MODULE_CAPABILITIES: Record<string, readonly string[]> = {
@@ -115,14 +117,15 @@ export function hasPermission(perms: PermissionMap | null | undefined, moduleNam
 }
 
 /**
- * Decisão de acesso efetiva.
- * - admin sempre pode (não se tranca fora);
- * - sem NENHUM mapa de permissões definido → libera (fail-open) para não travar
- *   usuários durante o rollout; a trava dura continua sendo o RLS no banco;
- * - caso contrário, exige a ação presente no módulo.
+ * Decisão de acesso efetiva — FAIL-CLOSED.
+ * - grupo `acesso_total` (admin, executivo) sempre pode: é o mesmo atalho de
+ *   `public.has_perm` no banco, e evita que quem administra se tranque fora;
+ * - qualquer outro papel precisa da ação presente no mapa. Sem mapa (null ou
+ *   {}), NEGA. Antes daqui a ausência de mapa liberava tudo (fail-open).
+ *   Levantamento de 16/09/2026: todo usuário ativo fora de acesso_total tem
+ *   mapa (override individual ou perfil do papel), então ninguém perde acesso.
  */
 export function canDo(role: string | null | undefined, perms: PermissionMap | null | undefined, moduleName: string, action: string): boolean {
-  if (role === "admin") return true;
-  if (!perms || Object.keys(perms).length === 0) return true;
+  if (papelNoGrupo(role, "acesso_total")) return true;
   return hasPermission(perms, moduleName, action);
 }
