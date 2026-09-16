@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import type { TablesUpdate } from "../../../lib/supabase/database.types";
 import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
+import { papelNoGrupo } from "../../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,9 @@ async function authClient(request: Request) {
 }
 
 const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
-const slugify = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
+const slugify = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
 
-// Pap\u00e9is das partes de uma negocia\u00e7\u00e3o (comprador/vendedor e respectivos c\u00f4njuges).
+// Papéis das partes de uma negociação (comprador/vendedor e respectivos cônjuges).
 const PAPEIS_PARTE = ["comprador", "conjuge_comprador", "vendedor", "conjuge_vendedor"] as const;
 const FORMAS_PGTO = ["a_vista", "financiamento", "consorcio", "misto"] as const;
 
@@ -29,7 +30,7 @@ const GRUPO_BLOCO: Record<string, BlocoEsteira> = {
 
 /**
  * Carrega tudo que a cascata precisa avaliar para um processo:
- * etapas configuradas, etapa atual, condi\u00e7\u00f5es, comiss\u00e3o, partes, checklist e anexos.
+ * etapas configuradas, etapa atual, condições, comissão, partes, checklist e anexos.
  */
 async function contexto(auth: Auth, processId: string) {
   const [{ data: proc }, { data: etapasRaw }, { data: cond }, { data: com }, { data: partes }, { data: modelo }, { data: anexos }, { data: me }] = await Promise.all([
@@ -63,27 +64,27 @@ function blocoDocsAberto(ctx: { atual: EtapaRegra | null }): BlocoEsteira | null
 }
 
 /**
- * Trava de cascata: o bloco s\u00f3 pode ser preenchido na etapa que o libera,
- * e s\u00f3 por quem tem papel para aquela etapa. Devolve null quando est\u00e1 liberado.
+ * Trava de cascata: o bloco só pode ser preenchido na etapa que o libera,
+ * e só por quem tem papel para aquela etapa. Devolve null quando está liberado.
  */
 async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
   const ctx = await contexto(auth, processId);
-  if (!ctx.proc) return { deny: Response.json({ error: "Venda n\u00e3o encontrada." }, { status: 404 }), ctx };
+  if (!ctx.proc) return { deny: Response.json({ error: "Venda não encontrada." }, { status: 404 }), ctx };
   if (!blocoAberto(ctx.atual, bloco)) {
     const alvo = etapaDoBloco(ctx.etapas, bloco);
-    const onde = alvo ? `Isso \u00e9 preenchido na etapa "${alvo.nome}".` : "Este bloco n\u00e3o est\u00e1 habilitado em nenhuma etapa.";
-    return { deny: Response.json({ error: `A venda est\u00e1 em "${ctx.atual?.nome ?? "etapa desconhecida"}". ${onde}` }, { status: 409 }), ctx };
+    const onde = alvo ? `Isso é preenchido na etapa "${alvo.nome}".` : "Este bloco não está habilitado em nenhuma etapa.";
+    return { deny: Response.json({ error: `A venda está em "${ctx.atual?.nome ?? "etapa desconhecida"}". ${onde}` }, { status: 409 }), ctx };
   }
   if (!podeEditarEtapa(ctx.role, ctx.atual)) {
     const quem = (ctx.atual?.restrito_a ?? []).join(" ou ");
-    return { deny: Response.json({ error: `S\u00f3 ${quem} pode preencher a etapa "${ctx.atual?.nome}".` }, { status: 403 }), ctx };
+    return { deny: Response.json({ error: `Só ${quem} pode preencher a etapa "${ctx.atual?.nome}".` }, { status: 403 }), ctx };
   }
   return { deny: null, ctx };
 }
 
 /**
- * Mant\u00e9m venda_condicoes.{comprador,vendedor}_tem_conjuge coerente com a exist\u00eancia
- * da parte c\u00f4njuge \u2014 \u00e9 essa flag que liga o grupo de documentos do c\u00f4njuge.
+ * Mantém venda_condicoes.{comprador,vendedor}_tem_conjuge coerente com a existência
+ * da parte cônjuge — é essa flag que liga o grupo de documentos do cônjuge.
  */
 async function sincronizarConjuge(auth: Auth, processId: string, papel: string) {
   const coluna = papel === "conjuge_comprador" ? "comprador_tem_conjuge" : "vendedor_tem_conjuge";
@@ -94,7 +95,7 @@ async function sincronizarConjuge(auth: Auth, processId: string, papel: string) 
   );
 }
 
-/** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisi\u00e7\u00e3o principal). */
+/** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisição principal). */
 async function trilha(auth: Auth, evento: string, dados: { anexoId?: string | null; processoRef?: string | null; loteId?: string | null; detalhe?: unknown }) {
   try {
     const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
@@ -107,13 +108,13 @@ async function trilha(auth: Auth, evento: string, dados: { anexoId?: string | nu
       ator: auth.user.id,
       ator_nome: me?.nome ?? null,
     } as never);
-  } catch { /* auditoria \u00e9 best-effort */ }
+  } catch { /* auditoria é best-effort */ }
 }
 
 type Auth = { supabase: ReturnType<typeof createServerSupabaseClient>; user: { id: string } };
 async function requireManager(auth: Auth) {
   const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  return me && ["admin", "gestor", "executivo"].includes(me.role) ? null : Response.json({ error: "Apenas administradores podem configurar as etapas." }, { status: 403 });
+  return me && papelNoGrupo(me.role, "esteira_config") ? null : Response.json({ error: "Apenas administradores podem configurar as etapas." }, { status: 403 });
 }
 async function activeSlugs(auth: Auth) {
   const { data } = await auth.supabase.from("esteira_etapas").select("slug,sla_dias").eq("ativo", true);
@@ -448,7 +449,7 @@ export async function PATCH(request: Request) {
     if (!deal || !product) return Response.json({ error: "Negócio ou produto não encontrado." }, { status: 404 });
     // Gestor/admin que gera a venda já entra aprovada; corretor entra pendente da aprovação do gestor.
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const gestor = !!me && ["admin", "gestor", "executivo"].includes(me.role);
+    const gestor = !!me && papelNoGrupo(me.role, "esteira_config");
     const aprovacao = gestor ? "aprovada" : "pendente";
     const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: new Date().toISOString().slice(0, 10), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
     if (saleError || !sale) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
