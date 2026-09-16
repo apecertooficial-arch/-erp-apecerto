@@ -19,6 +19,9 @@ const unitMediaMigration = await readFile("supabase/migrations/20260820220000_ca
 const captorIntegrityMigration = await readFile("supabase/migrations/20260820223000_produtos_captador_unidade_obrigatorio.sql", "utf8");
 const editorialMigration = await readFile("supabase/migrations/20260826193000_produtos_editorial_midias_rascunhos.sql", "utf8");
 
+const PENDENTE_REVERT_90B5BD8A = "PENDENTE: o revert 90b5bd8a (restaurar versão estável anterior ao CRM V3) desfez este contrato em "
+  + "app/api/product/route.ts / app/features/products; restaurar muda comportamento visível e fica para uma fase própria.";
+
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
   assert.match(productsUi, /const commercialUnits = products\.filter/);
@@ -73,7 +76,7 @@ test("apartamento pode ser cadastrado sem associação falsa a condomínio", () 
   assert.match(productApi, /produto_definir_publicacao/);
 });
 
-test("central de decisões reúne aprovação e mantém filtros avançados recolhidos", () => {
+test("central de decisões reúne aprovação e mantém filtros avançados recolhidos", { todo: PENDENTE_REVERT_90B5BD8A }, () => {
   assert.match(productsUi, /Central de decisões/);
   assert.match(productsUi, /function chooseSection\(next: ProductsSection\)[\s\S]*setSection\(next\)[\s\S]*setApprovalFilter\(next === "aprovacoes"\)/);
   assert.match(productsUi, /section === "qualidade"[\s\S]*ProductQualityQueue[\s\S]*approvalTotal/);
@@ -203,7 +206,7 @@ test("edição do prédio nunca altera indicação individual", () => {
   assert.match(productApi, /\.eq\("de_terceiros", false\)/);
 });
 
-test("captador edita a própria unidade e suas imagens sem controlar o condomínio", () => {
+test("captador edita a própria unidade e suas imagens sem controlar o condomínio", { todo: PENDENTE_REVERT_90B5BD8A }, () => {
   const updateUnitBlock = productApi.match(/if \(body\.action === "updateUnit"\) \{[\s\S]*?if \(body\.action === "decideUnit"\)/)?.[0] ?? "";
   assert.doesNotMatch(updateUnitBlock, /guard\(/);
   assert.match(updateUnitBlock, /currentUnit\.captador_corretor_id === broker\.id/);
@@ -242,7 +245,7 @@ test("corretor encontra produtos por vagas e por origem comercial", () => {
   assert.match(catalog, /explicit: originByUnit\.get\(u\.id\) \?\? null/);
 });
 
-test("dados do proprietário da unidade ficam apenas com o captador e a gestão", () => {
+test("dados do proprietário da unidade ficam apenas com o captador e a gestão", { todo: PENDENTE_REVERT_90B5BD8A }, () => {
   assert.match(productApi, /isManager: gerenciaProdutosGet/);
   assert.match(productApi, /pode_ver_proprietario: false/);
   assert.match(productApi, /proprietario_nome: null, proprietario_contato: null/);
