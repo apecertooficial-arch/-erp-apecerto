@@ -82,6 +82,10 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /* Chave de idempotência do lançamento: nasce com a ficha e vai junto em toda
+     tentativa de "Lançar venda". Duplo clique ou reenvio depois de timeout
+     devolvem a mesma venda em vez de criar outra (venda_criar no banco). */
+  const [requestId] = useState(() => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "");
 
   /* Cada gravacao refaz o GET inteiro no workspace (padrao da casa: mutate ->
      load). Sem este efeito, as listas locais ficariam presas no estado do
@@ -149,6 +153,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
     if (docs.some((d) => d.uploading)) { setError("Aguarde o envio dos documentos terminar."); return; }
     void executar({
       action: "createSale",
+      requestId,
       ...camposDaVenda(),
       commissions: commissions.filter((c) => Number(c.valor) > 0).map((c) => ({ papel: c.papel, beneficiarioId: c.beneficiarioId, valor: Number(c.valor) })),
       receipts: receipts.filter((r) => Number(r.valor) > 0).map((r) => ({ numeroParcela: Number(r.numeroParcela), valor: Number(r.valor), dataPrevista: r.dataPrevista })),
