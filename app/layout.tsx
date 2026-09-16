@@ -76,6 +76,7 @@ import "./styles/redesign-apecerto-calendario.css";
    responsividade do módulo vivem somente nela; nenhuma folha posterior toca
    nas classes f2-* do desktop. */
 import "./styles/funil-2.css";
+import "./styles/funil-trilhas.css";
 /* INTERFACE DO APLICATIVO NO CELULAR — versão aprovada.
    Não é correção da folha antiga: o markup do Meu Dia e do CRM usa classes
    próprias (.ape-*), então esta folha é a única que os desenha. As regras
