@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { papelNoGrupo } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ async function adminClient(request: Request) {
   if (error || !data.user) return null;
   const { data: profile } = await supabase.from("usuarios").select("role").eq("id", data.user.id).maybeSingle();
   const role = (profile as { role?: string } | null)?.role;
-  if (role !== "admin" && role !== "executivo") return { supabase, user: data.user, isAdmin: false as const };
+  if (!papelNoGrupo(role, "acesso_total")) return { supabase, user: data.user, isAdmin: false as const };
   return { supabase, user: data.user, isAdmin: true as const };
 }
 
