@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
+import type { Database } from "./database";
 
 export function createServerSupabaseClient(accessToken?: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
