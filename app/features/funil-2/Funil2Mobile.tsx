@@ -93,6 +93,10 @@ const ETAPAS_FALLBACK = [
   ["atualizar_manual", "Atualizar manualmente"],
   ["legado", "Leads legado"],
   ["pescado", "Pescado"],
+  ["alpha_contato", "Contato · Alphaville"],
+  ["alpha_atendimento", "Atendimento · Alphaville"],
+  ["alpha_visita", "Visita · Alphaville"],
+  ["alpha_fechamento", "Fechamento · Alphaville"],
 ] as const;
 
 /* Icones em traço de 2px e ponta arredondada, como manda a identidade. */
@@ -210,7 +214,7 @@ function CartaoLead({
       <span className="ape-avatar" aria-hidden="true">{iniciais(lead.nome)}</span>
       <button type="button" className="ape-quem" onClick={onAbrir}>
         <strong>{lead.nome}</strong>
-        <span>{nomeEtapa(lead.etapa)} · {lead.corretor_nome ?? "Aguardando responsável"}</span>
+        <span>{(lead.funil ?? "principal") === "alphaville" && <em className="f2m-funil-etiqueta">Alphaville</em>}{nomeEtapa(lead.etapa)} · {lead.corretor_nome ?? "Aguardando responsável"}</span>
       </button>
       <span className={`ape-prazo ${prazo.classe}`}><IconeRelogio />{situacaoPrazo(lead.proxima_acao_em).rotulo}</span>
     </div>
@@ -249,7 +253,7 @@ function TrazerLeadAntigoMobile({
   onFechar: () => void;
   onConfirmar: (etapa: string, momento: string) => Promise<void>;
 }) {
-  const etapasPermitidas = etapas.filter((item) => item.ativo && item.codigo !== "novo");
+  const etapasPermitidas = etapas.filter((item) => item.ativo && item.codigo !== "novo" && (!item.funil || item.funil === "principal"));
   const [etapa, setEtapa] = useState(etapasPermitidas[0]?.codigo ?? "");
   const momentosDaEtapa = momentos.filter((m) => m.etapa === etapa && m.codigo !== "PRIMEIRA_ABORDAGEM" && m.ativo !== false);
   const [momento, setMomento] = useState(momentosDaEtapa[0]?.codigo ?? "");
@@ -444,7 +448,7 @@ function AtualizarMomentoMobile({ lead, momento, momentos, etapas, accessToken, 
 
   async function salvar() {
     if (!codigo) { setErro("Escolha o momento do cliente."); return; }
-    if (codigo === "RETORNO_PROGRAMADO" && !prazo) { setErro("Informe a data e a hora combinadas."); return; }
+    if (["RETORNO_PROGRAMADO", "RETOMAR_NA_DATA", "ALPHA_RETOMAR_NA_DATA"].includes(codigo) && !prazo) { setErro("Informe a data e a hora combinadas."); return; }
     setSalvando(true); setErro("");
     try {
       const resposta = await fetch("/api/funil2", {
@@ -465,13 +469,13 @@ function AtualizarMomentoMobile({ lead, momento, momentos, etapas, accessToken, 
   return <section className="f2m-agendar f2m-momento-form">
     <h3>Atualizar momento</h3><p>Registre onde o cliente está agora. O próximo prazo será recalculado automaticamente.</p>
     <label>Momento oficial<select value={codigo} onChange={(evento) => setCodigo(evento.target.value)}>
-      {etapas.filter((etapa) => etapa.ativo).map((etapa) => {
+      {etapas.filter((etapa) => etapa.ativo && (etapa.funil ?? "principal") === (lead.funil ?? "principal")).map((etapa) => {
         const opcoes = momentos.filter((item) => item.ativo !== false && item.etapa === etapa.codigo);
         return opcoes.length ? <optgroup key={etapa.codigo} label={etapa.rotulo}>{opcoes.map((item) => <option key={item.codigo} value={item.codigo}>{item.rotulo}</option>)}</optgroup> : null;
       })}
     </select></label>
     {escolhido && <div className="f2m-momento-preview"><span>PRÓXIMA AÇÃO</span><strong>{escolhido.acao_rotulo}</strong><small>{escolhido.prazo_rotulo || "Data combinada"}</small></div>}
-    {codigo === "RETORNO_PROGRAMADO" && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(evento) => setPrazo(evento.target.value)} /></label>}
+    {["RETORNO_PROGRAMADO", "RETOMAR_NA_DATA", "ALPHA_RETOMAR_NA_DATA"].includes(codigo) && <label>Data e hora combinadas<input type="datetime-local" value={prazo} onChange={(evento) => setPrazo(evento.target.value)} /></label>}
     <label>Observação <small>(opcional)</small><textarea value={observacao} onChange={(evento) => setObservacao(evento.target.value)} placeholder="O que mudou ou ficou combinado?" maxLength={500} rows={3} /></label>
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <div className="f2m-agendar-acoes"><button type="button" className="f2m-agendar-nao" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button><button type="button" className="f2m-agendar-ok" onClick={() => void salvar()} disabled={salvando}>{salvando ? "Salvando…" : "Salvar momento"}</button></div>
@@ -709,7 +713,7 @@ function FichaLead({
 
       <div className="ape-ficha-nome">
         <h2>{lead.nome}</h2>
-        <p>{lead.corretor_nome ?? "Sem responsável"} · negócio #{lead.origem_negocio_id}</p>
+        <p>{(lead.funil ?? "principal") === "alphaville" && <em className="f2m-funil-etiqueta">Alphaville</em>}{lead.corretor_nome ?? "Sem responsável"} · negócio #{lead.origem_negocio_id}</p>
         <div className="ape-ficha-etiquetas ape-ficha-resumo-chips"><span className="ape-etapa"><small>Etapa</small>{nomeEtapa(lead.etapa)}</span><span className="ape-momento"><small>Momento</small>{momento?.rotulo ?? lead.momento_codigo}</span><span className="ape-temperatura-controle"><button type="button" className={`ape-momento temperatura-${temperatura ?? "aguardando"}`} aria-expanded={temperaturaAberta} aria-label={`Alterar temperatura. Atual: ${temperaturaRotulo}`} disabled={salvandoTemperatura} onClick={() => setTemperaturaAberta((aberta) => !aberta)}><i /><small>Temp.</small>{temperaturaRotulo}<b>⌄</b></button>{temperaturaAberta && <span className="ape-temperatura-popover" role="dialog" aria-label="Alterar temperatura"><strong>Temperatura do lead</strong>{TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} disabled={salvandoTemperatura} className={`temperatura-${item.codigo}${temperaturaMobile(lead) === item.codigo ? " ativa" : ""}`} onClick={() => void atualizarTemperatura(item.codigo === "aguardando" ? null : item.codigo)}><i />{item.rotulo}</button>)}{erroTemperatura && <em role="alert">{erroTemperatura}</em>}</span>}</span><em className={`ape-momento prazo-${prazo.classe}`}><small>Prazo</small>{prazo.rotulo}</em></div>
         <p className="ape-ficha-interesse">Interesse: <b>{lead.interesse ?? "Não identificado"}</b></p>
       </div>
@@ -772,7 +776,11 @@ export function Funil2Mobile({
   const eventos = dados?.eventos ?? [];
   const notas = dados?.notas ?? [];
   const etapas = useMemo(() => {
-    const configuradas = (dados?.etapas ?? []).filter((item) => item.ativo);
+    /* Etapas de uma trilha propria (ex.: Alphaville) so viram chip para quem
+       tem lead daquela trilha na carteira — para os demais e ruido. */
+    const trilhasComLead = new Set((dados?.leads ?? []).map((item) => item.funil && item.funil !== "" ? item.funil : "principal"));
+    const configuradas = (dados?.etapas ?? []).filter((item) => item.ativo
+      && ((item.funil ?? "principal") === "principal" || trilhasComLead.has(item.funil ?? "principal")));
     return configuradas.length > 0
       ? configuradas.map((item) => [item.codigo, item.rotulo] as const)
       : [...ETAPAS_FALLBACK];

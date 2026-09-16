@@ -46,11 +46,15 @@ export type EtapaConfigFunil2 = {
   rotulo: string;
   ajuda: string;
   ativo: boolean;
+  /** Trilha do funil: "principal" (padrão) ou uma trilha própria, como "alphaville". */
+  funil?: string | null;
 };
 
 export type MomentoFunil2 = {
   codigo: string;
   etapa: EtapaFunil2;
+  /** Trilha do funil a que o momento pertence. */
+  funil?: string | null;
   ordem: number;
   rotulo: string;
   descricao: string;
@@ -204,6 +208,8 @@ export type TagCatalogoFunil2 = {
 export type LeadFunil2 = {
   id: string;
   origem_negocio_id: number;
+  /** Trilha do funil: "principal" (padrão) ou "alphaville". */
+  funil?: string | null;
   /** Valor canônico do negócio de origem, quando informado. */
   valor?: number | null;
   /** Lead original. Usado pelo mini-chat oficial para localizar a conversa real. */

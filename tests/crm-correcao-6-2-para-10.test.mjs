@@ -18,7 +18,9 @@ test("contagem do quadro corresponde somente às etapas realmente exibidas", () 
   assert.match(toolbar, />Em andamento <b>\{props\.negociosVisiveis\}<\/b>/);
   assert.match(workspace, /> Negócios <b>\{leadsDoQuadro\.length\}<\/b>/);
   assert.match(workspace, /foraDoQuadro > 0[\s\S]*fora das etapas visíveis/);
-  assert.match(workspace, /Leads <b>\{leads\.length\}<\/b>/);
+  /* Com as trilhas do funil (Alphaville), o contador de Leads acompanha a
+     trilha em foco — o número precisa bater com a lista que a aba mostra. */
+  assert.match(workspace, /Leads <b>\{leadsDoFunil\.length\}<\/b>/);
 });
 
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
