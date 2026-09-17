@@ -1,3 +1,5 @@
+import { hojeOperacao, somarDias } from "../../lib/timezone.ts";
+
 /* Regras puras da agenda do celular.
  *
  * Em .ts porque o runner de teste usa strip-types do node, que não entende JSX.
@@ -53,16 +55,10 @@ export function diaPorExtenso(iso: string): string {
     .toLowerCase();
 }
 
-/** Soma dias sem passar por fuso — o dia é o dia. */
-export function somarDias(iso: string, dias: number): string {
-  const [a, m, d] = iso.split("-").map(Number);
-  const base = new Date(Date.UTC(a, m - 1, d));
-  base.setUTCDate(base.getUTCDate() + dias);
-  return base.toISOString().slice(0, 10);
-}
+/** Soma dias sem passar por fuso — reexportado da fonte única em lib/timezone. */
+export { somarDias };
 
-export const hojeISO = (agora: Date = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(agora);
+export const hojeISO = (agora: Date = new Date()) => hojeOperacao(agora);
 
 /** A API histórica devolve tanto HH:mm quanto HH:mm:ss. Na interface do
  * corretor, segundos são ruído e fazem 10:30 parecer um dado técnico. */
@@ -106,7 +102,7 @@ export function gradeDoMes(isoNoMes: string, compromissos: Compromisso[]): Celul
   const celulas: Celula[] = [];
   for (let i = 0; i < 42; i++) {
     const d = new Date(Date.UTC(ano, mes - 1, 1 - desloca + i));
-    const iso = d.toISOString().slice(0, 10);
+    const iso = somarDias(`${ano}-${String(mes).padStart(2, "0")}-01`, i - desloca);
     celulas.push({
       iso,
       numero: d.getUTCDate(),

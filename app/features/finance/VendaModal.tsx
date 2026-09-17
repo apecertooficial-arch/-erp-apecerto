@@ -21,9 +21,10 @@
 import { useEffect, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import type { FinanceData } from "./FinanceWorkspace";
+import { hojeOperacao } from "../../lib/timezone";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 });
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeOperacao();
 
 const PAPEIS: Array<[string, string]> = [["corretor", "Corretor"], ["executivo", "Executivo"], ["gerente", "Taxa de gerente"], ["apecerto", "Apecerto"], ["indicacao", "Indicação"]];
 
