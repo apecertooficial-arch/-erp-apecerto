@@ -643,7 +643,7 @@ export async function PATCH(request: Request) {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
+    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
     // Transação única no banco (venda_excluir): apaga repasses, comissões,
     // parcelas e corretores, solta o negócio do CRM e os lançamentos de caixa, e
     // grava o retrato completo em erp_auditoria. Falhou qualquer passo, nada muda.
