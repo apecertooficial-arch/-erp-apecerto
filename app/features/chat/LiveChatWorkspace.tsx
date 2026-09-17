@@ -178,12 +178,14 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     if (!content.trim() && !mediaId) { setNotice("Escreva uma mensagem ou escolha um material."); throw new Error("Mensagem vazia."); }
     const text = content;
     const tempId = `temp-${Date.now()}`;
+    // Um id por mensagem: se esta mesma requisição for repetida, dapi-enviar não reenvia.
+    const clientMessageId = crypto.randomUUID();
     setDraft("");
     setNotice(null);
     setMessages((prev) => [...prev, { id: tempId, conversa_id: selectedId || "", direcao: "enviada", tipo: "texto", conteudo: text, media_url: null, criado_em: new Date().toISOString() }]);
     void (async () => {
       try {
-        const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", phone: contact.telefone, instanceId, content: text, mediaId }) });
+        const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", phone: contact.telefone, instanceId, content: text, mediaId, clientMessageId }) });
         const result = await response.json() as { error?: string };
         if (!response.ok) throw new Error(result.error || "Não foi possível enviar.");
         void load();
@@ -197,7 +199,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     if (!file || !contact || !instanceId) return;
     setBusy(true); setNotice("Enviando arquivo…");
     try {
-      const form = new FormData(); form.set("file", file); form.set("phone", contact.telefone); form.set("instanceId", String(instanceId)); form.set("content", draft);
+      const form = new FormData(); form.set("file", file); form.set("phone", contact.telefone); form.set("instanceId", String(instanceId)); form.set("content", draft); form.set("clientMessageId", crypto.randomUUID());
       const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível enviar o arquivo.");
