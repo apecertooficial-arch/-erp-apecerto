@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import type { TablesUpdate } from "../../../lib/supabase/database.types";
 import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 import { papelNoGrupo } from "../../../lib/papeis";
+import { hojeOperacao } from "../../../lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -451,7 +452,7 @@ export async function PATCH(request: Request) {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     const gestor = !!me && papelNoGrupo(me.role, "esteira_config");
     const aprovacao = gestor ? "aprovada" : "pendente";
-    const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: new Date().toISOString().slice(0, 10), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
+    const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: hojeOperacao(), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
     if (saleError || !sale) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
     const { error: dealError } = await auth.supabase.from("negocios").update({ venda_id: sale.id, status: "ganho", ultima_movimentacao: new Date().toISOString() }).eq("id", deal.id);
     const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id, solicitado_por: auth.user.id, aprovacao_status: aprovacao, aprovado_por: gestor ? auth.user.id : null, aprovado_em: gestor ? new Date().toISOString() : null } as never);
