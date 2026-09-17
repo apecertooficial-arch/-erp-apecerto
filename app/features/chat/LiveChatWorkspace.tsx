@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { StatusTick, ackState } from "./statusTick";
 import { startOpusRecorder, type OpusHandle } from "../../lib/opusMic";
+import { hojeOperacao, paraDatetimeLocal, somarDias } from "../../lib/timezone";
 
 type Message = { id: string; conversa_id: string; direcao: string; tipo: string; conteudo: string | null; media_url?: string | null; raw?: unknown; criado_em: string | null; enviado_em?: string | null; status?: string | number | null; status_detalhe?: string | null };
 type Conversation = { id: string; contato_id: string; instancia_id: string; status: string; ultima_msg_em: string | null; origem: string | null };
@@ -116,7 +117,6 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     if (!phone) return selected ? [selected] : [];
     return (data?.conversations ?? []).filter((item) => normalizePhone(contactById.get(item.contato_id)?.telefone) === phone);
   }, [data, contact?.telefone, selectedId, contactById]);
-
   useEffect(() => { setInstanceId(dapi?.id ?? null); }, [dapi?.id]);
   const isUnanswered = (item: Conversation) => isOutgoing(data?.latest[item.id]?.direcao || "");
   const isCritical = (item: Conversation) => {
@@ -303,8 +303,8 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
   onClose: () => void;
   onSave: (payload: Record<string, unknown>, endpoint?: string) => Promise<void>;
 }) {
-  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  const nextHour = new Date(Date.now() + 3_600_000).toISOString().slice(0, 16);
+  const tomorrow = somarDias(hojeOperacao(), 1);
+  const nextHour = paraDatetimeLocal(new Date(Date.now() + 3_600_000));
   const [title, setTitle] = useState(action === "callReminder" ? `Ligar para ${lead.nome || "cliente"}` : "");
   const [description, setDescription] = useState("");
   const [due, setDue] = useState(nextHour);
@@ -386,7 +386,7 @@ export function ProductSendModal({ data, canSend, onClose, onSend }: { data: Cha
 
 export function ScheduleModal({ initialText, accessToken, onClose, onSchedule, onScheduleApproach }: { initialText: string; accessToken?: string; onClose: () => void; onSchedule: (content: string, when: string) => Promise<void>; onScheduleApproach?: (approachId: number, when: string) => Promise<void> }) {
   const [mode, setMode] = useState<"texto" | "abordagem">("texto");
-  const [content, setContent] = useState(initialText); const [scheduledFor, setScheduledFor] = useState(new Date(Date.now() + 3_600_000).toISOString().slice(0, 16)); const [busy, setBusy] = useState(false);
+  const [content, setContent] = useState(initialText); const [scheduledFor, setScheduledFor] = useState(() => paraDatetimeLocal(new Date(Date.now() + 3_600_000))); const [busy, setBusy] = useState(false);
   const [approaches, setApproaches] = useState<Array<{ id: number; nome: string; ativo: boolean; mensagens: unknown }>>([]);
   const [approachId, setApproachId] = useState("");
   useEffect(() => {
