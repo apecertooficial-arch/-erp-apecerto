@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { accessCan, denyIfCannot, resolveEffectiveAccess } from "../../../lib/supabase/authz";
+import { papelNoGrupo } from "../../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
     if (denied) return denied;
     const escopo = await escopoDeCorretor(auth.db, auth.user.id);
     if (escopo.error) return Response.json({ error: "Não foi possível carregar os responsáveis permitidos." }, { status: statusBanco(escopo.error) });
-    const podeEscolher = ["admin", "gestor", "executivo", "diretor", "gerente", "gestor_comercial", "gestor_equipe"].includes(access.role)
+    const podeEscolher = papelNoGrupo(access.role, "gestao")
       || accessCan(access, "crm", "atribuir") || accessCan(access, "crm", "transferir");
     return Response.json({ corretores: podeEscolher ? escopo.equipe : escopo.equipe.filter((item) => item.is_self), corretorProprioId: escopo.proprio?.id ?? null, podeEscolher });
   }
@@ -261,7 +262,7 @@ export async function POST(request: Request) {
 
   const escopo = await escopoDeCorretor(auth.db, auth.user.id);
   if (escopo.error) return Response.json({ error: "Não foi possível validar o responsável." }, { status: statusBanco(escopo.error) });
-  const podeEscolher = ["admin", "gestor", "executivo", "diretor", "gerente", "gestor_comercial", "gestor_equipe"].includes(access.role)
+  const podeEscolher = papelNoGrupo(access.role, "gestao")
     || accessCan(access, "crm", "atribuir") || accessCan(access, "crm", "transferir");
   const solicitado = inteiro(body.corretorId);
   const brokerId = podeEscolher ? solicitado : escopo.proprio?.id ?? null;

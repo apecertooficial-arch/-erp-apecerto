@@ -1,10 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ga4Configurado, lerGa4 } from "../../lib/ga4";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { papelNoGrupo } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
-
-const GESTAO = new Set(["admin", "gerente", "gestor", "diretor", "executivo"]);
 
 type RpcResult = { data: unknown; error: { message?: string } | null };
 
@@ -21,7 +20,7 @@ async function autenticar(request: Request) {
     .eq("id", data.user.id)
     .maybeSingle();
   const role = String(perfil?.role ?? "corretor");
-  if (!perfil?.ativo || !GESTAO.has(role)) return { denied: true as const };
+  if (!perfil?.ativo || !papelNoGrupo(role, "gestao")) return { denied: true as const };
   return { denied: false as const, supabase, user: data.user, token, role };
 }
 

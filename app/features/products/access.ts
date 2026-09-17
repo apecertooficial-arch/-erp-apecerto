@@ -1,12 +1,8 @@
-export const PRODUCT_MANAGER_ROLES = new Set([
-  "admin",
-  "gestor",
-  "executivo",
-  "gestor_comercial",
-  "gestor_equipe",
-  "gerente",
-]);
+import { GRUPOS, papelNoGrupo } from "../../lib/papeis";
+
+/** Gestão de Produtos = grupo `produtos` (espelho de public.is_product_manager). */
+export const PRODUCT_MANAGER_ROLES: ReadonlySet<string> = new Set(GRUPOS.produtos);
 
 export function isProductManagerRole(role: string | null | undefined) {
-  return Boolean(role && PRODUCT_MANAGER_ROLES.has(role));
+  return papelNoGrupo(role, "produtos");
 }

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { normalizarPapel } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export async function PATCH(request: Request) {
   if (body.action === "saveAccess") {
     const userId = typeof body.userId === "string" && body.userId.length >= 30 ? body.userId : null;
     if (!userId) return Response.json({ error: "Usuário inválido." }, { status: 422 });
-    const role = ["admin", "corretor", "executivo", "gerente", "diretor"].includes(String(body.role)) ? String(body.role) : null;
+    const role = normalizarPapel(body.role);
     const permissions = body.permissoes && typeof body.permissoes === "object" ? body.permissoes as Record<string, string[]> : null;
     const activeUser = body.activeUser === undefined ? null : body.activeUser === true;
     const superiorId = body.superiorId === undefined ? undefined : (typeof body.superiorId === "string" && body.superiorId.length >= 30 ? body.superiorId : null);

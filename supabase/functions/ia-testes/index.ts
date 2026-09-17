@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { papelNoGrupo } from "../_shared/papeis.ts";
 
 const cors = { "Access-Control-Allow-Origin":"*", "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type", "Access-Control-Allow-Methods":"POST, OPTIONS" };
 
@@ -15,7 +16,7 @@ Deno.serve(async (req: Request) => {
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
     if (authError || !authData.user) return json({ok:false,reason:"sessao_invalida"},401);
     const { data: usuario } = await supabase.from("usuarios").select("role,ativo").eq("id",authData.user.id).maybeSingle();
-    if (usuario?.ativo === false || !["admin","gerente"].includes(String(usuario?.role || "").toLowerCase())) return json({ok:false,reason:"sem_permissao"},403);
+    if (usuario?.ativo === false || !papelNoGrupo(usuario?.role, "supervisao_ia")) return json({ok:false,reason:"sem_permissao"},403);
 
     const b = await req.json();
     const slug = b.agente_slug; if (!slug) return json({ok:false,reason:"faltando agente_slug"},400);

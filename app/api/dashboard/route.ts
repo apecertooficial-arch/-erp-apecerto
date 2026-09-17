@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { papelNoGrupo } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
 
   const { data: me } = await supabase.from("usuarios").select("role").eq("id", userData.user.id).maybeSingle();
   const role = (me as { role?: string } | null)?.role ?? "corretor";
-  if (!["admin", "gestor", "executivo"].includes(role)) {
+  if (!papelNoGrupo(role, "dashboard_gerencial")) {
     return Response.json({ error: "Sem permissão." }, { status: 403 });
   }
 

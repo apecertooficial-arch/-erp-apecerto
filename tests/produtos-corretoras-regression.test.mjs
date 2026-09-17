@@ -8,6 +8,7 @@ const productApi = await readFile("app/api/product/route.ts", "utf8");
 const catalogApi = await readFile("app/api/catalog/route.ts", "utf8");
 const productAccess = await readFile("app/features/products/access.ts", "utf8");
 const sessionApi = await readFile("app/api/session/route.ts", "utf8");
+const papeis = await readFile("app/lib/papeis.ts", "utf8");
 const managerMigration = await readFile("supabase/migrations/20260901173000_produtos_gerente_permissao.sql", "utf8");
 
 test("cadastro e edição de imóvel usam somente RPCs protegidas para proprietários", () => {
@@ -28,8 +29,11 @@ test("Minhas captações inclui qualquer unidade atribuída à corretora", () =>
 });
 
 test("gerente possui alçada de Produtos na sessão, aplicação e banco", () => {
-  assert.match(productAccess, /"gerente"/);
-  assert.match(sessionApi, /managerRoles[\s\S]*?"gerente"/);
+  // Fase 2: alçada vem do grupo `produtos` e da classe de sessão em app/lib/papeis.ts.
+  assert.match(productAccess, /papelNoGrupo\(role, "produtos"\)/);
+  assert.match(papeis, /produtos: \[[^\]]*"gerente"/);
+  assert.match(sessionApi, /papelDeSessao\(profile\?\.role\)/);
+  assert.match(papeis, /gestao: \[[^\]]*"gerente"/);
   assert.match(managerMigration, /u\.role::text in[\s\S]*?'gerente'/);
   assert.match(managerMigration, /u\.id = \(select auth\.uid\(\)\)[\s\S]*?and u\.ativo/);
   assert.match(managerMigration, /revoke all on function public\.is_product_manager\(\) from public, anon, authenticated/);
