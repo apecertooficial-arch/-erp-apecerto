@@ -69,7 +69,7 @@ begin
   j := public.wa_envio_reservar('teste:k4', 'sess-teste', '5511900000004', 'image', h2, false);
   insert into _r(caso, ok, detalhe) values ('falhou libera nova tentativa', j->>'acao' = 'enviar' and (j#>>'{registro,tentativas}')::int = 2, j::text);
 
-  -- 10. derivação não casa com envio que falhou
+  -- 10. derivada em telefone sem envio prévio reserva normalmente
   j := public.wa_envio_reservar('auto:teste-k4b', 'sess-teste', '5511900000005', 'image', h2, true);
   insert into _r(caso, ok, detalhe) values ('derivada em telefone sem envio previo reserva', j->>'acao' = 'enviar', j->>'acao');
 end $$;
