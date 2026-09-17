@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ga4Configurado, lerGa4 } from "../../lib/ga4";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { papelNoGrupo } from "../../lib/papeis";
+import { dataOperacao } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ function periodo(request: Request) {
 }
 
 function dataIso(value: Date) {
-  return value.toISOString().slice(0, 10);
+  return dataOperacao(value);
 }
 
 export async function GET(request: Request) {

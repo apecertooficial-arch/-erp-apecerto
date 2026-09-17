@@ -110,3 +110,52 @@ export function dataIsoSaoPaulo(valor: string | Date): string {
   if (!partes) return "";
   return `${partes.ano}-${String(partes.mes).padStart(2, "0")}-${String(partes.dia).padStart(2, "0")}`;
 }
+
+/* ------------------------------------------------------------------------
+ * Datas de negócio (YYYY-MM-DD) no fuso da operação.
+ *
+ * Timestamps continuam ISO UTC. Já a DATA de uma venda, recebimento, prazo ou
+ * pagamento é o dia do calendário em São Paulo: `toISOString().slice(0, 10)`
+ * gravava o dia seguinte para qualquer ação depois das 21h. O lint proíbe esse
+ * padrão em app/; use as funções abaixo.
+ * ---------------------------------------------------------------------- */
+
+const REGEX_YMD = /^(\d{4})-(\d{2})-(\d{2})$/;
+const doisDigitos = (numero: number) => String(numero).padStart(2, "0");
+
+/** Dia do calendário (YYYY-MM-DD) do instante `d` em America/Sao_Paulo. */
+export function dataOperacao(d: Date): string {
+  return dataIsoSaoPaulo(d);
+}
+
+/** Hoje (YYYY-MM-DD) em America/Sao_Paulo, independente do fuso do servidor/navegador. */
+export function hojeOperacao(agora: Date = new Date()): string {
+  return dataOperacao(agora);
+}
+
+/** Valor para `<input type="datetime-local">` (YYYY-MM-DDTHH:mm) na hora de parede da operação. */
+export function paraDatetimeLocal(d: Date): string {
+  return dataHoraLocalSaoPaulo(d.toISOString());
+}
+
+/** Interpreta o valor de um `datetime-local` como hora de parede da operação. Data inválida → `Invalid Date`. */
+export function deDatetimeLocal(s: string): Date {
+  const instante = normalizarInstanteSaoPaulo(s);
+  return new Date(instante ?? Number.NaN);
+}
+
+/** Soma `n` dias a uma data YYYY-MM-DD puramente no calendário (sem fuso). */
+export function somarDias(ymd: string, n: number): string {
+  const partes = REGEX_YMD.exec(ymd);
+  if (!partes) return "";
+  const base = new Date(Date.UTC(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3]) + n));
+  return `${base.getUTCFullYear()}-${doisDigitos(base.getUTCMonth() + 1)}-${doisDigitos(base.getUTCDate())}`;
+}
+
+/** Último dia (YYYY-MM-DD) do mês de uma data YYYY-MM-DD. */
+export function fimDoMes(ymd: string): string {
+  const partes = REGEX_YMD.exec(ymd);
+  if (!partes) return "";
+  const base = new Date(Date.UTC(Number(partes[1]), Number(partes[2]), 0));
+  return `${base.getUTCFullYear()}-${doisDigitos(base.getUTCMonth() + 1)}-${doisDigitos(base.getUTCDate())}`;
+}

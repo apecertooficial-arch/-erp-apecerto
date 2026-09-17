@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesInsert } from "../../lib/supabase/database.types";
 import { textoRepetidoRecente } from "../../lib/anti-repeticao";
+import { hojeOperacao, normalizarInstanteSaoPaulo } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -174,7 +175,7 @@ async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnT
   }
   if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
   const safeName = file.name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120) || "arquivo";
-  const path = `${auth.user.id}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeName}`;
+  const path = `${auth.user.id}/${hojeOperacao()}/${crypto.randomUUID()}-${safeName}`;
   const { error: uploadError } = await auth.supabase.storage.from("chat-midia").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
   if (uploadError) return Response.json({ error: uploadError.message }, { status: 502 });
   const { data: publicUrl } = auth.supabase.storage.from("chat-midia").getPublicUrl(path);
@@ -225,7 +226,7 @@ export async function POST(request: Request) {
     return Response.json({ success: true, result: data });
   }
   if (action === "schedule") {
-    const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const when = new Date(String(body.when));
+    const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const when = new Date(normalizarInstanteSaoPaulo(String(body.when ?? "")) ?? Number.NaN);
     if (phone.length < 8 || !content || !Number.isSafeInteger(instanceId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Defina mensagem, instância e horário futuro válido." }, { status: 422 });
     if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
     const { error } = await auth.supabase.from("mensagens_agendadas").insert({ telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, tipo: "text", texto: content, quando: when.toISOString(), status: "agendado", criado_por: auth.user.id });
@@ -272,7 +273,7 @@ export async function POST(request: Request) {
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: rows.length });
   }
   if (action === "scheduleApproach") {
-    const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId); const when = new Date(String(body.when));
+    const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId); const when = new Date(normalizarInstanteSaoPaulo(String(body.when ?? "")) ?? Number.NaN);
     if (phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Escolha a instância, a abordagem e um horário futuro." }, { status: 422 });
     if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
     const { data: approach, error: approachError } = await auth.supabase.from("abordagens").select("mensagens").eq("id", approachId).eq("ativo", true).maybeSingle();
@@ -308,7 +309,7 @@ export async function POST(request: Request) {
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
   if (action === "task" || action === "callReminder") {
-    const due = new Date(String(body.due));
+    const due = new Date(normalizarInstanteSaoPaulo(String(body.due ?? "")) ?? Number.NaN);
     const title = action === "callReminder" ? `Ligar para ${text(body.name, 120) || "cliente"}` : text(body.title, 180);
     const priority = text(body.priority, 20);
     if (!Number.isSafeInteger(leadId) || leadId < 1 || !title || Number.isNaN(due.getTime())) return Response.json({ error: "Informe o título e uma data válida." }, { status: 422 });

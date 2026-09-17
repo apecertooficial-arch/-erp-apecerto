@@ -5,6 +5,19 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Datas de negócio: `toISOString()` é UTC, então `.slice(0, 10)` (ou
+  // `.split("T")[0]`, `.substring`...) grava o dia seguinte depois das 21h em
+  // São Paulo, e `.slice(0, 16)` põe um datetime-local 3h à frente. Use
+  // hojeOperacao/dataOperacao/paraDatetimeLocal/somarDias de app/lib/timezone.
+  {
+    files: ["app/**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        selector: "CallExpression[callee.property.name=/^(slice|substring|substr|split)$/][callee.object.type='CallExpression'][callee.object.callee.property.name='toISOString']",
+        message: "toISOString() é UTC: não recorte data/hora dele. Use hojeOperacao(), dataOperacao(d), paraDatetimeLocal(d) ou somarDias() de app/lib/timezone.",
+      }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

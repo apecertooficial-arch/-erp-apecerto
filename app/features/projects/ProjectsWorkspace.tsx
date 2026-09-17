@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
+import { hojeOperacao } from "../../lib/timezone";
 
 // Fetch autenticado resiliente (mesmo padrão do CRM): token fresco + 1 retry após refresh.
 async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
@@ -34,7 +35,7 @@ const PRIO: Record<string, { label: string; cor: string }> = {
 const shortDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" });
 const fullDate = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const dateTime = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-const hoje = () => new Date().toISOString().slice(0, 10);
+const hoje = () => hojeOperacao();
 const atrasada = (t: Tarefa) => Boolean(t.prazo && t.prazo < hoje() && !t.concluida);
 const initials = (nome?: string | null) => (nome || "?").trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
@@ -196,7 +197,6 @@ function ProjectBoard({ data, project, busy, userById, onBack, onOpenTask, onEdi
   const stats = projectStats(data, project.id);
   const resp = project.responsavel_id ? userById.get(project.responsavel_id) : null;
   const reorderCols = (index: number, dir: number) => { const ids = cols.map((c) => c.id); const j = index + dir; if (j < 0 || j >= ids.length) return; [ids[index], ids[j]] = [ids[j], ids[index]]; void mutate({ action: "reorderColumns", projectId: project.id, ids }); };
-
   return <div className="pj-board">
     <header className="pj-head board"><div><button className="pj-back" type="button" onClick={onBack}>← Projetos</button>
       <h1><i style={{ background: project.cor || "#ff7000" }} />{project.nome}</h1>

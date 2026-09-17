@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
-import { instanteSaoPaulo } from "../../lib/timezone";
+import { fimDoMes, instanteSaoPaulo } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 
 export const dynamic = "force-dynamic";
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
   const diaReferencia = typeof result.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(result.dia) ? result.dia : null;
   const inicioMes = diaReferencia ? `${diaReferencia.slice(0, 7)}-01` : null;
   const fimMes = inicioMes
-    ? new Date(Date.UTC(Number(inicioMes.slice(0, 4)), Number(inicioMes.slice(5, 7)), 0)).toISOString().slice(0, 10)
+    ? fimDoMes(inicioMes)
     : null;
   const pendencias = await supabase.rpc("f2_visitas_resultado_pendente", {
     p_inicio: inicioMes,
