@@ -1,5 +1,25 @@
 // dapi-enviar — envio real (texto/audio/imagem/documento/video) pela instancia escolhida.
 //
+// v15 (SEM DUPLICADA): toda chamada ao provedor passa por uma chave de idempotencia.
+//   - O chamador pode mandar `idempotency_key` (id do evento/execucao). Sem ela, a
+//     chave e derivada: hash(instancia + telefone normalizado + tipo + conteudo +
+//     janela de 2 min), e o banco ainda confere a mesma mensagem nos ultimos 120 s.
+//   - A chave e RESERVADA em public.wa_envios (wa_envio_reservar) ANTES da chamada.
+//     Ja 'enviado' -> devolve o resultado anterior sem reenviar. 'reservado' vivo ->
+//     409 em andamento. 'incerto' -> 409, nao reenvia.
+//   - Timeout / erro de rede / 5xx => 'incerto'. NAO tenta a variante do 9º digito
+//     (ate a v14 tentava, e reenviava o que o provedor podia ter entregue).
+//   - A variante do 9º digito so e tentada quando a D-API recusa o numero de forma
+//     definitiva (HTTP 400 "failed to resolve phone number: ... is not on WhatsApp").
+//   - Sem a tabela/RPC (migration nao aplicada) a funcao NAO envia: 503.
+//   Decisoes puras em ../_shared/wa-idempotencia.ts (testadas em tests/wa-idempotencia.test.mjs).
+//   Autorizacao (token interno / pessoa, IDOR, piloto) inalterada.
+//
+// v14 (MINI CHAT): a autoridade do piloto agora sabe QUEM chama. Pessoa digitando
+// no chat e a regra "100% manual" sendo cumprida — nao violada. A RPC recebe
+// p_modo ('pessoa'|'maquina'): pessoa envia; maquina continua barrada quando o
+// corretor esta em abordagem humana.
+//
 // v13 (IDOR): a v12 fechou o acesso anonimo, mas um usuario autenticado ainda podia
 // mandar instancia_id de outro corretor no body. Agora, quando quem chama e uma
 // PESSOA, a instancia e resolvida no servidor por ncrm_resolver_envio_autorizado a
@@ -14,20 +34,18 @@
 //                texto puro nos HTML legados publicos, NAO serve: nao tem usuario.
 //
 // verify_jwt continua false porque o modo maquina nao usa JWT. A porta esta no codigo.
-// A autoridade do piloto e consultada sempre: nem token interno nem service_role
-// atravessam a abordagem humana.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  chaveInformada, classificarResposta, derivarChave, hashConteudo, normalizarTelefoneBR,
+  proximoPasso, respostaDaReserva, respostaDoEnvio, variantesNonoDigito,
+  type Reserva, type TipoCanonico,
+} from "../_shared/wa-idempotencia.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DAPI = "https://api.d-api.cloud/api/v1/messages/send/";
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
-const digits = (t: unknown) => String(t ?? "").replace(/\D/g, "");
-
-function normalizarBR(d: string): string {
-  return (d.length === 10 || d.length === 11) ? "55" + d : d;
-}
 
 function aplicarVars(txt: string, corretorNome: string | null): string {
   if (!txt) return txt;
@@ -37,12 +55,6 @@ function aplicarVars(txt: string, corretorNome: string | null): string {
     .replaceAll("{corretor_primeiro_nome}", primeiro)
     .replaceAll("{corretor_nome}", nome)
     .replaceAll("{primeiro_nome_corretor}", primeiro);
-}
-
-function brVariants(to: string): string[] {
-  if (/^55\d{11}$/.test(to) && to[4] === "9") return [to, to.slice(0, 4) + to.slice(5)];
-  if (/^55\d{10}$/.test(to)) return [to, to.slice(0, 4) + "9" + to.slice(4)];
-  return [to];
 }
 
 async function instByCorretor(cid: number) {
@@ -70,14 +82,6 @@ async function registrar(sess: string, to: string, m: { waId: string | null; sta
     }
     await admin.from("wa_mensagens").insert({ wa_message_id: m.waId, conversa_id: convId, instancia_id: instUuid, direcao: "enviada", tipo: m.tipoCanon, conteudo: m.conteudo, media_url: m.mediaUrl, enviado_em: new Date().toISOString(), status: m.status, status_detalhe: m.detalhe, status_em: new Date().toISOString(), raw: { via: "crm" } });
   } catch (_) {}
-}
-
-function motivoErro(httpStatus: number, resp: any): string {
-  const t = JSON.stringify(resp ?? "").toLowerCase();
-  if (t.includes("not on whatsapp") || t.includes("resolve phone") || t.includes("not_registered") || t.includes("not registered") || t.includes("no account") || t.includes("invalid number") || t.includes("nao existe") || t.includes("não existe")) return "Este número não foi encontrado no WhatsApp (verifique o 9º dígito e o DDD).";
-  if (httpStatus === 401 || httpStatus === 403 || t.includes("disconnected") || t.includes("not connected") || t.includes("session not found") || t.includes("session closed") || t.includes("session_not_connected") || t.includes("scan qr") || t.includes("reconnect") || t.includes("unauthorized")) return "Instância desconectada — reconecte o WhatsApp pelo QR.";
-  if (t.includes("timeout") || t.includes("aborted") || t.includes("timederror") || httpStatus === 0) return "Tempo esgotado ao falar com o WhatsApp — tente novamente.";
-  return "Não foi possível enviar esta mensagem agora — tente novamente em instantes.";
 }
 
 type Identidade = { modo: "maquina" } | { modo: "pessoa"; userId: string } | null;
@@ -108,10 +112,13 @@ Deno.serve(async (req) => {
 
   let p: any = {};
   try { p = await req.json(); } catch { return json({ error: "json_invalido" }, 400); }
-  const to = normalizarBR(digits(p.to ?? p.telefone));
+  const to = normalizarTelefoneBR(p.to ?? p.telefone);
   const tipo = String(p.tipo ?? "text").toLowerCase();
   const corretorNome = typeof p.corretor_nome === "string" ? p.corretor_nome : null;
   if (!to || to.length < 8) return json({ error: "telefone_invalido" }, 400);
+  let chaveExplicita: string | null;
+  try { chaveExplicita = chaveInformada(p.idempotency_key, quem); }
+  catch { return json({ error: "idempotency_key_invalida", motivo: "idempotency_key deve ter 8 a 160 caracteres [A-Za-z0-9:_.-]." }, 400); }
 
   let sess: string | null = null, key: string | null = null;
   let corretorResolvido: number | null = null;
@@ -135,13 +142,15 @@ Deno.serve(async (req) => {
     // Papel de gestao sem instancia definida cai na resolucao normal abaixo.
   }
 
-  // Autoridade do piloto: vale para pessoa e para maquina.
+  // Autoridade do piloto: pessoa digitando PASSA (envio manual e a regra sendo
+  // cumprida); maquina segue barrada quando o corretor esta em abordagem humana.
   try {
     const { data: dec } = await admin.rpc("ncrm_pode_enviar_pelo_erp", {
       p_corretor_id: corretorResolvido ?? (p.corretor_id ? Number(p.corretor_id) : null),
       p_negocio_id: p.negocio_id ? Number(p.negocio_id) : null,
       p_lead_id: p.lead_id ? Number(p.lead_id) : null,
       p_telefone: to,
+      p_modo: quem.modo,
     });
     const decisao = (dec as any)?.decisao;
     if (decisao && decisao !== "permitir") {
@@ -184,28 +193,57 @@ Deno.serve(async (req) => {
   const conteudoMsg = base.text ?? base.caption ?? null;
   const mediaUrl = p.url ?? null;
 
-  const tentativas: { to: string; status: number; resp: any }[] = [];
-  for (const dest of brVariants(to)) {
-    let r: Response, resp: any;
+  // ---- idempotencia: reserva ANTES de falar com o provedor ----
+  const tipoIdem = ep as TipoCanonico;
+  const conteudoHash = await hashConteudo(tipoIdem, { text: base.text, audio: base.audio, image: base.image, video: base.video, document: base.document, caption: base.caption, fileName: base.fileName, ptt: base.ptt });
+  const derivada = chaveExplicita === null;
+  const chave = chaveExplicita ?? await derivarChave({ instancia: sess, telefone: to, tipo: tipoIdem, conteudoHash, agoraMs: Date.now() });
+
+  const { data: reservaRaw, error: erroReserva } = await admin.rpc("wa_envio_reservar", {
+    p_chave: chave, p_instancia: sess, p_telefone: to, p_tipo: tipoIdem, p_conteudo_hash: conteudoHash, p_derivada: derivada,
+  });
+  if (erroReserva || !reservaRaw) {
+    // Sem livro-razao nao ha garantia contra duplicada: nao envia.
+    return json({ error: "idempotencia_indisponivel", motivo: "Envio temporariamente indisponível — tente novamente em instantes." }, 503);
+  }
+  const reserva = reservaRaw as Reserva;
+  const bloqueio = respostaDaReserva(reserva, { tipoPedido: tipo, sessionId: sess });
+  if (bloqueio) return json(bloqueio.body, bloqueio.status);
+
+  const variantes = variantesNonoDigito(to);
+  const tentativas: { to: string; status: number; resp: unknown }[] = [];
+  let indice = 0;
+  let destino = variantes[0];
+  // Laço limitado pelo numero de variantes (no maximo 2 chamadas ao provedor).
+  while (indice < variantes.length) {
+    let httpStatus = 0, resp: unknown;
     try {
-      r = await fetch(DAPI + ep, { method: "POST", headers: { Authorization: key, "Content-Type": "application/json" }, body: JSON.stringify({ ...base, to: dest }), signal: AbortSignal.timeout(20000) });
+      const r = await fetch(DAPI + ep, { method: "POST", headers: { Authorization: key, "Content-Type": "application/json" }, body: JSON.stringify({ ...base, to: destino }), signal: AbortSignal.timeout(20000) });
+      httpStatus = r.status;
       resp = await r.json().catch(() => ({}));
     } catch (e) {
-      tentativas.push({ to: dest, status: 0, resp: String(e) });
-      continue;
+      httpStatus = 0;
+      resp = String(e);
     }
-    if (r.ok && resp?.success !== false) {
-      await registrar(sess, to, { waId: resp?.messageId ? String(resp.messageId) : null, status: "enviado", detalhe: dest !== to ? ("entregue na forma " + dest + " (9º dígito)") : null, tipoCanon, conteudo: conteudoMsg, mediaUrl });
-      return json({ ok: true, sessionId: sess, tipo, to: dest, messageId: resp?.messageId ?? null });
-    }
-    tentativas.push({ to: dest, status: r.status, resp });
-  }
+    tentativas.push({ to: destino, status: httpStatus, resp });
+    const passo = proximoPasso(variantes, indice, classificarResposta(httpStatus, resp));
 
-  const ult = tentativas[tentativas.length - 1] || { status: 0, resp: null };
-  const motivo = motivoErro(ult.status, ult.resp);
-  const cru = left(JSON.stringify(tentativas), 380);
-  await registrar(sess, to, { waId: null, status: "erro", detalhe: motivo + " · " + cru, tipoCanon, conteudo: conteudoMsg, mediaUrl });
-  return json({ error: "dapi_erro", motivo, status: ult.status, detalhe: tentativas }, 502);
+    if (passo.acao === "tentar_variante") { indice++; destino = passo.destino; continue; }
+
+    const cru = left(JSON.stringify(tentativas), 380);
+    if (passo.status === "enviado") {
+      await admin.rpc("wa_envio_concluir", { p_chave: chave, p_status: "enviado", p_provider_message_id: passo.messageId, p_destino: passo.destino, p_erro: null, p_resposta: { tentativas } }).then(() => {}, () => {});
+      await registrar(sess, to, { waId: passo.messageId, status: "enviado", detalhe: passo.destino !== to ? ("entregue na forma " + passo.destino + " (9º dígito)") : null, tipoCanon, conteudo: conteudoMsg, mediaUrl });
+      const out = respostaDoEnvio({ status: "enviado", sessionId: sess, tipoPedido: tipo, destino: passo.destino, messageId: passo.messageId, chave, tentativas });
+      return json(out.body, out.status);
+    }
+    await admin.rpc("wa_envio_concluir", { p_chave: chave, p_status: passo.status, p_provider_message_id: null, p_destino: destino, p_erro: passo.motivo + " · " + cru, p_resposta: { tentativas } }).then(() => {}, () => {});
+    await registrar(sess, to, { waId: null, status: passo.status === "incerto" ? "incerto" : "erro", detalhe: passo.motivo + " · " + cru, tipoCanon, conteudo: conteudoMsg, mediaUrl });
+    const out = respostaDoEnvio({ status: passo.status, sessionId: sess, tipoPedido: tipo, motivo: passo.motivo, chave, tentativas, ultimoHttp: httpStatus });
+    return json(out.body, out.status);
+  }
+  // Inalcancavel: proximoPasso sempre conclui na ultima variante.
+  return json({ error: "dapi_erro", motivo: "Não foi possível enviar esta mensagem agora — tente novamente em instantes.", idempotency_key: chave }, 502);
 });
 
 function left(s: string, n: number) { return s.length > n ? s.slice(0, n) : s; }

@@ -530,7 +530,7 @@ Deno.serve(async (req: Request) => {
         const payload={lead_id:lead.id,cliente:lead.cliente,telefone_mascarado:(dest as any).telefone_mascarado,texto};
         if(args.confirmar!==true)return criarPrevia("enviar_whatsapp",payload,payload);
         const validada=await consumirPrevia("enviar_whatsapp",payload,args);if(!validada.ok)return validada;
-        const wr=await fetch(supabaseUrl+"/functions/v1/dapi-enviar",{method:"POST",headers:{Authorization:authHeader,apikey:anonKey,"Content-Type":"application/json"},body:JSON.stringify({to:(dest as any).telefone,tipo:"text",texto})});
+        const wr=await fetch(supabaseUrl+"/functions/v1/dapi-enviar",{method:"POST",headers:{Authorization:authHeader,apikey:anonKey,"Content-Type":"application/json"},body:JSON.stringify({to:(dest as any).telefone,tipo:"text",texto,idempotency_key:`sara:${(validada as any).preview_id}`})});
         const wd=await wr.json().catch(()=>({}));
         if(!wr.ok || !wd?.ok)return {ok:false,erro:wd?.motivo || wd?.error || "falha_envio_whatsapp"};
         return {ok:true,executado:true,cliente:lead.cliente,telefone_mascarado:(dest as any).telefone_mascarado,message_id:wd.messageId,status:"enviado_aguardando_confirmacao",proximo_passo:"Use consultar_comprovante_whatsapp para confirmar entrega ou leitura."};

@@ -12,6 +12,12 @@
 //
 // verify_jwt continua false de proposito: quem chama sao maquinas, identificadas
 // pelo header x-envio-interno, nao por JWT de usuario.
+//
+// v16 (SEM DUPLICADA): aceita `idempotency_key` (ou `execucao_id`) do chamador e
+// repassa a dapi-enviar uma chave estavel POR ITEM do pack: <base>:resumo,
+// <base>:book, <base>:foto:<midia_id>. Repetir a mesma chamada (retry do
+// chamador) nao reenvia o que ja foi entregue. Sem base, dapi-enviar deriva a
+// chave pelo conteudo (janela de 2 min).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -78,6 +84,12 @@ Deno.serve(async (req) => {
   };
   if (dryRun) return json({ ok: true, dry_run: true, plano });
 
+  // Chave base estavel do pack (id do evento/execucao de quem chamou).
+  const chaveBaseBruta = p.idempotency_key ?? p.execucao_id ?? null;
+  const chaveBase = chaveBaseBruta == null || chaveBaseBruta === "" ? null : `produto:${String(chaveBaseBruta).trim().slice(0, 100)}`;
+  if (chaveBase && !/^[A-Za-z0-9:_.\-]{8,110}$/.test(chaveBase)) return json({ error: "idempotency_key_invalida" }, 400);
+  const chaveItem = (sufixo: string) => (chaveBase ? { idempotency_key: `${chaveBase}:${sufixo}` } : {});
+
   const baseEnvio: Record<string, unknown> = { to: telefone };
   if (p.instancia_id) baseEnvio.instancia_id = p.instancia_id;
   if (p.corretor_id) baseEnvio.corretor_id = p.corretor_id;
@@ -99,11 +111,11 @@ Deno.serve(async (req) => {
   const resultados: any[] = [];
   let enviadas = 0, falhas = 0;
 
-  if (legenda) { const r = await enviar({ tipo: "text", texto: legenda }); resultados.push({ etapa: "resumo", ok: r.ok }); await sleep(400); }
-  if (bookUrl) { const r = await enviar({ tipo: "document", url: bookUrl, fileName: `${emp?.nome ?? "book"}.pdf` }); resultados.push({ etapa: "book", ok: r.ok }); if (r.ok) enviadas++; else falhas++; await sleep(500); }
+  if (legenda) { const r = await enviar({ tipo: "text", texto: legenda, ...chaveItem("resumo") }); resultados.push({ etapa: "resumo", ok: r.ok }); await sleep(400); }
+  if (bookUrl) { const r = await enviar({ tipo: "document", url: bookUrl, fileName: `${emp?.nome ?? "book"}.pdf`, ...chaveItem("book") }); resultados.push({ etapa: "book", ok: r.ok }); if (r.ok) enviadas++; else falhas++; await sleep(500); }
 
   for (const m of fotos) {
-    const r = await enviar({ tipo: "image", url: publicUrl(m.storage_path) });
+    const r = await enviar({ tipo: "image", url: publicUrl(m.storage_path), ...chaveItem(`foto:${m.id}`) });
     if (r.ok) enviadas++; else { falhas++; resultados.push({ foto: m.id, ok: false, motivo: r.body?.motivo ?? r.body }); }
     await sleep(500);
   }
