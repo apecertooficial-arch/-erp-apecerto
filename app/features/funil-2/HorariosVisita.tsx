@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 type EstadoHorario = "disponivel" | "indisponivel" | "meu" | "sem_gerente";
 type Horario = { inicio: string; fim: string; estado: EstadoHorario };
@@ -19,7 +20,7 @@ type Props = {
   disabled?: boolean;
 };
 
-const hoje = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+const hoje = () => hojeOperacao();
 
 const horaAgora = () => new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -27,12 +28,6 @@ const horaAgora = () => new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
   hour12: false,
 }).format(new Date());
-
-function somarDias(data: string, quantidade: number) {
-  const [ano, mes, dia] = data.split("-").map(Number);
-  const resultado = new Date(Date.UTC(ano, mes - 1, dia + quantidade));
-  return resultado.toISOString().slice(0, 10);
-}
 
 function dataAmigavel(data: string) {
   const [ano, mes, dia] = data.split("-").map(Number);
