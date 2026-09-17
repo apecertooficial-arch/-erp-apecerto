@@ -319,12 +319,15 @@ test("Abordagens lista somente produtos que possuem abordagem associada", () => 
 
 test("venda manual pode nascer ligada ao negócio real do CRM", () => {
   const modal = readFileSync(join(raizApp, "features/finance/VendaModal.tsx"), "utf8");
-  const api = readFileSync(join(raizApp, "api/finance/route.ts"), "utf8");
+  const api = readFileSync(join(raizApp, "api/finance/venda-rpc.ts"), "utf8");
+  // Fase 2: o vínculo com o negócio mudou para dentro de venda_criar (mesma
+  // transação da venda). A trava "só vincula se ainda não tem venda" continua.
+  const rpc = readFileSync(join(raizApp, "../supabase/migrations/20260916120000_fase2_venda_atomica.sql"), "utf8");
   assert.match(modal, /Negócio de origem no CRM/);
   assert.match(modal, /negocioId: negocioId \? Number\(negocioId\) : null/);
-  assert.match(api, /Este negócio já está ligado a outra venda/);
-  assert.match(api, /from\("negocios"\)\.update\(\{ venda_id: saleId \}\)/);
-  assert.match(api, /\.is\("venda_id", null\)\.select\("id"\)\.maybeSingle\(\)/);
+  assert.match(api, /negocio_id: negocioId !== null/);
+  assert.match(rpc, /Este negócio já está ligado a outra venda/);
+  assert.match(rpc, /update public\.negocios set venda_id = v_venda\s+where id = v_negocio_id and venda_id is null/);
 });
 
 test("runtime legado e API geral do CRM foram removidos fisicamente", () => {
