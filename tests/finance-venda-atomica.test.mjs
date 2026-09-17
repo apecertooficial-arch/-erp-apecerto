@@ -163,7 +163,7 @@ test("a rota não grava mais venda tabela a tabela em createSale/deleteSale", ()
     assert.doesNotMatch(apagar, new RegExp(`from\\("${tabela}"\\)`), `deleteSale ainda escreve em ${tabela}`);
   }
   // Mesma regra de quem pode apagar (não mudou).
-  assert.match(apagar, /\["admin", "gestor", "executivo"\]/);
+  assert.match(apagar, /papelNoGrupo\(me\.role, "financeiro"\)/);
   assert.match(criar, /guard\(\[\["vendas", "criar"\], \["financeiro", "criar"\]\]/);
 });
 
