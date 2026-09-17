@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
+import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -135,154 +136,26 @@ export async function PATCH(request: Request) {
   if (action === "createSale") {
     const dataVenda = clean(body.dataVenda, 10);
     const vgv = Number(body.vgv);
-    const percentRaw = Number(body.percent);
-    const custos = Number(body.custos);
     if (!dataVenda || !Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "Informe a data e o VGV da venda." }, { status: 422 });
     const denied = guard([["vendas", "criar"], ["financeiro", "criar"]], "Você não tem permissão para lançar vendas no financeiro.");
     if (denied) return denied;
-    const validStatus = ["pendente", "concluido", "pago", "distrato"];
-    const status = validStatus.includes(clean(body.status, 20)) ? clean(body.status, 20) : "pendente";
-    const empreendimentoId = clean(body.empreendimentoId, 60) || null;
-    const corretorPrincipalInformado = Number(body.corretorId);
-    const negocioId = Number(body.negocioId);
-    const negocioEscolhido = Number.isSafeInteger(negocioId) && negocioId > 0
-      ? await auth.supabase.from("negocios").select("id,venda_id,corretor_id").eq("id", negocioId).maybeSingle()
-      : null;
-    if (negocioEscolhido?.error) return Response.json({ error: "Não foi possível validar o negócio do CRM." }, { status: 502 });
-    if (negocioEscolhido && !negocioEscolhido.data) return Response.json({ error: "O negócio selecionado não existe ou não está acessível." }, { status: 404 });
-    if (negocioEscolhido?.data?.venda_id) return Response.json({ error: "Este negócio já está ligado a outra venda." }, { status: 409 });
-    const corretorPrincipal = Number.isSafeInteger(corretorPrincipalInformado) && corretorPrincipalInformado > 0
-      ? corretorPrincipalInformado
-      : Number(negocioEscolhido?.data?.corretor_id);
-    const documentos = Array.isArray(body.documentos)
-      ? (body.documentos as unknown[]).filter((doc) => doc && typeof doc === "object").map((doc) => {
-          const d = doc as Record<string, unknown>;
-          return { nome: clean(d.nome, 200), path: clean(d.path, 1000), bucket: clean(d.bucket, 60) || "esteira-docs" };
-        }).filter((doc) => doc.path).slice(0, 30)
-      : [];
+    /* TRANSAÇÃO ÚNICA (Fase 2, set/2026).
 
-    const saleInsert: Record<string, unknown> = {
-      data_venda: dataVenda,
-      vgv,
-      custos: Number.isFinite(custos) && custos >= 0 ? custos : 0,
-      percentual_comissao: Number.isFinite(percentRaw) && percentRaw >= 0 && percentRaw <= 100 ? percentRaw / 100 : null,
-      forma_pgto: clean(body.payment, 100) || null,
-      status: status as "pendente" | "concluido" | "pago" | "distrato",
-      obs: clean(body.notes, 1000) || null,
-      empreendimento_id: empreendimentoId,
-      empreendimento_nome: clean(body.empreendimentoNome, 200) || null,
-      unidade_rotulo: clean(body.unidade, 120) || null,
-      cliente_nome: clean(body.clienteNome, 200) || null,
-      proprietario_nome: clean(body.proprietarioNome, 200) || null,
-      corretor_id: Number.isSafeInteger(corretorPrincipal) && corretorPrincipal > 0 ? corretorPrincipal : null,
-      documentos,
-      /* CARIMBO DA CONCLUSÃO (ago/2026).
+       Venda, corretores, comissões, parcelas, repasses e o vínculo com o
+       negócio do CRM agora são gravados por venda_criar, dentro do banco, numa
+       transação só: ou entra tudo ou não entra nada. Antes eram 6 inserts em
+       sequência e uma falha no meio deixava venda pela metade.
 
-         VGV, comissões calculadas e "meus ganhos" contam apenas venda com
-         `data_conclusao` preenchida. Quem preenche normalmente é o gatilho
-         `trg_sync_venda_conclusao`, que dispara quando o processo chega na
-         etapa "Venda registrada" da Esteira.
+       O banco também arredonda para centavos, rejeita negativo, confere o
+       rateio (100%), valida o papel contra o enum, calcula a comissão bruta
+       (VGV × percentual) e não deixa comissão nem repasse passar dela. O
+       carimbo de data_conclusao continua o mesmo: status concluído/pago ->
+       data da venda (ver comentário na migration e no histórico desta rota).
 
-         Venda lançada aqui não cria processo nenhum — então nunca havia quem
-         carimbasse. O usuário escolhia "concluído" ou "pago" no formulário, a
-         venda entrava no banco, e o VGV não se mexia. Silencioso: nenhum erro,
-         só um número que não sobe.
-
-         A data é a da VENDA, não a de hoje. Venda de julho lançada em agosto
-         tem que contar no VGV de julho, senão o fechamento do mês fica errado.
-         É também o que o histórico já faz: em todas as vendas importadas,
-         data_conclusao == data_venda. */
-      data_conclusao: status === "concluido" || status === "pago" ? dataVenda : null,
-    };
-    const { data: created, error: saleError } = await auth.supabase.from("vendas").insert(saleInsert as never).select("id").single();
-    if (saleError || !created) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
-    const saleId = created.id as string;
-
-    const brokerRows = Array.isArray(body.brokers)
-      ? (body.brokers as unknown[]).filter((b) => b && typeof b === "object").map((b) => {
-          const row = b as Record<string, unknown>;
-          const fracao = Number(row.fracao);
-          return {
-            venda_id: saleId,
-            corretor_id: clean(row.corretorId, 60) || null,
-            corretor_nome: clean(row.corretorNome, 200) || null,
-            fracao: Number.isFinite(fracao) && fracao > 0 ? fracao : 1,
-            eh_indicador: row.ehIndicador === true,
-          };
-        }).filter((row) => row.corretor_id || row.corretor_nome)
-      : [];
-    if (brokerRows.length) {
-      const { error } = await auth.supabase.from("venda_corretores").insert(brokerRows);
-      if (error) return Response.json({ error: `Venda criada, mas falha ao vincular corretores: ${error.message}`, saleId }, { status: 502 });
-    }
-
-    const commissionRows = Array.isArray(body.commissions)
-      ? (body.commissions as unknown[]).filter((c) => c && typeof c === "object").map((c) => {
-          const row = c as Record<string, unknown>;
-          const valor = Number(row.valor);
-          return {
-            venda_id: saleId,
-            papel: clean(row.papel, 40) || "corretor",
-            beneficiario_id: clean(row.beneficiarioId, 60) || null,
-            valor_final: Number.isFinite(valor) ? valor : 0,
-            valor_calculado: Number.isFinite(valor) ? valor : 0,
-          };
-        }).filter((row) => row.valor_final > 0)
-      : [];
-    if (commissionRows.length) {
-      const { error } = await auth.supabase.from("comissoes").insert(commissionRows as never);
-      if (error) return Response.json({ error: `Venda criada, mas falha ao lançar comissões: ${error.message}`, saleId }, { status: 502 });
-    }
-
-    const receiptRows = Array.isArray(body.receipts)
-      ? (body.receipts as unknown[]).filter((r) => r && typeof r === "object").map((r, index) => {
-          const row = r as Record<string, unknown>;
-          const valor = Number(row.valor);
-          const parcela = Number(row.numeroParcela);
-          return {
-            venda_id: saleId,
-            numero_parcela: Number.isSafeInteger(parcela) && parcela > 0 ? parcela : index + 1,
-            valor_total: Number.isFinite(valor) ? valor : 0,
-            data_prevista: clean(row.dataPrevista, 10) || null,
-            status: "pendente",
-          };
-        }).filter((row) => row.valor_total > 0)
-      : [];
-    if (receiptRows.length) {
-      const { error } = await auth.supabase.from("recebimentos").insert(receiptRows);
-      if (error) return Response.json({ error: `Venda criada, mas falha ao gerar parcelas: ${error.message}`, saleId }, { status: 502 });
-    }
-
-    const payoutRows = Array.isArray(body.payouts)
-      ? (body.payouts as unknown[]).filter((r) => r && typeof r === "object").map((r, index) => {
-          const row = r as Record<string, unknown>;
-          const valor = Number(row.valor);
-          const ordem = Number(row.ordem);
-          const status = clean(row.status, 20) === "pago" ? "pago" : "previsto";
-          const dataPagamento = clean(row.dataPagamento, 10) || null;
-          return {
-            venda_id: saleId,
-            beneficiario_id: clean(row.beneficiarioId, 60) || null,
-            papel: clean(row.papel, 40) || "corretor",
-            valor: Number.isFinite(valor) ? valor : 0,
-            ordem: Number.isSafeInteger(ordem) && ordem > 0 ? ordem : index + 1,
-            data_prevista: clean(row.dataPrevista, 10) || null,
-            status: status === "pago" && dataPagamento ? "pago" : "previsto",
-            data_pagamento: status === "pago" ? dataPagamento : null,
-          };
-        }).filter((row) => row.valor > 0 && row.beneficiario_id)
-      : [];
-    if (payoutRows.length) {
-      const { error } = await auth.supabase.from("pagamentos_comissao").insert(payoutRows as never);
-      if (error) return Response.json({ error: `Venda criada, mas falha ao agendar os repasses: ${error.message}`, saleId }, { status: 502 });
-    }
-
-    if (negocioEscolhido?.data) {
-      const { data: linked, error } = await auth.supabase.from("negocios").update({ venda_id: saleId }).eq("id", negocioEscolhido.data.id).is("venda_id", null).select("id").maybeSingle();
-      if (error || !linked) return Response.json({ error: `Venda criada, mas não foi possível vinculá-la ao CRM${error ? `: ${error.message}` : ". O negócio foi alterado por outra operação."}`, saleId }, { status: 502 });
-    }
-
-    return Response.json({ success: true, saleId });
+       Detalhes em app/api/finance/venda-rpc.ts. */
+    const resultado = await criarVendaAtomica(semTipos(auth.supabase), body);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("venda_criar falhou:", resultado.erroInterno.code, resultado.erroInterno.message);
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "createCash") {
@@ -771,13 +644,12 @@ export async function PATCH(request: Request) {
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
     if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
-    await auth.supabase.from("comissoes").delete().eq("venda_id", saleId);
-    await auth.supabase.from("recebimentos").delete().eq("venda_id", saleId);
-    await auth.supabase.from("lancamentos_caixa").update({ venda_id: null }).eq("venda_id", saleId);
-    await auth.supabase.from("negocios").update({ venda_id: null }).eq("venda_id", saleId);
-    const { error } = await auth.supabase.from("vendas").delete().eq("id", saleId);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json({ success: true });
+    // Transação única no banco (venda_excluir): apaga repasses, comissões,
+    // parcelas e corretores, solta o negócio do CRM e os lançamentos de caixa, e
+    // grava o retrato completo em erp_auditoria. Falhou qualquer passo, nada muda.
+    const resultado = await excluirVendaAtomica(semTipos(auth.supabase), saleId);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("venda_excluir falhou:", resultado.erroInterno.code, resultado.erroInterno.message);
+    return Response.json(resultado.body, { status: resultado.status });
   }
   if (action === "addCommission" || action === "updateCommission" || action === "deleteCommission") {
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
