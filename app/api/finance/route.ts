@@ -4,6 +4,7 @@ import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
+import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -261,7 +262,7 @@ export async function PATCH(request: Request) {
     if (!receiptId) return Response.json({ error: "Recebimento inválido." }, { status: 422 });
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Você não tem permissão para dar baixa em recebimentos.");
     if (denied) return denied;
-    const { error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? new Date().toISOString().slice(0, 10) : null }).eq("id", receiptId);
+    const { error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? hojeOperacao() : null }).eq("id", receiptId);
     return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
   }
 
@@ -308,7 +309,7 @@ export async function PATCH(request: Request) {
     const { error } = await auth.supabase.from("vendas").update(patchVenda as never).eq("id", saleId);
     if (error) return Response.json({ error: error.message }, { status: 502 });
     if (status === "pago") {
-      const { error: receiptError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: new Date().toISOString().slice(0, 10) }).eq("venda_id", saleId).neq("status", "recebido");
+      const { error: receiptError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: hojeOperacao() }).eq("venda_id", saleId).neq("status", "recebido");
       if (receiptError) return Response.json({ error: `Venda atualizada, mas a baixa das parcelas falhou: ${receiptError.message}` }, { status: 502 });
     }
     return Response.json({ success: true });
@@ -368,7 +369,7 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const payoutId = clean(body.payoutId, 50);
     const pago = body.pago === true;
-    const dataPagamento = clean(body.dataPagamento, 10) || new Date().toISOString().slice(0, 10);
+    const dataPagamento = clean(body.dataPagamento, 10) || hojeOperacao();
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
     const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
     if (readError || !lido) return Response.json({ error: readError?.message || "Repasse nao encontrado." }, { status: 404 });
@@ -499,8 +500,8 @@ export async function PATCH(request: Request) {
     const ate = datas[datas.length - 1] || null;
     const [{ data: caixaProximo }, { data: chaves }] = await Promise.all([
       auth.supabase.from("lancamentos_caixa").select("id,data,valor,tipo,categoria,descricao")
-        .gte("data", de ? new Date(new Date(`${de}T12:00:00`).getTime() - 5 * 864e5).toISOString().slice(0, 10) : "1900-01-01")
-        .lte("data", ate ? new Date(new Date(`${ate}T12:00:00`).getTime() + 5 * 864e5).toISOString().slice(0, 10) : "2999-12-31"),
+        .gte("data", de ? (somarDias(de, -5) || "1900-01-01") : "1900-01-01")
+        .lte("data", ate ? (somarDias(ate, 5) || "2999-12-31") : "2999-12-31"),
       auth.supabase.from("caixa_keywords").select("categoria,keyword,prioridade").order("prioridade", { ascending: true }),
     ]);
 
