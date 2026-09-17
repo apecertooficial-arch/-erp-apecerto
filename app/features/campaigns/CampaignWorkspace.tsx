@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { hojeOperacao } from "../../lib/timezone";
 
 type Lead = { id: number; nome: string | null; telefone: string | null; tags: string[] | null; status: string | null; origem: string | null; disparo_optout: boolean };
 type Deal = { id: number; lead_id: number; stage_id: number | null; empreendimento_id: string | null; status: string };
@@ -92,7 +93,7 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
   const [selectedBrokers, setSelectedBrokers] = useState<number[]>([]);
   const [message, setMessage] = useState("");
   const [rate, setRate] = useState("20");
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => hojeOperacao());
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("18:00");
   const [period, setPeriod] = useState("7");
