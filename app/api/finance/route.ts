@@ -770,7 +770,7 @@ export async function PATCH(request: Request) {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
+    if (!me || !["admin", "gestor", "executivo"].includes(me.role)) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
     await auth.supabase.from("comissoes").delete().eq("venda_id", saleId);
     await auth.supabase.from("recebimentos").delete().eq("venda_id", saleId);
     await auth.supabase.from("lancamentos_caixa").update({ venda_id: null }).eq("venda_id", saleId);
