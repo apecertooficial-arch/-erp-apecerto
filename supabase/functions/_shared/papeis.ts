@@ -13,7 +13,7 @@
 // por acidente, quem apaga venda.
 //
 // ESPELHO SQL: `public.papeis_do_grupo(text)` na migration
-// supabase/migrations/20260916120000_fase2_papeis_canonicos.sql. O teste
+// supabase/migrations/20260916130000_fase2_papeis_canonicos.sql. O teste
 // tests/papeis.test.mjs compara as duas definições e falha se divergirem.
 // CÓPIA DENO: supabase/functions/_shared/papeis.ts precisa ser idêntica a este
 // arquivo (as Edge Functions não enxergam app/); o mesmo teste confere.

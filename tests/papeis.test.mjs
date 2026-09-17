@@ -121,7 +121,7 @@ test("canDo: papel inexistente não herda o atalho de admin", () => {
 // Espelhos: SQL e Deno
 // ---------------------------------------------------------------------------
 test("migration SQL define os mesmos grupos com os mesmos membros", () => {
-  const sql = ler("supabase/migrations/20260916120000_fase2_papeis_canonicos.sql");
+  const sql = ler("supabase/migrations/20260916130000_fase2_papeis_canonicos.sql");
   const corpo = sql.slice(sql.indexOf("function public.papeis_do_grupo"), sql.indexOf("function public.papel_no_grupo"));
   const doSql = {};
   for (const m of corpo.matchAll(/when '([a-z_]+)'\s+then array\[([^\]]*)\]/g)) {
@@ -132,7 +132,7 @@ test("migration SQL define os mesmos grupos com os mesmos membros", () => {
 });
 
 test("migration delega as funções antigas para papel_no_grupo", () => {
-  const sql = ler("supabase/migrations/20260916120000_fase2_papeis_canonicos.sql");
+  const sql = ler("supabase/migrations/20260916130000_fase2_papeis_canonicos.sql");
   for (const [funcao, grupo] of [["is_admin", "admin"], ["is_admin_exec", "acesso_total"], ["can_manage_all", "acesso_total"], ["is_product_manager", "produtos"], ["is_equipe", "todos"]]) {
     const re = new RegExp(`function public\\.${funcao}\\(\\)[\\s\\S]*?security definer[\\s\\S]*?select public\\.papel_no_grupo\\('${grupo}'\\);`);
     assert.match(sql, re, funcao);
