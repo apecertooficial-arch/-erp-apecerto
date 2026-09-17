@@ -27,6 +27,14 @@ function phoneKeys(value: unknown) {
   return [...keys].filter((key) => key.length >= 10);
 }
 
+// Chave de idempotência do envio: o front gera um id por mensagem (clientMessageId)
+// e o reaproveita se repetir a mesma requisição. dapi-enviar devolve o resultado
+// anterior em vez de mandar de novo. Sem id válido, a função deriva pela mensagem.
+function idempotencyKey(value: unknown) {
+  const id = text(value, 100);
+  return /^[A-Za-z0-9_-]{8,100}$/.test(id) ? `chat:${id}` : undefined;
+}
+
 function providerError(data: unknown) {
   if (!data || typeof data !== "object") return null;
   const result = data as Record<string, unknown>;
@@ -171,7 +179,7 @@ async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnT
   if (uploadError) return Response.json({ error: uploadError.message }, { status: 502 });
   const { data: publicUrl } = auth.supabase.storage.from("chat-midia").getPublicUrl(path);
   const kind = mediaKind(file.type || "application/octet-stream");
-  const payload = { telefone: phone, instancia_id: instanceId, tipo: kind, url: publicUrl.publicUrl, legenda: caption || undefined, nome_arquivo: safeName };
+  const payload = { telefone: phone, instancia_id: instanceId, tipo: kind, url: publicUrl.publicUrl, legenda: caption || undefined, nome_arquivo: safeName, idempotency_key: idempotencyKey(form.get("clientMessageId")) };
   const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", { body: payload });
   const remoteError = providerError(data);
   if (error || remoteError) {
@@ -199,13 +207,14 @@ export async function POST(request: Request) {
       const repetida = await textoRepetidoRecente(auth.supabase, phone, content);
       if (repetida) return Response.json({ error: repetida }, { status: 409 });
     }
-    let payload: Record<string, unknown> = { telefone: phone, instancia_id: instanceId, tipo: "texto", texto: content };
+    const chave = idempotencyKey(body.clientMessageId);
+    let payload: Record<string, unknown> = { telefone: phone, instancia_id: instanceId, tipo: "texto", texto: content, idempotency_key: chave };
     if (mediaId) {
       const { data: media } = await auth.supabase.from("midias").select("tipo,storage_path,nome").eq("id", mediaId).maybeSingle();
       if (!media) return Response.json({ error: "Material não encontrado." }, { status: 404 });
       const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const url = `${base}/storage/v1/object/public/empreendimentos/${media.storage_path.split("/").map(encodeURIComponent).join("/")}`;
-      payload = { telefone: phone, instancia_id: instanceId, tipo: media.tipo === "foto" ? "imagem" : media.tipo === "video" ? "video" : "documento", url, legenda: content, nome_arquivo: media.nome || undefined };
+      payload = { telefone: phone, instancia_id: instanceId, tipo: media.tipo === "foto" ? "imagem" : media.tipo === "video" ? "video" : "documento", url, legenda: content, nome_arquivo: media.nome || undefined, idempotency_key: chave };
     }
     const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", { body: payload });
     const remoteError = providerError(data);
