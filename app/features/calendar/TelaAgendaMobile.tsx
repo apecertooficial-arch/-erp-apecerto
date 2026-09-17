@@ -49,7 +49,7 @@ function mesPorExtenso(iso: string): string {
 function somarMeses(iso: string, meses: number): string {
   const [a, m] = iso.split("-").map(Number);
   const base = new Date(Date.UTC(a, m - 1 + meses, 1));
-  return base.toISOString().slice(0, 10);
+  return `${String(base.getUTCFullYear()).padStart(4, "0")}-${String(base.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
 /* Tarefa e retorno prometido tambem chegam nesta lista, e nao sao visita: nao
