@@ -82,6 +82,18 @@ test("a rota traduz o shape da RPC para o contrato da tela", () => {
      Sem esta tradução a tela mostra tudo como não lido e sem tempo. */
   assert.match(ROTA, /criada_em: i\.desde/);
   assert.match(ROTA, /vista_em: i\.vista \? i\.desde : null/);
+  assert.match(ROTA, /reaberturas: Number\.isSafeInteger\(i\.reaberturas\)/,
+    "a reincidência consolidada no banco precisa chegar à tela");
+});
+
+test("a rota declara quando a lista visível não cobre toda a fila", () => {
+  assert.match(ROTA, /pendentes > itens\.length \? "parcial" : "completa"/);
+  assert.match(ROTA, /exibidos: itens\.length/);
+  assert.match(ROTA, /total: pendentes/);
+  assert.match(TELA_AVISOS, /sistema não considera a fila completa/,
+    "a tela não pode fazer cem itens parecerem a fila inteira");
+  assert.match(TELA_AVISOS, /cobrança\{a\.reaberturas === 1 \? "" : "s"\} anterior/,
+    "ocorrências consolidadas precisam continuar auditáveis");
 });
 
 test("falha na RPC vira 502, nunca lista vazia", () => {

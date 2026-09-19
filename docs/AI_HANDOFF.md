@@ -13,11 +13,11 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `e8a805a7`;
+- ambiente: branch isolada enviada ao repositório oficial até `3f095424`;
   usuário autorizou publicação de código validado. Merge e deploy não foram
   executados
-- HEAD local e remoto antes da fatia em curso: `e8a805a7`
-- árvore local em curso: aprovação gerencial de descarte no Funil 2, ainda não
+- HEAD local e remoto antes da fatia em curso: `3f095424`
+- árvore local em curso: observabilidade e reincidência dos Avisos, ainda não
   commitada neste checkpoint
 
 ## Concluído
@@ -49,6 +49,10 @@ declarar o ERP inteiro pronto sem evidência.
   duplicados, máximo de 36 por card/público e os mesmos 16 alertas de cards
   descartados. O crescimento 690 → 694 → 744 comprova produção contínua do
   ruído;
+- revalidação seguinte encontrou 1.485 alertas `acao_vencida` abertos ao todo:
+  788 da Sara e 697 da automação. A parcela Sara cobre 138 negócios, 180 grupos
+  duplicados, máximo de 38 por negócio/público e 16 alertas de cards descartados;
+  as duas origens permanecem separadas para não falsear o diagnóstico;
 - contrato SQL aditivo e não destrutivo preparado em
   `docs/erp-reestruturacao/P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, com rastreio em
   `P0_ALERTAS_SARA_RASTREIO.md`: vínculo direto ao card, índice único por
@@ -114,8 +118,8 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- o remoto contém os commits até `e8a805a7`; a fatia de aprovação de descarte
-  está validada localmente e aguarda commit/push. Merge e deploy continuam
+- o remoto contém os commits até `3f095424`; a fatia de Avisos está validada
+  localmente e aguarda commit/push. Merge e deploy continuam
   pendentes do gate do payload, CI e validação do SHA, não de uma janela de
   duas horas.
 
@@ -366,6 +370,15 @@ declarar o ERP inteiro pronto sem evidência.
   corretor. Baseline 94/0 e amostra estruturada foram validados em desktop e
   aplicativo; gate frontend 541/541, 33/33 direcionados, typecheck, lint e build
   passaram. A RPC segue apenas no draft, sem migration ou alteração remota.
+- a RPC produtiva `ncrm_notificacoes()` limita a cem linhas antes de calcular
+  os contadores, então a tela atual pode chamar uma amostra de fila completa. A
+  aplicação local agora transporta `reaberturas`, expõe `mostrando X de Y` e
+  declara cobertura parcial quando o total real excede a amostra. O draft do
+  banco já corrige a contagem antes do limite; sem aplicá-lo, a produção ainda
+  não fornece um total confiável. A tela real foi validada em 1440 × 1000 e
+  390 × 844, sem overflow, erro de console ou chamada externa. Gate frontend
+  543/543, 29/29 testes direcionados, typecheck e build passaram; lint ficou
+  com zero erros e os mesmos dez avisos preexistentes.
 
 ## Riscos e limites
 
@@ -385,10 +398,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Commitar e enviar a fatia de aprovação gerencial de descarte sem incluir o
-symlink `node_modules`. Em seguida, avançar localmente a visão gerencial de
-cobrança e qualidade por corretor. Quando existir Postgres isolado com CLI
-oficial, ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
+Commitar e enviar a fatia de observabilidade dos Avisos sem incluir o symlink
+`node_modules`. Em seguida, avançar no contrato que interrompe a duplicação na
+origem, ainda sem aplicar SQL. Quando existir Postgres isolado com CLI oficial,
+ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
 mantendo os dispatchers desligados. Não usar `main` do Supabase como
 laboratório. Merge/deploy de código e migration permanecem etapas distintas e
 verificáveis; nunca agrupar `db push` ao deploy de aplicação.

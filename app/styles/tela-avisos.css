@@ -17,6 +17,9 @@
 }
 
   .av-sub { margin: 0 0 12px; font-size: var(--text-xs); color: var(--fg-3); }
+  .av-cobertura { margin: 0 0 14px; border: 1px solid color-mix(in srgb,var(--warning) 35%,var(--bg-surface)); border-radius: var(--radius-md); background: var(--warning-bg); padding: 12px 14px; }
+  .av-cobertura strong { color: var(--warning); font-size: var(--text-sm); }
+  .av-cobertura p { margin: 4px 0 0; color: var(--fg-2); font-size: var(--text-xs); line-height: var(--leading-normal); }
 
   /* ---------------- Chips de faixa ---------------- */
   .av-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 10px; }
@@ -86,6 +89,7 @@
     margin: 4px 0 0; font-size: 13px; color: var(--fg-3);
     line-height: var(--leading-normal); overflow-wrap: anywhere;
   }
+  .av-reaberturas { display: inline-flex; margin-top: 7px; border-radius: var(--radius-pill); background: var(--ape-purple-50); padding: 4px 8px; color: var(--ape-purple-700); font-size: 11px; font-weight: var(--weight-bold); }
 
   .av-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
   .av-acao {

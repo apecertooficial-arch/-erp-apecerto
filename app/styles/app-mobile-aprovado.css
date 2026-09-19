@@ -304,6 +304,9 @@
   .ape-tela-sub { margin: 4px 0 12px; color: #6B635C; font-size: 13px; font-weight: 500; }
   .ape-avisos .ape-filtros { margin-bottom: 10px; }
   .ape-avisos .ape-chip { min-height: 44px; }
+  .ape-aviso-cobertura { margin: 0 0 12px; border: 1px solid #F0D395; border-radius: 14px; background: #FFF8E8; padding: 11px 12px; }
+  .ape-aviso-cobertura strong { color: #7B5700; font-size: 12px; }
+  .ape-aviso-cobertura p { margin: 3px 0 0; color: #756A62; font-size: 10px; line-height: 1.4; }
 
   .ape-aviso-filtros { display: flex; margin-bottom: 14px; }
   .ape-aviso-filtro {
@@ -331,6 +334,7 @@
   .ape-aviso-titulo { flex: 1; color: #1F1C1A; font-size: 15px; font-weight: 700; line-height: 1.3; text-wrap: pretty; }
   .ape-aviso-ponto { flex: 0 0 8px; width: 8px; height: 8px; margin-top: 5px; border-radius: 999px; background: #FF7000; }
   .ape-aviso-detalhe { margin: 4px 0 0; color: #6B635C; font-size: 12.5px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
+  .ape-aviso-reaberturas { display: inline-flex; margin-top: 6px; border-radius: 999px; background: #F4EAF9; padding: 4px 8px; color: #6B328E; font-size: 10px; font-weight: 700; }
   .ape-aviso-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 7px; }
   .ape-aviso-acao { min-height: 44px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 14px; font-weight: 700; }
   .ape-aviso-acao:disabled { color: #B8B0A8; }

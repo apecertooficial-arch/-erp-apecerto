@@ -29,6 +29,7 @@ type ItemRpc = {
   desde: string;
   deep_link: string | null;
   vista: boolean;
+  reaberturas?: number;
 };
 
 async function clienteAutenticado(request: Request) {
@@ -70,13 +71,23 @@ export async function GET(request: Request) {
        tipo do contrato sem inventar um horário que pareceria real. */
     vista_em: i.vista ? i.desde : null,
     resolvida_em: null,
+    reaberturas: Number.isSafeInteger(i.reaberturas) && Number(i.reaberturas) > 0 ? Number(i.reaberturas) : 0,
   }));
+
+  const pendentes = Number.isSafeInteger(res.pendentes) && Number(res.pendentes) >= 0
+    ? Number(res.pendentes)
+    : itens.length;
 
   return Response.json({
     ok: true,
-    pendentes: res.pendentes ?? itens.length,
+    pendentes,
     urgentes: res.urgentes ?? 0,
     nao_vistas: res.nao_vistas ?? 0,
+    cobertura: {
+      status: pendentes > itens.length ? "parcial" : "completa",
+      exibidos: itens.length,
+      total: pendentes,
+    },
     itens,
   });
 }

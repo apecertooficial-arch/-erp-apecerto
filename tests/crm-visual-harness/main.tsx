@@ -8,6 +8,7 @@ import "../../app/styles/redesign-apecerto-menu.css";
 import "../../app/styles/app-mobile-aprovado.css";
 import "../../app/styles/app-mobile-gestor.css";
 import "../../app/styles/redesign-apecerto-calendario.css";
+import "../../app/styles/tela-avisos.css";
 import "../../app/styles/funil.css";
 import "./concept.css";
 import "./premium-concept.css";
@@ -22,6 +23,7 @@ import { CrmReimaginedConcept } from "./CrmReimaginedConcept";
 import { CrmKanbanReimagined } from "./CrmKanbanReimagined";
 import { CalendarWorkspace } from "../../app/features/calendar/CalendarWorkspace";
 import { TelaAgendaMobile } from "../../app/features/calendar/TelaAgendaMobile";
+import { NotificationsWorkspace } from "../../app/features/notifications/NotificationsWorkspace";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -84,6 +86,18 @@ const payloadAgenda = {
   brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
   leads: [], deals: [], cards: [], products: [], visits: [], tasks: [],
   gerentes: [{ id: 1, nome: "Gerente sanitizado", geral: true, corretor_id: null }], role: papel,
+};
+const payloadNotificacoes = {
+  ok: true,
+  pendentes: 148,
+  urgentes: 2,
+  nao_vistas: 2,
+  cobertura: { status: "parcial", exibidos: 3, total: 148 },
+  itens: [
+    { id: 501, tipo: "acao_vencida", prioridade: "critica", titulo: "Próxima ação vencida", detalhe: "Cliente sanitizado aguarda retorno do corretor.", negocio_id: 101, deep_link: "/negocio/101", criada_em: "2026-09-19T10:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 37 },
+    { id: 502, tipo: "visita_sem_feedback", prioridade: "alta", titulo: "Visita sem feedback", detalhe: "Registre o resultado para a gestão acompanhar.", negocio_id: 102, deep_link: "/negocio/102", criada_em: "2026-09-19T11:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
+    { id: 503, tipo: "cliente_respondeu", prioridade: "normal", titulo: "Cliente respondeu", detalhe: "Conversa pronta para continuidade.", negocio_id: 103, deep_link: "/negocio/103", criada_em: "2026-09-19T12:00:00Z", vista_em: "2026-09-19T12:00:00Z", resolvida_em: null, reaberturas: 0 },
+  ],
 };
 const gravadorVisivel = parametros.get("evidence") === "1";
 const requisicoes: RegistroRede[] = [];
@@ -174,6 +188,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
     return json(payloadAgenda);
   }
+  if (url.pathname === "/api/notificacoes") return json(payloadNotificacoes);
   registro.blocked = true;
   sincronizarLogRede();
   return json({ error: "Leitura fora do inventário do harness." }, 404);
@@ -239,6 +254,7 @@ createRoot(document.getElementById("root")!).render(
         {tela === "mobile-day"
           ? <InicioApp accessToken="harness-test-only" nome={perfil.name ?? "Corretor teste"} onIr={() => undefined} />
           : tela === "agenda-manager" ? <CalendarWorkspace accessToken="harness-test-only" />
+          : tela === "notifications" ? <NotificationsWorkspace accessToken="harness-test-only" onOpenLead={() => undefined} />
           : <PaginaCrm />}
       </ErpShell>}
   </ErpSessionCtx.Provider>,

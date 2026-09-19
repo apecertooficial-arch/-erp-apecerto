@@ -1,6 +1,6 @@
 # Trace — lead → Sara → próxima ação
 
-Atualizado em: 2026-09-19 17:40 America/Sao_Paulo
+Atualizado em: 2026-09-19 19:20 America/Sao_Paulo
 Escopo: código canônico local + metadados agregados de produção, sem PII e sem escrita.
 
 ## Veredito
@@ -146,6 +146,28 @@ impõe unicidade parcial sob concorrência, resolve por evidência/confirmação
 separa o total autorizado do limite visual de cem itens. Permanece fora de
 `supabase/migrations` porque a CLI oficial não está disponível e nomes de
 migration não serão inventados manualmente.
+
+Uma nova leitura agregada encontrou 1.485 alertas `acao_vencida` abertos ao
+todo: 788 da Sara e 697 da automação. As categorias não devem ser somadas como
+se viessem do mesmo produtor. Os 788 alertas da Sara correspondem a 138
+negócios, formam 180 grupos duplicados por `negocio_id + publico`, chegam a 38
+linhas abertas no mesmo grupo e ainda incluem 16 alertas ligados a cards F2
+descartados. A janela observada vai de 2026-09-15 a 2026-09-19. O crescimento
+744 → 788 confirma que a falha continua ativa.
+
+A definição produtiva de `ncrm_notificacoes()` também calcula `pendentes`,
+`urgentes` e `nao_vistas` **depois** do `LIMIT 100`. Portanto, hoje a API pode
+receber cem itens e um contador de cem mesmo quando existem mais obrigações
+autorizadas; não há como o frontend inferir o restante com honestidade. O draft
+local corrige a ordem para contar todo o escopo autorizado antes de limitar a
+lista.
+
+A aplicação local já preserva `reaberturas` na tradução da RPC, exibe quantas
+cobranças foram consolidadas e mostra aviso explícito quando `total > exibidos`.
+Essa mudança foi validada com dados sanitizados em 1440 × 1000 e 390 × 844,
+sem overflow ou erro de console. Ela ficará plenamente informativa somente
+quando a RPC corrigida fornecer o total real; não interrompe o produtor nem
+repara o estoque de produção por conta própria.
 
 Revisão adicional encontrou e removeu do draft uma chamada que reativaria o
 sincronizador legado `ncrm_private.notificacoes_sincronizar()`. A definição

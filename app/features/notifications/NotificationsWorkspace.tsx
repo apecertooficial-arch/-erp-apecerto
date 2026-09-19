@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ICONE_POR_TIPO, agrupar, ROTULO_ACAO_AVISO, tempoRelativo,
-  type Aviso, type Faixa,
+  type Aviso, type CoberturaAvisos, type Faixa,
 } from "./telaAvisos.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 
@@ -37,6 +37,7 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
   const [faixa, setFaixa] = useState<Faixa>("agora");
   const [soNaoLidas, setSoNaoLidas] = useState(false);
   const [mostrar, setMostrar] = useState(POR_PAGINA);
+  const [cobertura, setCobertura] = useState<CoberturaAvisos | null>(null);
 
   const carregar = useCallback(async (sinal: AbortSignal) => {
     const r = await fetch("/api/notificacoes", {
@@ -44,20 +45,21 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
     });
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json();
-    return (j.notificacoes ?? j.itens ?? []) as Aviso[];
+    const j = await r.json() as { notificacoes?: Aviso[]; itens?: Aviso[]; cobertura?: CoberturaAvisos };
+    return { avisos: j.notificacoes ?? j.itens ?? [], cobertura: j.cobertura ?? null };
   }, [accessToken]);
 
   useEffect(() => {
     const ctrl = new AbortController();
     let vivo = true;
     carregar(ctrl.signal)
-      .then((l) => { if (vivo) { setAvisos(l); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((resultado) => { if (vivo) { setAvisos(resultado.avisos); setCobertura(resultado.cobertura); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
         else setErro(true);
         setAvisos([]);
+        setCobertura(null);
       });
     return () => { vivo = false; ctrl.abort(); };
   }, [carregar, tentativa]);
@@ -93,6 +95,11 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
           : pedemAcao === 0 ? "Nada pedindo ação agora"
           : `${pedemAcao} ${pedemAcao === 1 ? "pede" : "pedem"} ação`}
       </p>
+
+      {cobertura?.status === "parcial" && <div className="av-cobertura ape-aviso-cobertura" role="status">
+        <strong>Há mais avisos do que esta página consegue exibir.</strong>
+        <p>Mostrando {cobertura.exibidos} de {cobertura.total}. Trate os itens visíveis e atualize; o sistema não considera a fila completa.</p>
+      </div>}
 
       <div className="av-chips ape-filtros" role="tablist" aria-label="Faixa dos avisos">
         {([["agora", "Agora"], ["hoje", "Hoje"], ["historico", "Histórico"]] as const).map(([c, r]) => (
@@ -155,6 +162,7 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
                     {!a.vista_em && <span className="av-ponto ape-aviso-ponto" aria-label="não lido" />}
                   </div>
                   {a.detalhe && <p className="av-detalhe ape-aviso-detalhe">{a.detalhe}</p>}
+                  {(a.reaberturas ?? 0) > 0 && <span className="av-reaberturas ape-aviso-reaberturas">{a.reaberturas} cobrança{a.reaberturas === 1 ? "" : "s"} anterior{a.reaberturas === 1 ? "" : "es"} reunida{a.reaberturas === 1 ? "" : "s"}</span>}
                   <div className="av-rodape ape-aviso-rodape">
                     <button
                       type="button"

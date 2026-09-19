@@ -38,6 +38,14 @@ test("harness exercita a cobrança real da Agenda sem dados pessoais nem mutaç�
   assert.doesNotMatch(harness, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
 });
 
+test("harness exercita cobertura parcial e reincidência na tela real de Avisos", () => {
+  assert.match(harness, /import \{ NotificationsWorkspace \}/);
+  assert.match(harness, /tela === "notifications"/);
+  assert.match(harness, /url\.pathname === "\/api\/notificacoes"/);
+  assert.match(harness, /cobertura: \{ status: "parcial", exibidos: 3, total: 148 \}/);
+  assert.match(harness, /reaberturas: 37/);
+});
+
 test("conceito visual e isolado, responsivo e sem recursos externos", () => {
   assert.match(harness, /import "\.\/concept\.css"/);
   assert.match(harness, /dataset\.crmConcept = "apecerto-2026"/);
@@ -108,7 +116,7 @@ test("Kanban reimaginado preserva a identidade V4 e usa KPIs acionaveis", () => 
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
-  for (const rota of ["/api/funil2", "/api/funil2/conversa", "/api/funil2/carteira", "/api/crm/sales", "/api/agenda"]) {
+  for (const rota of ["/api/funil2", "/api/funil2/conversa", "/api/funil2/carteira", "/api/crm/sales", "/api/agenda", "/api/notificacoes"]) {
     assert.match(harness, new RegExp(rota.replaceAll("/", "\\/")));
   }
   assert.match(harness, /Harness visual: mutações são bloqueadas/);

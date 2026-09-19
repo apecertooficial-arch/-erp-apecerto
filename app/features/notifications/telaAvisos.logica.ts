@@ -14,6 +14,13 @@ export type Aviso = {
   criada_em: string;
   vista_em: string | null;
   resolvida_em: string | null;
+  reaberturas?: number;
+};
+
+export type CoberturaAvisos = {
+  status: "completa" | "parcial";
+  exibidos: number;
+  total: number;
 };
 
 export type Faixa = "agora" | "hoje" | "historico";
