@@ -49,19 +49,21 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   const [createError, setCreateError] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
 
-  /* Convite por link (autocadastro): gera um token, grava em cadastro_convites (RLS: só gestão)
-     e mostra o link /cadastro?t=<token> — o corretor preenche os próprios dados por lá. */
+  /* Convite por link (autocadastro): a Edge Function autentica o admin, gera o
+     token no servidor e guarda somente o hash. O navegador recebe o segredo uma
+     única vez para montar o link; ele nunca escreve convite direto no banco. */
   async function gerarLinkCadastro() {
     setLinkBusy(true); setToast("");
     try {
-      const sb = getBrowserSupabaseClient();
-      const token = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "");
-      const { data: sess } = await sb.auth.getUser();
-      const criadoPor = sess?.user?.id ?? null;
-      const criadoPorNome = (sess?.user?.user_metadata?.nome as string | undefined) ?? sess?.user?.email ?? null;
-      const { error: insError } = await sb.from("cadastro_convites").insert({ token, role: "corretor", criado_por: criadoPor, criado_por_nome: criadoPorNome } as never);
-      if (insError) { setToast(/permission|policy|denied/i.test(insError.message) ? "Apenas a gestão pode gerar convites por link." : insError.message); }
-      else setInvite({ nome: "Autocadastro de corretor", link: `${window.location.origin}/cadastro?t=${token}`, copied: false, tipo: "cadastro" });
+      const { data: result, error: fnError } = await getBrowserSupabaseClient().functions.invoke("admin-usuarios", {
+        body: { action: "criarConviteCadastro" },
+      });
+      const response = (result ?? {}) as { ok?: boolean; motivo?: string; token?: string };
+      if (fnError || !response.ok || !response.token) {
+        setToast(response.motivo === "acesso_negado" ? "Apenas administradores podem gerar convites." : "Não foi possível gerar o link agora.");
+      } else {
+        setInvite({ nome: "Autocadastro de corretor", link: `${window.location.origin}/cadastro?t=${response.token}`, copied: false, tipo: "cadastro" });
+      }
     } catch { setToast("Não foi possível gerar o link agora. Tente novamente."); }
     setLinkBusy(false);
   }

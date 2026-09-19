@@ -19,6 +19,7 @@ const MOTIVO_TEXTO: Record<string, string> = {
   nome_invalido: "Informe seu nome completo.",
   email_invalido: "Confira o e-mail digitado — ele não parece válido.",
   senha_curta: "A senha precisa ter pelo menos 8 caracteres.",
+  senha_longa: "A senha precisa ter no máximo 72 caracteres.",
   email_ja_cadastrado: "Este e-mail já tem cadastro no ERP. Fale com o time da ApêCerto para recuperar o acesso.",
 };
 
@@ -50,6 +51,7 @@ export default function CadastroPage() {
     const t = new URLSearchParams(window.location.search).get("t") || "";
     if (!t) { setEstado("invalido"); return; }
     setToken(t);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
     void (async () => {
       try {
         const r = await invoke("validar", { token: t });
@@ -65,6 +67,7 @@ export default function CadastroPage() {
     if (nome.trim().length < 2) { setAviso("Informe seu nome completo."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) { setAviso("Confira o e-mail digitado."); return; }
     if (senha.length < 8) { setAviso("A senha precisa ter pelo menos 8 caracteres."); return; }
+    if (senha.length > 72) { setAviso("A senha precisa ter no máximo 72 caracteres."); return; }
     if (senha !== confirma) { setAviso("As duas senhas não são iguais."); return; }
     setSalvando(true);
     try {
@@ -97,8 +100,8 @@ export default function CadastroPage() {
               <label>Nome completo<div className="auth-password"><input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" placeholder="Seu nome e sobrenome" required /></div></label>
               <label>Telefone / WhatsApp<div className="auth-password"><input value={telefone} onChange={(e) => setTelefone(e.target.value)} autoComplete="tel" inputMode="tel" placeholder="(11) 90000-0000" /></div></label>
               <label>E-mail<div className="auth-password"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="voce@email.com" required /></div></label>
-              <label>Senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" required /><button type="button" onClick={() => setMostrar(!mostrar)}>{mostrar ? "Ocultar" : "Mostrar"}</button></div></label>
-              <label>Confirmar senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" placeholder="Repita a senha" required /></div></label>
+              <label>Senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" minLength={8} maxLength={72} placeholder="Mínimo de 8 caracteres" required /><button type="button" onClick={() => setMostrar(!mostrar)}>{mostrar ? "Ocultar" : "Mostrar"}</button></div></label>
+              <label>Confirmar senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" minLength={8} maxLength={72} placeholder="Repita a senha" required /></div></label>
               {aviso && <div className="auth-error" role="alert">{aviso}</div>}
               <button className="primary-action" disabled={salvando} type="submit">{salvando ? "Criando acesso…" : "Criar meu acesso"}</button>
             </form>

@@ -445,3 +445,18 @@ verify_jwt = true
 [functions.dapi-qr]
 enabled = true
 verify_jwt = true
+
+[functions.admin-usuarios]
+enabled = true
+verify_jwt = true
+
+# Rotas públicas por necessidade do onboarding. A autenticação é um token
+# aleatório de uso único, armazenado somente como SHA-256 e consumido antes do
+# efeito privilegiado.
+[functions.cadastro-publico]
+enabled = true
+verify_jwt = false
+
+[functions.definir-senha]
+enabled = true
+verify_jwt = false

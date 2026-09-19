@@ -165,6 +165,17 @@ declarar o ERP inteiro pronto sem evidência.
   restrito, erros sanitizados e segredo apenas no ambiente. Seis testes
   direcionados e o gate frontend 456/456 passaram; `deno` não está instalado,
   então check/lint Deno e deploy continuam pendentes;
+- os outros três slugs diretamente consumidos pelo ERP também foram
+  reconstruídos: `admin-usuarios`, `cadastro-publico` e `definir-senha`.
+  Convites agora nascem no servidor, persistem somente SHA-256, são reservados
+  antes do efeito privilegiado e mantêm compatibilidade temporária com links
+  legados. O token é removido da URL e erros internos não chegam ao navegador;
+- o navegador real encontrou uma hidratação divergente em `/definir-senha`;
+  ela foi corrigida e revalidada, junto de `/cadastro`, em desktop e 390 × 844,
+  sem erro de console ou overflow. Nenhuma conta/senha real foi criada;
+- fatia de usuários: 12/12 testes direcionados, gate frontend 468/468, build,
+  transpile sintático e ESLint sem erro. `deno` continua indisponível. O draft
+  `P0_CONVITES_USUARIOS_DRAFT.sql` não foi aplicado;
 - após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem

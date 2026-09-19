@@ -11,12 +11,14 @@ const MOTIVO_TEXTO: Record<string, string> = {
   usado: "Este link já foi usado para criar a senha. Se precisar trocar de novo, peça um novo link.",
   expirado: "Este link expirou. Peça um novo para o time da ApêCerto.",
   erro: "Não foi possível abrir o link agora. Tente novamente em instantes.",
+  senha_curta: "A senha precisa ter pelo menos 8 caracteres.",
+  senha_longa: "A senha precisa ter no máximo 72 caracteres.",
 };
 
 export default function DefinirSenhaPage() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [nome, setNome] = useState<string | null>(null);
-  const [token] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("t") || "");
+  const [token, setToken] = useState("");
   const [senha, setSenha] = useState("");
   const [confirma, setConfirma] = useState("");
   const [mostrar, setMostrar] = useState(false);
@@ -30,22 +32,24 @@ export default function DefinirSenhaPage() {
   }
 
   useEffect(() => {
-    if (!token) return;
+    const currentToken = new URLSearchParams(window.location.search).get("t") || "";
+    if (!currentToken) { setEstado("invalido"); return; }
+    setToken(currentToken);
+    window.history.replaceState(window.history.state, "", window.location.pathname);
     void (async () => {
       try {
-        const r = await invoke("validar", { token });
+        const r = await invoke("validar", { token: currentToken });
         if (r.ok) { setNome(r.nome ?? null); setEstado("valido"); }
         else setEstado((r.motivo as Estado) || "invalido");
       } catch { setEstado("erro"); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const estadoVisivel: Estado = token ? estado : "invalido";
+  }, []);
 
   async function salvar() {
     setAviso("");
     if (senha.length < 8) { setAviso("A senha precisa ter pelo menos 8 caracteres."); return; }
+    if (senha.length > 72) { setAviso("A senha precisa ter no máximo 72 caracteres."); return; }
     if (senha !== confirma) { setAviso("As duas senhas não são iguais."); return; }
     setSalvando(true);
     try {
@@ -61,11 +65,11 @@ export default function DefinirSenhaPage() {
       <section className="auth-card auth-card-v2" aria-labelledby="ds-title">
         <div className="auth-brand"><span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
 
-        {estadoVisivel === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Abrindo seu acesso…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
+        {estado === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Abrindo seu acesso…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
 
-        {(estadoVisivel === "invalido" || estadoVisivel === "usado" || estadoVisivel === "expirado" || estadoVisivel === "erro") && (
+        {(estado === "invalido" || estado === "usado" || estado === "expirado" || estado === "erro") && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estadoVisivel]}</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estado]}</p></div>
             <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
@@ -74,8 +78,8 @@ export default function DefinirSenhaPage() {
           <>
             <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">{nome ? `Olá, ${nome}!` : "Crie sua senha"}</h2><p>Defina a senha que você vai usar para entrar no ERP da ApêCerto.</p></div>
             <form onSubmit={(e) => { e.preventDefault(); void salvar(); }}>
-              <label>Nova senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" required /><button type="button" onClick={() => setMostrar(!mostrar)}>{mostrar ? "Ocultar" : "Mostrar"}</button></div></label>
-              <label>Confirmar senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" placeholder="Repita a senha" required /></div></label>
+              <label>Nova senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" minLength={8} maxLength={72} placeholder="Mínimo de 8 caracteres" required /><button type="button" onClick={() => setMostrar(!mostrar)}>{mostrar ? "Ocultar" : "Mostrar"}</button></div></label>
+              <label>Confirmar senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" minLength={8} maxLength={72} placeholder="Repita a senha" required /></div></label>
               {aviso && <div className="auth-error" role="alert">{aviso}</div>}
               <button className="primary-action" disabled={salvando} type="submit">{salvando ? "Salvando…" : "Salvar senha e entrar"}</button>
             </form>
