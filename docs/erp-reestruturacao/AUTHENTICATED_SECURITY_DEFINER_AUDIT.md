@@ -133,6 +133,14 @@ idempotência de estado, deduplicação curta e auditoria. `redistribuir_lead`
 fica service-only porque a roleta não recebe chave idempotente; gestão usa o
 destino explícito. O draft não está em `supabase/migrations` e não foi aplicado.
 
-Gate local: 7/7 contratos direcionados, 494/494 testes frontend, typecheck,
+Gate local: 7/7 contratos direcionados, 498/498 testes frontend, typecheck,
 lint e build aprovados. Ensaio Postgres por papel e E2E autenticado permanecem
 pendentes por inexistência de branch Supabase isolada.
+
+`P0_SARA_FUNIL_SERVICE_ONLY_DRAFT.sql` fecha também `funil_mover`,
+`funil_aplicar_sara`, `funil_cascata_tick` e `ia_salvar_avaliacao` para
+`authenticated`, preservando somente `service_role`. Os três chamadores de
+`funil_mover` são internos; os runners remotos atuais usam service role; não há
+cron ativo nem chamador direto no aplicativo. `ncrm_sara_classificar` permanece
+autenticada porque exige `app_metadata.app_role = 'sara'`. Gate: 4/4 contratos;
+SQL não aplicado.

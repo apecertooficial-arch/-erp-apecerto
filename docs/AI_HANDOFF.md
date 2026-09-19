@@ -238,7 +238,7 @@ declarar o ERP inteiro pronto sem evidência.
   está em `P0_PUBLIC_LINKS_HARDENING_DRAFT.sql`: hash, validade, revogação,
   ficha de uso único, auditoria sanitizada, minimização da agenda e rate limit
   persistente; código usa service role apenas no servidor e o canário continua
-  desligado. 27/27 direcionados, gate frontend 494/494, typecheck e build
+  desligado. 27/27 direcionados, gate frontend 498/498, typecheck e build
   passaram; lint sem erros. Nenhum SQL foi aplicado;
 - o `SaraWidget` deixou de carregar URL/JWT público hardcoded e passou a usar o
   cliente Supabase canônico; a varredura atual não encontra JWT embutido em
@@ -260,6 +260,11 @@ declarar o ERP inteiro pronto sem evidência.
   aceite do corretor. `P0_CRM_OWNERSHIP_GUARDS_DRAFT.sql` protege sete RPCs
   humanas e torna `redistribuir_lead` service-only; 7/7 contratos e build
   passaram, mas o SQL segue não aplicado até haver Postgres isolado;
+- call graph + Edge/cron reconciliados para Sara/Funil: `funil_mover`,
+  `funil_aplicar_sara`, `funil_cascata_tick` e `ia_salvar_avaliacao` podem ser
+  service-only sem cortar chamador humano legítimo conhecido. Draft grant-only
+  criado, 4/4 contratos; `ncrm_sara_classificar` preservada por usar identidade
+  dedicada `app_role=sara`;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova

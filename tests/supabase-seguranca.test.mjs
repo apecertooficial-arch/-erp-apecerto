@@ -7,6 +7,7 @@ import "./p0-public-links-hardening.test.mjs";
 import "./hoje-operacao-search-path-draft.test.mjs";
 import "./authenticated-security-definer-audit.test.mjs";
 import "./p0-crm-ownership-guards.test.mjs";
+import "./p0-sara-funil-service-only.test.mjs";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260814210000_views_respeitam_rls.sql", import.meta.url), "utf8");
 const datacrazyCronMigration = readFileSync(
