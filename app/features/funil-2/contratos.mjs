@@ -8,6 +8,12 @@ const STATUS_POR_ERRO = Object.freeze({
   dados_invalidos: 422,
   motivo_obrigatorio: 422,
   motivo_invalido: 422,
+  idempotencia_obrigatoria: 422,
+  decisao_invalida: 422,
+  gestao_obrigatoria: 403,
+  descarte_ja_pendente: 409,
+  solicitacao_ja_decidida: 409,
+  solicitacao_nao_encontrada: 404,
 });
 
 export function statusHttpFunil(chave) {

@@ -196,9 +196,19 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 498/498 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 538/538 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
+
+Correção P0 local de 2026-09-19: o corretor deixou de possuir, na aplicação, o
+atalho que descartava o card imediatamente. Agora solicita com motivo e chave
+idempotente; o lead permanece na carteira e a gestão decide entre manter e
+aprovar. Desktop e aplicativo foram validados em navegador real sanitizado. O
+contrato definitivo do banco está preparado em
+`P0_F2_DESCARTE_APROVACAO_DRAFT.sql`, mas não foi aplicado: a função produtiva
+antiga continua sendo uma divergência bloqueadora até ensaio isolado e
+autorização específica de migration. Evidência completa em
+`TRACE_F2_DESCARTE_APROVACAO.md`.
 
 ## Fatia vertical 1 — lead até próxima ação confiável
 

@@ -51,7 +51,7 @@ test("conceito visual e isolado, responsivo e sem recursos externos", () => {
 test("Meu Dia usa uma amostra curta e priorizada sem alterar o quadro desktop", () => {
   assert.match(harness, /const indicesMeuDia = \[0, 1, 18, 19, 36, 37, 54, 55, 72, 90\]/);
   assert.match(harness, /const payloadMeuDia = \{[\s\S]*leads: leadsMeuDia/);
-  assert.match(harness, /tela === "mobile-day" \? payloadMeuDia : payloadNormal/);
+  assert.match(harness, /tela === "mobile-day" \? \{ \.\.\.payloadMeuDia, descarteAprovacao: payloadFunil\.descarteAprovacao \} : payloadFunil/);
 });
 
 test("segunda proposta e um CRM premium completo, interativo e isolado", () => {

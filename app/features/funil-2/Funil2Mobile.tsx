@@ -35,6 +35,7 @@ import {
   type LeadFunil2,
   type MomentoFunil2,
   type NotaFunil2,
+  type SolicitacaoDescarteFunil2,
   type TagCatalogoFunil2,
   type TemperaturaLead,
 } from "./modelo";
@@ -46,6 +47,7 @@ type PayloadMobile = {
   notas?: NotaFunil2[];
   tagCatalogo?: TagCatalogoFunil2[];
   etapas?: EtapaConfigFunil2[];
+  descarteAprovacao?: { status: "ok" | "indisponivel" | "erro"; solicitacoes: SolicitacaoDescarteFunil2[] };
   error?: string;
 };
 
@@ -572,13 +574,15 @@ function NotasMobile({
 function DescartarMobile({
   lead,
   accessToken,
-  onDescartado,
+  contratoStatus,
+  onSolicitado,
   abertoInicial = false,
   onFechar,
 }: {
   lead: LeadFunil2;
   accessToken: string;
-  onDescartado: () => void;
+  contratoStatus: "ok" | "indisponivel" | "erro";
+  onSolicitado: () => void;
   abertoInicial?: boolean;
   onFechar?: () => void;
 }) {
@@ -587,33 +591,38 @@ function DescartarMobile({
   const [detalhe, setDetalhe] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [idempotencyKey] = useState(() => globalThis.crypto?.randomUUID?.() ?? "");
+  const disponivel = contratoStatus === "ok" && Boolean(idempotencyKey);
 
-  async function descartar() {
+  async function solicitar() {
     if (!motivo) { setErro("Escolha o motivo do descarte."); return; }
     setSalvando(true); setErro("");
     try {
       const resposta = await fetch("/api/funil2", {
         method: "PATCH",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "descartar", id: lead.id, versao: lead.versao, motivo, detalhe: detalhe.trim() || null }),
+        body: JSON.stringify({ action: "solicitarDescarte", id: lead.id, versao: lead.versao, motivo, detalhe: detalhe.trim() || null, idempotencyKey }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível descartar este lead."); return; }
-      onDescartado();
+      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível enviar o pedido."); return; }
+      setEnviado(true);
+      onSolicitado();
     } catch {
-      setErro("Não foi possível descartar. Tente de novo.");
+      setErro("Não foi possível enviar o pedido. Tente de novo.");
     } finally {
       setSalvando(false);
     }
   }
 
   if (!aberto) {
-    return <button type="button" className="f2m-descartar-abrir" onClick={() => setAberto(true)}>Descartar lead</button>;
+    return <button type="button" className="f2m-descartar-abrir" onClick={() => setAberto(true)}>Solicitar descarte</button>;
   }
 
   return <section className="f2m-agendar f2m-descartar">
-    <h3>Descartar lead</h3>
-    <p>{lead.nome} sai da sua carteira. Nada é apagado: fica registrado quem descartou, quando e por quê.</p>
+    <h3>{enviado ? "Solicitação enviada" : "Solicitar descarte"}</h3>
+    {enviado ? <><p>{lead.nome} continua na sua carteira até a gestão decidir. A solicitação já está registrada no histórico.</p><button type="button" className="f2m-agendar-ok" onClick={() => { setAberto(false); onFechar?.(); }}>Voltar ao atendimento</button></> : <>
+    <p>{lead.nome} continua na sua carteira enquanto a gestão avalia. Nada é apagado.</p>
 
     <label>Motivo
       <select value={motivo} onChange={(e) => setMotivo(e.target.value)}>
@@ -627,13 +636,15 @@ function DescartarMobile({
                 placeholder="O que aconteceu? Ajuda quem for reabrir este lead depois." maxLength={500} rows={3} />
     </label>
 
+    {!disponivel && <p className="f2m-agendar-erro" role="alert">A aprovação gerencial ainda não está ativa no banco. Nenhum descarte imediato será feito.</p>}
     {erro && <p className="f2m-agendar-erro">{erro}</p>}
     <div className="f2m-agendar-acoes">
       <button type="button" className="f2m-agendar-nao" onClick={() => { setAberto(false); onFechar?.(); }} disabled={salvando}>Cancelar</button>
-      <button type="button" className="f2m-agendar-ok" onClick={() => void descartar()} disabled={salvando || !motivo}>
-        {salvando ? "Descartando…" : "Confirmar descarte"}
+      <button type="button" className="f2m-agendar-ok" onClick={() => void solicitar()} disabled={salvando || !motivo || !disponivel}>
+        {salvando ? "Enviando…" : "Enviar para aprovação"}
       </button>
     </div>
+    </>}
   </section>;
 }
 
@@ -651,6 +662,7 @@ function FichaLead({
   onSalvo,
   onRecarregar,
   tagCatalogo,
+  descarteContratoStatus,
 }: {
   lead: LeadFunil2;
   momento: MomentoFunil2 | null;
@@ -663,6 +675,7 @@ function FichaLead({
   onSalvo: (mensagem?: string) => void;
   onRecarregar: () => void;
   tagCatalogo: TagCatalogoFunil2[];
+  descarteContratoStatus: "ok" | "indisponivel" | "erro";
 }) {
   const [aba, setAba] = useState<"atendimento" | "notas" | "historico">("atendimento");
   const [chatAberto, setChatAberto] = useState(false);
@@ -737,9 +750,9 @@ function FichaLead({
 
       {chatAberto && (lead.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={lead.id} nome={lead.nome} onClose={() => setChatAberto(false)} /> : <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setChatAberto(false); }}><section><button type="button" onClick={() => setChatAberto(false)}>×</button><p>Este cliente ainda não possui conversa vinculada.</p></section></div>)}
 
-      {maisAcoes && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setMaisAcoes(false); }}><section role="dialog" aria-label="Mais ações"><i /><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("negociacao"); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("tag"); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); setAcaoMais("descarte"); }}>Descartar lead</button><p>O descarte pede motivo e confirmação antes de concluir.</p></section></div>}
+      {maisAcoes && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setMaisAcoes(false); }}><section role="dialog" aria-label="Mais ações"><i /><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("negociacao"); }}>Gerar negociação</button><button type="button" onClick={() => { setMaisAcoes(false); setAcaoMais("tag"); }}>Adicionar tag</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); setAcaoMais("descarte"); }}>Solicitar descarte</button><p>O lead só sai da carteira depois da decisão da gestão.</p></section></div>}
 
-      {acaoMais && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setAcaoMais(null); }}><section role="dialog" aria-label={acaoMais === "visita" ? "Agendar visita" : acaoMais === "negociacao" ? "Gerar negociação" : acaoMais === "tag" ? "Adicionar tag" : "Descartar lead"}><i />{acaoMais === "visita" && <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "negociacao" && <GerarNegociacaoMobile lead={lead} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "tag" && <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onRecarregar} mobile abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "descarte" && <DescartarMobile lead={lead} accessToken={accessToken} onDescartado={() => { onSalvo(); onFechar(); }} abertoInicial onFechar={() => setAcaoMais(null)} />}</section></div>}
+      {acaoMais && <div className="ape-ficha-sheet" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setAcaoMais(null); }}><section role="dialog" aria-label={acaoMais === "visita" ? "Agendar visita" : acaoMais === "negociacao" ? "Gerar negociação" : acaoMais === "tag" ? "Adicionar tag" : "Solicitar descarte"}><i />{acaoMais === "visita" && <AgendarVisitaMobile lead={lead} accessToken={accessToken} onSalvo={onSalvo} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "negociacao" && <GerarNegociacaoMobile lead={lead} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "tag" && <AssociarTagLead leadId={lead.id} catalogo={tagCatalogo} tagsAssociadas={(lead.tags ?? []).map((tag) => tag.nome)} accessToken={accessToken} onSalvo={onRecarregar} mobile abertoInicial onFechar={() => setAcaoMais(null)} />}{acaoMais === "descarte" && <DescartarMobile lead={lead} accessToken={accessToken} contratoStatus={descarteContratoStatus} onSolicitado={onRecarregar} abertoInicial onFechar={() => setAcaoMais(null)} />}</section></div>}
     </section>
   </div>;
 }
@@ -771,6 +784,8 @@ export function Funil2Mobile({
   const [trazendoLead, setTrazendoLead] = useState(false);
   const [avisoCarteira, setAvisoCarteira] = useState<string | null>(null);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
+  const [decidindoDescarte, setDecidindoDescarte] = useState<number | null>(null);
+  const [erroDescarte, setErroDescarte] = useState<string | null>(null);
   const [pedidoUrl] = useState(lerLeadDaUrl);
   const [agora] = useState(() => Date.now());
 
@@ -901,6 +916,25 @@ export function Funil2Mobile({
     return () => { ativo = false; };
   }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
+  const solicitacoesGestao = (dados?.descarteAprovacao?.solicitacoes ?? []).filter((item) => item.pode_decidir);
+
+  async function decidirDescarte(item: SolicitacaoDescarteFunil2, decisao: "aprovar" | "rejeitar") {
+    setDecidindoDescarte(item.solicitacao_id); setErroDescarte(null);
+    try {
+      const resposta = await fetch("/api/funil2", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decidirDescarte", id: item.funil_lead_id, versao: item.versao_lead, solicitacaoId: item.solicitacao_id, decisao }),
+      });
+      const json = await resposta.json().catch(() => ({})) as { error?: string };
+      if (!resposta.ok) throw new Error(json.error || "Não foi possível registrar a decisão.");
+      recarregar();
+    } catch (falha) {
+      setErroDescarte(falha instanceof Error ? falha.message : "Não foi possível registrar a decisão.");
+    } finally {
+      setDecidindoDescarte(null);
+    }
+  }
 
   const cartao = (lead: LeadFunil2) => <CartaoLead
     key={lead.id}
@@ -934,6 +968,15 @@ export function Funil2Mobile({
       <span><IconeCheck tamanho={20} /></span><strong>{avisoCarteira}</strong>
       <button type="button" aria-label="Fechar confirmação" onClick={() => setAvisoCarteira(null)}>×</button>
     </div>}
+
+    {solicitacoesGestao.length > 0 && <section className="ape-descarte-gestao" aria-label="Descartes aguardando decisão">
+      <header><span>DECISÃO DA GESTÃO</span><h2>{solicitacoesGestao.length} {solicitacoesGestao.length === 1 ? "pedido pendente" : "pedidos pendentes"}</h2><p>O corretor continua responsável até você decidir.</p></header>
+      {erroDescarte && <p role="alert">{erroDescarte}</p>}
+      <div>{solicitacoesGestao.map((item) => {
+        const lead = leads.find((candidato) => candidato.id === item.funil_lead_id);
+        return <article key={item.solicitacao_id}><button type="button" onClick={() => setSelecionado(item.funil_lead_id)}><strong>{lead?.nome ?? "Atendimento"}</strong><span>{item.corretor_nome ?? "Sem corretor"} · {item.motivo}</span></button><div><button type="button" disabled={decidindoDescarte !== null} onClick={() => void decidirDescarte(item, "rejeitar")}>Manter</button><button type="button" className="risco" disabled={decidindoDescarte !== null} onClick={() => void decidirDescarte(item, "aprovar")}>{decidindoDescarte === item.solicitacao_id ? "Salvando…" : "Aprovar"}</button></div></article>;
+      })}</div>
+    </section>}
 
     {modo === "inicio" && <section className="ape-numeros" aria-label="Resumo do dia">
       <article><b>{contagens.agora}</b><span>aguardando</span></article>
@@ -1035,6 +1078,7 @@ export function Funil2Mobile({
       eventos={(historicoDetalhe?.leadId === leadAberto.id ? historicoDetalhe.eventos : eventos.filter((evento) => evento.funil_lead_id === leadAberto.id)).sort((a, b) => +new Date(b.criado_em) - +new Date(a.criado_em))}
       notas={historicoDetalhe?.leadId === leadAberto.id ? historicoDetalhe.notas : notas.filter((nota) => nota.funil_lead_id === leadAberto.id)}
       tagCatalogo={dados?.tagCatalogo ?? []}
+      descarteContratoStatus={dados?.descarteAprovacao?.status ?? "indisponivel"}
       onFechar={() => { setSelecionado("__fechado__"); limparLeadDaUrl(); }}
       accessToken={accessToken}
       onSalvo={(mensagem) => { setSucesso(mensagem ?? "Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}

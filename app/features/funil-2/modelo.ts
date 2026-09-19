@@ -258,6 +258,19 @@ export type LeadFunil2 = {
   versaoDados?: string | null;
 };
 
+export type SolicitacaoDescarteFunil2 = {
+  solicitacao_id: number;
+  funil_lead_id: string;
+  versao_lead: number;
+  motivo: string;
+  detalhe: string | null;
+  status: "pendente";
+  solicitada_em: string;
+  corretor_id: number | null;
+  corretor_nome: string | null;
+  pode_decidir: boolean;
+};
+
 export type EventoFunil2 = {
   id: number;
   funil_lead_id: string;

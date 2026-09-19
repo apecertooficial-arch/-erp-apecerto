@@ -13,13 +13,12 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `f900d7f8`;
-  usuário autorizou publicação de código validado. Os commits locais mais
-  recentes ainda não foram enviados por falha do helper Git; merge e deploy
-  não foram executados
-- HEAD local funcional validado: `cc964cdc`, com a fatia de encaminhamento
-  obrigatório em cancelamento/não comparecimento pronta para commit
-- HEAD remoto da branch: `f900d7f8`
+- ambiente: branch isolada enviada ao repositório oficial até `e8a805a7`;
+  usuário autorizou publicação de código validado. Merge e deploy não foram
+  executados
+- HEAD local e remoto antes da fatia em curso: `e8a805a7`
+- árvore local em curso: aprovação gerencial de descarte no Funil 2, ainda não
+  commitada neste checkpoint
 
 ## Concluído
 
@@ -93,6 +92,18 @@ declarar o ERP inteiro pronto sem evidência.
   ação explícita em desktop, aplicativo, APIs e draft de banco; 528/528 testes,
   24/24 contratos direcionados, typecheck, ESLint, build e navegador real
   aprovados, sem mutação externa.
+- os 13 commits acumulados da reconstrução foram enviados à branch oficial até
+  `e8a805a7`, usando o chaveiro macOS sem alterar a configuração global
+  quebrada. A integração GitHub permitiu leitura, mas recusou criar PR com 403;
+  não houve merge ou deploy;
+- descarte F2 foi fechado localmente na aplicação: corretor solicita, o lead
+  permanece na carteira e gestão mantém ou aprova. A porta antiga de descarte
+  imediato retorna conflito; ausência do contrato novo falha fechada sem
+  derrubar a leitura do CRM. Draft aditivo e reversível preparado fora de
+  migrations; 10/10 contratos específicos, 538/538 no gate frontend,
+  typecheck, lint e build aprovados; navegador desktop e 390 × 844 validado
+  sem mutação. Rastreio em
+  `docs/erp-reestruturacao/TRACE_F2_DESCARTE_APROVACAO.md`.
 
 ## Em andamento
 
@@ -103,10 +114,10 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- o remoto contém os commits até `f900d7f8`; `deeaeaf8` e `b275e0de` estão
-  confirmados localmente e aguardam somente o reparo mínimo da autenticação de
-  escrita. Merge e deploy continuam pendentes do gate do payload, CI e
-  validação do SHA, não de uma janela de duas horas.
+- o remoto contém os commits até `e8a805a7`; a fatia de aprovação de descarte
+  está validada localmente e aguarda commit/push. Merge e deploy continuam
+  pendentes do gate do payload, CI e validação do SHA, não de uma janela de
+  duas horas.
 
 ## Arquivos alterados/relevantes
 
@@ -348,11 +359,10 @@ declarar o ERP inteiro pronto sem evidência.
 - árvore isolada contém a reconstrução visual e operacional local; preservar
   integralmente e não misturar com `main`;
 - as mudanças estão integradas somente à Agenda desta branch, não à produção;
-- o helper Git configurado aponta para um `gh` removido. O chaveiro não
-  forneceu credencial utilizável nesta sessão e a integração GitHub confirmou
-  leitura, mas recusou escrita com `403 Resource not accessible by integration`.
-  Não alterar/rotacionar credenciais sem autoridade; os commits locais
-  permanecem recuperáveis e testados;
+- o helper Git configurado aponta para um `gh` removido. O chaveiro macOS
+  funciona quando selecionado apenas no comando de push, sem modificar a
+  configuração global. A integração GitHub continua recusando criação de PR
+  com `403 Resource not accessible by integration`;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
 - a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
@@ -362,13 +372,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Avançar localmente a visão gerencial de cobrança e qualidade por corretor e,
-quando existir Postgres isolado com CLI oficial, ensaiar os contratos de
-confirmação, visita, áudio e alertas mantendo o dispatcher desligado. A
-fatia `ação → Sara → próxima ação → Meu Dia` está no commit `9ef77038` e o
-feedback estruturado de visita está no commit `714dbfd5`; nenhum deles inclui o
-symlink `node_modules`. Para publicar os commits locais, reparar somente o
-acesso de escrita do GitHub (novo login do `gh` ou helper válido), sem
-criar/rotacionar credenciais automaticamente. Não usar `main` do Supabase como
+Commitar e enviar a fatia de aprovação gerencial de descarte sem incluir o
+symlink `node_modules`. Em seguida, avançar localmente a visão gerencial de
+cobrança e qualidade por corretor. Quando existir Postgres isolado com CLI
+oficial, ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
+mantendo os dispatchers desligados. Não usar `main` do Supabase como
 laboratório. Merge/deploy de código e migration permanecem etapas distintas e
 verificáveis; nunca agrupar `db push` ao deploy de aplicação.

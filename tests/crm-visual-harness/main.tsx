@@ -45,6 +45,25 @@ const payloadMeuDia = {
   leads: leadsMeuDia,
   negociosVinculados: payloadNormal.negociosVinculados.filter((item) => leadsMeuDia.some((lead) => lead.id === item.funil_lead_id)),
 };
+const payloadFunil = {
+  ...payloadNormal,
+  fontes: { ...(payloadNormal.fontes ?? {}), descarte: "ok" },
+  descarteAprovacao: {
+    status: "ok",
+    solicitacoes: papel === "corretor" ? [] : [{
+      solicitacao_id: 9101,
+      funil_lead_id: leads[0]!.id,
+      versao_lead: leads[0]!.versao,
+      motivo: "Produto incompatível",
+      detalhe: "Cliente procura outra configuração.",
+      status: "pendente",
+      solicitada_em: "2026-09-19T12:30:00Z",
+      corretor_id: 7,
+      corretor_nome: "Corretora Alfa",
+      pode_decidir: true,
+    }],
+  },
+};
 const pendenciasAgenda = [
   { id: "10000000-0000-4000-8000-000000000001", data: "2026-08-17", hora: "10:00", tipo: "visita", cliente: "Cliente sanitizado 1", local: "Local sanitizado", produto: "Produto Alfa", negocio_id: 101, status: "realizada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -47_000, com_gerente: true, gerente_id: 1 },
   { id: "10000000-0000-4000-8000-000000000002", data: "2026-08-23", hora: "14:30", tipo: "visita", cliente: "Cliente sanitizado 2", local: "Local sanitizado", produto: "Produto Beta", negocio_id: 102, status: "agendada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -38_000, com_gerente: false, gerente_id: null },
@@ -109,7 +128,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
     if (url.searchParams.has("historicoLeadId")) return json({ eventos: payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(estado === "vazio" ? payloadVazio : tela === "mobile-day" ? payloadMeuDia : payloadNormal);
+    return json(estado === "vazio" ? payloadVazio : tela === "mobile-day" ? { ...payloadMeuDia, descarteAprovacao: payloadFunil.descarteAprovacao } : payloadFunil);
   }
   if (url.pathname === "/api/funil2/conversa") {
     return json({

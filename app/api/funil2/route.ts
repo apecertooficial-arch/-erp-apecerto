@@ -112,6 +112,11 @@ function statusErroBanco(error: { code?: string; message?: string } | null | und
   return 502;
 }
 
+function contratoDescarteAusente(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST202"
+    || /f2_listar_solicitacoes_descarte|schema cache|could not find the function/i.test(error?.message ?? "");
+}
+
 export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
@@ -138,7 +143,7 @@ export async function GET(request: Request) {
     { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
     { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
-    { data: tagCatalogo, error: e9 },
+    { data: tagCatalogo, error: e9 }, { data: solicitacoesDescarte, error: erroDescarte },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
     db.from("f2_momento_config").select("*").order("etapa", { ascending: true }).order("ordem", { ascending: true }),
@@ -149,6 +154,7 @@ export async function GET(request: Request) {
     db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
+    db.rpc("f2_listar_solicitacoes_descarte"),
   ]);
   if (e1 || e2 || e4 || e5 || e7 || e9) {
     const primeiroErro = e1 ?? e2 ?? e4 ?? e5 ?? e7 ?? e9;
@@ -352,6 +358,7 @@ export async function GET(request: Request) {
       instanciasPadrao: instanciasResultado.erro ? "erro" : "ok",
       operacao: e8 ? "erro" : "ok",
       sara: erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+      descarte: erroDescarte ? (contratoDescarteAusente(erroDescarte) ? "indisponivel" : "erro") : "ok",
     }, aquario: aquario ?? [],
     /* A lista só retorna sem erro quando a própria função canônica reconhece
        a sessão como admin ou corretor cadastrado. A interface não deduz
@@ -359,6 +366,10 @@ export async function GET(request: Request) {
     podePescar: true,
     operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
+    descarteAprovacao: {
+      status: erroDescarte ? (contratoDescarteAusente(erroDescarte) ? "indisponivel" : "erro") : "ok",
+      solicitacoes: erroDescarte ? [] : solicitacoesDescarte ?? [],
+    },
     sara: {
       modo: saraF2Config?.enabled === true
         ? saraF2Config.modo_execucao === "completo" ? "completo" : "canary"
@@ -604,6 +615,13 @@ const RECUSAS: Record<string, string> = {
   ja_descartado: "Este lead já foi descartado.",
   motivo_obrigatorio: "Escolha o motivo do descarte.",
   motivo_invalido: "Motivo de descarte desconhecido.",
+  idempotencia_obrigatoria: "Não foi possível proteger esta solicitação contra repetição. Tente novamente.",
+  idempotencia_em_conflito: "Esta tentativa já foi usada em outro atendimento. Feche e abra o formulário novamente.",
+  descarte_ja_pendente: "Já existe uma solicitação de descarte aguardando a gestão.",
+  gestao_obrigatoria: "Somente a gestão pode decidir este descarte.",
+  decisao_invalida: "Escolha aprovar ou manter o lead na carteira.",
+  solicitacao_nao_encontrada: "A solicitação não existe mais. Atualize o Funil.",
+  solicitacao_ja_decidida: "Esta solicitação já foi decidida. Atualize o Funil.",
   resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
   feedback_incompleto: "Preencha o feedback estruturado da visita antes de salvar.",
   feedback_qualidade_insuficiente: "Complete o feedback até atingir pelo menos 9/10 de qualidade.",
@@ -689,13 +707,30 @@ export async function PATCH(request: Request) {
     }
     rpc = "f2_confirmar_acao";
     args = { p_id: id, p_versao: versao, p_fonte: "registro_operacional", p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
-  } else if (action === "descartar") {
-    /* Nenhum lead sai do funil sozinho, por silencio ou por tempo. Sempre tem
-       alguem clicando e escolhendo o motivo -- regra do Romulo, 05/08/2026. */
+  } else if (action === "solicitarDescarte") {
+    /* O corretor registra a evidência, mas o lead só sai após decisão da
+       gestão. A chave nasce na interface e torna uma repetição de rede segura. */
     const motivo = String(body.motivo ?? "").trim();
     if (!motivo) return Response.json({ error: "Escolha o motivo do descarte." }, { status: 422 });
-    rpc = "f2_descartar_lead";
-    args = { p_id: id, p_versao: versao, p_motivo: motivo.slice(0, 80), p_detalhe: String(body.detalhe ?? "").slice(0, 500) || null };
+    const idempotencyKey = String(body.idempotencyKey ?? "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+      return Response.json({ error: RECUSAS.idempotencia_obrigatoria, erro: "idempotencia_obrigatoria" }, { status: 422 });
+    }
+    rpc = "f2_solicitar_descarte";
+    args = { p_id: id, p_versao: versao, p_motivo: motivo.slice(0, 80), p_detalhe: String(body.detalhe ?? "").slice(0, 500) || null, p_idempotency_key: idempotencyKey };
+  } else if (action === "decidirDescarte") {
+    const solicitacaoId = Number(body.solicitacaoId);
+    const decisao = body.decisao === "aprovar" ? "aprovar" : body.decisao === "rejeitar" ? "rejeitar" : "";
+    if (!Number.isSafeInteger(solicitacaoId) || solicitacaoId < 1 || !decisao) {
+      return Response.json({ error: RECUSAS.decisao_invalida, erro: "decisao_invalida" }, { status: 422 });
+    }
+    rpc = "f2_decidir_descarte";
+    args = { p_solicitacao_id: solicitacaoId, p_versao: versao, p_decisao: decisao, p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+  } else if (action === "descartar") {
+    return Response.json({
+      error: "O descarte imediato foi encerrado. Envie a solicitação para decisão da gestão.",
+      erro: "aprovacao_gestao_obrigatoria",
+    }, { status: 409 });
   } else {
     return Response.json({ error: "Ação desconhecida." }, { status: 400 });
   }

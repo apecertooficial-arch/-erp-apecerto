@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type ArquivoVinculadoFunil2, type AtividadeFunil2, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type ImovelVinculadoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NegocioVinculadoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type ArquivoVinculadoFunil2, type AtividadeFunil2, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type ImovelVinculadoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NegocioVinculadoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type SolicitacaoDescarteFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
 import { combinarAtividades, validarMovimentoSeguro } from "./contratos.mjs";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
@@ -28,7 +28,7 @@ import { RESULTADOS_VISITA, type StatusResultadoVisita, validarResultadoVisita }
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
-  visitas?: VisitaFunil2[]; atividades?: AtividadeFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro"; conversas?: "ok" | "erro"; instanciasPadrao?: "ok" | "erro"; operacao?: "ok" | "erro"; sara?: "ok" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; podePescar?: boolean; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; error?: string; erro?: string; alteracaoAplicada?: boolean; reconciliacaoNecessaria?: boolean;
+  visitas?: VisitaFunil2[]; atividades?: AtividadeFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro"; conversas?: "ok" | "erro"; instanciasPadrao?: "ok" | "erro"; operacao?: "ok" | "erro"; sara?: "ok" | "erro"; descarte?: "ok" | "indisponivel" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; podePescar?: boolean; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; descarteAprovacao?: { status: "ok" | "indisponivel" | "erro"; solicitacoes: SolicitacaoDescarteFunil2[] }; error?: string; erro?: string; alteracaoAplicada?: boolean; reconciliacaoNecessaria?: boolean;
 };
 
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
@@ -104,6 +104,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [podePescar, setPodePescar] = useState(false);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+  const [descarteAprovacao, setDescarteAprovacao] = useState<{ status: "ok" | "indisponivel" | "erro"; solicitacoes: SolicitacaoDescarteFunil2[] }>({ status: "indisponivel", solicitacoes: [] });
   /* O corretor entra pelo trabalho que exige ação agora. O quadro continua
      disponível como visão complementar da jornada, sem competir com a fila. */
   const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("dia");
@@ -171,6 +172,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setPodePescar(resposta.json.podePescar === true);
     setOperacao(resposta.json.operacao ?? null);
     setSara(resposta.json.sara ?? { modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+    setDescarteAprovacao(resposta.json.descarteAprovacao ?? { status: "indisponivel", solicitacoes: [] });
   }, [accessToken]);
 
   useEffect(() => {
@@ -185,6 +187,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setEventos(resposta.json.eventos ?? []);
       setNotas(resposta.json.notas ?? []);
       setTagCatalogo(resposta.json.tagCatalogo ?? []);
+      setDescarteAprovacao(resposta.json.descarteAprovacao ?? { status: "indisponivel", solicitacoes: [] });
       setEtapas(resposta.json.etapas ?? []);
       setVisitas(resposta.json.visitas ?? []);
       setAtividades(resposta.json.atividades ?? []);
@@ -326,6 +329,30 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     await carregar(); return true;
   }
 
+  async function decidirDescarte(solicitacao: SolicitacaoDescarteFunil2, decisao: "aprovar" | "rejeitar") {
+    setBusy(true); setErro(null); setSucesso(null);
+    const resposta = await api(accessToken, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action: "decidirDescarte",
+        id: solicitacao.funil_lead_id,
+        versao: solicitacao.versao_lead,
+        solicitacaoId: solicitacao.solicitacao_id,
+        decisao,
+      }),
+    });
+    setBusy(false);
+    if (!resposta.ok) {
+      if (resposta.json.erro === "versao_desatualizada") await carregar();
+      setErro(resposta.json.error ?? "Não foi possível registrar a decisão do descarte.");
+      return;
+    }
+    setSucesso(decisao === "aprovar"
+      ? "Descarte aprovado. O lead saiu da carteira sem perder o histórico."
+      : "Descarte rejeitado. O lead continua na carteira do corretor.");
+    await carregar();
+  }
+
   /* Menu, arrasto e ação em massa convergem aqui. A interface não altera a
      etapa por conta própria: cada item passa pelo mesmo RPC canônico de
      atualização de momento, com versão otimista, e a carteira é relida ao fim. */
@@ -440,8 +467,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       </header>
 
       {erro && <div className="f2-erro">{erro}</div>}
-      {sucesso && <div className="f2-sucesso" role="status"><span>{sucesso}</span><button type="button" onClick={() => { setAba("visitas"); setSucesso(null); }}>Ver visitas</button><button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button></div>}
+      {sucesso && <div className="f2-sucesso" role="status"><span>{sucesso}</span>{sucesso.startsWith("Visita") && <button type="button" onClick={() => { setAba("visitas"); setSucesso(null); }}>Ver visitas</button>}<button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button></div>}
       {fontes?.sara === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Sara temporariamente indisponível.</strong><span>Os atendimentos continuam visíveis, mas a leitura automática pode estar desatualizada.</span></div>}
+      {podeGerir && descarteAprovacao.status === "erro" && <div className="f2-aviso-fonte" role="alert"><strong>Fila de descartes indisponível.</strong><span>Nenhum pedido será tratado como aprovado até a leitura ser restabelecida.</span></div>}
+      {podeGerir && descarteAprovacao.solicitacoes.some((item) => item.pode_decidir) && <FilaDescarteGestao solicitacoes={descarteAprovacao.solicitacoes.filter((item) => item.pode_decidir)} leads={leads} busy={busy} onAbrir={setSelecionado} onDecidir={(item, decisao) => void decidirDescarte(item, decisao)} />}
       {aba === "config" && fontes?.operacao === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Configuração operacional indisponível.</strong><span>Não altere parâmetros até a leitura ser restabelecida.</span></div>}
       {carregando && <div className="f2-loading">Carregando o Funil…</div>}
 
@@ -564,7 +593,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
       {modal === "visita" && lead && <ModalVisita key={lead.id} accessToken={accessToken} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
       {modal === "negociacao" && <ModalNegociacao accessToken={accessToken} leads={leads} leadFoco={lead} busy={busy} onFechar={() => setModal(null)} onSalvar={(dados) => void executar("salvarNegociacao", dados)} />}
-      {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe) => { void atualizar("descartar", { motivo, detalhe }).then((ok) => { if (ok) { setModal(null); setSelecionado(null); } }); }} />}
+      {modal === "descartar" && lead && <ModalDescartar nome={lead.nome} busy={busy} contratoStatus={descarteAprovacao.status} onFechar={() => setModal(null)} onDescartar={(motivo, detalhe, idempotencyKey) => { void atualizar("solicitarDescarte", { motivo, detalhe, idempotencyKey }).then((ok) => { if (ok) { setModal(null); setSucesso("Solicitação enviada. O lead continua na carteira até a decisão da gestão."); } }); }} />}
       {adicionarClienteAberto && <AdicionarClienteModal accessToken={accessToken} onClose={() => setAdicionarClienteAberto(false)} onCreated={(funilLeadId) => { setAdicionarClienteAberto(false); void carregar().then(() => setSelecionado(funilLeadId)); }} />}
       {negociacaoCanonicaLeadId && (() => {
         const leadNegociacao = leads.find((item) => item.id === negociacaoCanonicaLeadId);
@@ -859,15 +888,38 @@ export function ModalPescar({ candidatos, busy, erro, onFechar, onPescar }: { ca
    descarte sem motivo contavel vira desculpa no fim do mes; o detalhe fica
    opcional para o caso que a lista nao explica. O lead nao e apagado: sai da
    carteira e continua no banco com autor, data e motivo. */
-function ModalDescartar({ nome, busy, onFechar, onDescartar }: { nome: string; busy: boolean; onFechar: () => void; onDescartar: (motivo: string, detalhe: string) => void }) {
+function ModalDescartar({ nome, busy, contratoStatus, onFechar, onDescartar }: { nome: string; busy: boolean; contratoStatus: "ok" | "indisponivel" | "erro"; onFechar: () => void; onDescartar: (motivo: string, detalhe: string, idempotencyKey: string) => void }) {
   const [motivo, setMotivo] = useState("");
   const [detalhe, setDetalhe] = useState("");
-  return <Modal titulo="Descartar lead" texto={`${nome} sai da carteira com motivo registrado. Nada é apagado: o histórico e o negócio de origem continuam de pé.`} onFechar={onFechar}>
+  const [idempotencyKey] = useState(() => globalThis.crypto?.randomUUID?.() ?? "");
+  const disponivel = contratoStatus === "ok" && Boolean(idempotencyKey);
+  return <Modal titulo="Solicitar descarte" texto={`Envie o motivo de ${nome} para a gestão. O lead continua na carteira até a decisão e nada do histórico é apagado.`} onFechar={onFechar}>
     <label>Motivo do descarte<select value={motivo} onChange={(e) => setMotivo(e.target.value)}><option value="">— escolha o motivo —</option>{MOTIVOS_DESCARTE.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
     <label>Detalhe <small>(opcional)</small><textarea value={detalhe} onChange={(e) => setDetalhe(e.target.value)} placeholder="O que aconteceu? Ajuda quem for reabrir este lead depois." maxLength={500} /></label>
-    <div className="f2-descarte-aviso"><b>O lead sai do seu Meu Dia na hora.</b><small>Se voltar a responder, a gestão consegue reabrir com todo o histórico.</small></div>
-    <button type="button" className="f2-modal-primary" disabled={busy || !motivo} onClick={() => onDescartar(motivo, detalhe)}>{busy ? "Descartando…" : "Descartar lead"}</button>
+    <div className="f2-descarte-aviso"><b>O lead não sai do Meu Dia agora.</b><small>A gestão aprova ou rejeita o pedido; a decisão fica registrada no histórico.</small></div>
+    {!disponivel && <p className="f2-modal-erro" role="alert">A aprovação gerencial ainda não está ativa no banco. Nenhum descarte imediato será feito.</p>}
+    <button type="button" className="f2-modal-primary" disabled={busy || !motivo || !disponivel} onClick={() => onDescartar(motivo, detalhe, idempotencyKey)}>{busy ? "Enviando…" : "Enviar para aprovação"}</button>
   </Modal>;
+}
+
+function FilaDescarteGestao({ solicitacoes, leads, busy, onAbrir, onDecidir }: {
+  solicitacoes: SolicitacaoDescarteFunil2[];
+  leads: LeadFunil2[];
+  busy: boolean;
+  onAbrir: (id: string) => void;
+  onDecidir: (item: SolicitacaoDescarteFunil2, decisao: "aprovar" | "rejeitar") => void;
+}) {
+  return <section className="f2-descarte-fila" aria-label="Descartes aguardando decisão">
+    <header><div><span className="f2-eyebrow">DECISÃO DA GESTÃO</span><h2>{solicitacoes.length} {solicitacoes.length === 1 ? "descarte aguarda" : "descartes aguardam"} você</h2><p>O lead permanece com o corretor até a decisão.</p></div></header>
+    <div>{solicitacoes.map((item) => {
+      const lead = leads.find((candidato) => candidato.id === item.funil_lead_id);
+      return <article key={item.solicitacao_id}>
+        <button type="button" className="f2-descarte-cliente" onClick={() => onAbrir(item.funil_lead_id)}><strong>{lead?.nome ?? "Atendimento"}</strong><span>{item.corretor_nome ?? "Sem corretor"} · {item.motivo}</span></button>
+        <time dateTime={item.solicitada_em}>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(item.solicitada_em))}</time>
+        <span className="f2-descarte-decisoes"><button type="button" disabled={busy} onClick={() => onDecidir(item, "rejeitar")}>Manter na carteira</button><button type="button" className="risco" disabled={busy} onClick={() => onDecidir(item, "aprovar")}>Aprovar descarte</button></span>
+      </article>;
+    })}</div>
+  </section>;
 }
 
 /* AGENDAR VISITA — versao completa, igual a do CRM antigo.
@@ -1087,7 +1139,7 @@ function Detalhe({
             <button type="button" onClick={onAgendarVisita}>Agendar visita</button>
             <Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Nova atividade</Link>
             <button type="button" className="f2-iniciar-negociacao" onClick={onIniciarNegociacao}>Iniciar negociação</button>
-            <span><button type="button" aria-label="Mais ações" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Novo negócio operacional</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Descartar lead</button></div>}</span>
+            <span><button type="button" aria-label="Mais ações" aria-expanded={maisAcoes} onClick={() => setMaisAcoes((valor) => !valor)}>Mais <b>⌄</b></button>{maisAcoes && <div className="f2-mais-menu" role="menu"><button type="button" onClick={() => { setMaisAcoes(false); onGerarNegociacao(); }}>Novo negócio operacional</button><button type="button" onClick={() => { setMaisAcoes(false); setTagAberta(true); }}>Adicionar tag</button><button type="button" disabled={busy} onClick={() => { setMaisAcoes(false); onMomento(lead.momento_codigo, "", "Momento revalidado pela ficha"); }}>Atualizar prazo do momento</button><hr /><button type="button" className="risco" onClick={() => { setMaisAcoes(false); onDescartar(); }}>Solicitar descarte</button></div>}</span>
             <button type="button" className="f2-ficha-fechar" onClick={fecharFicha} aria-label="Fechar ficha">×</button>
           </div>
         </div>
