@@ -6,6 +6,7 @@ Ambiente de implementação: worktree local isolada; publicação de código som
 Worktree: `/private/tmp/apecerto-erp-crm-visual`
 Branch: `codex/erp-crm-visual-concept`
 Base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
+HEAD de implementação revalidado: `1a3c894befb93e4a1f828f46e5fc9c2748e4226f`
 
 ## Resultado deste ciclo
 
@@ -85,6 +86,35 @@ publicada apenas porque o relógio chegou a um horário.
 A antiga automação de duas horas está `PAUSED` e existe apenas como registro.
 Ela não agenda, limita ou desacelera a execução. Checkpoints são escritos quando
 há mudança material, conclusão, falha ou decisão necessária — não por relógio.
+
+### Cadência e publicação sem ambiguidade
+
+“A cada duas horas” nunca é um critério de publicação. A sequência efetiva é:
+
+1. trabalhar continuamente na fatia de maior risco ou impacto;
+2. testar assim que a mudança estiver pronta, sem aguardar horário;
+3. enviar o commit aprovado para a branch isolada;
+4. promover o SHA exato somente depois do gate técnico e operacional;
+5. validar esse mesmo SHA em produção e reverter se o comportamento publicado
+   falhar.
+
+Se uma fatia ficar pronta antes, ela avança antes. Se ainda estiver insegura,
+duas horas não a tornam publicável. Os checkpoints servem para o usuário
+acompanhar progresso e bloqueios; eles não dividem a execução em lotes.
+
+Os estados não são sinônimos:
+
+- **preparado:** código e contrato existem na worktree;
+- **enviado:** commit está na branch remota isolada, sem impacto na produção;
+- **aprovado para promover:** suíte, build, navegador, segurança e payload
+  passaram;
+- **publicado:** o SHA aprovado está efetivamente servido no ambiente-alvo;
+- **validado:** o fluxo positivo e negativo foi repetido no ambiente publicado,
+  em desktop e PWA/aplicativo quando aplicável.
+
+Nenhuma atualização de banco será escondida dentro de um deploy de aplicação.
+Migration, função Edge, código e configuração são promovidos por gates próprios,
+com ordem, verificação e rollback explícitos.
 
 ## Revalidação integral do escopo de 2026-09-19
 
@@ -421,3 +451,17 @@ canário permanece desligado e nenhuma migration foi aplicada.
 O gate final não converte automaticamente todo o roadmap em entregue. Cada
 módulo terá sua própria classificação na matriz, e apenas itens com evidência
 positiva serão marcados como concluídos.
+
+## Compromisso de prazo revalidado
+
+Até domingo às 18:00, o compromisso verificável é executar continuamente,
+publicar as fatias que atravessarem todos os gates e entregar um placar objetivo
+de `validado / publicado / pronto para promover / parcial / bloqueado` para cada
+área. Não existe base técnica para garantir antecipadamente que todo CRM, Sara,
+visitas, automações, PWA, produtos, vendas, financeiro, banco, integrações e
+legado estará reconstruído, migrado e certificado em produção nessa janela.
+
+O escopo completo permanece obrigatório no roadmap; o que muda é a honestidade
+da certificação. Nenhum item será chamado de pronto só para cumprir o relógio,
+e nenhuma duplicação será excluída antes de provar autoridade canônica,
+dependências, preservação do histórico, substituição, backup e rollback.

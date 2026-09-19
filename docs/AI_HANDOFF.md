@@ -13,12 +13,12 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `70c435fa`;
+- ambiente: branch isolada enviada ao repositório oficial até `1a3c894b`;
   usuário autorizou publicação de código validado. Merge e deploy não foram
   executados
-- HEAD local e remoto antes da fatia em curso: `70c435fa`
-- árvore local em curso: contrato de ciclo dos alertas de automação, ainda não
-  commitado neste checkpoint
+- HEAD local e remoto revalidado: `1a3c894b`
+- árvore local: limpa quanto a mudanças versionadas; preservar o symlink local
+  não versionado `node_modules`
 
 ## Concluído
 
@@ -118,8 +118,9 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- o remoto contém os commits até `3f095424`; a fatia de Avisos está validada
-  localmente e aguarda commit/push. Merge e deploy continuam
+- o remoto contém os commits até `1a3c894b`; a fatia de Avisos e o contrato de
+  ciclo dos alertas de automação foram testados e enviados à branch isolada.
+  Merge e deploy continuam
   pendentes do gate do payload, CI e validação do SHA, não de uma janela de
   duas horas.
 
@@ -409,9 +410,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Commitar e enviar o contrato de ciclo dos alertas de automação sem incluir o
-symlink `node_modules`. Em seguida, avançar na resolução por evidência dos 162
-alertas ativos, sem classificar idade como prova de obsolescência. Quando
+Avançar na resolução por evidência dos 162 alertas ativos, sem classificar idade
+como prova de obsolescência. Determinar, por metadados e contratos canônicos, a
+evidência de encerramento de `primeira_abordagem_pendente`,
+`canal_indisponivel`, `lead_em_atendimento` e `lead_quente`. Quando
 existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
 mantendo os dispatchers desligados. Não usar `main` do Supabase como
