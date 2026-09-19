@@ -1,6 +1,6 @@
 # Trace — lead → Sara → próxima ação
 
-Atualizado em: 2026-09-19 14:10 America/Sao_Paulo
+Atualizado em: 2026-09-19 17:40 America/Sao_Paulo
 Escopo: código canônico local + metadados agregados de produção, sem PII e sem escrita.
 
 ## Veredito
@@ -27,8 +27,11 @@ teste e corrigido localmente.
 ## Estado remoto sanitizado observado
 
 - projeto Supabase `diaegvfveqezispcthwk`: `ACTIVE_HEALTHY`, Postgres 17;
-- dispatcher: modo `worker`, heartbeat com 4 segundos, `lag_seconds=0`;
-- fila: 211 pendentes, todas da Sara e nenhuma vencida; 0 processando, 0 falhas;
+- dispatcher: modo `worker`, heartbeat com 6 segundos, `lag_seconds=0`, último
+  sucesso há 79 segundos e último erro há mais de 25 horas;
+- fila: 193 pendentes, todas da Sara e nenhuma vencida; 0 processando. Existem
+  763 registros históricos com status `erro`, que não são fila ativa e exigem
+  reconciliação separada antes de qualquer descarte;
 - cron comercial correspondente: nenhum ativo, conforme o cutover para worker;
 - `f2_sara_config`: ligada, modo `completo`, lote 10;
 - `ncrm_sara_config`: `observer`; runner legado desligado;
@@ -68,13 +71,12 @@ As consultas abaixo usam apenas contagens e percentis dos últimos 30 dias:
   análise foi 6,5 s e o p95 foi 10,3 s;
 - checkpoints de próxima ação aparecem deliberadamente cerca de um dia depois
   da última mensagem; não devem ser misturados ao SLA da conversa em tempo real;
-- 671 cards ativos e não legados: 100% possuem etapa, momento e próxima ação;
-- 523/671 possuem temperatura, 342/671 possuem nota + resumo de qualidade e
-  557/671 já receberam reavaliação da Sara;
-- 338/671 próximas ações estão vencidas. As maiores concentrações são cadência
-  sem resposta (136), conversando/qualificando (59) e produto enviado (32);
-- existem 6 cards em `VISITA_REALIZADA` com próxima ação vencida e 10 em
-  acompanhamento pós-visita vencido.
+- 675 cards ativos e não legados: 100% possuem etapa, momento e próxima ação;
+- 527/675 possuem temperatura, 343/675 possuem nota + resumo de qualidade e
+  561/675 já receberam reavaliação da Sara;
+- 375/675 próximas ações estão vencidas;
+- existem 27 cards na etapa `visita` com próxima ação vencida e 14 em
+  `pos_visita` vencido.
 
 Conclusão: o evento direto da Sara está rápido no período recente. O problema
 mais grave não é o transporte imediato da IA, mas o estoque de obrigações
@@ -84,11 +86,12 @@ cobranças ao corretor e ao gerente.
 ## P0 descoberto — alertas duplicados por cliente
 
 Produção possuía 690 alertas `acao_vencida` da Sara abertos na primeira leitura
-desta fatia, correspondentes a apenas 132 cards. Minutos depois eram 694: 347
-para gestão e 347 para corretores. Existem 154 grupos `card + público` com mais
-de um alerta; o máximo observado foi 35 alertas para o mesmo card e público.
-Dezesseis alertas pertencem a cards já descartados. A variação durante a própria
-inspeção comprova que o produtor continua ampliando o estoque.
+desta fatia, correspondentes a apenas 132 cards. Minutos depois eram 694. Na
+revalidação das 17:40 já eram 744: 372 para gestão e 372 para corretores,
+correspondentes a 135 cards. Existem 168 grupos `card + público` com mais de um
+alerta; o máximo observado subiu para 36. Dezesseis alertas pertencem a cards já
+descartados. O crescimento 690 → 694 → 744 comprova que o produtor continua
+ampliando o estoque.
 
 Todos os alertas atuais têm `execution_id`, mas a chave idempotente é por
 execução/checkpoint, não por cliente + público. Assim, cada novo prazo vencido
@@ -102,12 +105,19 @@ deve ser mascarado apenas no frontend. Alterar a função em produção continua
 gate de migration específica.
 
 O contrato local dessa correção está em
-`P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, acompanhado por sete testes de invariantes.
+`P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, acompanhado por oito testes de invariantes.
 Ele adiciona vínculo direto ao card F2, consolida sem `DELETE`, fecha descartados,
 impõe unicidade parcial sob concorrência, resolve por evidência/confirmação e
 separa o total autorizado do limite visual de cem itens. Permanece fora de
 `supabase/migrations` porque a CLI oficial não está disponível e nomes de
 migration não serão inventados manualmente.
+
+Revisão adicional encontrou e removeu do draft uma chamada que reativaria o
+sincronizador legado `ncrm_private.notificacoes_sincronizar()`. A definição
+produtiva usa corretamente `f2_notificacoes_sincronizar()`, um no-op explícito
+porque os produtores finais já escrevem a obrigação. O contrato também passou
+a reconhecer o grupo `gestao`, em vez de limitar o painel gerencial a
+`admin/executivo` por `can_manage_all()`.
 
 ## Lacunas e próximos gates
 

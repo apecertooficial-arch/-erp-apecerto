@@ -325,8 +325,12 @@ begin
     return jsonb_build_object('ok', false, 'erro', 'nao_autenticado');
   end if;
 
-  perform ncrm_private.notificacoes_sincronizar();
-  v_gestor := coalesce(public.can_manage_all(), false);
+  -- Preserva a autoridade F2. A função canônica é um no-op explícito porque
+  -- os produtores finais já mantêm as notificações em tempo real. Chamar o
+  -- sincronizador ncrm_private reativaria a geração aposentada e duplicaria a
+  -- obrigação que este contrato está consolidando.
+  perform public.f2_notificacoes_sincronizar();
+  v_gestor := coalesce(public.papel_no_grupo('gestao'), false);
   v_corretor := public.current_broker_id();
 
   return (

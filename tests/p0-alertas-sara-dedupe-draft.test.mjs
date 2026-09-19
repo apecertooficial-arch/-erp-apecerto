@@ -53,6 +53,13 @@ test("o contador cobre todo o escopo antes de limitar a lista", () => {
   assert.match(sql, /'itens'[\s\S]*from itens/);
 });
 
+test("central preserva a autoridade F2 e reconhece o grupo real de gestao", () => {
+  assert.match(sql, /perform public\.f2_notificacoes_sincronizar\(\)/);
+  assert.doesNotMatch(sql, /perform ncrm_private\.notificacoes_sincronizar\(\)/);
+  assert.match(sql, /public\.papel_no_grupo\('gestao'\)/);
+  assert.doesNotMatch(sql, /v_gestor := coalesce\(public\.can_manage_all\(\)/);
+});
+
 test("a propria migracao aborta se restarem duplicatas ou descartados abertos", () => {
   assert.match(sql, /SARA_ALERTA_DEDUPE_FAILED/);
   assert.match(sql, /having count\(\*\) > 1/);

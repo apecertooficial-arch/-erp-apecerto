@@ -19,6 +19,14 @@ Consulta somente leitura em 2026-09-19, projeto `diaegvfveqezispcthwk`:
   também pode esconder o volume real.
 - a variação 690 → 694 durante a inspeção comprova crescimento ativo do ruído.
 
+Revalidação somente leitura às 17:40:
+
+- 744 alertas abertos, igualmente divididos entre gestão e corretores;
+- 135 cards distintos;
+- 168 grupos duplicados e máximo de 36 alertas no mesmo card + público;
+- os 16 alertas de cards descartados continuam abertos;
+- crescimento total de 54 alertas desde a primeira leitura, sem intervenção.
+
 Nenhuma linha com nome, telefone, e-mail, mensagem ou outro dado pessoal foi
 consultada ou registrada.
 
@@ -35,6 +43,10 @@ consultada ou registrada.
 8. A função privilegiada permanece executável somente por `service_role`.
 9. O contador da central considera todo o escopo autorizado antes de limitar a
    lista visual a cem itens.
+10. A leitura preserva `f2_notificacoes_sincronizar()` como no-op canônico e
+    nunca reativa `ncrm_private.notificacoes_sincronizar()`.
+11. O público gerencial usa o grupo canônico `gestao`, incluindo gerente e
+    diretor; `can_manage_all()` sozinho excluiria esses dois papéis.
 
 ## Artefatos locais
 
@@ -45,6 +57,12 @@ O SQL está fora de `supabase/migrations` de propósito. A CLI oficial não est�
 instalada e a orientação vigente exige gerar o nome com
 `supabase migration new`, sem inventar timestamp. Instalação de ferramenta não
 foi autorizada. Aplicação em produção também exige autorização específica.
+
+Revisão de 2026-09-19: a primeira versão do draft chamava por engano o
+sincronizador legado `ncrm_private.notificacoes_sincronizar()`. A comparação
+com a definição produtiva mostrou que isso reativaria uma autoridade aposentada
+e poderia recriar notificações paralelas. O draft agora preserva o no-op F2 e
+há teste de regressão específico.
 
 ## Gates restantes
 
