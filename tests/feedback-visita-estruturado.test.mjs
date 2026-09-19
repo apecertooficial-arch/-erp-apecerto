@@ -3,7 +3,9 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import {
+  avaliarQualidadeFeedbackVisita,
   montarJustificativaFeedbackVisita,
+  NOTA_MINIMA_FEEDBACK_VISITA,
   validarEnvelopeFeedbackVisita,
   validarFeedbackVisitaDetalhado,
 } from "../app/features/calendar/feedbackVisita.ts";
@@ -31,6 +33,27 @@ test("visita realizada exige resposta operacional completa", () => {
   assert.equal(validarFeedbackVisitaDetalhado("cancelada", null), null);
 });
 
+test("qualidade do feedback é determinística, explicável e exige nota mínima nove", () => {
+  assert.equal(NOTA_MINIMA_FEEDBACK_VISITA, 9);
+  assert.deepEqual(avaliarQualidadeFeedbackVisita(feedbackCompleto), { nota: 10, pendencias: [] });
+
+  const insuficiente = avaliarQualidadeFeedbackVisita({
+    ...feedbackCompleto,
+    acompanhantes: "",
+    alternativasOferecidas: "",
+    proximaAcao: "ligar",
+  });
+  assert.equal(insuficiente.nota, 7);
+  assert.match(insuficiente.pendencias.join(" "), /participou/i);
+  assert.match(insuficiente.pendencias.join(" "), /alternativa/i);
+  assert.match(validarFeedbackVisitaDetalhado("realizada", {
+    ...feedbackCompleto,
+    acompanhantes: "",
+    alternativasOferecidas: "",
+    proximaAcao: "ligar",
+  }) ?? "", /7\/10/);
+});
+
 test("resumo estruturado é determinístico, legível e cabe no contrato legado", () => {
   const texto = montarJustificativaFeedbackVisita(feedbackCompleto, "Cliente quer comparar as condições antes de decidir.");
   assert.match(texto, /^FEEDBACK_VISITA_V1/);
@@ -51,6 +74,8 @@ test("desktop e aplicativo usam o mesmo formulário estruturado", () => {
   assert.match(desktop, /ResultadoVisitaForm/);
   assert.match(mobile, /ResultadoVisitaForm/);
   assert.match(form, /montarJustificativaFeedbackVisita/);
+  assert.match(form, /QUALIDADE DO FEEDBACK/);
+  assert.match(form, /avaliarQualidadeFeedbackVisita/);
   assert.match(form, /validarFeedbackVisitaDetalhado/);
 });
 
@@ -62,4 +87,18 @@ test("API e contrato de banco rejeitam atalho textual em visita realizada", asyn
   assert.match(apiFunil, /validarEnvelopeFeedbackVisita/);
   assert.match(draft, /FEEDBACK_VISITA_V1/);
   assert.match(draft, /feedback_incompleto/);
+  assert.match(draft, /f2_feedback_visita_nota/);
+  assert.match(draft, /v_qualidade[\s\S]*<\s*9/);
+  assert.match(draft, /feedback_qualidade_insuficiente/);
+  assert.match(draft, /'qualidade_feedback_nota',v_qualidade/);
+});
+
+test("API rejeita envelope completo na aparência mas abaixo da qualidade mínima", () => {
+  const baixo = montarJustificativaFeedbackVisita({
+    ...feedbackCompleto,
+    acompanhantes: "",
+    alternativasOferecidas: "",
+    proximaAcao: "ligar",
+  }, "");
+  assert.match(validarEnvelopeFeedbackVisita("realizada", baixo) ?? "", /7\/10/);
 });

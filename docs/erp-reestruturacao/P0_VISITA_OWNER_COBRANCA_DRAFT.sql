@@ -60,6 +60,52 @@ create unique index if not exists ux_ncrm_visita_feedback_aberta_publico
     and tipo = 'visita_feedback_pendente'
     and visita_id is not null;
 
+-- A mesma rubrica transparente do frontend/API. Cada criterio vale um ponto;
+-- o banco nao depende de IA para decidir se o registro minimo foi atendido.
+do $quality_guard$
+begin
+  if to_regprocedure('public.f2_feedback_visita_nota(text)') is not null then
+    raise exception 'F2_FEEDBACK_QUALIDADE_COLISAO';
+  end if;
+end
+$quality_guard$;
+
+create function public.f2_feedback_visita_nota(p_justificativa text)
+returns smallint
+language plpgsql
+immutable
+strict
+set search_path = ''
+as $function$
+declare
+  v_presenca text := btrim(split_part(split_part(p_justificativa,' | Presença: ',2),' | ',1));
+  v_acompanhantes text := btrim(split_part(split_part(p_justificativa,' | Acompanhantes: ',2),' | ',1));
+  v_percepcao text := btrim(split_part(split_part(p_justificativa,' | Percepção: ',2),' | ',1));
+  v_positivos text := btrim(split_part(split_part(p_justificativa,' | Pontos positivos: ',2),' | ',1));
+  v_negativos text := btrim(split_part(split_part(p_justificativa,' | Pontos negativos: ',2),' | ',1));
+  v_objecoes text := btrim(split_part(split_part(p_justificativa,' | Objeções: ',2),' | ',1));
+  v_alternativas text := btrim(split_part(split_part(p_justificativa,' | Alternativas: ',2),' | ',1));
+  v_intencao text := btrim(split_part(split_part(p_justificativa,' | Intenção: ',2),' | ',1));
+  v_proxima text := btrim(split_part(split_part(p_justificativa,' | Próxima ação: ',2),' | ',1));
+  v_nota smallint := 0;
+begin
+  if v_presenca in ('Sozinho(a)','Com companheiro(a)','Com família','Outros') then v_nota:=v_nota+1; end if;
+  if v_presenca='Sozinho(a)' or (char_length(v_acompanhantes)>=3 and lower(v_acompanhantes)<>'não informado') then v_nota:=v_nota+1; end if;
+  if v_percepcao in ('Encantado','Gostou','Neutro','Não gostou') then v_nota:=v_nota+1; end if;
+  if char_length(v_positivos)>=3 then v_nota:=v_nota+1; end if;
+  if char_length(v_negativos)>=3 then v_nota:=v_nota+1; end if;
+  if char_length(v_objecoes)>=3 then v_nota:=v_nota+1; end if;
+  if char_length(v_alternativas)>=3 and lower(v_alternativas) not in ('não informado','não oferecidas') then v_nota:=v_nota+1; end if;
+  if v_intencao in ('Fazer proposta','Continuar negociação','Conhecer outra opção','Manter acompanhamento','Solicitar encerramento') then v_nota:=v_nota+1; end if;
+  if char_length(v_proxima)>=5 then v_nota:=v_nota+1; end if;
+  if char_length(v_proxima)>=12 then v_nota:=v_nota+1; end if;
+  return least(10,v_nota);
+end;
+$function$;
+
+revoke all on function public.f2_feedback_visita_nota(text)
+  from public,anon,authenticated;
+
 -- Substitui a RPC atual sem mudar assinatura. A diferenca de autorizacao e
 -- intencional: admin/gestor acompanha e cobra; somente o corretor dono grava.
 create or replace function public.f2_registrar_resultado_visita(
@@ -81,6 +127,7 @@ declare
   v_prazo timestamptz;
   v_justificativa text := left(btrim(coalesce(p_justificativa,'')),800);
   v_rotulo text;
+  v_qualidade smallint;
 begin
   select * into v_visita
     from public.f2_visita
@@ -120,6 +167,14 @@ begin
        or v_justificativa !~ '[ ]\|[ ]Próxima ação:[ ][^|]{5,}[ ]\|'
      ) then
     return pg_catalog.jsonb_build_object('ok',false,'erro','feedback_incompleto');
+  end if;
+  if p_status = 'realizada' then
+    v_qualidade:=public.f2_feedback_visita_nota(v_justificativa);
+    if v_qualidade < 9 then
+      return pg_catalog.jsonb_build_object(
+        'ok',false,'erro','feedback_qualidade_insuficiente','qualidade',v_qualidade
+      );
+    end if;
   end if;
   if (p_status='realizada' and p_resultado_codigo not in
         ('fara_proposta','interessado','quer_outra_opcao','precisa_conversar','nao_gostou'))
@@ -181,7 +236,8 @@ begin
     v_justificativa,
     pg_catalog.jsonb_build_object(
       'visita_id',p_visita_id,'status',p_status,'resultado_codigo',p_resultado_codigo,
-      'resultado_rotulo',v_rotulo,'justificativa',v_justificativa,'proxima_acao_em',v_prazo
+      'resultado_rotulo',v_rotulo,'justificativa',v_justificativa,'proxima_acao_em',v_prazo,
+      'qualidade_feedback_nota',v_qualidade
     ),v_uid
   );
 
@@ -201,7 +257,7 @@ begin
   return pg_catalog.jsonb_build_object(
     'ok',true,'id',p_visita_id,'status',p_status,'resultado_codigo',p_resultado_codigo,
     'resultado_rotulo',v_rotulo,'resultado_em',statement_timestamp(),
-    'momento',v_momento,'proxima_acao_em',v_prazo
+    'momento',v_momento,'proxima_acao_em',v_prazo,'qualidade_feedback_nota',v_qualidade
   );
 end;
 $function$;

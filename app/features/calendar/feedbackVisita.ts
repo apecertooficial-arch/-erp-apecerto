@@ -38,6 +38,13 @@ export type FeedbackVisitaDetalhado = {
   proximaAcao: string;
 };
 
+export const NOTA_MINIMA_FEEDBACK_VISITA = 9;
+
+export type AvaliacaoQualidadeFeedbackVisita = {
+  nota: number;
+  pendencias: string[];
+};
+
 export const FEEDBACK_VISITA_VAZIO: FeedbackVisitaDetalhado = {
   presenca: "",
   acompanhantes: "",
@@ -54,8 +61,41 @@ function texto(value: string, max = 90) {
   return value.trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+function temConteudo(value: string, minimo = 3) {
+  return texto(value, 120).length >= minimo;
+}
+
 function rotulo<T extends ReadonlyArray<{ codigo: string; rotulo: string }>>(opcoes: T, codigo: string) {
   return opcoes.find((opcao) => opcao.codigo === codigo)?.rotulo ?? codigo;
+}
+
+/** Nota operacional transparente. Cada um dos dez critérios vale um ponto;
+ * não há inferência de IA nem avaliação subjetiva escondida. */
+export function avaliarQualidadeFeedbackVisita(
+  feedback: FeedbackVisitaDetalhado,
+): AvaliacaoQualidadeFeedbackVisita {
+  const criterios: Array<[boolean, string]> = [
+    [Boolean(feedback.presenca), "informe quem participou"],
+    [feedback.presenca === "sozinho" || temConteudo(feedback.acompanhantes), "identifique quem participou com o cliente"],
+    [Boolean(feedback.percepcao), "registre a percepção do cliente"],
+    [temConteudo(feedback.pontosPositivos), "registre os pontos positivos"],
+    [temConteudo(feedback.pontosNegativos), "registre os pontos negativos"],
+    [temConteudo(feedback.objecoes), "registre as objeções"],
+    [temConteudo(feedback.alternativasOferecidas), "informe as alternativas oferecidas ou escreva ‘nenhuma’"],
+    [Boolean(feedback.intencao), "defina a intenção atual"],
+    [temConteudo(feedback.proximaAcao, 5), "registre a próxima ação"],
+    [temConteudo(feedback.proximaAcao, 12), "detalhe quando ou como a próxima ação será executada"],
+  ];
+  return {
+    nota: criterios.filter(([atendido]) => atendido).length,
+    pendencias: criterios.filter(([atendido]) => !atendido).map(([, pendencia]) => pendencia),
+  };
+}
+
+function erroDeQualidade(avaliacao: AvaliacaoQualidadeFeedbackVisita) {
+  if (avaliacao.nota >= NOTA_MINIMA_FEEDBACK_VISITA) return null;
+  const principais = avaliacao.pendencias.slice(0, 3).join("; ");
+  return `Qualidade do feedback: ${avaliacao.nota}/10. ${principais}. O mínimo é ${NOTA_MINIMA_FEEDBACK_VISITA}/10.`;
 }
 
 export function validarFeedbackVisitaDetalhado(
@@ -70,7 +110,7 @@ export function validarFeedbackVisitaDetalhado(
   if (texto(feedback.objecoes, 120).length < 3) return "Registre as objeções, mesmo que a resposta seja ‘nenhuma’.";
   if (!feedback.intencao) return "Defina a intenção atual do cliente.";
   if (texto(feedback.proximaAcao, 120).length < 5) return "Registre a próxima ação combinada.";
-  return null;
+  return erroDeQualidade(avaliarQualidadeFeedbackVisita(feedback));
 }
 
 function valorDoEnvelope(valor: string, campo: string) {
@@ -90,17 +130,31 @@ export function validarEnvelopeFeedbackVisita(status: StatusResultadoVisita, jus
   const presencas = new Set<string>(PRESENCAS_VISITA.map((item) => item.rotulo));
   const percepcoes = new Set<string>(PERCEPCOES_VISITA.map((item) => item.rotulo));
   const intencoes = new Set<string>(INTENCOES_VISITA.map((item) => item.rotulo));
+  const presenca = valorDoEnvelope(valor, "Presença");
+  const percepcao = valorDoEnvelope(valor, "Percepção");
+  const intencao = valorDoEnvelope(valor, "Intenção");
   if (!valor.startsWith("FEEDBACK_VISITA_V1 | ")
-    || !presencas.has(valorDoEnvelope(valor, "Presença"))
-    || !percepcoes.has(valorDoEnvelope(valor, "Percepção"))
+    || !presencas.has(presenca)
+    || !percepcoes.has(percepcao)
     || valorDoEnvelope(valor, "Pontos positivos").length < 3
     || valorDoEnvelope(valor, "Pontos negativos").length < 3
     || valorDoEnvelope(valor, "Objeções").length < 3
-    || !intencoes.has(valorDoEnvelope(valor, "Intenção"))
+    || !intencoes.has(intencao)
     || valorDoEnvelope(valor, "Próxima ação").length < 5) {
     return "Preencha o feedback estruturado da visita antes de salvar.";
   }
-  return null;
+  const feedback: FeedbackVisitaDetalhado = {
+    presenca: PRESENCAS_VISITA.find((item) => item.rotulo === presenca)?.codigo ?? "",
+    acompanhantes: valorDoEnvelope(valor, "Acompanhantes").replace(/^não informado$/i, ""),
+    percepcao: PERCEPCOES_VISITA.find((item) => item.rotulo === percepcao)?.codigo ?? "",
+    pontosPositivos: valorDoEnvelope(valor, "Pontos positivos"),
+    pontosNegativos: valorDoEnvelope(valor, "Pontos negativos"),
+    objecoes: valorDoEnvelope(valor, "Objeções"),
+    alternativasOferecidas: valorDoEnvelope(valor, "Alternativas").replace(/^não (informado|oferecidas)$/i, ""),
+    intencao: INTENCOES_VISITA.find((item) => item.rotulo === intencao)?.codigo ?? "",
+    proximaAcao: valorDoEnvelope(valor, "Próxima ação"),
+  };
+  return erroDeQualidade(avaliarQualidadeFeedbackVisita(feedback));
 }
 
 /**
@@ -120,7 +174,7 @@ export function montarJustificativaFeedbackVisita(
     `Pontos positivos: ${texto(feedback.pontosPositivos)}`,
     `Pontos negativos: ${texto(feedback.pontosNegativos)}`,
     `Objeções: ${texto(feedback.objecoes)}`,
-    `Alternativas: ${texto(feedback.alternativasOferecidas) || "não oferecidas"}`,
+    `Alternativas: ${texto(feedback.alternativasOferecidas) || "não informado"}`,
     `Intenção: ${rotulo(INTENCOES_VISITA, feedback.intencao)}`,
     `Próxima ação: ${texto(feedback.proximaAcao)}`,
     `Resumo: ${texto(resumo, 120) || "sem observação adicional"}`,

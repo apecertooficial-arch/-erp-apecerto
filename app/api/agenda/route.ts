@@ -493,6 +493,7 @@ export async function PATCH(request: Request) {
         sem_permissao: "Esta visita não pertence à sua agenda.",
         resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
         feedback_incompleto: "Preencha o feedback estruturado da visita antes de salvar.",
+        feedback_qualidade_insuficiente: "Complete o feedback até atingir pelo menos 9/10 de qualidade.",
         resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
         visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
       };

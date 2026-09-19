@@ -9,9 +9,11 @@ import {
   validarResultadoVisita,
 } from "./resultadoVisita";
 import {
+  avaliarQualidadeFeedbackVisita,
   FEEDBACK_VISITA_VAZIO,
   INTENCOES_VISITA,
   montarJustificativaFeedbackVisita,
+  NOTA_MINIMA_FEEDBACK_VISITA,
   PERCEPCOES_VISITA,
   PRESENCAS_VISITA,
   validarFeedbackVisitaDetalhado,
@@ -47,6 +49,7 @@ export function ResultadoVisitaForm({
   const justificativaFinal = status === "realizada"
     ? montarJustificativaFeedbackVisita(feedback, justificativa)
     : justificativa.trim();
+  const avaliacaoQualidade = avaliarQualidadeFeedbackVisita(feedback);
   const erroLocal = validarFeedbackVisitaDetalhado(status, feedback)
     ?? validarResultadoVisita(status, resultadoCodigo, justificativaFinal);
   const atualizarFeedback = <K extends keyof FeedbackVisitaDetalhado>(campo: K, valor: FeedbackVisitaDetalhado[K]) => {
@@ -87,7 +90,7 @@ export function ResultadoVisitaForm({
             {PRESENCAS_VISITA.map((opcao) => <button type="button" key={opcao.codigo} className={feedback.presenca === opcao.codigo ? "ativo" : ""} aria-pressed={feedback.presenca === opcao.codigo} disabled={busy} onClick={() => atualizarFeedback("presenca", opcao.codigo)}>{opcao.rotulo}</button>)}
           </div>
         </fieldset>
-        <label>Nomes ou relação dos acompanhantes <small>opcional</small>
+        <label>Nomes ou relação dos acompanhantes <small>se houver</small>
           <input disabled={busy} value={feedback.acompanhantes} maxLength={90} onChange={(evento) => atualizarFeedback("acompanhantes", evento.target.value)} placeholder="Ex.: esposa Ana e dois filhos" />
         </label>
         <fieldset>
@@ -107,7 +110,7 @@ export function ResultadoVisitaForm({
         <label>Objeções <small>obrigatório</small>
           <textarea disabled={busy} value={feedback.objecoes} maxLength={90} rows={3} onChange={(evento) => atualizarFeedback("objecoes", evento.target.value)} placeholder="Preço, entrada, localização, planta ou nenhuma objeção." />
         </label>
-        <label>Alternativas oferecidas <small>opcional</small>
+        <label>Alternativas oferecidas <small>informe ou escreva “nenhuma”</small>
           <input disabled={busy} value={feedback.alternativasOferecidas} maxLength={90} onChange={(evento) => atualizarFeedback("alternativasOferecidas", evento.target.value)} placeholder="Outros imóveis, unidades ou condições apresentadas" />
         </label>
         <label>Definição atual do cliente <small>obrigatório</small>
@@ -119,6 +122,13 @@ export function ResultadoVisitaForm({
         <label>Próxima ação combinada <small>obrigatório</small>
           <input disabled={busy} value={feedback.proximaAcao} maxLength={90} onChange={(evento) => atualizarFeedback("proximaAcao", evento.target.value)} placeholder="Ex.: enviar simulação amanhã às 10h" />
         </label>
+        <section className={`resultado-visita-qualidade ${avaliacaoQualidade.nota >= NOTA_MINIMA_FEEDBACK_VISITA ? "aprovada" : "pendente"}`} aria-live="polite">
+          <header><small>QUALIDADE DO FEEDBACK</small><strong>{avaliacaoQualidade.nota}/10</strong></header>
+          <span aria-hidden="true"><i style={{ width: `${avaliacaoQualidade.nota * 10}%` }} /></span>
+          <p>{avaliacaoQualidade.nota >= NOTA_MINIMA_FEEDBACK_VISITA
+            ? "Padrão operacional atingido. O gerente receberá um registro claro para acompanhar o cliente."
+            : `Para chegar a ${NOTA_MINIMA_FEEDBACK_VISITA}/10: ${avaliacaoQualidade.pendencias.slice(0, 2).join("; ")}.`}</p>
+        </section>
       </section>}
       {status === "realizada" && <FeedbackVisitaAudio
         visitId={visitId}

@@ -314,9 +314,13 @@ declarar o ERP inteiro pronto sem evidência.
   desktop e aplicativo, oculto até a capacidade existir e com confirmação
   humana da transcrição. O draft agora inclui dispatcher cron → Edge → claim,
   lote/lease/retry, service-only, `enabled=false` e três segredos apenas por nome
-  no Vault. 8/8 contratos, gate frontend 518/518, typecheck,
+  no Vault. 8/8 contratos, gate frontend 520/520, typecheck,
   ESLint e build passaram; harness desktop/390 × 844 registrou apenas GETs
   locais e zero erros. Nenhum áudio real foi enviado e nada foi aplicado;
+- feedback de visita agora possui rubrica determinística 0–10, mínimo 9 na
+  interface/API e mesma barreira no draft de banco. Gate 520/520, 16 contratos
+  direcionados, typecheck, ESLint, build e navegador desktop/390 × 844 passaram;
+  a validação foi sanitizada e não enviou a mutação;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,
@@ -324,12 +328,13 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Riscos e limites
 
-- árvore contém mudanças locais do trabalho visual; preservar integralmente;
-- nenhuma integração à tela canônica foi feita;
+- árvore isolada contém a reconstrução visual e operacional local; preservar
+  integralmente e não misturar com `main`;
+- as mudanças estão integradas somente à Agenda desta branch, não à produção;
 - o helper Git configurado aponta para um `gh` removido. O chaveiro não
   forneceu credencial utilizável nesta sessão e a integração GitHub confirmou
   leitura, mas recusou escrita com `403 Resource not accessible by integration`.
-  Não alterar/rotacionar credenciais sem autoridade; os sete commits locais
+  Não alterar/rotacionar credenciais sem autoridade; os commits locais
   permanecem recuperáveis e testados;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
@@ -340,8 +345,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Preparar o ensaio isolado dos contratos de confirmação, visita, áudio e
-alertas, mantendo o dispatcher de áudio desligado. A
+Avançar localmente a visão gerencial de cobrança e qualidade por corretor e,
+quando existir Postgres isolado com CLI oficial, ensaiar os contratos de
+confirmação, visita, áudio e alertas mantendo o dispatcher desligado. A
 fatia `ação → Sara → próxima ação → Meu Dia` está no commit `9ef77038` e o
 feedback estruturado de visita está no commit `714dbfd5`; nenhum deles inclui o
 symlink `node_modules`. Para publicar os commits locais, reparar somente o

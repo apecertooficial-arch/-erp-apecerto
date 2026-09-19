@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; cinco correções P0/P1 locais validadas
+Estado: fatia em reconstrução; seis correções P0/P1 locais validadas
 
 ## Contrato atual comprovado
 
@@ -64,6 +64,14 @@ draft de banco repete a validação, além do ownership já preparado. Cancelame
 e não comparecimento continuam usando motivo compatível e justificativa, sem
 forçar perguntas próprias de uma visita que não ocorreu.
 
+A qualidade agora é calculada por uma rubrica determinística de dez critérios,
+um ponto por critério, sem nota opaca de IA: participantes, contexto dos
+acompanhantes, percepção, positivos, negativos, objeções, alternativas,
+definição, próxima ação e detalhamento operacional da próxima ação. Interface e
+APIs exigem no mínimo 9/10; o formulário mostra a nota e as pendências enquanto
+o corretor escreve. O draft de banco repete a mesma barreira e registra a nota
+no evento, mas segue fora de migrations e não foi aplicado.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
@@ -85,6 +93,11 @@ forçar perguntas próprias de uma visita que não ocorreu.
   tentativa de PATCH interceptada pelo harness sem efeito externo;
 - gate atualizado: 510/510 testes frontend, 20/20 contratos direcionados,
   typecheck, ESLint direcionado e build completo aprovados.
+- gate atual após a rubrica de qualidade: 520/520 testes frontend e 16/16
+  contratos direcionados de agenda/feedback; typecheck, ESLint e build passaram;
+- navegador desktop 1440 × 1000 e celular 390 × 844: nota 0/10 explica o que
+  falta, feedback sanitizado chega a 10/10, botão de salvar é liberado e nenhuma
+  mutação foi enviada.
 
 ## Lacunas ainda abertas
 
@@ -95,8 +108,9 @@ forçar perguntas próprias de uma visita que não ocorreu.
    positivos/negativos, objeções, alternativas, intenção e próxima ação. O
    produto visitado já vem da visita, mas múltiplos produtos e proposta
    financeira estruturada ainda precisam do modelo JSONB definitivo.
-3. Cobrança progressiva, confirmação do gerente, qualidade do feedback e
-   indicadores por corretor ainda não estão comprovados ponta a ponta.
+3. A rubrica de qualidade está validada localmente, mas persistência produtiva,
+   cobrança progressiva, confirmação do gerente e indicadores por corretor
+   ainda não estão comprovados ponta a ponta.
 4. A validação autenticada no navegador local depende de configuração pública
    segura do Supabase; nenhum segredo foi copiado ou criado.
 5. A base possui notificações de visita próxima, mas não foi encontrada uma
@@ -132,6 +146,7 @@ O contrato aditivo está em `P0_VISITA_OWNER_COBRANCA_DRAFT.sql`. Ele propõe:
 - prazo do corretor por `feedback_visita_min` e escalonamento de gestão em duas
   vezes esse prazo;
 - resolução imediata quando o corretor registra feedback válido;
+- nota de qualidade 0–10 com mínimo 9, repetida no banco e auditada no evento;
 - reconciliador privado a cada dez minutos, somente in-app;
 - push/WhatsApp desligados até autorização separada.
 
@@ -148,7 +163,7 @@ falham fechadas sem a migration, usam o JWT do corretor no Storage e exigem
 confirmação humana para levar a transcrição ao resumo. O dispatcher limitado e
 service-only lê três segredos nomeados do Vault, possui lease/retry e nasce
 desligado. Seus 8/8 contratos e o
-gate frontend 518/518 passaram; desktop e 390 × 844 foram validados com dados
+gate frontend 520/520 passaram; desktop e 390 × 844 foram validados com dados
 sanitizados e zero mutações. Nada foi aplicado ou enviado.
 
 ## Próximo gate
