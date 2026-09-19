@@ -13,10 +13,12 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial; usuário autorizou
-  publicação de código validado. Merge e deploy ainda não foram executados e
-  dependem dos gates do payload, CI e confirmação do SHA implantado
-- HEAD funcional validado antes deste checkpoint: `80cf8780`
+- ambiente: branch isolada enviada ao repositório oficial até `f900d7f8`;
+  usuário autorizou publicação de código validado. Os commits locais mais
+  recentes ainda não foram enviados por falha do helper Git; merge e deploy
+  não foram executados
+- HEAD local funcional validado: `b275e0de`
+- HEAD remoto da branch: `f900d7f8`
 
 ## Concluído
 
@@ -43,6 +45,10 @@ declarar o ERP inteiro pronto sem evidência.
   alertas pertencem a cards descartados. A chave produtiva usa `execution_id`,
   portanto o estoque continua crescendo. A correção real precisa ocorrer no
   contrato do banco, não apenas ocultar linhas no frontend;
+- revalidação às 17:40 encontrou 744 alertas abertos para 135 cards, 168 grupos
+  duplicados, máximo de 36 por card/público e os mesmos 16 alertas de cards
+  descartados. O crescimento 690 → 694 → 744 comprova produção contínua do
+  ruído;
 - contrato SQL aditivo e não destrutivo preparado em
   `docs/erp-reestruturacao/P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, com rastreio em
   `P0_ALERTAS_SARA_RASTREIO.md`: vínculo direto ao card, índice único por
@@ -92,9 +98,10 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- a branch contém quatorze commits à frente de `origin/main` e rastreia
-  `origin/codex/erp-crm-visual-concept`; merge e deploy continuam pendentes do
-  gate do payload, CI e validação do SHA, não de uma janela de duas horas.
+- o remoto contém os commits até `f900d7f8`; `deeaeaf8` e `b275e0de` estão
+  confirmados localmente e aguardam somente o reparo mínimo da autenticação de
+  escrita. Merge e deploy continuam pendentes do gate do payload, CI e
+  validação do SHA, não de uma janela de duas horas.
 
 ## Arquivos alterados/relevantes
 
@@ -265,18 +272,33 @@ declarar o ERP inteiro pronto sem evidência.
   service-only sem cortar chamador humano legítimo conhecido. Draft grant-only
   criado, 4/4 contratos; `ncrm_sara_classificar` preservada por usar identidade
   dedicada `app_role=sara`;
+- a revisão do draft de alertas impediu uma regressão: ele chamava o gerador
+  legado `ncrm_private.notificacoes_sincronizar()` e excluiria gerente/diretor
+  pelo uso de `can_manage_all()`. O contrato agora preserva o no-op F2 e usa o
+  grupo canônico `gestao`; teste específico cobre os dois invariantes;
+- o único erro de lint foi removido da tela de definição de senha sem mudar o
+  contrato do token; a inicialização assíncrona evita atualização síncrona de
+  estado dentro do efeito;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
   ausência de chamadores externos.
+- gate mais recente: 499/499 testes frontend, typecheck e build completos;
+  lint com zero erros e dez avisos preexistentes de imagens/artefato público;
+- snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
+  527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
+  pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,
+  193 pendências futuras da Sara e nenhuma pendência vencida.
 
 ## Riscos e limites
 
 - árvore contém mudanças locais do trabalho visual; preservar integralmente;
 - nenhuma integração à tela canônica foi feita;
-- o helper Git configurado aponta para um `gh` removido. Após varredura do
-  payload não encontrar candidatos a segredo, a credencial já guardada no
-  Keychain foi usada sem expor token e a branch foi enviada com sucesso;
+- o helper Git configurado aponta para um `gh` removido. O chaveiro não
+  forneceu credencial utilizável nesta sessão e a integração GitHub confirmou
+  leitura, mas recusou escrita com `403 Resource not accessible by integration`.
+  Não alterar/rotacionar credenciais sem autoridade; os dois commits locais
+  permanecem recuperáveis e testados;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
 - a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
@@ -286,10 +308,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Revisar sintaxe e comportamento da Fase A de links públicos em Postgres isolado,
-incluindo concorrência, expiração, uso único e rollback. Isso requer um ambiente
-isolado disponível; não testar o draft em produção. Em paralelo, preparar o
-desenho que prove a reconstrução das 341 migrations ausentes.
-Branch já enviada; abrir/validar a mudança, merge/deploy de código e migration
-permanecem etapas distintas e verificáveis. Nunca agrupar `db push` ao deploy
+Continuar localmente a fatia `mensagem → Sara → próxima ação → Meu Dia` e
+preparar o ensaio isolado do contrato de alertas. Para publicar `deeaeaf8` e
+`b275e0de`, reparar somente o acesso de escrita do GitHub (novo login do `gh` ou
+helper válido), sem criar/rotacionar credenciais automaticamente. Não usar
+`main` do Supabase como laboratório. Merge/deploy de código e migration
+permanecem etapas distintas e verificáveis; nunca agrupar `db push` ao deploy
 de aplicação.
