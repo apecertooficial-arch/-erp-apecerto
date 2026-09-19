@@ -316,6 +316,12 @@ corretor dono; o contrato aditivo de banco para repetir essa invariável e criar
 cobrança pós-visita persistente está preparado fora de `supabase/migrations`,
 com push/WhatsApp desligados. Aplicação e validação isolada continuam pendentes.
 
+Também concluído localmente: cancelamento e não comparecimento deixaram de
+aceitar justificativa genérica. Desktop, aplicativo, APIs e draft de banco
+exigem motivo estruturado e uma próxima ação explícita antes do encerramento.
+O gate passou 528/528 e o comportamento foi validado em 1440 × 1000 e
+390 × 844 sem enviar mutações.
+
 Também reproduzido e corrigido localmente na fatia de entrada: a identidade
 ignorava o e-mail sempre que havia telefone, e a roleta não consultava a Agenda
 nem a Esteira canônicas para preservar o dono. O draft agora confronta telefone

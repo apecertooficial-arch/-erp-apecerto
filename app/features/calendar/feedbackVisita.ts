@@ -1,4 +1,4 @@
-import type { StatusResultadoVisita } from "./resultadoVisita.ts";
+import { RESULTADOS_VISITA, type StatusResultadoVisita } from "./resultadoVisita.ts";
 
 export const PRESENCAS_VISITA = [
   { codigo: "sozinho", rotulo: "Sozinho(a)" },
@@ -113,6 +113,19 @@ export function validarFeedbackVisitaDetalhado(
   return erroDeQualidade(avaliarQualidadeFeedbackVisita(feedback));
 }
 
+export function validarEncaminhamentoResultadoVisita(
+  status: StatusResultadoVisita,
+  proximaAcao: string,
+) {
+  if (status === "realizada") return null;
+  if (!temConteudo(proximaAcao, 12)) {
+    return status === "cancelada"
+      ? "Defina quando ou como a visita será remarcada ou o cliente será retomado."
+      : "Defina quando ou como o cliente será retomado após a ausência.";
+  }
+  return null;
+}
+
 function valorDoEnvelope(valor: string, campo: string) {
   const marcador = ` | ${campo}: `;
   const inicio = valor.indexOf(marcador);
@@ -125,8 +138,15 @@ function valorDoEnvelope(valor: string, campo: string) {
 /** Defesa compartilhada pelas APIs contra clientes antigos ou chamadas
  * manuais que tentem concluir a visita com um texto livre curto. */
 export function validarEnvelopeFeedbackVisita(status: StatusResultadoVisita, justificativa: string) {
-  if (status !== "realizada") return null;
   const valor = justificativa.trim();
+  if (status !== "realizada") {
+    if (!valor.startsWith("RESULTADO_VISITA_V1 | ")
+      || valorDoEnvelope(valor, "Motivo").length < 3
+      || valorDoEnvelope(valor, "Próxima ação").length < 12) {
+      return "Defina o motivo e a próxima ação antes de salvar o resultado da visita.";
+    }
+    return null;
+  }
   const presencas = new Set<string>(PRESENCAS_VISITA.map((item) => item.rotulo));
   const percepcoes = new Set<string>(PERCEPCOES_VISITA.map((item) => item.rotulo));
   const intencoes = new Set<string>(INTENCOES_VISITA.map((item) => item.rotulo));
@@ -155,6 +175,21 @@ export function validarEnvelopeFeedbackVisita(status: StatusResultadoVisita, jus
     proximaAcao: valorDoEnvelope(valor, "Próxima ação"),
   };
   return erroDeQualidade(avaliarQualidadeFeedbackVisita(feedback));
+}
+
+export function montarJustificativaResultadoVisita(
+  status: Exclude<StatusResultadoVisita, "realizada">,
+  resultadoCodigo: string,
+  proximaAcao: string,
+  resumo: string,
+) {
+  const motivo = RESULTADOS_VISITA[status].find((item) => item.codigo === resultadoCodigo)?.rotulo ?? "";
+  return [
+    "RESULTADO_VISITA_V1",
+    `Motivo: ${texto(motivo)}`,
+    `Próxima ação: ${texto(proximaAcao)}`,
+    `Resumo: ${texto(resumo, 120) || "sem observação adicional"}`,
+  ].join(" | ").slice(0, 800);
 }
 
 /**

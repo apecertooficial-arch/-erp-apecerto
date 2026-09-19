@@ -61,8 +61,10 @@ permitindo promoção futura para JSONB sem descartar o histórico da transiçã
 A exigência não ficou somente na interface: `/api/agenda` e `/api/funil2`
 rejeitam texto livre que tente encerrar uma visita realizada sem o envelope. O
 draft de banco repete a validação, além do ownership já preparado. Cancelamento
-e não comparecimento continuam usando motivo compatível e justificativa, sem
-forçar perguntas próprias de uma visita que não ocorreu.
+e não comparecimento não aceitam mais texto genérico: usam o envelope
+`RESULTADO_VISITA_V1`, com motivo estruturado e próxima ação explícita de ao
+menos 12 caracteres, sem forçar perguntas próprias de uma visita que não
+ocorreu.
 
 A qualidade agora é calculada por uma rubrica determinística de dez critérios,
 um ponto por critério, sem nota opaca de IA: participantes, contexto dos
@@ -108,6 +110,11 @@ evidência persistida. Desktop e aplicativo repetem o mesmo cálculo.
   build aprovados; navegador desktop e 390 × 844 mostram 3 cobranças, 2
   corretores, 3 casos com 2+ dias e idade máxima de 33 dias, sem permitir que o
   gerente responda pelo corretor.
+- gate após exigir destino para cancelamento/não comparecimento: 528/528 testes
+  frontend e 24/24 contratos direcionados passaram; typecheck, ESLint, build e
+  `git diff --check` foram aprovados. No navegador desktop 1440 × 1000 e celular
+  390 × 844, salvar permanece bloqueado sem próxima ação e é liberado após um
+  encaminhamento válido; nenhuma mutação foi enviada pelo harness.
 
 ## Lacunas ainda abertas
 

@@ -17,7 +17,8 @@ declarar o ERP inteiro pronto sem evidência.
   usuário autorizou publicação de código validado. Os commits locais mais
   recentes ainda não foram enviados por falha do helper Git; merge e deploy
   não foram executados
-- HEAD local funcional validado: `714dbfd5`
+- HEAD local funcional validado: `cc964cdc`, com a fatia de encaminhamento
+  obrigatório em cancelamento/não comparecimento pronta para commit
 - HEAD remoto da branch: `f900d7f8`
 
 ## Concluído
@@ -88,6 +89,10 @@ declarar o ERP inteiro pronto sem evidência.
 - navegador 1600 × 1000: 5 KPIs, 5 etapas, 13 cards, seleção funcional,
   sem overflow horizontal, warnings ou errors;
 - plano vivo: `docs/erp-reestruturacao/PLANO_ACAO_EXECUCAO_ATE_2026-09-20.md`.
+- cancelamento e não comparecimento agora exigem motivo estruturado e próxima
+  ação explícita em desktop, aplicativo, APIs e draft de banco; 528/528 testes,
+  24/24 contratos direcionados, typecheck, ESLint, build e navegador real
+  aprovados, sem mutação externa.
 
 ## Em andamento
 

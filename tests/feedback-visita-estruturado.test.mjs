@@ -5,7 +5,9 @@ import { readFile } from "node:fs/promises";
 import {
   avaliarQualidadeFeedbackVisita,
   montarJustificativaFeedbackVisita,
+  montarJustificativaResultadoVisita,
   NOTA_MINIMA_FEEDBACK_VISITA,
+  validarEncaminhamentoResultadoVisita,
   validarEnvelopeFeedbackVisita,
   validarFeedbackVisitaDetalhado,
 } from "../app/features/calendar/feedbackVisita.ts";
@@ -64,7 +66,24 @@ test("resumo estruturado é determinístico, legível e cabe no contrato legado"
   assert.equal(validarEnvelopeFeedbackVisita("realizada", texto), null);
   assert.match(validarEnvelopeFeedbackVisita("realizada", "Cliente gostou, retornar amanhã."), /estruturado/i);
   assert.match(validarEnvelopeFeedbackVisita("realizada", "FEEDBACK_VISITA_V1 | Presença: casal | Percepção: Gostou | Pontos positivos:  | Pontos negativos: nenhum | Objeções: nenhuma | Intenção: Continuar negociação | Próxima ação: ligar amanhã"), /estruturado/i);
-  assert.equal(validarEnvelopeFeedbackVisita("cancelada", "Cliente pediu reagendamento."), null);
+  assert.match(validarEnvelopeFeedbackVisita("cancelada", "Cliente pediu reagendamento."), /próxima ação/i);
+});
+
+test("cancelamento e ausência exigem motivo e próximo passo explícitos", () => {
+  assert.match(validarEncaminhamentoResultadoVisita("cancelada", "ligar"), /remarcada|retomado/i);
+  assert.match(validarEncaminhamentoResultadoVisita("nao_compareceu", "ligar"), /ausência/i);
+  assert.equal(validarEncaminhamentoResultadoVisita("cancelada", "Ligar amanhã às 10h para remarcar."), null);
+
+  const cancelamento = montarJustificativaResultadoVisita(
+    "cancelada",
+    "cliente_cancelou",
+    "Ligar amanhã às 10h para remarcar.",
+    "Cliente avisou com antecedência.",
+  );
+  assert.match(cancelamento, /^RESULTADO_VISITA_V1/);
+  assert.match(cancelamento, /Motivo: Cliente cancelou/);
+  assert.match(cancelamento, /Próxima ação: Ligar amanhã/);
+  assert.equal(validarEnvelopeFeedbackVisita("cancelada", cancelamento), null);
 });
 
 test("desktop e aplicativo usam o mesmo formulário estruturado", () => {
@@ -77,6 +96,8 @@ test("desktop e aplicativo usam o mesmo formulário estruturado", () => {
   assert.match(form, /QUALIDADE DO FEEDBACK/);
   assert.match(form, /avaliarQualidadeFeedbackVisita/);
   assert.match(form, /validarFeedbackVisitaDetalhado/);
+  assert.match(form, /validarEncaminhamentoResultadoVisita/);
+  assert.match(form, /Próxima ação/);
 });
 
 test("API e contrato de banco rejeitam atalho textual em visita realizada", async () => {
@@ -90,6 +111,9 @@ test("API e contrato de banco rejeitam atalho textual em visita realizada", asyn
   assert.match(draft, /f2_feedback_visita_nota/);
   assert.match(draft, /v_qualidade[\s\S]*<\s*9/);
   assert.match(draft, /feedback_qualidade_insuficiente/);
+  assert.match(draft, /RESULTADO_VISITA_V1/);
+  assert.match(draft, /resultado_encaminhamento_incompleto/);
+  assert.match(draft, /Próxima ação:\[ \]\[\^\|\]\{12,/);
   assert.match(draft, /'qualidade_feedback_nota',v_qualidade/);
 });
 

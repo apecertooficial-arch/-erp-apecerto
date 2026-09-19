@@ -168,6 +168,12 @@ begin
      ) then
     return pg_catalog.jsonb_build_object('ok',false,'erro','feedback_incompleto');
   end if;
+  if p_status <> 'realizada' and (
+       v_justificativa !~ '^RESULTADO_VISITA_V1[ ]\|[ ]Motivo:[ ][^|]{3,}[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Próxima ação:[ ][^|]{12,}[ ]\|'
+     ) then
+    return pg_catalog.jsonb_build_object('ok',false,'erro','resultado_encaminhamento_incompleto');
+  end if;
   if p_status = 'realizada' then
     v_qualidade:=public.f2_feedback_visita_nota(v_justificativa);
     if v_qualidade < 9 then

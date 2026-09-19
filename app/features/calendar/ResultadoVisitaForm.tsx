@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  MIN_JUSTIFICATIVA_VISITA,
   RESULTADOS_VISITA,
   ROTULO_STATUS_RESULTADO,
   type StatusResultadoVisita,
@@ -13,9 +12,11 @@ import {
   FEEDBACK_VISITA_VAZIO,
   INTENCOES_VISITA,
   montarJustificativaFeedbackVisita,
+  montarJustificativaResultadoVisita,
   NOTA_MINIMA_FEEDBACK_VISITA,
   PERCEPCOES_VISITA,
   PRESENCAS_VISITA,
+  validarEncaminhamentoResultadoVisita,
   validarFeedbackVisitaDetalhado,
   type FeedbackVisitaDetalhado,
 } from "./feedbackVisita";
@@ -45,12 +46,14 @@ export function ResultadoVisitaForm({
   const [status, setStatus] = useState<StatusResultadoVisita>(statusInicial);
   const [resultadoCodigo, setResultadoCodigo] = useState(RESULTADOS_VISITA[statusInicial][0].codigo);
   const [justificativa, setJustificativa] = useState("");
+  const [proximaAcaoEncerramento, setProximaAcaoEncerramento] = useState("");
   const [feedback, setFeedback] = useState<FeedbackVisitaDetalhado>(FEEDBACK_VISITA_VAZIO);
   const justificativaFinal = status === "realizada"
     ? montarJustificativaFeedbackVisita(feedback, justificativa)
-    : justificativa.trim();
+    : montarJustificativaResultadoVisita(status, resultadoCodigo, proximaAcaoEncerramento, justificativa);
   const avaliacaoQualidade = avaliarQualidadeFeedbackVisita(feedback);
   const erroLocal = validarFeedbackVisitaDetalhado(status, feedback)
+    ?? validarEncaminhamentoResultadoVisita(status, proximaAcaoEncerramento)
     ?? validarResultadoVisita(status, resultadoCodigo, justificativaFinal);
   const atualizarFeedback = <K extends keyof FeedbackVisitaDetalhado>(campo: K, valor: FeedbackVisitaDetalhado[K]) => {
     setFeedback((atual) => ({ ...atual, [campo]: valor }));
@@ -83,6 +86,15 @@ export function ResultadoVisitaForm({
           {RESULTADOS_VISITA[status].map((item) => <option value={item.codigo} key={item.codigo}>{item.rotulo}</option>)}
         </select>
       </label>
+      {status !== "realizada" && <label>Próxima ação <small>obrigatória</small>
+        <input
+          disabled={busy}
+          value={proximaAcaoEncerramento}
+          maxLength={90}
+          onChange={(evento) => setProximaAcaoEncerramento(evento.target.value)}
+          placeholder={status === "cancelada" ? "Ex.: ligar amanhã às 10h para remarcar" : "Ex.: retomar hoje às 18h e propor nova data"}
+        />
+      </label>}
       {status === "realizada" && <section className="resultado-visita-detalhes" aria-label="Feedback estruturado da visita">
         <fieldset>
           <legend>Quem participou <small>obrigatório</small></legend>
@@ -136,17 +148,15 @@ export function ResultadoVisitaForm({
         busy={busy}
         onConfirmarTranscricao={(texto) => setJustificativa(texto.trim().slice(0, 800))}
       />}
-      <label>{status === "realizada" ? "Resumo adicional" : "Justificativa"} {status !== "realizada" && <small>obrigatória</small>}
+      <label>{status === "realizada" ? "Resumo adicional" : "Contexto adicional"} <small>opcional</small>
         <textarea
           disabled={busy}
           value={justificativa}
           onChange={(evento) => setJustificativa(evento.target.value)}
-          minLength={MIN_JUSTIFICATIVA_VISITA}
           maxLength={800}
           rows={4}
-          placeholder={status === "realizada" ? "Algum contexto importante que não apareceu nas respostas acima?" : "Conte objetivamente o que ocorreu e o próximo passo."}
+          placeholder={status === "realizada" ? "Algum contexto importante que não apareceu nas respostas acima?" : "Algum contexto importante além do motivo e da próxima ação?"}
         />
-        {status !== "realizada" && <em>{justificativa.trim().length}/{MIN_JUSTIFICATIVA_VISITA} caracteres mínimos</em>}
       </label>
       {erro && <p className="resultado-visita-erro" role="alert">{erro}</p>}
     </div>
