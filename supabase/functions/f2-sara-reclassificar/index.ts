@@ -10,13 +10,17 @@ import {
   deveAplicarCadenciaSemResposta,
   fatosDaConversa,
   filtrarCatalogoParaIa,
+  normalizarPrazoSugerido,
+  saidaNovaSemRespostaDesdeAnalise,
   validarSugestaoAutomatica,
 } from "../_shared/sara-policy.mjs";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
-const MAX_MENSAGENS = 60;
+const MAX_MENSAGENS_CARREGADAS = 250;
+const MAX_MENSAGENS_NOVAS = 24;
+const MENSAGENS_ANCORA = 8;
 const TEMPERATURAS = ["frio", "morno", "quente", "negociando"] as const;
 const EVENTOS_SARA = new Set([
   "conversation.message_received",
@@ -40,8 +44,44 @@ type ContextoEvento = {
   executionId: number | null;
   expectedAction: Record<string, unknown> | null;
   analisadoEm: string | null;
+  resumoAnterior: string | null;
+  messageIds: string[];
   evidenciasOperacionais: Array<{ id: string; tipo: string; resumo: string; criado_em: string }>;
 };
+
+const SARA_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "sara_classificacao",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        momento_codigo: { type: "string" },
+        resumo: { type: "string" },
+        proxima_acao_especifica: { type: "string" },
+        confianca: { type: "number", minimum: 0, maximum: 1 },
+        evidencia_ids: { type: "array", items: { type: "string" } },
+        evidencias: { type: "array", items: { type: "string" } },
+        temperatura: { type: "string", enum: [...TEMPERATURAS] },
+        temperatura_confianca: { type: "number", minimum: 0, maximum: 1 },
+        temperatura_evidencia_ids: { type: "array", items: { type: "string" } },
+        prazo_sugerido: { description: "Data/hora ISO 8601 completa com timezone, nunca uma duracao textual.", anyOf: [{ type: "string" }, { type: "null" }] },
+        qualidade_nota: { anyOf: [{ type: "number", minimum: 0, maximum: 10 }, { type: "null" }] },
+        qualidade_resumo: { type: "string" },
+        acao_anterior_executada: { anyOf: [{ type: "boolean" }, { type: "null" }] },
+        acao_anterior_evidencia_ids: { type: "array", items: { type: "string" } },
+      },
+      required: [
+        "momento_codigo", "resumo", "proxima_acao_especifica", "confianca",
+        "evidencia_ids", "evidencias", "temperatura", "temperatura_confianca",
+        "temperatura_evidencia_ids", "prazo_sugerido", "qualidade_nota",
+        "qualidade_resumo", "acao_anterior_executada", "acao_anterior_evidencia_ids",
+      ],
+    },
+  },
+} as const;
 
 function segredoIgual(recebido: string | null, esperado: string) {
   if (!recebido || !esperado || recebido.length !== esperado.length) return false;
@@ -121,6 +161,7 @@ REGRAS OBRIGATÓRIAS:
 - Se há intenção de visita sem data fechada: TENTANDO_AGENDAMENTO.
 - Pós-visita, cancelamento e remarcação usam somente momentos de pós-visita do catálogo.
 - RETORNO_PROGRAMADO só quando há data/prazo combinado; sem data explícita, o CRM usará 5 dias.
+- Em prazo_sugerido, converta prazo relativo usando o horario de agora e devolva ISO 8601 completo com timezone. Nunca devolva "5 dias", "1440min" ou outro texto de duracao.
 - Evidências são mensagens do CLIENTE. Em evidencia_ids, devolva somente IDs exibidos em linhas CLIENTE e que sustentem a classificação. Nunca use ID de CORRETOR.
 - Temperatura descreve a intenção REAL do cliente, nunca o esforço do corretor:
   frio = não respondeu, recusou ou não demonstrou intenção concreta;
@@ -140,7 +181,9 @@ ESTADO ATUAL: etapa=${c.etapa}; momento=${c.momento_codigo}; cadência_passo=${c
 EVENTO: ${evento.eventType ?? "conversation.unspecified"}; source_id=${evento.sourceId ?? "-"}; execution_id=${evento.executionId ?? "-"}.
 AÇÃO ESPERADA: ${JSON.stringify(evento.expectedAction)}.
 EVIDÊNCIAS POSTERIORES À ANÁLISE ANTERIOR: ${JSON.stringify(evidenciasPosteriores)}.
-CONVERSA D-API EM ORDEM CRONOLÓGICA (recorte mais recente, até ${MAX_MENSAGENS} mensagens):
+RESUMO DA ANÁLISE ANTERIOR: ${evento.resumoAnterior ?? "primeira análise; sem resumo anterior"}.
+LOTE ATUAL: ${JSON.stringify(evento.messageIds)}.
+CONVERSA D-API EM ORDEM CRONOLÓGICA (âncora anterior + mensagens novas):
 ${conversa}
 Também avalie a qualidade do atendimento do CORRETOR de 0 a 10. A nota mede clareza, agilidade, condução para o próximo passo e aderência ao que o cliente pediu. Sem mensagens do corretor, use nota null. Não desconte pontos por fatos que não aparecem na conversa.
 Responda SOMENTE JSON válido: {"momento_codigo":"CÓDIGO_DO_CATÁLOGO","resumo":"diagnóstico objetivo em até 2 frases","proxima_acao_especifica":"orientação concreta para o corretor","confianca":0.0,"evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"evidencias":["trecho literal do cliente"],"temperatura":"frio|morno|quente|negociando","temperatura_confianca":0.0,"temperatura_evidencia_ids":["ID_DA_MENSAGEM_DO_CLIENTE"],"prazo_sugerido":null,"qualidade_nota":0.0,"qualidade_resumo":"justificativa objetiva da nota","acao_anterior_executada":null,"acao_anterior_evidencia_ids":[]}.`;
@@ -162,17 +205,29 @@ async function carregarMensagens(db: any, c: Candidato) {
   if (e2) throw new Error("conversas_indisponiveis");
   const conversaIds = (conversas ?? []).map((x: any) => x.id);
   if (!conversaIds.length) return [];
-  // O maior histórico observado na auditoria tinha 212 mensagens. Buscamos 250,
-  // aplicamos o corte no servidor e entregamos à IA as 60 mais recentes.
+  // O histórico completo continua no banco. Esta leitura produz fatos objetivos
+  // e o hash; somente delta + uma pequena ancora seguem para a IA.
   const { data, error } = await db.from("wa_mensagens")
     .select("id,direcao,tipo,conteudo,transcricao,enviado_em,criado_em")
-    .in("conversa_id", conversaIds).order("criado_em", { ascending: false }).limit(250);
+    .in("conversa_id", conversaIds).order("criado_em", { ascending: false })
+    .limit(MAX_MENSAGENS_CARREGADAS);
   if (error) throw new Error("mensagens_indisponiveis");
   const corte = Date.parse(c.corte_conversa_em);
   return (data ?? [])
     .filter((m: any) => c.historico_completo || Date.parse(m.enviado_em ?? m.criado_em) >= corte)
-    .sort((a: any, b: any) => Date.parse(a.enviado_em ?? a.criado_em) - Date.parse(b.enviado_em ?? b.criado_em))
-    .slice(-MAX_MENSAGENS);
+    .sort((a: any, b: any) => Date.parse(a.enviado_em ?? a.criado_em) - Date.parse(b.enviado_em ?? b.criado_em));
+}
+
+function mensagensParaAnalise(mensagens: any[], evento: ContextoEvento) {
+  if (!evento.analisadoEm) return mensagens.slice(-MAX_MENSAGENS_NOVAS);
+  const corte = Date.parse(evento.analisadoEm);
+  const idsDoLote = new Set(evento.messageIds);
+  const novas = mensagens.filter((m: any) =>
+    idsDoLote.has(String(m.id)) || Date.parse(m.enviado_em ?? m.criado_em) > corte
+  );
+  const primeiraNova = novas.length ? mensagens.indexOf(novas[0]) : mensagens.length;
+  const ancora = mensagens.slice(Math.max(0, primeiraNova-MENSAGENS_ANCORA), primeiraNova);
+  return [...ancora, ...novas.slice(-MAX_MENSAGENS_NOVAS)];
 }
 
 async function processar(
@@ -183,9 +238,12 @@ async function processar(
   evento: ContextoEvento,
 ) {
   const mensagens = await carregarMensagens(db, c);
+  const mensagensPrompt = mensagensParaAnalise(mensagens, evento);
   const corteAnterior = evento.analisadoEm ? Date.parse(evento.analisadoEm) : Number.NaN;
+  const idsDoLote = new Set(evento.messageIds);
   const mensagensPosteriores = mensagens.filter((m: any) =>
-    Number.isNaN(corteAnterior) || Date.parse(m.enviado_em ?? m.criado_em) > corteAnterior
+    idsDoLote.has(String(m.id)) || Number.isNaN(corteAnterior)
+      || Date.parse(m.enviado_em ?? m.criado_em) > corteAnterior
   );
   const evidenciasPosteriores = [
     ...mensagensPosteriores.map((m: any) =>
@@ -196,7 +254,7 @@ async function processar(
   const fatos = fatosDaConversa(mensagens);
   const catalogoIa = filtrarCatalogoParaIa(c, catalogo, fatos) as Catalogo[];
   const hash = await sha256(JSON.stringify({ lead: c.funil_lead_id, versao: c.versao,
-    contrato:"evidencia-id-v7-inteligencia-hibrida",
+    contrato:"evidencia-id-v13-preservacao-protegida",
     agente: agenteSlug,
     mensagens: mensagens.map((m: any) => [m.id,m.enviado_em ?? m.criado_em]),
     fatos,
@@ -216,6 +274,68 @@ async function processar(
   }
   const entradas = mensagens.filter((m: any) => direcaoCliente(m.direcao));
   const saidas = mensagens.filter((m: any) => direcaoCorretor(m.direcao));
+  if (saidaNovaSemRespostaDesdeAnalise(mensagensPosteriores, evento.eventType)) {
+    const fatosNovos = fatosDaConversa(mensagensPosteriores);
+    const codigo = !entradas.length && deveAplicarCadenciaSemResposta(c, fatosNovos)
+      ? "CADENCIA_SEM_RESPOSTA"
+      : c.momento_codigo;
+    const momento = catalogo.find((m) => m.codigo === codigo);
+    if (!momento) throw new Error("catalogo_sem_momento_atual");
+    const [{ data: estadoAtual, error: erroEstadoAtual },
+      { data: ultimaClassificacao, error: erroUltimaClassificacao }] = await Promise.all([
+      db.from("f2_lead").select("temperatura").eq("id", c.funil_lead_id).maybeSingle(),
+      db.from("f2_sara_analise")
+        .select("temperatura_sugerida,temperatura_confianca,temperatura_evidencias")
+        .eq("funil_lead_id", c.funil_lead_id)
+        .in("status", ["aplicada", "mantida"])
+        .not("temperatura_sugerida", "is", null)
+        .order("analisado_em", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (erroEstadoAtual || erroUltimaClassificacao)
+      throw new Error("estado_atual_indisponivel");
+    const ultimaEntrada = entradas.at(-1);
+    const evidenciaDaMensagem = ultimaEntrada
+      ? texto(ultimaEntrada.transcricao, 300) ?? texto(ultimaEntrada.conteudo, 300)
+      : null;
+    const evidenciaPersistida = Array.isArray(ultimaClassificacao?.temperatura_evidencias)
+      ? ultimaClassificacao.temperatura_evidencias
+        .map((item: unknown) => texto(item, 300)).find(Boolean) ?? null
+      : null;
+    const evidenciaTemperatura = evidenciaDaMensagem ?? evidenciaPersistida;
+    const temperaturaPreservada = estadoAtual?.temperatura
+      ?? ultimaClassificacao?.temperatura_sugerida ?? "morno";
+    // O registro da analise exige prova literal para preservar uma temperatura
+    // quando ja existe resposta no historico. Sem essa prova, deixa a IA seguir
+    // pelo caminho seguro em vez de fabricar evidencia ou travar o card.
+    if (entradas.length && !evidenciaTemperatura) {
+      // segue para a interpretacao normal abaixo
+    } else {
+      const moveuParaCadencia = codigo === "CADENCIA_SEM_RESPOSTA"
+        && codigo !== c.momento_codigo;
+      return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
+        origem:"deterministica",status:"sugestao",momento_codigo:momento.codigo,
+        etapa:momento.etapa,acao_codigo:momento.acao_codigo,acao_rotulo:momento.acao_rotulo,
+        prazo_sugerido:null,
+        resumo:moveuParaCadencia
+          ? "O corretor cumpriu a tentativa de contato e nao houve resposta nova do cliente; seguir a cadencia oficial."
+          : "O corretor cumpriu a acao prevista e nao houve resposta nova do cliente; o estado foi preservado e o proximo checkpoint foi renovado.",
+        evidencias:[],confianca:1,mensagens:mensagens.length,qualidade_nota:null,
+        temperatura:moveuParaCadencia ? "frio" : temperaturaPreservada,
+        temperatura_confianca:moveuParaCadencia
+          ? 1
+          : ultimaClassificacao?.temperatura_confianca ?? 0.5,
+        temperatura_evidencias:evidenciaTemperatura ? [evidenciaTemperatura] : [],
+        proxima_acao:proximaAcaoContrato(
+          momento,
+          momento.prazo_minutos === null ? null
+            : new Date(Date.now()+momento.prazo_minutos*60000).toISOString(),
+        ),
+        checkpoint_anterior:null,
+        qualidade_resumo:"A qualidade foi preservada porque nao houve nova resposta do cliente.",
+        mensagens_novas:mensagensPosteriores.length,
+        ultima_mensagem_id:mensagens.at(-1)?.id ?? null };
+    }
+  }
   if (!entradas.length && saidas.length && !evento.eventType?.startsWith("lead.")) {
     if (!deveAplicarCadenciaSemResposta(c, fatos)) {
       return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
@@ -273,14 +393,29 @@ async function processar(
         expected_action:evento.expectedAction,executada:null,evidencias:[],
       } : null,
       qualidade_resumo:"A avaliacao automatica nao foi aplicada porque faltou uma saida estruturada confiavel.",
+      mensagens_novas:mensagensPosteriores.length,
+      ultima_mensagem_id:mensagens.at(-1)?.id ?? null,
       revisao_motivo:motivo.slice(0,80) };
   };
 
   try {
-  const input = prompt(c,catalogoIa,mensagens,fatos,evento,evidenciasPosteriores);
+  const { data:orcamento, error:erroOrcamento } = await db.rpc("f2_sara_orcamento_status", {
+    p_projected_usd: 0.005,
+  });
+  const rpcAindaNaoInstalada = erroOrcamento && (
+    erroOrcamento.code === "PGRST202" ||
+    /f2_sara_orcamento_status.*(schema cache|not find|nao encontr)/i.test(
+      String(erroOrcamento.message ?? ""),
+    )
+  );
+  if (erroOrcamento && !rpcAindaNaoInstalada) throw new Error("orcamento_indisponivel");
+  if (!erroOrcamento && orcamento?.permitido !== true)
+    return revisaoSegura("orcamento_mensal_esgotado");
+  const input = prompt(c,catalogoIa,mensagensPrompt,fatos,evento,evidenciasPosteriores);
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ia-router`, {
     method:"POST",headers:{apikey:SERVICE_ROLE_KEY,"Content-Type":"application/json"},
     body:JSON.stringify({agente_slug:agenteSlug,input,disable_tools:true,
+      model_override:"gpt-5.6-luna",response_format:SARA_RESPONSE_FORMAT,
       override_prompt:"Classifique estritamente pelo catálogo fechado do input. Retorne somente JSON."}),
     signal:AbortSignal.timeout(25000),
   });
@@ -328,8 +463,7 @@ async function processar(
   if (!temperaturaEvidencias.length) throw new Error("ia_temperatura_sem_evidencia_cliente");
   if (["quente", "negociando"].includes(temperatura!) && temperaturaConfianca < 0.85)
     throw new Error("ia_temperatura_alta_sem_confianca");
-  const prazo = typeof parsed.prazo_sugerido==="string" && !Number.isNaN(Date.parse(parsed.prazo_sugerido))
-    ? new Date(parsed.prazo_sugerido).toISOString() : null;
+  const prazo = normalizarPrazoSugerido(parsed.prazo_sugerido);
   const politica = validarSugestaoAutomatica({
     candidato:c,momento,fatos,confianca,evidencias,prazoSugerido:prazo,
   });
@@ -371,7 +505,13 @@ async function processar(
       expected_action:evento.expectedAction,executada:acaoAnteriorExecutada,
       evidencias:evidenciasAcaoAnterior,
     } : null,
-    qualidade_resumo:qualidadeResumo };
+    qualidade_resumo:qualidadeResumo,
+    ia_execucao_id:payload?.execucao_id ?? null,modelo:payload?.modelo ?? "gpt-5.6-luna",
+    tokens_entrada:payload?.tokens?.entrada ?? null,
+    tokens_cache_entrada:payload?.tokens?.cache_entrada ?? null,
+    tokens_saida:payload?.tokens?.saida ?? null,custo_usd:payload?.custo_usd ?? null,
+    mensagens_novas:mensagensPosteriores.length,
+    ultima_mensagem_id:mensagens.at(-1)?.id ?? null };
   } catch (e) {
     if (e instanceof IaIndisponivelError) throw e;
     const motivo = e instanceof Error ? e.message : "ia_falhou";
@@ -396,6 +536,11 @@ Deno.serve(async (req: Request) => {
     if (eventType && !EVENTOS_SARA.has(eventType))
       return Response.json({ok:false,erro:"event_type_invalido"},{status:400});
     const sourceId = texto(body.source_id, 100);
+    const messageIds = Array.isArray(body.message_ids)
+      ? [...new Set(body.message_ids
+        .filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)))]
+        .slice(0, 100)
+      : [];
     const executionRaw = Number(body.execution_id);
     const executionId = Number.isSafeInteger(executionRaw) && executionRaw > 0 ? executionRaw : null;
     const expectedAction = body.expected_action && typeof body.expected_action === "object" &&
@@ -417,13 +562,15 @@ Deno.serve(async (req: Request) => {
     if (funilLeadId && !(candidatos ?? []).length)
       return Response.json({ok:false,erro:"card_nao_encontrado",funil_lead_id:funilLeadId},{status:404});
     let analisadoEm: string | null = null;
+    let resumoAnterior: string | null = null;
     const evidenciasOperacionais: ContextoEvento["evidenciasOperacionais"] = [];
     if (eventType?.startsWith("lead.") && sourceId && /^\d+$/.test(sourceId)) {
       const { data: analise, error: ea } = await db.from("f2_sara_analise")
-        .select("id,funil_lead_id,analisado_em").eq("id",Number(sourceId))
+        .select("id,funil_lead_id,analisado_em,resumo").eq("id",Number(sourceId))
         .eq("funil_lead_id",funilLeadId).maybeSingle();
       if (ea || !analise) return Response.json({ok:false,erro:"checkpoint_origem_invalido"},{status:409});
       analisadoEm = analise.analisado_em;
+      resumoAnterior = analise.resumo;
       const [{data:eventos,error:ee},{data:visitas,error:ev}] = await Promise.all([
         db.from("f2_evento").select("id,tipo,titulo,criado_em")
           .eq("funil_lead_id",funilLeadId).gt("criado_em",analisadoEm).order("criado_em").limit(100),
@@ -439,9 +586,17 @@ Deno.serve(async (req: Request) => {
         id:`visita:${String(v.id)}`,tipo:`visita.${String(v.status)}`,resumo:"estado de visita registrado",
         criado_em:String(v.atualizado_em ?? v.inicio_em),
       });
+    } else {
+      const { data: analiseAnterior, error: ea } = await db.from("f2_sara_analise")
+        .select("analisado_em,resumo").eq("funil_lead_id",funilLeadId)
+        .order("analisado_em", { ascending:false }).limit(1).maybeSingle();
+      if (ea) throw new Error("analise_anterior_indisponivel");
+      analisadoEm = analiseAnterior?.analisado_em ?? null;
+      resumoAnterior = analiseAnterior?.resumo ?? null;
     }
     const evento: ContextoEvento = {
-      eventType,sourceId,executionId,expectedAction,analisadoEm,evidenciasOperacionais,
+      eventType,sourceId,executionId,expectedAction,analisadoEm,resumoAnterior,
+      messageIds,evidenciasOperacionais,
     };
     const resultados = await Promise.allSettled(
       (candidatos ?? []).map((c:Candidato)=>processar(db,c,catalogo,agenteSlug,evento)),

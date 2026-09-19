@@ -53,6 +53,32 @@ export function fatosDaConversa(mensagens) {
   };
 }
 
+export function saidaNovaSemRespostaDesdeAnalise(mensagens, eventType) {
+  if (eventType !== "conversation.message_sent") return false;
+  const fatos = fatosDaConversa(mensagens);
+  return fatos.corretorEnviou && fatos.ultimaDirecao === "corretor";
+}
+
+export function normalizarPrazoSugerido(valor, agora = Date.now()) {
+  if (typeof valor !== "string" || !valor.trim()) return null;
+  const texto = valor.trim();
+  const absoluto = Date.parse(texto);
+  if (!Number.isNaN(absoluto)) return new Date(absoluto).toISOString();
+  const relativo = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/^em\s+/, "").match(
+      /^(\d{1,4})\s*(min|minuto|minutos|h|hora|horas|d|dia|dias)$/,
+    );
+  if (!relativo) return null;
+  const quantidade = Number(relativo[1]);
+  const unidade = relativo[2];
+  const multiplicador = unidade.startsWith("min") ? 60_000
+    : unidade === "h" || unidade.startsWith("hora") ? 3_600_000
+    : 86_400_000;
+  const duracao = quantidade * multiplicador;
+  if (!Number.isFinite(duracao) || duracao <= 0 || duracao > 30 * 86_400_000) return null;
+  return new Date(agora + duracao).toISOString();
+}
+
 export function deveAplicarCadenciaSemResposta(candidato, fatos) {
   return !fatos.clienteRespondeu
     && fatos.corretorEnviou
