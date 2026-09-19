@@ -17,8 +17,7 @@ declarar o ERP inteiro pronto sem evidência.
   usuário autorizou publicação de código validado. Os commits locais mais
   recentes ainda não foram enviados por falha do helper Git; merge e deploy
   não foram executados
-- HEAD local confirmado: `a2127f5f`; há uma nova fatia P0 validada ainda não
-  commitada sobre esse HEAD
+- HEAD local funcional validado: `9ef77038`
 - HEAD remoto da branch: `f900d7f8`
 
 ## Concluído
@@ -320,11 +319,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Revisar o diff da fatia `ação → Sara → próxima ação → Meu Dia`, executar
-`git diff --check` e criar um commit local sem incluir o symlink `node_modules`.
-Depois, preparar o ensaio isolado dos contratos de confirmação e alertas. Para
-publicar os commits locais, reparar somente o acesso de escrita do GitHub (novo
-login do `gh` ou helper válido), sem criar/rotacionar credenciais
-automaticamente. Não usar `main` do Supabase como laboratório. Merge/deploy de
-código e migration permanecem etapas distintas e verificáveis; nunca agrupar
-`db push` ao deploy de aplicação.
+Preparar o ensaio isolado dos contratos de confirmação e alertas. A fatia
+`ação → Sara → próxima ação → Meu Dia` está no commit local `9ef77038`, sem o
+symlink `node_modules`. Para publicar os commits locais, reparar somente o
+acesso de escrita do GitHub (novo login do `gh` ou helper válido), sem
+criar/rotacionar credenciais automaticamente. Não usar `main` do Supabase como
+laboratório. Merge/deploy de código e migration permanecem etapas distintas e
+verificáveis; nunca agrupar `db push` ao deploy de aplicação.
