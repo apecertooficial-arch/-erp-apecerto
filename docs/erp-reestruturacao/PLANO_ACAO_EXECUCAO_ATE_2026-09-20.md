@@ -196,7 +196,7 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 538/538 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 552/552 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
 
@@ -309,8 +309,12 @@ autoridade.
   observações: dez mutações críticas permitem alterar objeto alheio ou precisam
   ser movidas para `service_role`;
 - medir a latência agregada da Sara e da atualização da próxima ação;
-- consolidar alertas da Sara por cliente/público: hoje há 344 alertas de gestão
-  para 132 clientes, com até 35 abertos para o mesmo cliente;
+- consolidar alertas da Sara por cliente/público: a revalidação encontrou 788
+  abertos para 138 negócios, 180 grupos duplicados e até 38 no mesmo grupo;
+- encerrar efeitos cuja automação perdeu autoridade sem apagar histórico: 697
+  alertas `acao_vencida` pertencem a três automações arquivadas e dois alertas
+  adicionais apontam para ação já removida; 162 alertas de ações ativas e ainda
+  configuradas devem ser preservados;
 - reproduzir visita realizada sem feedback e sem escalonamento;
 - conectar Central de foco e Kanban a contratos reais apenas após os gates.
 - impedir nova divergência entre a fonte visual testada do CRM e o arquivo

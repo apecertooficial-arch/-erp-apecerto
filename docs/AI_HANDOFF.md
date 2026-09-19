@@ -13,12 +13,12 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `3f095424`;
+- ambiente: branch isolada enviada ao repositório oficial até `70c435fa`;
   usuário autorizou publicação de código validado. Merge e deploy não foram
   executados
-- HEAD local e remoto antes da fatia em curso: `3f095424`
-- árvore local em curso: observabilidade e reincidência dos Avisos, ainda não
-  commitada neste checkpoint
+- HEAD local e remoto antes da fatia em curso: `70c435fa`
+- árvore local em curso: contrato de ciclo dos alertas de automação, ainda não
+  commitado neste checkpoint
 
 ## Concluído
 
@@ -379,6 +379,17 @@ declarar o ERP inteiro pronto sem evidência.
   390 × 844, sem overflow, erro de console ou chamada externa. Gate frontend
   543/543, 29/29 testes direcionados, typecheck e build passaram; lint ficou
   com zero erros e os mesmos dez avisos preexistentes.
+- alertas do motor foram separados da falha da Sara: 697 `acao_vencida`
+  pertencem a três automações inativas/arquivadas; dois alertas adicionais
+  apontam para ação já removida do mapa. O preflight preserva 162 alertas de
+  automações ativas e ainda configuradas. Das 697 chaves antigas, 696 usam o
+  formato legado de quatro partes e uma usa o formato atual de seis partes;
+- `P0_AUTOMACOES_ALERTAS_CICLO_DRAFT.sql` adiciona vínculo direto com
+  automação/bloco/lead, reconcilia os dois formatos, rejeita novo legado, fecha
+  somente autoridade perdida e preserva histórico. Nove contratos específicos,
+  17/17 combinados e gate frontend 552/552 passaram, além de typecheck e build;
+  lint ficou sem erros e com os mesmos dez avisos preexistentes. Nada foi aplicado no banco;
+  evidência em `TRACE_AUTOMACOES_ALERTAS_CICLO.md`.
 
 ## Riscos e limites
 
@@ -398,9 +409,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Commitar e enviar a fatia de observabilidade dos Avisos sem incluir o symlink
-`node_modules`. Em seguida, avançar no contrato que interrompe a duplicação na
-origem, ainda sem aplicar SQL. Quando existir Postgres isolado com CLI oficial,
+Commitar e enviar o contrato de ciclo dos alertas de automação sem incluir o
+symlink `node_modules`. Em seguida, avançar na resolução por evidência dos 162
+alertas ativos, sem classificar idade como prova de obsolescência. Quando
+existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
 mantendo os dispatchers desligados. Não usar `main` do Supabase como
 laboratório. Merge/deploy de código e migration permanecem etapas distintas e
