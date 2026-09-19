@@ -238,11 +238,17 @@ declarar o ERP inteiro pronto sem evidência.
   está em `P0_PUBLIC_LINKS_HARDENING_DRAFT.sql`: hash, validade, revogação,
   ficha de uso único, auditoria sanitizada, minimização da agenda e rate limit
   persistente; código usa service role apenas no servidor e o canário continua
-  desligado. 27/27 direcionados, gate frontend 483/483, typecheck e build
+  desligado. 27/27 direcionados, gate frontend 485/485, typecheck e build
   passaram; lint sem erros. Nenhum SQL foi aplicado;
 - o `SaraWidget` deixou de carregar URL/JWT público hardcoded e passou a usar o
   cliente Supabase canônico; a varredura atual não encontra JWT embutido em
   `app/`;
+- a única função do advisor `function_search_path_mutable`,
+  `public.hoje_operacao()`, é invoker e não lê tabelas. O draft local fixa
+  somente `search_path=pg_catalog`, com assert e rollback; 2/2 testes passaram;
+- `list_branches` confirmou que não existe branch Supabase isolada: há apenas
+  `main`, com estado de migrations `MIGRATIONS_FAILED`. Nenhum ensaio SQL deve
+  usar essa branch;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova

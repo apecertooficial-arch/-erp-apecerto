@@ -87,6 +87,14 @@ fonte. O widget agora usa o cliente Supabase canônico e a configuração de
 ambiente, evitando uma segunda autoridade de URL/chave e permitindo rotação sem
 alterar código. Nenhuma chave privilegiada foi introduzida no navegador.
 
+## P1 — `hoje_operacao` com namespace mutável
+
+A única função apontada é `public.hoje_operacao()`: SQL, `STABLE`, `SECURITY
+INVOKER`, sem leitura de tabelas e com grants intencionais para os três papéis.
+O draft `P1_HOJE_OPERACAO_SEARCH_PATH_DRAFT.sql` altera somente a configuração
+para `search_path=pg_catalog`, inclui assert e rollback específico. Não foi
+aplicado porque não existe branch Supabase isolada disponível.
+
 ## Decisões
 
 1. não revogar todas as 276 funções de `authenticated` em massa;
@@ -105,5 +113,5 @@ alterar código. Nenhuma chave privilegiada foi introduzida no navegador.
 - o gate está importado por `tests/supabase-seguranca.test.mjs`;
 - 27/27 testes direcionados passaram (a execução combinada registra os testes
   dos drafts uma vez pelo arquivo direto e outra pela importação);
-- gate frontend 483/483, typecheck e build aprovados; lint sem erros e com um
+- gate frontend 485/485, typecheck e build aprovados; lint sem erros e com um
   aviso preexistente de otimização da imagem da agenda.
