@@ -25,6 +25,10 @@
   .ape-agenda-resultados header h2 { margin: 3px 0 0; font-size: 17px; line-height: 1.25; }
   .ape-agenda-resultados header > strong { margin-left: auto; flex: none; border-radius: 999px; background: #FBE5E5; padding: 5px 8px; color: #A32C2C; font-size: 10px; }
   .ape-agenda-resultados > p { margin: 8px 0 12px; color: #6B635C; font-size: 12px; line-height: 1.45; }
+  .ape-agenda-resultados > .ape-agenda-cobranca-resumo { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; max-height: none; margin: 0 0 10px; overflow: visible; }
+  .ape-agenda-cobranca-resumo span { display: grid; gap: 2px; min-width: 0; border: 1px solid #E8DDD4; border-radius: 11px; background: #fff; padding: 8px; color: #756A62; font-size: 9px; line-height: 1.25; }
+  .ape-agenda-cobranca-resumo b { color: #8D3030; font-size: 17px; line-height: 1; }
+  .ape-agenda-cobranca-resumo .risco { border-color: #F0BABA; background: #FFF1F1; }
   .ape-agenda-resultados > div { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
   .ape-agenda-resultados > div > :is(button,.ape-agenda-cobranca) { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: #fff; padding: 11px; color: #1F1C1A; text-align: left; box-shadow: 0 1px 3px rgba(31,28,26,.05); }
   .ape-agenda-resultados > div > .ape-agenda-cobranca { background: #FCFAF8; }

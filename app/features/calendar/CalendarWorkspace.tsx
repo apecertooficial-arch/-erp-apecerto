@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
-import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
+import { rotuloAtrasoResultado, resumirCobrancasGerenciais, type StatusResultadoVisita } from "./resultadoVisita";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -56,6 +56,10 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
     }
     return [...grupos].map(([corretor, itens]) => ({ corretor, itens }));
   }, [data.pendencias_resultado, isAdmin]);
+  const resumoCobrancaGerencial = useMemo(
+    () => resumirCobrancasGerenciais(data.pendencias_resultado ?? []),
+    [data.pendencias_resultado],
+  );
   const gerenteNomeGeral = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.nome ?? null, [data.gerentes]);
   const geralGerenteId = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.id ?? null, [data.gerentes]);
 
@@ -181,6 +185,7 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
       </section>}
       {!data.pendencias_resultado_erro && (data.resumo_resultados?.pendentes ?? 0) > 0 && <section className="calendar-resultados-pendentes">
         <header><div><small>PRESTAÇÃO DE CONTAS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>{isAdmin ? "Cobre o corretor responsável. A pendência sai da fila quando ele registra um desfecho válido." : "Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos."}</p></div><strong>{data.resumo_resultados?.justificadas ?? 0}/{(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas</strong></header>
+        {isAdmin && <div className="calendar-cobranca-gerencial" aria-label="Resumo gerencial das cobranças"><span><b>{resumoCobrancaGerencial.total}</b> sem feedback válido</span><span><b>{resumoCobrancaGerencial.responsaveis}</b> corretores envolvidos</span><span><b>{resumoCobrancaGerencial.haDoisDiasOuMais}</b> há 2+ dias</span><span><b>{resumoCobrancaGerencial.maisAntigaDias ?? "—"}</b> dias da mais antiga</span>{resumoCobrancaGerencial.semResponsavel > 0 && <span className="risco"><b>{resumoCobrancaGerencial.semResponsavel}</b> sem responsável</span>}</div>}
         <div className="calendar-resultados-kpis"><span><b>{data.resumo_resultados?.passadas_sem_desfecho ?? 0}</b> sem desfecho</span><span><b>{data.resumo_resultados?.realizadas_sem_feedback ?? 0}</b> realizadas sem feedback</span><span><b>{data.resumo_resultados?.canceladas_sem_motivo ?? 0}</b> canceladas sem motivo</span></div>
         <div className="calendar-resultados-lista">{(isAdmin ? pendenciasPorCorretor : [{ corretor: "", itens: data.pendencias_resultado ?? [] }]).map((grupo) => <section key={grupo.corretor || "minhas-pendencias"} className="calendar-resultados-grupo">{isAdmin && <header><strong>{grupo.corretor}</strong><span>{grupo.itens.length} pendência{grupo.itens.length === 1 ? "" : "s"}</span></header>}{grupo.itens.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroResultado(""); setResultadoPendente(item); }}>{conteudoCobranca(item, "Informar resultado")}</button> : <div className="calendar-resultado-cobranca" key={item.id}>{conteudoCobranca(item, "Aguardando corretor")}</div>)}</section>)}</div>
       </section>}

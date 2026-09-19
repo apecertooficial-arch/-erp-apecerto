@@ -314,13 +314,17 @@ declarar o ERP inteiro pronto sem evidência.
   desktop e aplicativo, oculto até a capacidade existir e com confirmação
   humana da transcrição. O draft agora inclui dispatcher cron → Edge → claim,
   lote/lease/retry, service-only, `enabled=false` e três segredos apenas por nome
-  no Vault. 8/8 contratos, gate frontend 520/520, typecheck,
+  no Vault. 8/8 contratos, gate frontend 521/521, typecheck,
   ESLint e build passaram; harness desktop/390 × 844 registrou apenas GETs
   locais e zero erros. Nenhum áudio real foi enviado e nada foi aplicado;
 - feedback de visita agora possui rubrica determinística 0–10, mínimo 9 na
-  interface/API e mesma barreira no draft de banco. Gate 520/520, 16 contratos
+  interface/API e mesma barreira no draft de banco. Gate 521/521, 16 contratos
   direcionados, typecheck, ESLint, build e navegador desktop/390 × 844 passaram;
   a validação foi sanitizada e não enviou a mutação;
+- gestão de pós-visita ganhou resumo factual com total, responsáveis, casos há
+  2+ dias, idade máxima e ausência de dono. Um novo contrato elevou o gate a
+  521/521; desktop e aplicativo foram validados com fixtures sanitizadas, sem
+  permitir ao gerente responder pelo corretor;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,

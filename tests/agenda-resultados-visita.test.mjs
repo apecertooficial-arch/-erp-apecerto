@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, resumirCobrancasGerenciais, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
 import { verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
@@ -73,6 +73,26 @@ test("gestão enxerga atraso e responsável de cada cobrança", () => {
   assert.match(agendaWeb, /rotuloAtrasoResultado\(item\.data\)/);
   assert.match(agendaApp, /Responsável:/);
   assert.match(agendaApp, /rotuloAtrasoResultado\(item\.data\)/);
+});
+
+test("gestão recebe resumo acionável sem inventar performance", () => {
+  assert.deepEqual(resumirCobrancasGerenciais([
+    { data: "2026-09-19", corretor: "Corretora Alfa" },
+    { data: "2026-09-17", corretor: "Corretora Alfa" },
+    { data: "2026-09-16", corretor: "Corretor Beta" },
+    { data: "data-inválida", corretor: "" },
+  ], "2026-09-19"), {
+    total: 4,
+    responsaveis: 2,
+    haDoisDiasOuMais: 2,
+    maisAntigaDias: 3,
+    semResponsavel: 1,
+  });
+  assert.match(agendaWeb, /resumirCobrancasGerenciais/);
+  assert.match(agendaWeb, /sem feedback válido/);
+  assert.match(agendaWeb, /há 2\+ dias/);
+  assert.match(agendaApp, /resumirCobrancasGerenciais/);
+  assert.match(agendaApp, /corretores envolvidos/);
 });
 
 test("gerente cobra o corretor e não responde a visita por ele", () => {

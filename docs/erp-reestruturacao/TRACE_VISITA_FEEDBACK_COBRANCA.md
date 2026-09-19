@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; seis correções P0/P1 locais validadas
+Estado: fatia em reconstrução; sete correções P0/P1 locais validadas
 
 ## Contrato atual comprovado
 
@@ -72,6 +72,12 @@ APIs exigem no mínimo 9/10; o formulário mostra a nota e as pendências enquan
 o corretor escreve. O draft de banco repete a mesma barreira e registra a nota
 no evento, mas segue fora de migrations e não foi aplicado.
 
+A gestão agora recebe um resumo factual da fila: total sem feedback válido,
+quantos corretores estão envolvidos, quantos casos têm dois dias ou mais, idade
+da pendência mais antiga e eventual visita sem responsável. Não é uma nota de
+performance: o resumo deliberadamente não projeta conversão ou qualidade sem
+evidência persistida. Desktop e aplicativo repetem o mesmo cálculo.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
@@ -98,6 +104,10 @@ no evento, mas segue fora de migrations e não foi aplicado.
 - navegador desktop 1440 × 1000 e celular 390 × 844: nota 0/10 explica o que
   falta, feedback sanitizado chega a 10/10, botão de salvar é liberado e nenhuma
   mutação foi enviada.
+- gate após o resumo gerencial: 521/521 testes frontend, typecheck, ESLint e
+  build aprovados; navegador desktop e 390 × 844 mostram 3 cobranças, 2
+  corretores, 3 casos com 2+ dias e idade máxima de 33 dias, sem permitir que o
+  gerente responda pelo corretor.
 
 ## Lacunas ainda abertas
 
@@ -108,9 +118,9 @@ no evento, mas segue fora de migrations e não foi aplicado.
    positivos/negativos, objeções, alternativas, intenção e próxima ação. O
    produto visitado já vem da visita, mas múltiplos produtos e proposta
    financeira estruturada ainda precisam do modelo JSONB definitivo.
-3. A rubrica de qualidade está validada localmente, mas persistência produtiva,
-   cobrança progressiva, confirmação do gerente e indicadores por corretor
-   ainda não estão comprovados ponta a ponta.
+3. A rubrica e o resumo gerencial estão validados localmente, mas persistência
+   produtiva, cobrança progressiva, confirmação do gerente e histórico de
+   qualidade por corretor ainda não estão comprovados ponta a ponta.
 4. A validação autenticada no navegador local depende de configuração pública
    segura do Supabase; nenhum segredo foi copiado ou criado.
 5. A base possui notificações de visita próxima, mas não foi encontrada uma
@@ -163,7 +173,7 @@ falham fechadas sem a migration, usam o JWT do corretor no Storage e exigem
 confirmação humana para levar a transcrição ao resumo. O dispatcher limitado e
 service-only lê três segredos nomeados do Vault, possui lease/retry e nasce
 desligado. Seus 8/8 contratos e o
-gate frontend 520/520 passaram; desktop e 390 × 844 foram validados com dados
+gate frontend 521/521 passaram; desktop e 390 × 844 foram validados com dados
 sanitizados e zero mutações. Nada foi aplicado ou enviado.
 
 ## Próximo gate

@@ -74,3 +74,39 @@ export function rotuloAtrasoResultado(data: string, referencia = hojeOperacao())
   if (dias === 0) return "hoje";
   return `há ${dias} ${dias === 1 ? "dia" : "dias"}`;
 }
+
+export type ResumoCobrancasGerenciais = {
+  total: number;
+  responsaveis: number;
+  haDoisDiasOuMais: number;
+  maisAntigaDias: number | null;
+  semResponsavel: number;
+};
+
+/** Consolida apenas fatos presentes na fila; não projeta conversão, qualidade
+ * ou produtividade sem evidência persistida. */
+export function resumirCobrancasGerenciais(
+  itens: ReadonlyArray<{ data: string; corretor?: string | null }>,
+  referencia = hojeOperacao(),
+): ResumoCobrancasGerenciais {
+  const responsaveis = new Set<string>();
+  let haDoisDiasOuMais = 0;
+  let maisAntigaDias: number | null = null;
+  let semResponsavel = 0;
+  for (const item of itens) {
+    const corretor = item.corretor?.trim() ?? "";
+    if (corretor) responsaveis.add(corretor.toLocaleLowerCase("pt-BR"));
+    else semResponsavel += 1;
+    const dias = diasAguardandoResultado(item.data, referencia);
+    if (dias == null) continue;
+    if (dias >= 2) haDoisDiasOuMais += 1;
+    maisAntigaDias = maisAntigaDias == null ? dias : Math.max(maisAntigaDias, dias);
+  }
+  return {
+    total: itens.length,
+    responsaveis: responsaveis.size,
+    haDoisDiasOuMais,
+    maisAntigaDias,
+    semResponsavel,
+  };
+}
