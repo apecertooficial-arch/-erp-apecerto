@@ -9,8 +9,14 @@ Base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
 
 ## Resultado deste ciclo
 
-Estabelecer uma base verificável para reconstrução do ERP e entregar a primeira
-fatia operacional crítica funcionando localmente, com interface aprovada,
+O objetivo final permanece reestruturar o ERP inteiro: CRM, Sara, visitas,
+automações, aplicativo/PWA, produtos, captação, vendas, financeiro, banco,
+integrações, segurança, observabilidade, identidade visual e implantação
+repetível. O marco de domingo não reduz esse escopo; ele limita apenas o que
+pode ser honestamente certificado e publicado dentro desta janela.
+
+Até o marco, estabelecer uma base verificável e entregar o máximo de fatias
+operacionais críticas que atravessem todos os gates, com interface aprovada,
 contratos rastreados, testes comportamentais e evidência no navegador.
 
 Este ciclo não chamará o ERP inteiro de pronto ou vendável sem evidência. O
@@ -55,6 +61,40 @@ Não existe intervalo artificial de duas horas. A execução é contínua:
 `inspecionar → testar → corrigir → testar → validar → publicar → revalidar`.
 Uma fatia pronta antes disso avança imediatamente; uma fatia insegura não é
 publicada apenas porque o relógio chegou a um horário.
+
+A antiga automação de duas horas está `PAUSED` e existe apenas como registro.
+Ela não agenda, limita ou desacelera a execução. Checkpoints são escritos quando
+há mudança material, conclusão, falha ou decisão necessária — não por relógio.
+
+## Revalidação integral do escopo de 2026-09-19
+
+O plano foi confrontado novamente com todas as decisões da conversa e preserva
+estas frentes obrigatórias:
+
+1. entrada Meta/site, Make, deduplicação, proteção por visita/negociação e
+   distribuição auditável;
+2. Sara com etapa, momento, próxima ação, temperatura e qualidade, acionada por
+   eventos e janelas determinísticas;
+3. Meu Dia, Central de foco, Kanban e pipelines configuráveis sem autoridades
+   paralelas ocultas;
+4. visita, feedback estruturado/áudio, qualidade, cobrança corretor → gerente e
+   definição explícita do cliente;
+5. aplicativo/PWA específico para corretor, gerente e CEO, incluindo agenda,
+   notificações, WhatsApp, desempenho, offline e conflitos;
+6. produtos, captação, proprietário, aprovação interna e publicação no site;
+7. esteira de venda, documentos, contrato, assinatura e pagamento;
+8. financeiro completo, comissões, aportes, despesas, caixa, impostos e futuro
+   adapter do banco de pagamentos;
+9. automações versionadas, idempotentes, observáveis e testadas para atraso,
+   duplicidade, reordenação, falha e resposta parcial;
+10. consolidação de repositório, banco, Edge Functions, RLS, Auth, Storage,
+    integrações e legado, sem apagar histórico ativo;
+11. identidade visual única e acessível em desktop e celular;
+12. provisionamento repetível para outras imobiliárias, sem forks artesanais.
+
+Nenhuma dessas frentes é retirada do roadmap. A ordem é por risco e dependência:
+primeiro corrigir a autoridade e o comportamento real; depois aplicar a camada
+visual; por último remover o legado cuja substituição já tenha sido provada.
 
 ## Estratégia de economia de tokens
 
@@ -135,6 +175,10 @@ Gate local da fatia: build completo aprovado; suíte frontend 426/426; suíte
 selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
+
+Gate ampliado mais recente: 456/456 testes frontend aprovados. Isso comprova os
+contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
+não passaram por banco isolado, navegador autenticado e produção.
 
 ## Fatia vertical 1 — lead até próxima ação confiável
 

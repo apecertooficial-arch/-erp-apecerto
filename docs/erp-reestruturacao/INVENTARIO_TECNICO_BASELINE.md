@@ -149,6 +149,12 @@ histórico, testes e presença equivalente em `origin/main`.
 
 ## Edge Functions
 
+A reconciliação remota/local está detalhada em
+`docs/erp-reestruturacao/EDGE_FUNCTIONS_RECONCILIACAO.md`: 53 funções remotas,
+26 fontes locais na leitura inicial e 27 funções apenas remotas. Quatro dessas
+funções são chamadas diretamente pelo ERP; `dapi-qr` já possui substituição
+local segura em validação, ainda sem deploy.
+
 `backfill-historico`, `crm-capi`, `dapi-enviar`, `dapi-webhook`,
 `distribuir-lead`, `entrada`, `enviar-produto`, `enviar-whatsapp`,
 `f2-sara-interpretar`, `f2-sara-reclassificar`, `ia-avaliar-lote`,

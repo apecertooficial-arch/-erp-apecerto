@@ -439,3 +439,9 @@ verify_jwt = false
 [functions.presenca]
 enabled = true
 verify_jwt = true
+
+# Conexao por QR exige pessoa autenticada; o codigo ainda valida a sessao e a
+# posse da instancia pela mesma RPC escopada usada na tela de Conexoes.
+[functions.dapi-qr]
+enabled = true
+verify_jwt = true

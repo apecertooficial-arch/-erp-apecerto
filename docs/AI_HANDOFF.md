@@ -157,6 +157,14 @@ declarar o ERP inteiro pronto sem evidência.
   in-app, resolução automática e efeitos externos desligados; 6/6 testes do
   draft, 23/23 combinados e 450/450 no gate frontend oficial passaram. Ainda
   não executado em Postgres;
+- reconciliação das Edge Functions provou 53 funções remotas contra 26 fontes
+  locais e 27 slugs somente remotos. Quatro são dependências diretas do ERP:
+  `dapi-qr`, `admin-usuarios`, `cadastro-publico` e `definir-senha`;
+- `dapi-qr` foi reconstruída localmente sem copiar o segredo incorporado à
+  versão remota: JWT, autorização da instância por `wa_v7_painel`, CORS
+  restrito, erros sanitizados e segredo apenas no ambiente. Seis testes
+  direcionados e o gate frontend 456/456 passaram; `deno` não está instalado,
+  então check/lint Deno e deploy continuam pendentes;
 - após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem
