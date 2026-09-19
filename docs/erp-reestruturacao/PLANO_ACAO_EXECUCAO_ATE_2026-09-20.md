@@ -236,6 +236,11 @@ RPCs `ncrm_sara_*` aposentados que produzia um estado enganoso na interface. A
 latência recente de conversa foi medida (p50 6,5 s; p95 10,3 s), separando-a dos
 checkpoints de prazo.
 
+Também concluído localmente: APIs e interfaces agora restringem o feedback ao
+corretor dono; o contrato aditivo de banco para repetir essa invariável e criar
+cobrança pós-visita persistente está preparado fora de `supabase/migrations`,
+com push/WhatsApp desligados. Aplicação e validação isolada continuam pendentes.
+
 ### P1
 
 - feedback estruturado e por áudio;

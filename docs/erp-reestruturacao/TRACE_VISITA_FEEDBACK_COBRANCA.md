@@ -55,7 +55,7 @@ regra existir no banco por migration aditiva validada em ambiente isolado.
 
 - teste escrito antes da correção falhou no comportamento anterior;
 - testes direcionados após a barreira nas APIs: 63/63 passaram;
-- gate frontend oficial ampliado com os novos contratos: 437/437 passou;
+- gate frontend oficial ampliado com os novos contratos: 450/450 passou;
 - ESLint dos arquivos alterados: passou;
 - build Vinext completo: passou;
 - `git diff --check`: passou.
@@ -87,9 +87,38 @@ regra existir no banco por migration aditiva validada em ambiente isolado.
 6. A RPC de gravação ainda permite o atalho administrativo direto no banco. As
    APIs locais já o bloqueiam, mas a defesa em profundidade depende de migration.
 
+## Contrato de banco preparado, ainda não aplicado
+
+O schema remoto foi revalidado por metadados em 2026-09-19, sem ler linhas com
+PII:
+
+- `f2_registrar_resultado_visita` é `SECURITY DEFINER`, contém
+  `f2_pode_operar_lead` e não contém `current_broker_id`;
+- a definição produtiva tem SHA-256
+  `4f9cc889bdc980a10843e810f7d1417c5bd055b3f207e43ec17f5edbbd68ec88`;
+- `ncrm_notificacao` ainda não possui `visita_id`;
+- existem zero notificações abertas de visita/feedback no recorte agregado;
+- nenhum cron ativo chama um sincronizador de feedback pós-visita.
+
+O contrato aditivo está em `P0_VISITA_OWNER_COBRANCA_DRAFT.sql`. Ele propõe:
+
+- ownership pelo `current_broker_id` igual ao dono do card, com locks sobre
+  visita e card;
+- vínculo direto `ncrm_notificacao.visita_id` e FK sem exclusão em cascata;
+- no máximo uma cobrança aberta por `visita + público`;
+- prazo do corretor por `feedback_visita_min` e escalonamento de gestão em duas
+  vezes esse prazo;
+- resolução imediata quando o corretor registra feedback válido;
+- reconciliador privado a cada dez minutos, somente in-app;
+- push/WhatsApp desligados até autorização separada.
+
+Os seis testes do contrato e os 23 testes combinados de visita/Sara passaram. O
+gate frontend oficial, agora incluindo os contratos de banco, passou 450/450.
+Isso prova a coerência estática do contrato, não sua execução no Postgres.
+
 ## Próximo gate
 
-Desenhar o contrato aditivo sem expiração e o escalonamento persistido por
-corretor/gestão, com índice, autorização, paginação e métricas. Criar migration
-apenas pela CLI oficial quando a ferramenta e o ambiente isolado forem
-autorizados/disponibilizados.
+Gerar a migration pela CLI oficial em ambiente isolado, aplicar o contrato e
+executar cenários de corretor dono, gestor, corretor diferente, troca de dono,
+concorrência, resolução e cron. Rodar advisors de segurança/desempenho. Nenhuma
+aplicação produtiva ou efeito externo está autorizado por este draft.

@@ -13,7 +13,10 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: local isolado; deploy de código validado em produção autorizado
+- ambiente: local isolado; usuário solicitou publicação de código validado,
+  mas o push desta branch/payload ainda aguarda confirmação explícita após o
+  gate de segurança da credencial
+- HEAD local validado antes deste draft: `c7b4040c`
 
 ## Concluído
 
@@ -145,6 +148,15 @@ declarar o ERP inteiro pronto sem evidência.
   deve ser anunciado como funcional;
 - após a barreira nas APIs: 63/63 testes direcionados, 437/437 no gate
   frontend, ESLint e build completo passaram;
+- metadados remotos revalidados: a RPC produtiva ainda usa
+  `f2_pode_operar_lead`, não usa `current_broker_id`, `ncrm_notificacao` não tem
+  `visita_id`, não há cobrança pós-visita aberta e nenhum cron ativo sincroniza
+  feedback. Nenhuma linha com PII foi consultada;
+- draft aditivo `P0_VISITA_OWNER_COBRANCA_DRAFT.sql` preparado fora de
+  migrations: owner-only no banco, FK direta, dedupe visita+público, cron
+  in-app, resolução automática e efeitos externos desligados; 6/6 testes do
+  draft, 23/23 combinados e 450/450 no gate frontend oficial passaram. Ainda
+  não executado em Postgres;
 - após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem
@@ -165,7 +177,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 - árvore contém mudanças locais do trabalho visual; preservar integralmente;
 - nenhuma integração à tela canônica foi feita;
-- deploy/publicação de código validado está autorizado;
+- tentativa de push da branch falhou porque o helper Git aponta para um `gh`
+  removido. O fallback pelo Keychain foi bloqueado pelo gate de segurança por
+  envolver o ERP completo e documentação interna; nenhum dado saiu da máquina;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
 - a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
@@ -175,8 +189,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Fechar o contrato aditivo sem expiração da fila pós-visita e preparar seus
-testes isolados. Em paralelo, gerar a migration do P0 de alertas Sara com a CLI
-oficial quando a ferramenta estiver disponível. A CLI não está instalada e
-produção permanece inalterada. Publicar a branch somente após autorização
-específica do push/merge/deploy e seus gates.
+Registrar o draft owner/cobrança em commit local e seguir na fila sem expiração.
+Em paralelo, gerar as migrations dos dois P0s com a CLI oficial quando ferramenta
+e banco isolado estiverem disponíveis. Produção permanece inalterada. Para
+publicar, obter confirmação explícita para enviar a branch
+`codex/erp-crm-visual-concept` ao remoto GitHub usando a credencial já existente
+no Keychain; merge/deploy continuam etapas distintas e verificáveis.

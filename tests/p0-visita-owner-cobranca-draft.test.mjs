@@ -1,0 +1,54 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const sql = readFileSync(
+  new URL("../docs/erp-reestruturacao/P0_VISITA_OWNER_COBRANCA_DRAFT.sql", import.meta.url),
+  "utf8",
+);
+
+test("o contrato fica fora de producao e exige CLI", () => {
+  assert.match(sql, /DRAFT NAO EXECUTAVEL \/ NAO APLICADO EM PRODUCAO/);
+  assert.match(sql, /supabase migration new/);
+});
+
+test("a RPC exige o corretor atual como dono da carteira", () => {
+  assert.match(sql, /v_corretor_atual bigint := public\.current_broker_id\(\)/);
+  assert.match(sql, /v_corretor_dono is distinct from v_corretor_atual/);
+  assert.doesNotMatch(
+    sql,
+    /f2_pode_operar_lead\(v_visita\.funil_lead_id\)/,
+    "o atalho administrativo nao pode autorizar feedback em nome do corretor",
+  );
+});
+
+test("a cobranca possui identidade direta, FK e dedupe concorrente", () => {
+  assert.match(sql, /add column if not exists visita_id uuid/);
+  assert.match(sql, /foreign key \(visita_id\) references public\.f2_visita\(id\)/);
+  assert.match(sql, /ux_ncrm_visita_feedback_aberta_publico/);
+  assert.match(sql, /on public\.ncrm_notificacao\(visita_id, publico\)/);
+  assert.match(sql, /on conflict \(visita_id,publico\)/);
+});
+
+test("corretor e gestao usam prazos configurados e a tarefa fecha com feedback", () => {
+  assert.match(sql, /v_cfg\.feedback_visita_min/);
+  assert.match(sql, /v_cfg\.feedback_visita_min\*2/);
+  assert.match(sql, /tipo='visita_feedback_pendente'/);
+  assert.match(sql, /resolvida_por=coalesce\(resolvida_por,'automatica_f2'\)/);
+});
+
+test("sincronizador e cron sao privados, idempotentes e sem efeito externo", () => {
+  const executavel = sql.replace(/^\s*--.*$/gm, "");
+  assert.match(sql, /pg_advisory_xact_lock/);
+  assert.match(sql, /revoke all on function ncrm_private\.f2_visitas_feedback_sincronizar\(boolean\)/);
+  assert.match(sql, /grant execute[\s\S]*to service_role/);
+  assert.match(sql, /f2_visitas_feedback_sincronizar\(false\)/);
+  assert.match(sql, /if p_enfileirar_push then/);
+  assert.doesNotMatch(executavel, /http_post|net\.http|whatsapp|dapi-enviar/i);
+});
+
+test("a migration futura aborta se a invariavel nao estiver presente", () => {
+  assert.match(sql, /F2_VISITA_COBRANCA_DUPLICADA/);
+  assert.match(sql, /F2_VISITA_OWNER_GUARD_AUSENTE/);
+  assert.match(sql, /having count\(\*\)>1/);
+});
