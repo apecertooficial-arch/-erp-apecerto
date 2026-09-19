@@ -71,6 +71,34 @@ Aceite local: 12 testes da fatia, gate frontend 468/468, transpile sintático da
 quatro fontes TypeScript, ESLint sem erro e build completo. O draft de banco
 `P0_CONVITES_USUARIOS_DRAFT.sql` está fora de migrations e não foi aplicado.
 
+## Funções críticas que já existiam nos dois lados
+
+Quatro funções de runtime foram comparadas arquivo a arquivo com o pacote
+implantado, sem registrar valores secretos:
+
+| Função | Versão remota | Resultado da comparação | Estado local |
+| --- | ---: | --- | --- |
+| `dapi-webhook` | 20 | fonte exatamente igual | canônica e reproduzível |
+| `dapi-enviar` | 25 | lógica e helper exatamente iguais; o pacote remoto apenas reescreve o caminho do helper durante o bundle | canônica e reproduzível |
+| `f2-sara-reclassificar` | 32 | produção possuía 156 linhas funcionais ausentes localmente | reconciliada exatamente com o pacote implantado |
+| `ncrm-web-push` | 14 | produção usava Vault e RPCs públicas restritas; a cópia local ainda usava Edge Secrets e RPCs antigas | reconciliada exatamente com o pacote implantado |
+
+A Sara implantada acrescenta orçamento de IA fail-closed, preservação de
+temperatura baseada em evidência, normalização de prazo, filtro da janela de
+conversa e proteção contra reanálise de saída sem nova resposta. O push
+implantado obtém o par VAPID por `ncrm_push_credenciais`, respeita o kill-switch
+do banco e usa `ncrm_push_reservar`/`ncrm_push_resultado` com claim/lease.
+
+Os quatro contratos de banco existem em produção como `SECURITY DEFINER`, mas
+`anon` e `authenticated` não possuem `EXECUTE`; somente `service_role` e o
+owner possuem acesso. A inspeção das fontes não encontrou credencial literal.
+
+Aceite local desta reconciliação: falha reproduzida antes da mudança; 96/96
+testes direcionados, gate frontend 469/469, build Vinext completo, ESLint dos
+testes alterados e transpile sintático das duas Edge Functions. O commit
+funcional é `2ae7e80e`. Nenhuma função foi implantada e nenhuma configuração
+remota foi alterada.
+
 ## Demais funções somente remotas
 
 As 23 funções restantes foram classificadas provisoriamente por nome e consumidor:

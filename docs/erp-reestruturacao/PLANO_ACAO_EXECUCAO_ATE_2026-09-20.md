@@ -196,7 +196,7 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 468/468 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 469/469 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
 

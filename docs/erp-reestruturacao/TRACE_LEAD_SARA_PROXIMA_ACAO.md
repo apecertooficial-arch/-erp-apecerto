@@ -37,6 +37,8 @@ teste e corrigido localmente.
   reconciliação; não autoriza remoção;
 - `f2-sara-reclassificar` remota está ativa na versão 32; a função legada
   `ncrm-sara-observer` também permanece implantada, mas seu runner está desligado.
+- a fonte local da versão 32 foi reconciliada arquivo a arquivo com o pacote
+  implantado no commit `2ae7e80e`; não houve deploy nem escrita no banco.
 
 ## Falha reproduzida e correção local
 
@@ -109,7 +111,9 @@ migration não serão inventados manualmente.
 
 ## Lacunas e próximos gates
 
-1. comparar os 53 pacotes remotos com os 26 fontes locais e registrar owner;
+1. concluir owner, consumidores e classificação das 23 funções ainda somente
+   remotas; as quatro funções críticas existentes nos dois lados já foram
+   reconciliadas;
 2. reconciliar os nomes/versões das migrations aplicadas com os 294 arquivos;
 3. corrigir, com migration aditiva e rollback, a cardinalidade dos alertas da
    Sara e sua resolução por evidência/saída da carteira;

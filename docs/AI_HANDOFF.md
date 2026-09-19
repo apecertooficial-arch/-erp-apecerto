@@ -16,7 +16,7 @@ declarar o ERP inteiro pronto sem evidência.
 - ambiente: local isolado; usuário solicitou publicação de código validado,
   mas o push desta branch/payload ainda aguarda confirmação explícita após o
   gate de segurança da credencial
-- HEAD local validado: `c944846a`
+- HEAD funcional validado antes deste checkpoint: `2ae7e80e`
 
 ## Concluído
 
@@ -27,7 +27,8 @@ declarar o ERP inteiro pronto sem evidência.
   `docs/erp-reestruturacao/MATRIZ_INTEGRAL.md`;
 - metadados remotos confirmaram projeto saudável, dispatcher em modo worker com
   heartbeat recente e atraso 0, Sara `f2_*` ligada e runner `ncrm_*` aposentado
-  desligado; há 53 Edge Functions remotas contra 26 fontes locais;
+  desligado; havia 53 Edge Functions remotas contra 26 fontes locais no
+  baseline; após reconstrução segura, há 30 slugs locais cobertos;
 - trace canônico criado em
   `docs/erp-reestruturacao/TRACE_LEAD_SARA_PROXIMA_ACAO.md`;
 - primeiro conflito concreto reproduzido: `/api/funil2` usava status `ncrm_*`
@@ -91,7 +92,8 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- a branch está nove commits à frente de `origin/main`; push e deploy continuam
+- a branch contém onze commits funcionais à frente de `origin/main`, além deste
+  checkpoint; push e deploy continuam
   pendentes da confirmação explícita do payload e destino.
 
 ## Arquivos alterados/relevantes
@@ -162,7 +164,8 @@ declarar o ERP inteiro pronto sem evidência.
   draft, 23/23 combinados e 450/450 no gate frontend oficial passaram. Ainda
   não executado em Postgres;
 - reconciliação das Edge Functions provou 53 funções remotas contra 26 fontes
-  locais e 27 slugs somente remotos. Quatro são dependências diretas do ERP:
+  locais no baseline. Depois das reconstruções, há 30 slugs locais cobertos e
+  23 somente remotos. Quatro eram dependências diretas do ERP:
   `dapi-qr`, `admin-usuarios`, `cadastro-publico` e `definir-senha`;
 - `dapi-qr` foi reconstruída localmente sem copiar o segredo incorporado à
   versão remota: JWT, autorização da instância por `wa_v7_painel`, CORS
@@ -180,6 +183,16 @@ declarar o ERP inteiro pronto sem evidência.
 - fatia de usuários: 12/12 testes direcionados, gate frontend 468/468, build,
   transpile sintático e ESLint sem erro. `deno` continua indisponível. O draft
   `P0_CONVITES_USUARIOS_DRAFT.sql` não foi aplicado;
+- as fontes críticas já presentes localmente foram comparadas com seus pacotes
+  implantados: `dapi-webhook` é idêntica; `dapi-enviar` só muda o caminho do
+  helper no bundle; Sara v32 e `ncrm-web-push` v14 tinham deriva funcional e
+  agora correspondem exatamente ao remoto no commit `2ae7e80e`;
+- a Sara reconciliada preserva temperatura/evidência, normaliza prazo, respeita
+  orçamento e evita reanálise sem nova resposta. O push reconciliado usa Vault,
+  kill-switch no banco e RPCs públicas de claim/lease restritas ao service role;
+- gate da reconciliação: falha demonstrada antes da correção, 96/96 direcionados,
+  469/469 no gate frontend, build completo, ESLint e transpile sintático. Não
+  houve deploy nem alteração remota;
 - após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem
@@ -212,9 +225,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Registrar o draft owner/cobrança em commit local e seguir na fila sem expiração.
-Em paralelo, gerar as migrations dos dois P0s com a CLI oficial quando ferramenta
-e banco isolado estiverem disponíveis. Produção permanece inalterada. Para
-publicar, obter confirmação explícita para enviar a branch
-`codex/erp-crm-visual-concept` ao remoto GitHub usando a credencial já existente
-no Keychain; merge/deploy continuam etapas distintas e verificáveis.
+Classificar as 23 funções ainda somente remotas por owner, chamadores e efeito,
+priorizando as que possuem consumidor vivo no ERP. Depois, reconciliar migrations
+aplicadas versus arquivos locais e seguir no P0 de alertas/cobrança sem aplicar
+SQL em produção. Para publicar, ainda é necessária a confirmação explícita para
+enviar a branch `codex/erp-crm-visual-concept` ao remoto GitHub; merge, deploy de
+código e migration continuam etapas distintas e verificáveis.
