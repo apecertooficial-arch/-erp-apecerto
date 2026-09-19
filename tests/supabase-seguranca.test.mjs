@@ -5,6 +5,7 @@ import test from "node:test";
 import "./p0-anon-security-definer-draft.test.mjs";
 import "./p0-public-links-hardening.test.mjs";
 import "./hoje-operacao-search-path-draft.test.mjs";
+import "./authenticated-security-definer-audit.test.mjs";
 
 const migration = readFileSync(new URL("../supabase/migrations/20260814210000_views_respeitam_rls.sql", import.meta.url), "utf8");
 const datacrazyCronMigration = readFileSync(

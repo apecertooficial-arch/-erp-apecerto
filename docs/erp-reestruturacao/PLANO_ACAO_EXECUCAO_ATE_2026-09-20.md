@@ -196,7 +196,7 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 485/485 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 487/487 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
 
@@ -295,6 +295,9 @@ autoridade.
 - fechar 47 RPCs `SECURITY DEFINER` atualmente executáveis por `anon` e auditar
   por papel as 276 executáveis por `authenticated`; preservar apenas contratos
   públicos intencionais depois de hash, expiração, rate limit e auditoria;
+- fechar o bypass de ownership nas RPCs de transferência, descarte, ações e
+  observações: dez mutações críticas permitem alterar objeto alheio ou precisam
+  ser movidas para `service_role`;
 - medir a latência agregada da Sara e da atualização da próxima ação;
 - consolidar alertas da Sara por cliente/público: hoje há 344 alertas de gestão
   para 132 clientes, com até 35 abertos para o mesmo cliente;
