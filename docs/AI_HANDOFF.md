@@ -296,6 +296,16 @@ declarar o ERP inteiro pronto sem evidência.
 - gate mais recente: 506/506 testes frontend, 7/7 contratos específicos,
   65/65 testes combinados de Sara/dispatcher, typecheck e build completos;
   lint com zero erros e dez avisos preexistentes de imagens/artefato público;
+- segunda fatia retomada: o resultado da visita agora coleta presença,
+  acompanhantes, percepção, pontos positivos/negativos, objeções, alternativas,
+  definição e próxima ação no mesmo formulário desktop/celular. O envelope
+  transitório `FEEDBACK_VISITA_V1` preserva compatibilidade com o texto atual;
+- as duas APIs rejeitam texto livre que tente contornar o feedback estruturado,
+  e `P0_VISITA_OWNER_COBRANCA_DRAFT.sql` repete essa invariável. O SQL continua
+  não aplicado;
+- gate mais recente após essa fatia: 510/510 testes frontend, 20/20
+  direcionados de visita, typecheck, ESLint direcionado e build aprovados;
+  navegador sanitizado validado em desktop e 390 × 844, com PATCH bloqueado;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,
@@ -319,7 +329,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Preparar o ensaio isolado dos contratos de confirmação e alertas. A fatia
+Registrar e commitar a fatia local de feedback estruturado; depois preparar o
+ensaio isolado dos contratos de confirmação, visita e alertas. A fatia
 `ação → Sara → próxima ação → Meu Dia` está no commit local `9ef77038`, sem o
 symlink `node_modules`. Para publicar os commits locais, reparar somente o
 acesso de escrita do GitHub (novo login do `gh` ou helper válido), sem

@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; quatro correções P0 locais validadas
+Estado: fatia em reconstrução; cinco correções P0/P1 locais validadas
 
 ## Contrato atual comprovado
 
@@ -51,6 +51,19 @@ fechada. A RPC remota ainda aceita o administrador diretamente por reutilizar
 `f2_pode_operar_lead`; portanto a invariável só estará completa quando a mesma
 regra existir no banco por migration aditiva validada em ambiente isolado.
 
+O formulário compartilhado por desktop e aplicativo passou a exigir, nas
+visitas realizadas, presença/acompanhantes, percepção, pontos positivos e
+negativos, objeções, alternativas oferecidas, definição atual e próxima ação.
+As respostas formam um envelope legível e versionado `FEEDBACK_VISITA_V1`, com
+até 800 caracteres, preservando compatibilidade com o campo textual atual e
+permitindo promoção futura para JSONB sem descartar o histórico da transição.
+
+A exigência não ficou somente na interface: `/api/agenda` e `/api/funil2`
+rejeitam texto livre que tente encerrar uma visita realizada sem o envelope. O
+draft de banco repete a validação, além do ownership já preparado. Cancelamento
+e não comparecimento continuam usando motivo compatível e justificativa, sem
+forçar perguntas próprias de uma visita que não ocorreu.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
@@ -67,15 +80,22 @@ regra existir no banco por migration aditiva validada em ambiente isolado.
   terceiro somente leitura, formulário validado e erro de escrita explícito no
   harness que bloqueia mutações;
 - estado de erro no navegador: alerta, calendário preservado e nova tentativa.
+- navegador celular 390 × 844 e desktop: formulário estruturado completo,
+  envio inicialmente bloqueado, liberação somente após todas as respostas e
+  tentativa de PATCH interceptada pelo harness sem efeito externo;
+- gate atualizado: 510/510 testes frontend, 20/20 contratos direcionados,
+  typecheck, ESLint direcionado e build completo aprovados.
 
 ## Lacunas ainda abertas
 
 1. A correção local cobre os últimos 365 dias e todo o histórico atual, mas o
    contrato definitivo precisa manter a pendência sem prazo de expiração. Isso
    exige migration aditiva, paginação e teste isolado antes de produção.
-2. O formulário atual registra desfecho, motivo e justificativa, mas ainda não
-   cobre acompanhantes, produtos apresentados, pontos positivos/negativos,
-   objeções, proposta, próxima ação detalhada nem áudio transcrito.
+2. O formulário agora cobre acompanhantes, percepção, pontos
+   positivos/negativos, objeções, alternativas, intenção e próxima ação. O
+   produto visitado já vem da visita, mas múltiplos produtos e proposta
+   financeira estruturada ainda precisam do modelo JSONB definitivo. Áudio,
+   upload privado, transcrição e confirmação também permanecem abertos.
 3. Cobrança progressiva, confirmação do gerente, qualidade do feedback e
    indicadores por corretor ainda não estão comprovados ponta a ponta.
 4. A validação autenticada no navegador local depende de configuração pública

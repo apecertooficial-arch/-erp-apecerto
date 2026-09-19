@@ -12,6 +12,7 @@ import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 import { hojeOperacao, instanteSaoPaulo, somarDias } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
+import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -374,7 +375,8 @@ export async function PATCH(request: Request) {
     const status = texto(body.status, 30);
     const resultadoCodigo = texto(body.resultadoCodigo, 60);
     const justificativa = texto(body.justificativa, 800);
-    const erroResultado = validarResultadoVisita(status, resultadoCodigo, justificativa);
+    const erroResultado = validarResultadoVisita(status, resultadoCodigo, justificativa)
+      ?? validarEnvelopeFeedbackVisita(status as "realizada" | "cancelada" | "nao_compareceu", justificativa);
     if (!visitId || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
     const denied = guard("editar", "Você não tem permissão para registrar o resultado de visitas.");
     if (denied) return denied;
@@ -392,6 +394,7 @@ export async function PATCH(request: Request) {
       const mensagens: Record<string, string> = {
         sem_permissao: "Esta visita não pertence à sua agenda.",
         resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
+        feedback_incompleto: "Preencha o feedback estruturado da visita antes de salvar.",
         resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
         visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
       };

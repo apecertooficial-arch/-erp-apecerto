@@ -106,6 +106,21 @@ begin
      or char_length(v_justificativa) < 10 then
     return pg_catalog.jsonb_build_object('ok',false,'erro','resultado_invalido');
   end if;
+  -- A visita realizada não pode ser encerrada por cliente antigo ou chamada
+  -- manual com uma frase curta. O envelope V1 é legível, versionado e cabe no
+  -- campo textual vigente; uma migration posterior poderá promovê-lo a JSONB
+  -- sem perder o histórico capturado durante a transição.
+  if p_status = 'realizada' and (
+       v_justificativa !~ '^FEEDBACK_VISITA_V1[ ]\|[ ]Presença:[ ](Sozinho[(]a[)]|Com companheiro[(]a[)]|Com família|Outros)[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Percepção:[ ](Encantado|Gostou|Neutro|Não gostou)[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Pontos positivos:[ ][^|]{3,}[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Pontos negativos:[ ][^|]{3,}[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Objeções:[ ][^|]{3,}[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Intenção:[ ](Fazer proposta|Continuar negociação|Conhecer outra opção|Manter acompanhamento|Solicitar encerramento)[ ]\|'
+       or v_justificativa !~ '[ ]\|[ ]Próxima ação:[ ][^|]{5,}[ ]\|'
+     ) then
+    return pg_catalog.jsonb_build_object('ok',false,'erro','feedback_incompleto');
+  end if;
   if (p_status='realizada' and p_resultado_codigo not in
         ('fara_proposta','interessado','quer_outra_opcao','precisa_conversar','nao_gostou'))
      or (p_status='cancelada' and p_resultado_codigo not in
