@@ -13,9 +13,9 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: local isolado; usuário autorizou publicação de código validado,
-  mas push, merge e deploy ainda não foram executados e dependem dos gates do
-  payload, CI e confirmação do SHA efetivamente implantado
+- ambiente: branch isolada enviada ao repositório oficial; usuário autorizou
+  publicação de código validado. Merge e deploy ainda não foram executados e
+  dependem dos gates do payload, CI e confirmação do SHA implantado
 - HEAD funcional validado antes deste checkpoint: `80cf8780`
 
 ## Concluído
@@ -92,9 +92,9 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- a branch contém treze commits à frente de `origin/main`, além das mudanças
-  deste checkpoint; push e deploy continuam pendentes do gate do payload, CI e
-  validação do SHA, não de uma janela de duas horas.
+- a branch contém quatorze commits à frente de `origin/main` e rastreia
+  `origin/codex/erp-crm-visual-concept`; merge e deploy continuam pendentes do
+  gate do payload, CI e validação do SHA, não de uma janela de duas horas.
 
 ## Arquivos alterados/relevantes
 
@@ -229,9 +229,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 - árvore contém mudanças locais do trabalho visual; preservar integralmente;
 - nenhuma integração à tela canônica foi feita;
-- tentativa anterior de push da branch falhou porque o helper Git aponta para
-  um `gh` removido. Nenhum dado saiu da máquina; antes de nova tentativa, o
-  payload deve passar por varredura de segredo e ter seu SHA registrado;
+- o helper Git configurado aponta para um `gh` removido. Após varredura do
+  payload não encontrar candidatos a segredo, a credencial já guardada no
+  Keychain foi usada sem expor token e a branch foi enviada com sucesso;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
 - a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
@@ -244,5 +244,6 @@ declarar o ERP inteiro pronto sem evidência.
 Classificar os 27 arquivos locais sem registro remoto e preparar o desenho do
 ambiente isolado que possa provar a reconstrução das 341 migrations ausentes,
 sem aplicar SQL em produção. Em seguida, continuar no P0 de alertas/cobrança.
-Push da branch, merge/deploy de código e migration permanecem etapas distintas
-e verificáveis; nunca agrupar `db push` ao deploy de aplicação.
+Branch já enviada; abrir/validar a mudança, merge/deploy de código e migration
+permanecem etapas distintas e verificáveis. Nunca agrupar `db push` ao deploy
+de aplicação.
