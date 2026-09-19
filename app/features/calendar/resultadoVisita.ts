@@ -83,6 +83,15 @@ export type ResumoCobrancasGerenciais = {
   semResponsavel: number;
 };
 
+export type ResumoCobrancaPorCorretor = {
+  chave: string;
+  corretorId: number | null;
+  corretor: string;
+  total: number;
+  haDoisDiasOuMais: number;
+  maisAntigaDias: number | null;
+};
+
 /** Consolida apenas fatos presentes na fila; não projeta conversão, qualidade
  * ou produtividade sem evidência persistida. */
 export function resumirCobrancasGerenciais(
@@ -109,4 +118,35 @@ export function resumirCobrancasGerenciais(
     maisAntigaDias,
     semResponsavel,
   };
+}
+
+/** Ordena a fila de gestão por risco operacional. A função só usa pendências
+ * que a RPC já autorizou; não calcula conversão ou nota de qualidade. */
+export function resumirCobrancasPorCorretor(
+  itens: ReadonlyArray<{ data: string; corretor?: string | null; corretor_id?: number | null }>,
+  referencia = hojeOperacao(),
+): ResumoCobrancaPorCorretor[] {
+  const grupos = new Map<string, ResumoCobrancaPorCorretor>();
+  for (const item of itens) {
+    const corretorId = Number.isSafeInteger(item.corretor_id) && Number(item.corretor_id) > 0
+      ? Number(item.corretor_id)
+      : null;
+    const corretor = item.corretor?.trim() || "Sem responsável";
+    const chave = corretorId == null ? `nome:${corretor.toLocaleLowerCase("pt-BR")}` : `id:${corretorId}`;
+    const atual = grupos.get(chave) ?? {
+      chave, corretorId, corretor, total: 0, haDoisDiasOuMais: 0, maisAntigaDias: null,
+    };
+    const dias = diasAguardandoResultado(item.data, referencia);
+    atual.total += 1;
+    if (dias != null) {
+      if (dias >= 2) atual.haDoisDiasOuMais += 1;
+      atual.maisAntigaDias = atual.maisAntigaDias == null ? dias : Math.max(atual.maisAntigaDias, dias);
+    }
+    grupos.set(chave, atual);
+  }
+  return [...grupos.values()].sort((a, b) =>
+    b.haDoisDiasOuMais - a.haDoisDiasOuMais
+    || (b.maisAntigaDias ?? -1) - (a.maisAntigaDias ?? -1)
+    || b.total - a.total
+    || a.corretor.localeCompare(b.corretor, "pt-BR"));
 }

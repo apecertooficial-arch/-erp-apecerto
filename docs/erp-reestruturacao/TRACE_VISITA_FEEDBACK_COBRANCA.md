@@ -76,9 +76,19 @@ no evento, mas segue fora de migrations e não foi aplicado.
 
 A gestão agora recebe um resumo factual da fila: total sem feedback válido,
 quantos corretores estão envolvidos, quantos casos têm dois dias ou mais, idade
-da pendência mais antiga e eventual visita sem responsável. Não é uma nota de
+da pendência mais antiga e eventual visita sem responsável. A lista também é
+consolidada por corretor e ordenada primeiro por volume atrasado e idade do caso
+mais antigo; assim o gerente sabe quem cobrar primeiro. Não é uma nota de
 performance: o resumo deliberadamente não projeta conversão ou qualidade sem
 evidência persistida. Desktop e aplicativo repetem o mesmo cálculo.
+
+Uma contagem agregada de produção, sem PII, confirmou o motivo dessa separação:
+há 94 resultados registrados desde 2026-09-11, sendo 56 visitas realizadas,
+mas zero usam `FEEDBACK_VISITA_V1` ou `RESULTADO_VISITA_V1`. Portanto, o
+histórico atual não suporta uma nota 0–10 honesta por corretor. A série de
+qualidade só poderá começar quando o contrato estruturado estiver persistido;
+registros legados permanecem como histórico, sem receber nota retroativa
+inventada.
 
 ## Evidência
 
@@ -115,6 +125,11 @@ evidência persistida. Desktop e aplicativo repetem o mesmo cálculo.
   `git diff --check` foram aprovados. No navegador desktop 1440 × 1000 e celular
   390 × 844, salvar permanece bloqueado sem próxima ação e é liberado após um
   encaminhamento válido; nenhuma mutação foi enviada pelo harness.
+- fila por corretor validada em desktop 1440 × 1000 e aplicativo 390 × 844:
+  dois responsáveis, contagem, casos há 2+ dias e idade mais antiga, sem
+  overflow ou erros de console. O teste determinístico cobre ordenação por
+  risco e preserva o estado `Sem responsável`; gate frontend 539/539,
+  typecheck, ESLint sem erros e build completo aprovados.
 
 ## Lacunas ainda abertas
 
@@ -127,7 +142,9 @@ evidência persistida. Desktop e aplicativo repetem o mesmo cálculo.
    financeira estruturada ainda precisam do modelo JSONB definitivo.
 3. A rubrica e o resumo gerencial estão validados localmente, mas persistência
    produtiva, cobrança progressiva, confirmação do gerente e histórico de
-   qualidade por corretor ainda não estão comprovados ponta a ponta.
+   qualidade por corretor ainda não estão comprovados ponta a ponta. A base
+   atual possui 94 resultados legados e zero envelopes estruturados; eles não
+   podem receber nota retroativa sem fabricar evidência.
 4. A validação autenticada no navegador local depende de configuração pública
    segura do Supabase; nenhum segredo foi copiado ou criado.
 5. A base possui notificações de visita próxima, mas não foi encontrada uma

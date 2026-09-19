@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, resumirCobrancasGerenciais, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, resumirCobrancasGerenciais, resumirCobrancasPorCorretor, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
 import { verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
@@ -93,6 +93,24 @@ test("gestão recebe resumo acionável sem inventar performance", () => {
   assert.match(agendaWeb, /há 2\+ dias/);
   assert.match(agendaApp, /resumirCobrancasGerenciais/);
   assert.match(agendaApp, /corretores envolvidos/);
+});
+
+test("gestão prioriza corretores por volume e atraso sem fabricar nota", () => {
+  assert.deepEqual(resumirCobrancasPorCorretor([
+    { data: "2026-09-19", corretor: "Corretora Alfa", corretor_id: 7 },
+    { data: "2026-09-17", corretor: "Corretora Alfa", corretor_id: 7 },
+    { data: "2026-09-16", corretor: "Corretor Beta", corretor_id: 8 },
+    { data: "data-inválida", corretor: "", corretor_id: null },
+  ], "2026-09-19"), [
+    { chave: "id:8", corretorId: 8, corretor: "Corretor Beta", total: 1, haDoisDiasOuMais: 1, maisAntigaDias: 3 },
+    { chave: "id:7", corretorId: 7, corretor: "Corretora Alfa", total: 2, haDoisDiasOuMais: 1, maisAntigaDias: 2 },
+    { chave: "nome:sem responsável", corretorId: null, corretor: "Sem responsável", total: 1, haDoisDiasOuMais: 0, maisAntigaDias: null },
+  ]);
+  assert.match(agendaWeb, /resumirCobrancasPorCorretor/);
+  assert.match(agendaWeb, /mais antiga/);
+  assert.match(agendaApp, /resumirCobrancasPorCorretor/);
+  assert.match(agendaApp, /há 2\+ dias/);
+  assert.doesNotMatch(agendaWeb, /nota média fictícia/i);
 });
 
 test("gerente cobra o corretor e não responde a visita por ele", () => {

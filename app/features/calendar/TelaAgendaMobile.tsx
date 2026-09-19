@@ -29,7 +29,7 @@ import {
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { HorariosVisita } from "../funil-2/HorariosVisita";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
-import { rotuloAtrasoResultado, resumirCobrancasGerenciais, type StatusResultadoVisita } from "./resultadoVisita";
+import { rotuloAtrasoResultado, resumirCobrancasGerenciais, resumirCobrancasPorCorretor, type StatusResultadoVisita } from "./resultadoVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
 type LeadAgenda = { id: number; nome: string };
@@ -182,6 +182,10 @@ export function TelaAgendaMobile({ accessToken }: {
     () => resumirCobrancasGerenciais(pendenciasResultado),
     [pendenciasResultado],
   );
+  const cobrancasPorCorretor = useMemo(
+    () => resumirCobrancasPorCorretor(pendenciasResultado),
+    [pendenciasResultado],
+  );
 
   /* No mes a lista de baixo e SOMENTE do dia tocado. */
   const paraListar = useMemo(
@@ -230,6 +234,7 @@ export function TelaAgendaMobile({ accessToken }: {
         <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas {gerenciandoPendencias ? "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
         <p>{gerenciandoPendencias ? "Cobre o responsável. A pendência sai da fila quando o corretor registra um desfecho válido." : "Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa."}</p>
         {gerenciandoPendencias && <section className="ape-agenda-cobranca-resumo" aria-label="Resumo gerencial das cobranças"><span><b>{resumoCobrancaGerencial.responsaveis}</b> corretores envolvidos</span><span><b>{resumoCobrancaGerencial.haDoisDiasOuMais}</b> há 2+ dias</span><span><b>{resumoCobrancaGerencial.maisAntigaDias ?? "—"}</b> dias da mais antiga</span>{resumoCobrancaGerencial.semResponsavel > 0 && <span className="risco"><b>{resumoCobrancaGerencial.semResponsavel}</b> sem responsável</span>}</section>}
+        {gerenciandoPendencias && <section className="ape-agenda-cobranca-corretores" aria-label="Cobranças por corretor">{cobrancasPorCorretor.map((item) => <article key={item.chave}><strong>{item.corretor}</strong><span>{item.total} pendência{item.total === 1 ? "" : "s"}</span><small>{item.haDoisDiasOuMais} há 2+ dias · {item.maisAntigaDias == null ? "idade não confirmada" : `${item.maisAntigaDias}d mais antiga`}</small></article>)}</section>}
         <div>{pendenciasResultado.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>
       </section>}
       {prox ? (

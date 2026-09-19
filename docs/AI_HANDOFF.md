@@ -353,6 +353,13 @@ declarar o ERP inteiro pronto sem evidência.
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,
   193 pendências futuras da Sara e nenhuma pendência vencida.
+- cobrança pós-visita agora é consolidada e priorizada por corretor no desktop
+  e aplicativo, usando somente fatos autorizados da fila: total, casos há 2+
+  dias e idade mais antiga. Navegador 1440 × 1000 e 390 × 844 validado sem
+  overflow ou console. Contagem agregada remota confirmou 94 resultados, 56
+  visitas realizadas e zero envelopes estruturados; por isso nenhuma nota
+  histórica foi fabricada. Testes direcionados 12/12, typecheck e ESLint
+  aprovados; gate frontend 539/539 e build completo também passaram.
 
 ## Riscos e limites
 
