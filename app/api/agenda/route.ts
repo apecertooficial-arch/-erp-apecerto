@@ -74,12 +74,46 @@ function lerPeriodo(bruto: string | null): "dia" | "semana" | "mes" {
   return bruto === "semana" || bruto === "mes" ? bruto : "dia";
 }
 
+const VISITA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const AUDIO_TIPOS = new Map([
+  ["audio/ogg", "ogg"],
+  ["audio/webm", "webm"],
+  ["audio/mpeg", "mp3"],
+  ["audio/mp4", "m4a"],
+  ["audio/wav", "wav"],
+]);
+const AUDIO_MAX_BYTES = 20 * 1024 * 1024;
+
+async function sha256Hex(blob: Blob) {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export async function GET(request: Request) {
   const auth = await autenticar(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   const params = new URL(request.url).searchParams;
   const supabase = auth.supabase as unknown as SupabaseClient;
+  const feedbackAudioVisitaId = params.get("feedbackAudioVisitaId");
+  if (feedbackAudioVisitaId !== null) {
+    if (!VISITA_UUID.test(feedbackAudioVisitaId)) {
+      return Response.json({ error: "Visita inválida." }, { status: 422 });
+    }
+    const consulta = await supabase.rpc("f2_feedback_audio_consultar", {
+      p_visita_id: feedbackAudioVisitaId,
+    } as never);
+    /* Antes da migration a RPC não existe. A capacidade fica desligada sem
+       derrubar a agenda nem exibir um gravador que não conseguiria persistir. */
+    if (consulta.error) {
+      return Response.json({ ok: true, disponivel: false, audios: [] });
+    }
+    const resultado = (consulta.data ?? {}) as { ok?: boolean; erro?: string; disponivel?: boolean; audios?: unknown[] };
+    if (resultado.ok !== true) {
+      return Response.json({ error: "Você não pode acessar o áudio desta visita." }, { status: resultado.erro === "sem_permissao" ? 403 : 409 });
+    }
+    return Response.json({ ok: true, disponivel: resultado.disponivel === true, audios: Array.isArray(resultado.audios) ? resultado.audios : [] });
+  }
   const agenda = await supabase.rpc("ncrm_agenda_corretor", {
     p_data: lerData(params.get("data")),
     p_periodo: lerPeriodo(params.get("periodo")),
@@ -159,6 +193,70 @@ export async function GET(request: Request) {
     gerentes: gerentes.data ?? [],
     role: profile.data?.role ?? "",
   });
+}
+
+export async function POST(request: Request) {
+  const auth = await autenticar(request);
+  if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+
+  const form = await request.formData().catch(() => null);
+  if (!form || form.get("action") !== "uploadVisitFeedbackAudio") {
+    return Response.json({ error: "Ação inválida." }, { status: 400 });
+  }
+  const visitaId = texto(form.get("visitId"), 40);
+  const arquivo = form.get("file");
+  if (!VISITA_UUID.test(visitaId) || !(arquivo instanceof File)) {
+    return Response.json({ error: "Visita ou áudio inválido." }, { status: 422 });
+  }
+  const extensao = AUDIO_TIPOS.get(arquivo.type);
+  if (!extensao || arquivo.size < 1 || arquivo.size > AUDIO_MAX_BYTES) {
+    return Response.json({ error: "Envie um áudio válido de até 20 MB." }, { status: 422 });
+  }
+
+  const sha256 = await sha256Hex(arquivo);
+  const id = crypto.randomUUID();
+  const storagePath = `visita/${visitaId}/${id}.${extensao}`;
+  const supabase = auth.supabase as unknown as SupabaseClient;
+  const reserva = await supabase.rpc("f2_feedback_audio_reservar", {
+    p_id: id,
+    p_visita_id: visitaId,
+    p_storage_path: storagePath,
+    p_mime_type: arquivo.type,
+    p_bytes: arquivo.size,
+    p_sha256: sha256,
+  } as never);
+  if (reserva.error) {
+    return Response.json({ error: "O áudio ainda não está disponível neste ambiente." }, { status: 503 });
+  }
+  const reservado = (reserva.data ?? {}) as {
+    ok?: boolean; erro?: string; id?: string; path?: string; status?: string; idempotente?: boolean;
+  };
+  if (reservado.ok !== true || !VISITA_UUID.test(reservado.id ?? "") || !reservado.path) {
+    const status = reservado.erro === "sem_permissao" ? 403 : reservado.erro === "audio_conflito" ? 409 : 422;
+    return Response.json({ error: status === 403 ? "Esta visita não pertence à sua agenda." : "Não foi possível reservar o áudio." }, { status });
+  }
+
+  if (reservado.status === "reservado") {
+    const bucket = supabase.storage.from("visita-feedback-audio");
+    const upload = await bucket.upload(reservado.path, arquivo, { contentType: arquivo.type, upsert: false });
+    if (upload.error) {
+      /* Uma repetição pode encontrar o objeto já gravado e o metadado ainda
+         reservado. Só prosseguimos se os bytes existentes forem exatamente os
+         mesmos; qualquer divergência fica bloqueada para investigação. */
+      const existente = await bucket.download(reservado.path);
+      if (existente.error || existente.data.size !== arquivo.size || await sha256Hex(existente.data) !== sha256) {
+        return Response.json({ error: "Não foi possível armazenar o áudio com integridade." }, { status: 502 });
+      }
+    }
+    const enviado = await supabase.rpc("f2_feedback_audio_marcar_enviado", { p_id: reservado.id } as never);
+    const resultado = (enviado.data ?? {}) as { ok?: boolean; erro?: string; status?: string };
+    if (enviado.error || resultado.ok !== true) {
+      return Response.json({ error: "O áudio foi preservado, mas ainda não entrou na fila de transcrição." }, { status: 502 });
+    }
+    reservado.status = resultado.status ?? "enviado";
+  }
+
+  return Response.json({ success: true, audio: { id: reservado.id, status: reservado.status ?? "enviado" } });
 }
 
 export async function PATCH(request: Request) {

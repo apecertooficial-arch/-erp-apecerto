@@ -484,6 +484,8 @@ export function TelaAgendaMobile({ accessToken }: {
           cliente={resultadoPendente.cliente}
           dataHora={`${diaPorExtenso(resultadoPendente.data)} · ${horaCurta(resultadoPendente.hora)}`}
           statusInicial={(["realizada", "cancelada", "nao_compareceu"].includes(String(resultadoPendente.status)) ? resultadoPendente.status : "realizada") as StatusResultadoVisita}
+          visitId={resultadoPendente.id}
+          accessToken={accessToken}
           busy={salvando}
           erro={erroEscrita}
           onCancelar={() => setResultadoPendente(null)}

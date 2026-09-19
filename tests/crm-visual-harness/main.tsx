@@ -33,6 +33,7 @@ const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
 const tela = parametros.get("screen") ?? "desktop-crm";
+const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const indicesMeuDia = [0, 1, 18, 19, 36, 37, 54, 55, 72, 90];
 const deslocamentosMinutos = [-10, 15, -180, -40, 30, 75, 150, 240, 360, 1560];
 const leadsMeuDia = indicesMeuDia.map((indice, posicao) => ({
@@ -124,6 +125,25 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/agenda") {
     if (estado === "loading") return new Promise<Response>(() => undefined);
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
+    if (url.searchParams.has("feedbackAudioVisitaId")) {
+      if (estadoAudio === "indisponivel") return json({ ok: true, disponivel: false, audios: [] });
+      const audios = estadoAudio === "transcrito" ? [{
+        id: "20000000-0000-4000-8000-000000000001",
+        status: "transcrito",
+        transcricao: "O cliente visitou com a esposa, gostou da planta e pediu uma nova simulação de entrada para amanhã.",
+        erro_codigo: null,
+        criado_em: "2026-09-19T12:00:00Z",
+        atualizado_em: "2026-09-19T12:01:00Z",
+      }] : [{
+        id: "20000000-0000-4000-8000-000000000001",
+        status: estadoAudio === "falhou" ? "falhou" : "transcrevendo",
+        transcricao: null,
+        erro_codigo: estadoAudio === "falhou" ? "transcricao_indisponivel" : null,
+        criado_em: "2026-09-19T12:00:00Z",
+        atualizado_em: "2026-09-19T12:00:10Z",
+      }];
+      return json({ ok: true, disponivel: true, audios });
+    }
     if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
     return json(payloadAgenda);
   }

@@ -7,13 +7,32 @@ Atualizado em: 2026-09-19
 - projeto remoto confirmado: `diaegvfveqezispcthwk`;
 - funções remotas: 53;
 - fontes locais antes desta reconciliação: 26;
-- fontes locais após as duas primeiras correções: 30;
+- fontes locais após as correções e o draft de áudio: 31;
 - slugs remotos agora cobertos localmente: 30;
 - funções ainda somente remotas: 23;
-- funções somente locais: 0;
+- funções somente locais: 1 (`f2-feedback-visita-transcrever`, ainda não implantada);
 
 Isso prova uma deriva de configuração e de fonte: produção executa código que
 não pode ser integralmente reproduzido a partir do repositório atual.
+
+## P1 áudio do feedback de visita
+
+`f2-feedback-visita-transcrever` foi criada localmente como parte de um
+contrato ainda não aplicado. Ela não reutiliza `chat-midia`, pois o bucket de
+chat é público. O draft `P1_VISITA_FEEDBACK_AUDIO_DRAFT.sql` cria um bucket
+privado próprio, metadado append-only ligado à visita, RLS por corretor/gestão,
+SHA-256, tamanho e MIME verificáveis, claim idempotente, timeout e retry com
+backoff limitado. A Edge exige JWT no gateway, segredo interno em comparação
+constante e service role apenas no runtime; não registra áudio ou transcrição
+em log.
+
+Aceite local atual: 7/7 contratos da fatia e gate frontend 517/517. A API da
+Agenda reserva, calcula SHA-256, envia com o JWT do usuário e consulta o estado;
+o componente compartilhado fica invisível até o servidor declarar a capacidade
+e exige confirmação humana antes de copiar a transcrição. O harness sanitizado
+validou desktop e 390 × 844 somente com GETs locais. A fonte ainda não passou
+por `deno check`, o SQL não foi compilado em Postgres isolado, nenhum bucket foi
+criado, nenhum áudio real foi carregado e nenhuma chamada externa foi realizada.
 
 ## Dependências diretas do ERP sem fonte local
 

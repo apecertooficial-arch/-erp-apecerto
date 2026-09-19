@@ -17,11 +17,14 @@ import {
   validarFeedbackVisitaDetalhado,
   type FeedbackVisitaDetalhado,
 } from "./feedbackVisita";
+import { FeedbackVisitaAudio } from "./FeedbackVisitaAudio";
 
 export function ResultadoVisitaForm({
   cliente,
   dataHora,
   statusInicial = "realizada",
+  visitId,
+  accessToken,
   busy,
   erro,
   onCancelar,
@@ -30,6 +33,8 @@ export function ResultadoVisitaForm({
   cliente: string;
   dataHora: string;
   statusInicial?: StatusResultadoVisita;
+  visitId: string;
+  accessToken: string;
   busy: boolean;
   erro?: string;
   onCancelar: () => void;
@@ -115,6 +120,12 @@ export function ResultadoVisitaForm({
           <input disabled={busy} value={feedback.proximaAcao} maxLength={90} onChange={(evento) => atualizarFeedback("proximaAcao", evento.target.value)} placeholder="Ex.: enviar simulação amanhã às 10h" />
         </label>
       </section>}
+      {status === "realizada" && <FeedbackVisitaAudio
+        visitId={visitId}
+        accessToken={accessToken}
+        busy={busy}
+        onConfirmarTranscricao={(texto) => setJustificativa(texto.trim().slice(0, 800))}
+      />}
       <label>{status === "realizada" ? "Resumo adicional" : "Justificativa"} {status !== "realizada" && <small>obrigatória</small>}
         <textarea
           disabled={busy}

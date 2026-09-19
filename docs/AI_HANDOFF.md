@@ -306,6 +306,15 @@ declarar o ERP inteiro pronto sem evidência.
 - gate mais recente após essa fatia: 510/510 testes frontend, 20/20
   direcionados de visita, typecheck, ESLint direcionado e build aprovados;
   navegador sanitizado validado em desktop e 390 × 844, com PATCH bloqueado;
+- áudio de feedback: metadados remotos provaram que `chat-midia` é público e
+  inadequado. `P1_VISITA_FEEDBACK_AUDIO_DRAFT.sql` e a Edge local
+  `f2-feedback-visita-transcrever` preparam bucket privado, RLS por visita,
+  append-only, SHA-256, limite 20 MiB, claim service-only, timeout e retry com
+  backoff. A Agenda ganhou upload/consulta autenticados e o mesmo gravador no
+  desktop e aplicativo, oculto até a capacidade existir e com confirmação
+  humana da transcrição. 7/7 contratos, gate frontend 517/517, typecheck,
+  ESLint e build passaram; harness desktop/390 × 844 registrou apenas GETs
+  locais e zero erros. Nenhum áudio real foi enviado e nada foi aplicado;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,
@@ -318,7 +327,7 @@ declarar o ERP inteiro pronto sem evidência.
 - o helper Git configurado aponta para um `gh` removido. O chaveiro não
   forneceu credencial utilizável nesta sessão e a integração GitHub confirmou
   leitura, mas recusou escrita com `403 Resource not accessible by integration`.
-  Não alterar/rotacionar credenciais sem autoridade; os seis commits locais
+  Não alterar/rotacionar credenciais sem autoridade; os sete commits locais
   permanecem recuperáveis e testados;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
@@ -329,7 +338,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Preparar o ensaio isolado dos contratos de confirmação, visita e alertas. A
+Ligar o áudio a um chamador determinístico de transcrição/retry e preparar o
+ensaio isolado dos contratos de confirmação, visita, áudio e alertas. A
 fatia `ação → Sara → próxima ação → Meu Dia` está no commit `9ef77038` e o
 feedback estruturado de visita está no commit `714dbfd5`; nenhum deles inclui o
 symlink `node_modules`. Para publicar os commits locais, reparar somente o
