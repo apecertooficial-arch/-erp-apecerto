@@ -196,7 +196,7 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 474/474 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 483/483 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
 
@@ -322,8 +322,10 @@ reaplicado automaticamente.
 Novo P0 comprovado pelo advisor oficial: 47 RPCs `SECURITY DEFINER` executáveis
 sem login e owned by `postgres`. O catálogo foi separado em operações
 autenticadas, service-only e três exceções públicas legadas. O draft fail-closed
-e seus testes estão prontos, mas a aplicação depende de ensaio isolado; as
-exceções por token ainda exigem hash, expiração, revogação e rate limit.
+e seus testes estão prontos, mas a aplicação depende de ensaio isolado. Para as
+três exceções por token, a Fase A V2 também está preparada com hash, expiração,
+revogação, uso único, minimização de PII, auditoria e rate limit persistente. O
+canário permanece desligado e nenhuma migration foi aplicada.
 
 ### P1
 

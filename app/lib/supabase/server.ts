@@ -19,3 +19,24 @@ export function createServerSupabaseClient(accessToken?: string) {
     },
   });
 }
+
+/**
+ * Cliente privilegiado exclusivo do runtime servidor.
+ *
+ * Nunca exportar esta chave para componentes `use client` nem usar o helper
+ * como atalho de autorização. O chamador público precisa validar entrada,
+ * limitar abuso e invocar apenas RPCs service-only de escopo mínimo.
+ */
+export function createServerSupabaseServiceClient() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Configuração privada do Supabase não encontrada.");
+  }
+
+  return createClient<Database>(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { "x-apecerto-client": "erp-server-private" } },
+  });
+}

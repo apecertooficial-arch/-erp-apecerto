@@ -41,7 +41,10 @@ export default function FichaPublica({ params }: { params: Promise<{ token: stri
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch(`/api/ficha-publica?token=${encodeURIComponent(token)}`);
+        const res = await fetch("/api/ficha-publica", {
+          headers: { "X-Apecerto-Public-Token": token },
+          cache: "no-store",
+        });
         const data = (await res.json()) as FichaInfo & { error?: string };
         if (!res.ok) { setErro(data.error || "Não foi possível abrir a ficha."); return; }
         setInfo(data);
@@ -84,7 +87,11 @@ export default function FichaPublica({ params }: { params: Promise<{ token: stri
         conjuge_data_nascimento: temConjuge ? f.conjuge_data_nascimento : "",
         consentimento_lgpd: String(f.consentimento_lgpd),
       };
-      const res = await fetch("/api/ficha-publica", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, dados }) });
+      const res = await fetch("/api/ficha-publica", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Apecerto-Public-Token": token },
+        body: JSON.stringify({ dados }),
+      });
       const body = (await res.json()) as { error?: string };
       if (!res.ok) { setErro(body.error || "Não foi possível enviar."); return; }
       setEnviada(true); window.scrollTo({ top: 0 });

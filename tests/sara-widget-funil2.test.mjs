@@ -13,6 +13,9 @@ test("Sara global está montada no layout persistente do ERP", () => {
 test("widget chama a Sara canônica e apresenta o Funil 2.0", () => {
   const widget = ler("../app/components/SaraWidget.tsx");
   assert.match(widget, /agente_slug: "sara"/);
+  assert.match(widget, /supabase\.functions\.invoke<SaraRouterResponse>\("ia-router"/);
+  assert.doesNotMatch(widget, /eyJhbGciOi/);
+  assert.doesNotMatch(widget, /const ANON|const SB/);
   assert.match(widget, /copiloto do Funil 2\.0/);
   assert.match(widget, /O que preciso fazer hoje\?/);
 });

@@ -232,7 +232,17 @@ declarar o ERP inteiro pronto sem evidência.
   autenticadas, 2 service-only e 3 exceções públicas legadas. Estas exceções
   usam token em texto sem expiração/rate limit comprovados e permanecem P0. O
   contrato está fora de `supabase/migrations`; 9/9 testes direcionados e o gate
-  frontend 474/474 passaram, sem aplicar SQL;
+  frontend anterior 474/474 passaram, sem aplicar SQL;
+- as três exceções públicas foram decompostas: o contrato atual guarda tokens
+  em texto, não expira, devolve PII da ficha e permite sobrescrita. A Fase A V2
+  está em `P0_PUBLIC_LINKS_HARDENING_DRAFT.sql`: hash, validade, revogação,
+  ficha de uso único, auditoria sanitizada, minimização da agenda e rate limit
+  persistente; código usa service role apenas no servidor e o canário continua
+  desligado. 27/27 direcionados, gate frontend 483/483, typecheck e build
+  passaram; lint sem erros. Nenhum SQL foi aplicado;
+- o `SaraWidget` deixou de carregar URL/JWT público hardcoded e passou a usar o
+  cliente Supabase canônico; a varredura atual não encontra JWT embutido em
+  `app/`;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
@@ -254,10 +264,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Preparar o desenho do ambiente isolado que possa provar a reconstrução das 341
-migrations ausentes, sem aplicar SQL em produção. Em seguida, continuar no P0
-de alertas/cobrança, reaproveitando apenas invariantes comprovadas do draft
-antigo e não o arquivo inteiro.
+Revisar sintaxe e comportamento da Fase A de links públicos em Postgres isolado,
+incluindo concorrência, expiração, uso único e rollback. Isso requer um ambiente
+isolado disponível; não testar o draft em produção. Em paralelo, preparar o
+desenho que prove a reconstrução das 341 migrations ausentes.
 Branch já enviada; abrir/validar a mudança, merge/deploy de código e migration
 permanecem etapas distintas e verificáveis. Nunca agrupar `db push` ao deploy
 de aplicação.

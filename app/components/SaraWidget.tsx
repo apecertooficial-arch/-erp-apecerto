@@ -27,12 +27,14 @@ export function SaraWidget() {
     ["sara-fab", "sara-panel", "sara-style"].forEach(function (id) { const e = document.getElementById(id); if (e) e.remove(); });
     document.querySelectorAll(".ai-button").forEach(function (e) { e.remove(); });
     window.__saraWidget = true;
-    const SB = "https://diaegvfveqezispcthwk.supabase.co";
-    const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpYWVndmZ2ZXFlemlzcGN0aHdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTU4MjIsImV4cCI6MjA5ODU3MTgyMn0.312n8BuI-loQrQ20x9j1hNjKZs2UO71ey9gvIo0eY0I";
+    const supabase = getBrowserSupabaseClient();
     const messages: SaraMessage[] = [];
     let pendingPreviewId: string | null = null;
-    function currentToken(): Promise<string> { try { return getBrowserSupabaseClient().auth.getSession().then(function (r) { return (r && r.data && r.data.session && r.data.session.access_token) || ANON; }).catch(function () { return ANON; }); } catch { return Promise.resolve(ANON); } }
-    function fn(body: Record<string, unknown>): Promise<SaraRouterResponse> { return currentToken().then(function (tok) { return fetch(SB + "/functions/v1/ia-router", { method: "POST", headers: { Authorization: "Bearer " + tok, apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(function (r) { return r.json() as Promise<SaraRouterResponse>; }); }); }
+    async function fn(body: Record<string, unknown>): Promise<SaraRouterResponse> {
+      const { data, error } = await supabase.functions.invoke<SaraRouterResponse>("ia-router", { body });
+      if (error) throw error;
+      return data ?? {};
+    }
     function esc(s: string): string { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
     function md(s: string): string {
       s = esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
