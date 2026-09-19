@@ -135,7 +135,7 @@ export async function GET(request: Request) {
     { data: leads, error: e1 }, { data: momentos, error: e2 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
-    { data: saraModo, error: erroSaraModo }, { data: saraRunner, error: erroSaraRunner }, { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
+    { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
     { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
@@ -144,8 +144,6 @@ export async function GET(request: Request) {
     db.from("f2_visita").select("id,funil_lead_id,inicio_em,fim_em,imovel,status,observacao,empreendimento_id,unidade,com_gerente,gerente_id,feedback_em,feedback_por,atualizado_em").order("inicio_em", { ascending: true }),
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
-    db.rpc("ncrm_sara_modo_status"),
-    db.rpc("ncrm_sara_runner_status"),
     db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
     db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
@@ -347,7 +345,7 @@ export async function GET(request: Request) {
       conversas: instanciaDoLeadResultado.erro ? "erro" : "ok",
       instanciasPadrao: instanciasResultado.erro ? "erro" : "ok",
       operacao: e8 ? "erro" : "ok",
-      sara: erroSaraModo || erroSaraRunner || erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+      sara: erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
     }, aquario: aquario ?? [],
     /* A lista só retorna sem erro quando a própria função canônica reconhece
        a sessão como admin ou corretor cadastrado. A interface não deduz
@@ -356,8 +354,9 @@ export async function GET(request: Request) {
     operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
-      modo: typeof saraModo === "object" && saraModo !== null && "modo" in saraModo ? String((saraModo as { modo?: unknown }).modo ?? "") || null : null,
-      runnerAtivo: typeof saraRunner === "object" && saraRunner !== null && "enabled" in saraRunner ? (saraRunner as { enabled?: unknown }).enabled === true : false,
+      modo: saraF2Config?.enabled === true
+        ? saraF2Config.modo_execucao === "completo" ? "completo" : "canary"
+        : "desligada",
       analisesNoLaboratorio: saraF2Analises.count ?? (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
       reavaliacaoAutomaticaFunil2: saraF2Config?.enabled === true,
       loteFunil2: typeof saraF2Config?.lote === "number" ? saraF2Config.lote : null,

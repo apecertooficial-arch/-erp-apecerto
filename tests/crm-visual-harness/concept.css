@@ -1,0 +1,780 @@
+/* Conceito ApeCerto 2026 — laboratório visual isolado.
+   O arquivo é carregado somente pelo harness sanitizado. Nenhuma regra chega
+   ao produto ou à produção antes da aprovação explícita. */
+
+html[data-crm-concept="apecerto-2026"] {
+  --concept-orange: #f26b21;
+  --concept-orange-dark: #c84d0d;
+  --concept-orange-soft: #fff0e6;
+  --concept-purple: #5a176d;
+  --concept-purple-deep: #35103f;
+  --concept-purple-soft: #f4eaf7;
+  --concept-ink: #211c24;
+  --concept-muted: #726a76;
+  --concept-line: #e8e2e8;
+  --concept-canvas: #f7f4f7;
+  --concept-surface: #ffffff;
+  --concept-success: #147a58;
+  --concept-danger: #b53636;
+  --concept-warning: #a45e08;
+  color-scheme: light;
+}
+
+html[data-crm-concept="apecerto-2026"] body {
+  background: var(--concept-canvas);
+  color: var(--concept-ink);
+}
+
+html[data-crm-concept="apecerto-2026"] button,
+html[data-crm-concept="apecerto-2026"] input,
+html[data-crm-concept="apecerto-2026"] select {
+  font: inherit;
+}
+
+@media (min-width: 901px) {
+  html[data-crm-concept="apecerto-2026"] .app-shell > .workspace {
+    min-width: 0;
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial.f2-root {
+    min-height: 100vh;
+    padding: 0 32px 36px;
+    background:
+      radial-gradient(circle at 92% 0%, rgba(90, 23, 109, .07), transparent 28%),
+      var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 -32px;
+    padding: 0 32px;
+    border: 0;
+    border-bottom: 1px solid rgba(53, 16, 63, .08);
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 10px 34px rgba(53, 16, 63, .04);
+    backdrop-filter: blur(16px);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav button,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--concept-muted);
+    font-size: 12px;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav button:hover,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav a:hover {
+    background: var(--concept-purple-soft);
+    color: var(--concept-purple);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav .ativo {
+    background: var(--concept-purple);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(90, 23, 109, .18);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav b {
+    min-width: 21px;
+    height: 21px;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(90, 23, 109, .08);
+    color: currentColor;
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-nav .ativo b {
+    background: rgba(255, 255, 255, .18);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-topo {
+    min-height: 132px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 28px 0 22px;
+    border: 0;
+    background: transparent;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-marca {
+    min-width: 0;
+    flex: 1;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-eyebrow {
+    color: var(--concept-orange-dark);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-marca h1 {
+    margin: 4px 0 5px;
+    color: var(--concept-ink);
+    font-size: clamp(28px, 2.1vw, 38px);
+    font-weight: 760;
+    letter-spacing: -.045em;
+    line-height: 1;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-marca > p {
+    max-width: 690px;
+    margin: 0;
+    color: var(--concept-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-funil-troca {
+    display: inline-flex;
+    gap: 3px;
+    margin-top: 15px;
+    padding: 3px;
+    border: 1px solid var(--concept-line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .75);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-funil-troca button {
+    min-height: 31px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--concept-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-funil-troca button.ativo {
+    background: var(--concept-surface);
+    color: var(--concept-purple);
+    box-shadow: 0 4px 12px rgba(53, 16, 63, .08);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-topo-acoes {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-topo-acoes > button,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-sino {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid var(--concept-line);
+    border-radius: 12px;
+    background: var(--concept-surface);
+    color: var(--concept-ink);
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 5px 16px rgba(53, 16, 63, .05);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-sino b {
+    margin-left: 7px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #fff0eb;
+    color: var(--concept-danger);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-topo-acoes > .f2-pescar {
+    border-color: var(--concept-orange);
+    background: var(--concept-orange);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(242, 107, 33, .24);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-main {
+    padding: 0;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-toolbar {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 18px;
+    padding: 8px;
+    border: 1px solid rgba(53, 16, 63, .08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .9);
+    box-shadow: 0 8px 30px rgba(53, 16, 63, .045);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-pipeline select,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-periodo select,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-filtros > summary,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-mais > summary {
+    min-height: 40px;
+    border-color: transparent;
+    border-radius: 10px;
+    background: var(--concept-canvas);
+    color: var(--concept-ink);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-visoes {
+    gap: 2px;
+    padding: 3px;
+    border-radius: 11px;
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-visoes button {
+    min-height: 34px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--concept-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-visoes button.ativo {
+    background: var(--concept-surface);
+    color: var(--concept-purple);
+    box-shadow: 0 3px 10px rgba(53, 16, 63, .09);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-visoes b {
+    margin-left: 5px;
+    color: inherit;
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-busca {
+    min-width: 210px;
+    flex: 1 1 280px;
+    margin-left: auto;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-busca input {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 15px;
+    border: 1px solid var(--concept-line);
+    border-radius: 10px;
+    background: var(--concept-surface);
+    color: var(--concept-ink);
+    font-size: 12px;
+    outline: none;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-v3-busca input:focus {
+    border-color: rgba(90, 23, 109, .55);
+    box-shadow: 0 0 0 3px rgba(90, 23, 109, .09);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-board {
+    min-height: 620px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 2px 2px 20px;
+    scroll-snap-type: x proximity;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna:nth-child(n) {
+    flex: 0 0 298px;
+    min-width: 298px;
+    scroll-snap-align: start;
+    padding: 10px;
+    border: 1px solid rgba(53, 16, 63, .065);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .55);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna-topo {
+    min-height: 46px;
+    grid-template-columns: 8px minmax(0, 1fr) auto auto 28px 28px;
+    gap: 7px;
+    padding: 0 4px 8px;
+    border: 0;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna-topo > span {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--concept-orange);
+    box-shadow: 0 0 0 4px var(--concept-orange-soft);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna:nth-child(2n) .f2-coluna-topo > span {
+    background: var(--concept-purple);
+    box-shadow: 0 0 0 4px var(--concept-purple-soft);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-coluna-topo h2 {
+    color: var(--concept-ink);
+    font-size: 12px;
+    font-weight: 760;
+    letter-spacing: -.01em;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-lista {
+    display: grid;
+    gap: 9px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card {
+    padding: 14px;
+    border: 1px solid rgba(53, 16, 63, .08);
+    border-radius: 14px;
+    background: var(--concept-surface);
+    box-shadow: 0 5px 18px rgba(53, 16, 63, .055);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card:hover,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card:focus-visible {
+    border-color: rgba(90, 23, 109, .28);
+    box-shadow: 0 12px 28px rgba(53, 16, 63, .11);
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-avatar {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--concept-purple-soft);
+    color: var(--concept-purple);
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 800;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-identidade strong {
+    color: var(--concept-ink);
+    font-size: 13px;
+    font-weight: 740;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-contexto {
+    margin: 4px 0 0 42px;
+    color: var(--concept-muted);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-sinais {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 11px 0;
+    border-color: var(--concept-line);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-sinal > span,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-proxima > span {
+    color: var(--concept-muted);
+    font-size: 9px;
+    font-weight: 780;
+    letter-spacing: .08em;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-sinal > strong,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-proxima > strong {
+    color: var(--concept-ink);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-proxima {
+    position: relative;
+    margin-top: 11px;
+    padding-left: 12px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-proxima::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--concept-orange);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-rodape {
+    min-height: 36px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 11px;
+    padding-top: 10px;
+    border-color: var(--concept-line);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-prazo {
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .f2-card-chat {
+    width: auto;
+    min-height: 32px;
+    padding: 0 10px;
+    border-color: rgba(90, 23, 109, .15);
+    border-radius: 9px;
+    color: var(--concept-purple);
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-crm-concept="apecerto-2026"] body {
+    min-width: 320px;
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-shell,
+  html[data-crm-concept="apecerto-2026"] .workspace,
+  html[data-crm-concept="apecerto-2026"] .app-mobile-scroll {
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"][data-crm-concept-screen="mobile-day"] .app-mobile-top {
+    min-height: 68px;
+    padding: 12px 18px 10px;
+    border: 0;
+    background: var(--concept-purple-deep);
+    color: #fff;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-mobile-top .amt-esq strong {
+    color: inherit;
+    font-size: 15px;
+    font-weight: 720;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-mobile-top .amt-esq small {
+    color: rgba(255, 255, 255, .68);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-mobile-top .amt-sino,
+  html[data-crm-concept="apecerto-2026"] .app-mobile-top .amt-perfil {
+    border-color: rgba(255, 255, 255, .15);
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial.ape-app.modo-inicio {
+    min-height: calc(100vh - 132px);
+    padding: 0 15px 108px;
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-abertura {
+    margin: 0 -15px;
+    padding: 22px 18px 25px;
+    border: 0;
+    border-radius: 0 0 28px 28px;
+    background: var(--concept-purple-deep);
+    color: #fff;
+    box-shadow: 0 16px 34px rgba(53, 16, 63, .18);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-sobrancelha {
+    color: #ffb588;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .16em;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-manchete {
+    max-width: 310px;
+    margin: 5px 0 0;
+    color: #fff;
+    font-size: 27px;
+    font-weight: 760;
+    letter-spacing: -.045em;
+    line-height: 1.06;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-atualizado {
+    margin-top: 13px;
+    color: rgba(255, 255, 255, .64);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-atualizar {
+    border-color: rgba(255, 255, 255, .16);
+    background: rgba(255, 255, 255, .09);
+    color: #fff;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-numeros {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: -14px 0 18px;
+    padding: 8px;
+    border: 1px solid rgba(53, 16, 63, .07);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 12px 26px rgba(53, 16, 63, .09);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-numeros > article {
+    min-width: 0;
+    min-height: 62px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 9px 7px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--concept-canvas);
+    text-align: center;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-numeros b {
+    color: var(--concept-ink);
+    font-size: 20px;
+    font-weight: 780;
+    line-height: 1;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-numeros small {
+    color: var(--concept-muted);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-grupo {
+    margin: 0 0 20px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-grupo-topo {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px 8px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-grupo-titulo {
+    color: var(--concept-ink);
+    font-size: 11px;
+    font-weight: 780;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-grupo-total {
+    min-width: 23px;
+    height: 23px;
+    display: grid;
+    place-items: center;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--concept-purple-soft);
+    color: var(--concept-purple);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-lista {
+    display: grid;
+    gap: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card {
+    padding: 15px;
+    border: 1px solid rgba(53, 16, 63, .08);
+    border-radius: 17px;
+    background: var(--concept-surface);
+    box-shadow: 0 6px 20px rgba(53, 16, 63, .065);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-topo {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-avatar {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    background: var(--concept-purple-soft);
+    color: var(--concept-purple);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-quem {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-quem strong {
+    color: var(--concept-ink);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-quem span {
+    color: var(--concept-muted);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-prazo {
+    padding: 6px 8px;
+    border-radius: 9px;
+    font-size: 9px;
+    font-weight: 750;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-leitura {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .8fr);
+    gap: 8px;
+    margin-top: 13px;
+    padding: 10px;
+    border: 1px solid var(--concept-line);
+    border-radius: 12px;
+    background: var(--concept-canvas);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-leitura small,
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-acao small {
+    color: var(--concept-muted);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .08em;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-leitura b {
+    margin-top: 3px;
+    color: var(--concept-ink);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-acao {
+    position: relative;
+    margin-top: 11px;
+    padding: 0 0 0 13px;
+    border: 0;
+    background: transparent;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-acao::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--concept-orange);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-acao strong {
+    display: block;
+    margin-top: 3px;
+    color: var(--concept-ink);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-card-acao > span {
+    display: block;
+    margin-top: 3px;
+    color: var(--concept-muted);
+    font-size: 10px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-acoes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 8px;
+    margin-top: 13px;
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-acoes .ncrm-wa-principal {
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--concept-orange);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 760;
+    box-shadow: 0 8px 20px rgba(242, 107, 33, .2);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .funil-oficial .ape-mais {
+    width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--concept-line);
+    border-radius: 12px;
+    background: var(--concept-surface);
+    color: var(--concept-purple);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-bottom-nav {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    min-height: 66px;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+    border: 1px solid rgba(53, 16, 63, .09);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 16px 36px rgba(53, 16, 63, .16);
+    backdrop-filter: blur(16px);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-bottom-nav a,
+  html[data-crm-concept="apecerto-2026"] .app-bottom-nav button {
+    border-radius: 12px;
+    color: var(--concept-muted);
+  }
+
+  html[data-crm-concept="apecerto-2026"] .app-bottom-nav .active {
+    background: var(--concept-purple-soft);
+    color: var(--concept-purple);
+  }
+}

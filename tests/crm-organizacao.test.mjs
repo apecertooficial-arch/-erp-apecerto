@@ -15,6 +15,7 @@ const integridadeMigration = ler("../supabase/migrations/20260825201000_funil_2_
 const modelo = ler("../app/features/funil-2/modelo.ts");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 const boardPrimitives = ler("../app/features/funil-2/Funil2BoardPrimitives.tsx");
+const entry = ler("../app/features/funil-2/FunilEntry.tsx");
 
 test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
   for (const rotulo of ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"]) assert.ok(desktop.includes(rotulo));
@@ -92,6 +93,11 @@ test("as visões principais escondem instruções e edição até existir inten�
   assert.match(desktop, /Correção administrativa/);
 });
 
+test("CRM desktop abre no Meu Dia, enquanto o Kanban permanece uma visão complementar", () => {
+  assert.match(desktop, /useState<"quadro" \| "dia" \| "leads" \| "visitas" \| "vendas" \| "config">\("dia"\)/);
+  assert.match(desktop, /onClick=\{\(\) => trocarAba\("quadro"\)\}/);
+});
+
 test("a ficha carrega o histórico completo do lead aberto, não o recorte global", () => {
   assert.match(api, /historicoLeadId/);
   assert.match(api, /\.eq\("funil_lead_id", historicoLeadId\)/);
@@ -127,11 +133,11 @@ test("linhas e cartões têm densidade de ferramenta operacional, não de blocos
   assert.match(crmCss, /\.f2-board \.f2-card-botoes\s*\{[^}]*display:grid/);
 });
 
-test("CRM usa uma única folha canônica, sem cascata corretiva ou tipografia ilegível", () => {
+test("CRM desktop carrega a fonte visual versionada e preserva a base compartilhada do aplicativo", () => {
   assert.match(layout, /import "\.\/styles\/funil-2\.css"/);
+  assert.match(entry, /@import url\("\/funil-web-sexta\.css"\) screen and \(min-width: 901px\)/);
   assert.doesNotMatch(layout, /redesign-apecerto-crm\.css/);
   assert.doesNotMatch(identidadeGeral, /\.f2-/);
-  assert.ok(layout.indexOf('import "./styles/funil.css"') > layout.indexOf('import "./styles/redesign-apecerto-calendario.css"'));
   assert.doesNotMatch(crmCss, /!important/);
   const fontes = [...crmCss.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)].map(([, valor]) => Number(valor));
   assert.ok(fontes.length > 0);

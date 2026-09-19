@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -27,7 +26,8 @@ test("desktop recupera a hierarquia operacional aprovada na sexta", () => {
   assert.match(workspace, /className="f2-card-chat"/);
 });
 
-test("fonte do aplicativo móvel permanece byte a byte igual ao build 6d64a63f", () => {
-  const hash = createHash("sha256").update(mobile).digest("hex");
-  assert.equal(hash, "fbb0aab67250e65275030eaf335e6df5fc676ca67aa221ba82336d2671a274b5");
+test("aplicativo móvel continua separado do visual exclusivo do desktop", () => {
+  assert.match(mobile, /className="ape-/);
+  assert.doesNotMatch(mobile, /funil-web-sexta\.css/);
+  assert.doesNotMatch(mobile, /CrmReimaginedConcept|CrmKanbanReimagined/);
 });

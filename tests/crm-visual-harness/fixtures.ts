@@ -52,7 +52,9 @@ export const leads: LeadFunil2[] = etapasQuadro.flatMap((etapa, coluna) => Array
     valor: 720000 + sequencia * 5000,
     lead_id: 800000 + sequencia,
     nome: `Cliente teste ${String(sequencia).padStart(3, "0")}`,
-    telefone: "+55 00 00000-0000",
+    // DDD válido para exercitar o CTA sem usar um número real: assinantes
+    // brasileiros não começam em zero.
+    telefone: "11 0000-0000",
     email: `cliente.${sequencia}@example.invalid`,
     cpf_cnpj: null,
     endereco: "Endereço sanitizado · Moema",
@@ -136,7 +138,7 @@ export const payloadNormal = {
   aquario,
   podePescar: true,
   operacao: null,
-  sara: { modo: "completo", runnerAtivo: true, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: true },
+  sara: { modo: "completo", analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: true },
 };
 
 export const payloadVazio = { ...payloadNormal, leads: [], eventos: [], notas: [], visitas: [], atividades: [], negociacoes: [], negociosVinculados: [], imoveisVinculados: [], arquivosVinculados: [], aquario: [] };

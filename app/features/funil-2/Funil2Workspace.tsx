@@ -102,8 +102,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [aquario, setAquario] = useState<CandidatoAquarioFunil2[]>([]);
   const [podePescar, setPodePescar] = useState(false);
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
-  const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
-  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("quadro");
+  const [sara, setSara] = useState<SaraStatusFunil2>({ modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+  /* O corretor entra pelo trabalho que exige ação agora. O quadro continua
+     disponível como visão complementar da jornada, sem competir com a fila. */
+  const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("dia");
   /* Trilha do funil em foco. "principal" é a operação de sempre; "alphaville"
      é a trilha própria das campanhas de Alphaville (etapas e momentos dela). */
   const [funilAtivo, setFunilAtivo] = useState<"principal" | "alphaville">("principal");
@@ -167,7 +169,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     setAquario(resposta.json.aquario ?? []);
     setPodePescar(resposta.json.podePescar === true);
     setOperacao(resposta.json.operacao ?? null);
-    setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+    setSara(resposta.json.sara ?? { modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
   }, [accessToken]);
 
   useEffect(() => {
@@ -193,7 +195,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setAquario(resposta.json.aquario ?? []);
       setPodePescar(resposta.json.podePescar === true);
       setOperacao(resposta.json.operacao ?? null);
-      setSara(resposta.json.sara ?? { modo: null, runnerAtivo: false, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
+      setSara(resposta.json.sara ?? { modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
 
       /* O push usa o endereço canônico /negocio/N, que chega aqui como
          ?lead=N. Consumimos o parâmetro no retorno assíncrono da carteira para
@@ -817,7 +819,7 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
   });
   const momentosVisiveis = filtroMomento === "todos" ? momentos : momentos.filter((m) => m.etapa === filtroMomento);
   return <main className="f2-pagina f2-config-pagina"><CabecalhoPagina titulo="Regras do CRM" texto="Configurações da operação: etapas, momentos, prazos, Sara e limites oficiais." />
-    <section className="f2-sara-status f2-sara-status-compacto"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza.</h3><small>O estado de cada função aparece separadamente, sem termos técnicos.</small>{!sara.reavaliacaoAutomaticaFunil2 && <p className="f2-sara-aviso">Reavaliação automática do Funil ainda não conectada.</p>}<details><summary>Como funciona</summary><p>Quando o D-API registra mensagem nova, a Sara relê a conversa, escolhe um momento oficial e recalcula ação e prazo. Ela está em <b>{sara.modo ?? "estado indisponível"}</b>; o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>. Ela não envia por você.</p></details></div><div className="f2-sara-estados"><span className="ativo"><b>Observação</b><small>Ativa</small></span><span className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}><b>Classificação</b><small>{sara.reavaliacaoAutomaticaFunil2 ? "Ativa" : "Inativa"}</small></span><span><b>Envio automático</b><small>Inativo</small></span></div></section>
+    <section className="f2-sara-status f2-sara-status-compacto"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza.</h3><small>O estado exibido vem somente do Funil 2.0, sem misturar o CRM aposentado.</small>{!sara.reavaliacaoAutomaticaFunil2 && <p className="f2-sara-aviso">Reavaliação automática do Funil ainda não conectada.</p>}<details><summary>Como funciona</summary><p>Quando o D-API registra mensagem nova, a Sara relê a conversa, escolhe um momento oficial e recalcula ação e prazo. A classificação está em modo <b>{sara.modo ?? "indisponível"}</b> e é executada pelos eventos do motor canônico. Ela não envia por você.</p></details></div><div className="f2-sara-estados"><span className="ativo"><b>Observação</b><small>Ativa</small></span><span className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}><b>Classificação</b><small>{sara.reavaliacaoAutomaticaFunil2 ? "Configurada" : "Inativa"}</small></span><span><b>Envio automático</b><small>Inativo</small></span></div></section>
     <nav className="f2-config-nav" aria-label="Seções das regras">
       <button type="button" className={secao === "etapas" ? "ativo" : ""} onClick={() => setSecao("etapas")}>Etapas</button>
       <button type="button" className={secao === "momentos" ? "ativo" : ""} onClick={() => setSecao("momentos")}>Momentos e prazos</button>

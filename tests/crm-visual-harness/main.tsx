@@ -8,9 +8,17 @@ import "../../app/styles/redesign-apecerto-menu.css";
 import "../../app/styles/app-mobile-aprovado.css";
 import "../../app/styles/app-mobile-gestor.css";
 import "../../app/styles/funil.css";
+import "./concept.css";
+import "./premium-concept.css";
+import "./reimagined-concept.css";
+import "./kanban-reimagined.css";
 import { ErpShell } from "../../app/features/system/ErpShell";
 import { ErpSessionCtx, type ErpSessionValue, type SessionProfile } from "../../app/features/system/ErpSession";
+import { InicioApp } from "../../app/features/home/InicioApp";
 import PaginaCrm from "../../app/(erp)/crm/page";
+import { CrmPremiumConcept } from "./CrmPremiumConcept";
+import { CrmReimaginedConcept } from "./CrmReimaginedConcept";
+import { CrmKanbanReimagined } from "./CrmKanbanReimagined";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -21,6 +29,18 @@ type RegistroConsole = { level: "error" | "warning"; message: string };
 const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
+const tela = parametros.get("screen") ?? "desktop-crm";
+const indicesMeuDia = [0, 1, 18, 19, 36, 37, 54, 55, 72, 90];
+const deslocamentosMinutos = [-10, 15, -180, -40, 30, 75, 150, 240, 360, 1560];
+const leadsMeuDia = indicesMeuDia.map((indice, posicao) => ({
+  ...leads[indice]!,
+  proxima_acao_em: new Date(Date.now() + deslocamentosMinutos[posicao]! * 60_000).toISOString(),
+}));
+const payloadMeuDia = {
+  ...payloadNormal,
+  leads: leadsMeuDia,
+  negociosVinculados: payloadNormal.negociosVinculados.filter((item) => leadsMeuDia.some((lead) => lead.id === item.funil_lead_id)),
+};
 const gravadorVisivel = parametros.get("evidence") === "1";
 const requisicoes: RegistroRede[] = [];
 const mensagensConsole: RegistroConsole[] = [];
@@ -72,7 +92,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
     if (url.searchParams.has("historicoLeadId")) return json({ eventos: payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(estado === "vazio" ? payloadVazio : payloadNormal);
+    return json(estado === "vazio" ? payloadVazio : tela === "mobile-day" ? payloadMeuDia : payloadNormal);
   }
   if (url.pathname === "/api/funil2/conversa") {
     return json({
@@ -123,6 +143,8 @@ const contexto: ErpSessionValue = {
 document.documentElement.dataset.crmHarness = "visual-sintetico";
 document.documentElement.dataset.crmHarnessRole = papel;
 document.documentElement.dataset.crmHarnessState = estado;
+document.documentElement.dataset.crmConcept = "apecerto-2026";
+document.documentElement.dataset.crmConceptScreen = tela;
 const transferenciaEvidencia = document.createElement("output");
 transferenciaEvidencia.id = "crm-harness-evidence-transfer";
 transferenciaEvidencia.style.cssText = gravadorVisivel
@@ -144,6 +166,10 @@ document.body.append(transferenciaEvidencia);
 
 createRoot(document.getElementById("root")!).render(
   <ErpSessionCtx.Provider value={contexto}>
-    <ErpShell><PaginaCrm /></ErpShell>
+    {tela === "reimagined-kanban" ? <CrmKanbanReimagined /> : tela === "reimagined-crm" ? <CrmReimaginedConcept /> : tela === "premium-crm" ? <CrmPremiumConcept /> : <ErpShell>
+        {tela === "mobile-day"
+          ? <InicioApp accessToken="harness-test-only" nome={perfil.name ?? "Corretor teste"} onIr={() => undefined} />
+          : <PaginaCrm />}
+      </ErpShell>}
   </ErpSessionCtx.Provider>,
 );

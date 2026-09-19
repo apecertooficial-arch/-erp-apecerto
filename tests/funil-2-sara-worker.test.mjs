@@ -51,6 +51,8 @@ test("API e tela passam a refletir o estado real do worker", () => {
   assert.match(route, /from\("f2_sara_config"\)/);
   assert.match(route, /from\("f2_sara_analise"\)/);
   assert.match(route, /reavaliacaoAutomaticaFunil2: saraF2Config\?\.enabled === true/);
+  assert.doesNotMatch(route, /ncrm_sara_(?:modo|runner)_status/);
+  assert.doesNotMatch(route, /runnerAtivo/);
 });
 
 test("carteira migrada lê histórico completo e pesca mantém corte", () => {
