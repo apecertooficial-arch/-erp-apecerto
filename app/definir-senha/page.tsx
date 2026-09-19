@@ -33,10 +33,14 @@ export default function DefinirSenhaPage() {
 
   useEffect(() => {
     const currentToken = new URLSearchParams(window.location.search).get("t") || "";
-    if (!currentToken) { setEstado("invalido"); return; }
-    setToken(currentToken);
-    window.history.replaceState(window.history.state, "", window.location.pathname);
     void (async () => {
+      await Promise.resolve();
+      if (!currentToken) {
+        setEstado("invalido");
+        return;
+      }
+      setToken(currentToken);
+      window.history.replaceState(window.history.state, "", window.location.pathname);
       try {
         const r = await invoke("validar", { token: currentToken });
         if (r.ok) { setNome(r.nome ?? null); setEstado("valido"); }
