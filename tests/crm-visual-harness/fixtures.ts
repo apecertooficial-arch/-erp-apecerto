@@ -61,6 +61,7 @@ export const leads: LeadFunil2[] = etapasQuadro.flatMap((etapa, coluna) => Array
     origem_cadastro: "harness visual",
     corretor_id: 7,
     corretor_nome: "Corretor teste",
+    pode_confirmar_acao: true,
     instancia_rotulo: "Canal teste",
     instancia_telefone: null,
     instancia_status: "conectado",

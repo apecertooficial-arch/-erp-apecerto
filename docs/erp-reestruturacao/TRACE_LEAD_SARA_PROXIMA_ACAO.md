@@ -62,6 +62,41 @@ classificação está configurada e é executada pelo motor canônico.
 reintroduzir o campo enganoso `runnerAtivo`. Resultado local: 21 testes
 direcionados aprovados e ESLint dos arquivos alterados aprovado.
 
+## P0 reproduzido — confirmar ação não acionava a Sara
+
+**Cenário:** a RPC produtiva `public.f2_confirmar_acao(...)` registra
+`acao_confirmada`, mas também gravava `ultima_reavaliacao_sara_em = now()` e o
+evento `sara_reavaliou` sem enfileirar a automação 49 nem executar a Edge
+Function. A tela podia, portanto, aparentar que a Sara já havia relido o lead
+quando nenhuma análise nova tinha ocorrido.
+
+**Correção local:** o frontend passou a separar duas autoridades:
+
+- mensagens que exigem D-API só podem ser confirmadas pela evidência real do
+  webhook; o navegador não pode forjar essa origem;
+- ações operacionais manuais exigem confirmação explícita do corretor dono e
+  geram `lead.action_confirmed`; o contrato aditivo enfileira a automação 49 de
+  modo idempotente, sem antecipar `ultima_reavaliacao_sara_em` nem emitir
+  `sara_reavaliou`.
+
+A Edge `f2-sara-reclassificar` aceita o novo evento somente quando o contexto
+contém `source_id` e `execution_id` válidos e quando o evento-fonte pertence ao
+mesmo card e é `acao_confirmada`. A leitura anterior permanece visível até a
+nova análise ser efetivamente processada.
+
+**Evidência local:** 7/7 contratos específicos e 65/65 testes combinados de
+Sara/dispatcher passaram; o gate frontend completo passou em 506/506, além de
+typecheck, build e lint sem erros. No navegador sanitizado, desktop e celular
+exibiram a confirmação manual; a tentativa foi interceptada pelo harness com
+405 e registrou apenas `PATCH /api/funil2` bloqueado. Para uma primeira
+abordagem dependente do WhatsApp, ambos exibem `Confirmação automática` e não
+oferecem botão manual.
+
+O SQL correspondente está em `P0_F2_CONFIRMAR_ACAO_DRAFT.sql`, fora de
+`supabase/migrations` e **não aplicado**. Falta compilá-lo e ensaiá-lo em um
+Postgres/Supabase isolado antes de solicitar autorização para a migration de
+produção.
+
 ## Métricas agregadas da operação real
 
 As consultas abaixo usam apenas contagens e percentis dos últimos 30 dias:
@@ -127,7 +162,10 @@ a reconhecer o grupo `gestao`, em vez de limitar o painel gerencial a
 2. reconciliar os nomes/versões das migrations aplicadas com os 294 arquivos;
 3. corrigir, com migration aditiva e rollback, a cardinalidade dos alertas da
    Sara e sua resolução por evidência/saída da carteira;
-4. validar a correção no navegador local usando sessão sanitizada;
-5. não remover `ncrm_sara_*` até provar ausência de chamadores vivos e preparar
+4. compilar e ensaiar isoladamente o contrato de confirmação operacional antes
+   de qualquer migration;
+5. validar a persistência real e a reclassificação completa em ambiente
+   isolado, incluindo duplicidade e concorrência;
+6. não remover `ncrm_sara_*` até provar ausência de chamadores vivos e preparar
    substituição/rollback; `ncrm_notificacao` e `ncrm_push_*` continuam vivos e
    não pertencem ao conjunto aposentado.

@@ -221,6 +221,8 @@ export type LeadFunil2 = {
   origem_cadastro?: string | null;
   corretor_id: number | null;
   corretor_nome: string | null;
+  /** Capacidade calculada no servidor: somente o corretor dono pode concluir ação manual. */
+  pode_confirmar_acao: boolean;
   instancia_rotulo?: string | null;
   instancia_telefone?: string | null;
   instancia_status?: string | null;

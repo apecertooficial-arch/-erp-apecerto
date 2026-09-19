@@ -17,7 +17,8 @@ declarar o ERP inteiro pronto sem evidência.
   usuário autorizou publicação de código validado. Os commits locais mais
   recentes ainda não foram enviados por falha do helper Git; merge e deploy
   não foram executados
-- HEAD local funcional validado: `b275e0de`
+- HEAD local confirmado: `a2127f5f`; há uma nova fatia P0 validada ainda não
+  commitada sobre esse HEAD
 - HEAD remoto da branch: `f900d7f8`
 
 ## Concluído
@@ -283,7 +284,18 @@ declarar o ERP inteiro pronto sem evidência.
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
   ausência de chamadores externos.
-- gate mais recente: 499/499 testes frontend, typecheck e build completos;
+- P0 novo reproduzido: `f2_confirmar_acao` marcava a Sara como reavaliada sem
+  enfileirar nem executar a análise. A correção local separa confirmação D-API
+  de ação manual, exige ownership, cria `lead.action_confirmed` auditável e só
+  atualiza a leitura quando a automação 49 realmente processar o evento;
+- a UI compartilhada desktop/celular exige confirmação explícita nas ações
+  manuais e mostra `Confirmação automática` nas ações que dependem do D-API. O
+  navegador sanitizado bloqueou o PATCH com 405 e provou ausência de efeito
+  externo; rede registrada: dois GETs locais e um PATCH local bloqueado;
+- `P0_F2_CONFIRMAR_ACAO_DRAFT.sql` foi preparado fora de migrations e não foi
+  aplicado. Ele precisa ser compilado e ensaiado em Postgres isolado;
+- gate mais recente: 506/506 testes frontend, 7/7 contratos específicos,
+  65/65 testes combinados de Sara/dispatcher, typecheck e build completos;
   lint com zero erros e dez avisos preexistentes de imagens/artefato público;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
@@ -308,10 +320,11 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Continuar localmente a fatia `mensagem → Sara → próxima ação → Meu Dia` e
-preparar o ensaio isolado do contrato de alertas. Para publicar `deeaeaf8` e
-`b275e0de`, reparar somente o acesso de escrita do GitHub (novo login do `gh` ou
-helper válido), sem criar/rotacionar credenciais automaticamente. Não usar
-`main` do Supabase como laboratório. Merge/deploy de código e migration
-permanecem etapas distintas e verificáveis; nunca agrupar `db push` ao deploy
-de aplicação.
+Revisar o diff da fatia `ação → Sara → próxima ação → Meu Dia`, executar
+`git diff --check` e criar um commit local sem incluir o symlink `node_modules`.
+Depois, preparar o ensaio isolado dos contratos de confirmação e alertas. Para
+publicar os commits locais, reparar somente o acesso de escrita do GitHub (novo
+login do `gh` ou helper válido), sem criar/rotacionar credenciais
+automaticamente. Não usar `main` do Supabase como laboratório. Merge/deploy de
+código e migration permanecem etapas distintas e verificáveis; nunca agrupar
+`db push` ao deploy de aplicação.
