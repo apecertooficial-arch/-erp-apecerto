@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; primeira correção P0 local validada
+Estado: fatia em reconstrução; duas correções P0 locais validadas
 
 ## Contrato atual comprovado
 
@@ -28,21 +28,28 @@ agenda continua utilizável, mas web e aplicativo mostram um alerta explícito e
 uma ação de nova tentativa. A interface só apresenta a fila vazia quando a
 consulta foi concluída com sucesso.
 
+Uma segunda falha foi confirmada por contagem agregada no banco: setembro tinha
+8 pendências, enquanto 53 pendências de agosto ficavam invisíveis porque a API
+consultava somente o mês selecionado. Nenhum nome, telefone ou registro de
+cliente foi lido. A API local agora consulta uma janela operacional de 365 dias,
+o máximo seguro dentro do limite vigente da RPC, e deixa de vincular a cobrança
+ao mês exibido no calendário. Isso cobre integralmente o histórico atual, que
+começa em agosto de 2026.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
 - testes direcionados: 33/33 passaram;
-- gate frontend oficial ampliado com o novo contrato: 432/432 passou;
+- gate frontend oficial ampliado com os novos contratos: 433/433 passou;
 - ESLint dos arquivos alterados: passou;
 - build Vinext completo: passou;
 - `git diff --check`: passou.
 
 ## Lacunas ainda abertas
 
-1. A consulta atual é limitada ao mês escolhido. Uma visita sem resultado pode
-   desaparecer da cobrança na virada do mês. O requisito do usuário é manter a
-   pendência até desfecho explícito; a correção exige novo contrato de banco e
-   migration aditiva, testada em ambiente isolado antes de produção.
+1. A correção local cobre os últimos 365 dias e todo o histórico atual, mas o
+   contrato definitivo precisa manter a pendência sem prazo de expiração. Isso
+   exige migration aditiva, paginação e teste isolado antes de produção.
 2. O formulário atual registra desfecho, motivo e justificativa, mas ainda não
    cobre acompanhantes, produtos apresentados, pontos positivos/negativos,
    objeções, proposta, próxima ação detalhada nem áudio transcrito.
@@ -53,7 +60,6 @@ consulta foi concluída com sucesso.
 
 ## Próximo gate
 
-Desenhar o contrato aditivo que mantém todas as pendências abertas até a
-resolução, com índice, autorização, paginação, métricas e testes de virada de
-mês. Criar migration apenas pela CLI oficial quando a ferramenta e o ambiente
-isolado forem autorizados/disponibilizados.
+Desenhar o contrato aditivo sem expiração para todas as pendências abertas, com
+índice, autorização, paginação e métricas. Criar migration apenas pela CLI
+oficial quando a ferramenta e o ambiente isolado forem autorizados/disponibilizados.

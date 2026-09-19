@@ -39,6 +39,13 @@ test("fila mensal considera visita passada e qualquer encerramento incompleto", 
   assert.match(migration, /public\.f2_admin\(\) IS TRUE OR c\.usuario_id=v_uid/);
 });
 
+test("cobrança não abandona pendências quando o calendário vira o mês", () => {
+  assert.match(apiAgenda, /const hoje = hojeOperacao\(\)/);
+  assert.match(apiAgenda, /somarDias\(hoje,\s*-365\)/);
+  assert.doesNotMatch(apiAgenda, /const inicioMes/);
+  assert.doesNotMatch(apiAgenda, /fimDoMes/);
+});
+
 test("histórico separa agendamento da justificativa do resultado", () => {
   assert.match(migration, /resultado_justificativa/);
   assert.match(migration, /resultado_detalhe_codigo/);

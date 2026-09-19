@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
-import { fimDoMes, instanteSaoPaulo } from "../../lib/timezone";
+import { hojeOperacao, instanteSaoPaulo, somarDias } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 
 export const dynamic = "force-dynamic";
@@ -91,14 +91,13 @@ export async function GET(request: Request) {
   /* A agenda continua carregando durante uma implantacao gradual, mesmo antes
      de a RPC nova existir. Depois da migration, a fila passa a vir no mesmo
      payload sem alterar o contrato antigo de `itens`. */
-  const diaReferencia = typeof result.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(result.dia) ? result.dia : null;
-  const inicioMes = diaReferencia ? `${diaReferencia.slice(0, 7)}-01` : null;
-  const fimMes = inicioMes
-    ? fimDoMes(inicioMes)
-    : null;
+  /* Cobrança é uma obrigação operacional, não um filtro visual do calendário.
+     A RPC vigente aceita no máximo 366 dias; cobrimos todo o histórico real
+     atual sem deixar uma pendência desaparecer na virada do mês. */
+  const hoje = hojeOperacao();
   const pendencias = await supabase.rpc("f2_visitas_resultado_pendente", {
-    p_inicio: inicioMes,
-    p_fim: fimMes,
+    p_inicio: somarDias(hoje, -365),
+    p_fim: hoje,
   } as never);
   const resultadoPendencias = pendencias.error
     ? null

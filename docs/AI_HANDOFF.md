@@ -128,7 +128,11 @@ declarar o ERP inteiro pronto sem evidência.
   lista vazia. API, web e aplicativo agora falham de forma explícita, mantêm a
   agenda utilizável e oferecem nova tentativa; trace em
   `docs/erp-reestruturacao/TRACE_VISITA_FEEDBACK_COBRANCA.md`;
-- após a correção da Agenda: 33/33 testes direcionados, 432/432 no gate
+- metadados agregados provaram 53 pendências de agosto ocultas pela consulta
+  mensal, contra 8 de setembro. A API local agora usa a janela máxima segura de
+  365 dias da RPC e cobre todo o histórico real atual sem depender do mês
+  exibido;
+- após as correções da Agenda: 28/28 testes de Agenda/fuso, 433/433 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - a execução indiscriminada de todos os arquivos `tests/*.test.mjs` também
   encontrou falhas preexistentes fora do gate oficial (incluindo fonte Studio
@@ -148,15 +152,15 @@ declarar o ERP inteiro pronto sem evidência.
 - deploy/publicação de código validado está autorizado;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
-- a fila de cobrança de visitas ainda é limitada ao mês consultado; uma
-  pendência antiga pode desaparecer na virada do mês. Corrigir de forma
-  definitiva exige contrato/migration aditivos e teste isolado;
+- a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
+  um teto de 366 dias. O contrato definitivo precisa remover a expiração com
+  paginação e migration aditiva testada isoladamente;
 - não há promessa honesta de ERP integralmente vendável até domingo.
 
 ## Próximo passo exato
 
-Fechar o contrato aditivo da fila pós-visita para que pendências atravessem a
-virada do mês e preparar seus testes isolados. Em paralelo, gerar a migration
-do P0 de alertas Sara com a CLI oficial quando a ferramenta estiver disponível.
-A CLI não está instalada e produção permanece inalterada. Publicar a branch
-somente após autorização específica do push/merge/deploy e seus gates.
+Fechar o contrato aditivo sem expiração da fila pós-visita e preparar seus
+testes isolados. Em paralelo, gerar a migration do P0 de alertas Sara com a CLI
+oficial quando a ferramenta estiver disponível. A CLI não está instalada e
+produção permanece inalterada. Publicar a branch somente após autorização
+específica do push/merge/deploy e seus gates.
