@@ -196,6 +196,7 @@
 .calendar-workspace .calendar-resultados-pendentes header h2 { margin: 3px 0 0; font-size: 19px; }
 .calendar-workspace .calendar-resultados-pendentes header p { margin: 4px 0 0; color: #6E6760; font-size: 12px; }
 .calendar-workspace .calendar-resultados-pendentes > header > strong { margin-left: auto; flex: none; border-radius: 999px; background: #FBE5E5; padding: 7px 12px; color: #A32C2C; font-size: 12px; }
+.calendar-workspace .calendar-resultados-pendentes.erro > header > button { margin-left: auto; min-height: 40px; flex: none; border: 1px solid #D93E3E; border-radius: 999px; background: #fff; padding: 0 15px; color: #A32C2C; font-size: 12px; font-weight: 800; }
 .calendar-workspace .calendar-resultados-kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .calendar-workspace .calendar-resultados-kpis span { border-radius: 12px; background: #fff; padding: 9px 12px; color: #6E6760; font-size: 12px; }
 .calendar-workspace .calendar-resultados-kpis b { color: #A32C2C; font-size: 16px; }

@@ -124,6 +124,16 @@ declarar o ERP inteiro pronto sem evidência.
 - gate frontend ampliado após restaurar o contrato do gatilho: 446/446 passou;
 - testes direcionados de Sara, push e deduplicação: 33/33 passaram;
 - build completo após a correção do construtor: passou;
+- P0 da Agenda reproduzido: uma falha da RPC de resultados era convertida em
+  lista vazia. API, web e aplicativo agora falham de forma explícita, mantêm a
+  agenda utilizável e oferecem nova tentativa; trace em
+  `docs/erp-reestruturacao/TRACE_VISITA_FEEDBACK_COBRANCA.md`;
+- após a correção da Agenda: 33/33 testes direcionados, 432/432 no gate
+  frontend oficial ampliado, ESLint e build Vinext completo passaram;
+- a execução indiscriminada de todos os arquivos `tests/*.test.mjs` também
+  encontrou falhas preexistentes fora do gate oficial (incluindo fonte Studio
+  ausente e expectativas antigas de Automações/CSS). Elas não foram ocultadas
+  nem tratadas como regressão desta fatia;
 - tentativa de validação visual local da tela `/automacoes`: a rota compilou e
   respondeu 200, mas a árvore não possui a configuração pública local do
   Supabase e o shell encerrou com erro explícito. Nenhum segredo foi criado ou
@@ -138,12 +148,15 @@ declarar o ERP inteiro pronto sem evidência.
 - deploy/publicação de código validado está autorizado;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
+- a fila de cobrança de visitas ainda é limitada ao mês consultado; uma
+  pendência antiga pode desaparecer na virada do mês. Corrigir de forma
+  definitiva exige contrato/migration aditivos e teste isolado;
 - não há promessa honesta de ERP integralmente vendável até domingo.
 
 ## Próximo passo exato
 
-Gerar a migration do P0 com a CLI oficial em ambiente isolado, aplicar os
-cenários de contrato e advisors e apresentar antes/depois + rollback. A CLI não
-está disponível e não será instalada sem autorização; produção permanece
-inalterada. Em paralelo, continuar as correções locais que não dependem desse
-gate e publicar a branch assim que houver autorização específica para o push.
+Fechar o contrato aditivo da fila pós-visita para que pendências atravessem a
+virada do mês e preparar seus testes isolados. Em paralelo, gerar a migration
+do P0 de alertas Sara com a CLI oficial quando a ferramenta estiver disponível.
+A CLI não está instalada e produção permanece inalterada. Publicar a branch
+somente após autorização específica do push/merge/deploy e seus gates.

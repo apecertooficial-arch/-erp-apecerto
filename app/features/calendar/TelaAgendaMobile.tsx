@@ -84,6 +84,7 @@ export function TelaAgendaMobile({ accessToken }: {
   const [resultadoPendente, setResultadoPendente] = useState<Compromisso | null>(null);
   const [pendenciasResultado, setPendenciasResultado] = useState<Compromisso[]>([]);
   const [resumoResultados, setResumoResultados] = useState<{ pendentes?: number; justificadas?: number }>({});
+  const [erroPendenciasResultado, setErroPendenciasResultado] = useState("");
   const [horarioRemarcado, setHorarioRemarcado] = useState("");
   const [remarcarComGerente, setRemarcarComGerente] = useState(false);
   const [horarioCriacao, setHorarioCriacao] = useState("");
@@ -101,8 +102,8 @@ export function TelaAgendaMobile({ accessToken }: {
     });
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number } };
-    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {} };
+    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null };
+    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "" };
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ export function TelaAgendaMobile({ accessToken }: {
     /* NAO zeramos a lista aqui: manter o que ja esta na tela enquanto a nova
        chega evita o pisca-e-encolhe ao trocar de aba. */
     carregar(ctrl.signal)
-      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErroPendenciasResultado(dados.erroPendencias); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
@@ -215,7 +216,12 @@ export function TelaAgendaMobile({ accessToken }: {
   return (
     <div className="ape-agenda">
       <AppMobileOffline atualizadoEm={atualizadoEm} />
-      {pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
+      {erroPendenciasResultado && <section className="ape-agenda-resultados erro" role="alert">
+        <header><div><small>VERIFICAÇÃO INCOMPLETA</small><h2>Não foi possível verificar os resultados pendentes</h2></div></header>
+        <p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p>
+        <button type="button" onClick={recarregar}>Tentar novamente</button>
+      </section>}
+      {!erroPendenciasResultado && pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
         <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas precisam da sua resposta</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
         <p>Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa.</p>
         <div>{pendenciasResultado.map((item) => <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button>)}</div>

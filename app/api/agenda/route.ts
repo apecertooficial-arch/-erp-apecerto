@@ -101,10 +101,13 @@ export async function GET(request: Request) {
     p_fim: fimMes,
   } as never);
   const resultadoPendencias = pendencias.error
-    ? { itens: [], resumo: {} }
+    ? null
     : (pendencias.data ?? {}) as { itens?: unknown[]; resumo?: Record<string, unknown> };
-  result.pendencias_resultado = resultadoPendencias.itens ?? [];
-  result.resumo_resultados = resultadoPendencias.resumo ?? {};
+  result.pendencias_resultado = resultadoPendencias?.itens ?? [];
+  result.resumo_resultados = resultadoPendencias?.resumo ?? {};
+  result.pendencias_resultado_erro = pendencias.error
+    ? "Não foi possível verificar os resultados pendentes."
+    : null;
   if (params.get("workspace") !== "1") {
     /* A RPC histórica entrega a agenda inteira, mas não informa o acompanhamento.
        Enriquecemos somente os IDs já autorizados por ela, sem ampliar o escopo. */

@@ -27,6 +27,7 @@
   .ape-agenda-resultados > p { margin: 8px 0 12px; color: #6B635C; font-size: 12px; line-height: 1.45; }
   .ape-agenda-resultados > div { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
   .ape-agenda-resultados > div > button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: #fff; padding: 11px; color: #1F1C1A; text-align: left; box-shadow: 0 1px 3px rgba(31,28,26,.05); }
+  .ape-agenda-resultados.erro > button { width: 100%; min-height: 46px; border: 1px solid #D93E3E; border-radius: 999px; background: #fff; color: #A32C2C; font-size: 12px; font-weight: 800; }
   .ape-agenda-resultados button span { min-width: 0; }
   .ape-agenda-resultados button b,.ape-agenda-resultados button small { display: block; }
   .ape-agenda-resultados button small { margin-top: 3px; color: #9A918A; font-size: 10px; line-height: 1.35; }

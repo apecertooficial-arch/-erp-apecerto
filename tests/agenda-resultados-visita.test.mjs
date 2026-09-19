@@ -45,3 +45,12 @@ test("histórico separa agendamento da justificativa do resultado", () => {
   assert.match(migration, /'visita_atualizada'/);
   assert.match(migration, /'justificativa',v_justificativa/);
 });
+
+test("falha da fila de cobrança nunca vira zero pendências silencioso", () => {
+  assert.match(apiAgenda, /pendencias_resultado_erro/);
+  assert.doesNotMatch(apiAgenda, /pendencias\.error\s*\?\s*\{\s*itens:\s*\[\],\s*resumo:\s*\{\}\s*\}/);
+  assert.match(agendaWeb, /Não foi possível verificar os resultados pendentes/);
+  assert.match(agendaWeb, /pendencias_resultado_erro/);
+  assert.match(agendaApp, /Não foi possível verificar os resultados pendentes/);
+  assert.match(agendaApp, /pendencias_resultado_erro/);
+});
