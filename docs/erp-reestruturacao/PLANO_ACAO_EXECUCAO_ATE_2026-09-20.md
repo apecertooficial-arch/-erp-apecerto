@@ -310,6 +310,12 @@ corretor dono; o contrato aditivo de banco para repetir essa invariável e criar
 cobrança pós-visita persistente está preparado fora de `supabase/migrations`,
 com push/WhatsApp desligados. Aplicação e validação isolada continuam pendentes.
 
+Também concluído em modo somente leitura: os 27 arquivos locais sem registro
+remoto pelo mesmo nome foram classificados. A maioria corresponde a aliases,
+consolidações ou efeitos já presentes; o baseline é apenas para instalação
+limpa; três casos estão ausentes/parciais e permanecem bloqueados. Nenhum será
+reaplicado automaticamente.
+
 ### P1
 
 - feedback estruturado e por áudio;

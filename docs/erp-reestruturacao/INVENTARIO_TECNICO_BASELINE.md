@@ -209,7 +209,9 @@ A leitura oficial do histórico remoto em 2026-09-19 confirmou:
 Consequência: o código pode ser construído e testado, mas o banco não pode ser
 recriado nem atualizado em bloco com segurança a partir desta árvore. O comando
 `supabase db push` fica bloqueado até existir reconciliação em ambiente isolado.
-O detalhamento vivo está em `supabase/MIGRACOES-FALTANTES.md`.
+O detalhamento vivo está em `supabase/MIGRACOES-FALTANTES.md`; os 27 arquivos
+locais sem registro pelo mesmo nome estão classificados em
+`docs/erp-reestruturacao/MIGRACOES_LOCAIS_SEM_REGISTRO.md`.
 
 ## Autoridades duplicadas já visíveis
 

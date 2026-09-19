@@ -220,6 +220,11 @@ declarar o ERP inteiro pronto sem evidência.
   sem arquivo. Há 27 arquivos locais sem registro remoto, quatro timestamps
   locais duplicados, um nome local duplicado e um nome remoto duplicado. `db
   push` está bloqueado; nenhum SQL foi aplicado;
+- os 27 arquivos locais sem registro pelo mesmo nome foram classificados em
+  `MIGRACOES_LOCAIS_SEM_REGISTRO.md`: a maioria é alias, consolidação ou efeito
+  já presente; o baseline é para instalação limpa; roleta igualitária e regras
+  de valor/m² não estão presentes, e o pacote de alertas está somente parcial.
+  Nenhum dos 27 deve ser reaplicado automaticamente;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
@@ -241,9 +246,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Classificar os 27 arquivos locais sem registro remoto e preparar o desenho do
-ambiente isolado que possa provar a reconstrução das 341 migrations ausentes,
-sem aplicar SQL em produção. Em seguida, continuar no P0 de alertas/cobrança.
+Preparar o desenho do ambiente isolado que possa provar a reconstrução das 341
+migrations ausentes, sem aplicar SQL em produção. Em seguida, continuar no P0
+de alertas/cobrança, reaproveitando apenas invariantes comprovadas do draft
+antigo e não o arquivo inteiro.
 Branch já enviada; abrir/validar a mudança, merge/deploy de código e migration
 permanecem etapas distintas e verificáveis. Nunca agrupar `db push` ao deploy
 de aplicação.

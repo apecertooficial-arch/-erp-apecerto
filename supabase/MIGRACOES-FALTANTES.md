@@ -18,6 +18,12 @@ Levantamento somente leitura atualizado em **19/09/2026** no projeto
 | Arquivos locais cujo nome não aparece no histórico remoto | **27** |
 | Prefixos/timestamps locais duplicados | **4** |
 
+Os 27 arquivos locais já foram classificados por efeito em
+`docs/erp-reestruturacao/MIGRACOES_LOCAIS_SEM_REGISTRO.md`. A análise encontrou
+um baseline deliberado para instalação limpa, vários aliases/consolidações com
+efeito já presente e três casos que não correspondem integralmente ao estado
+remoto. Nenhum deles é candidato a aplicação automática.
+
 O relatório anterior, de 14/09/2026, registrava 571 migrations pós-baseline e
 332 ausentes. O aumento para 608/341 comprova que o banco continuou recebendo
 alterações enquanto o repositório permanecia incompleto.
@@ -69,7 +75,8 @@ nas versões `20260811132205` e `20260811132208`.
 1. preservar um snapshot lógico e os metadados antes de qualquer mudança;
 2. obter o SQL original das 341 migrations ausentes quando houver fonte
    confiável; quando não houver, registrar explicitamente como irrecuperável;
-3. classificar os 27 arquivos locais sem registro remoto, sem aplicá-los;
+3. usar a classificação dos 27 arquivos locais para evitar reaplicação e
+   transformar somente diferenças atuais em migrations novas;
 4. criar uma linha de base reproduzível em Postgres/Supabase isolado;
 5. comparar schemas, funções, grants, RLS, triggers, índices, cron, Auth e
    Storage entre o ambiente reconstruído e produção;
