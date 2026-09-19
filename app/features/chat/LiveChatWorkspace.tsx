@@ -147,9 +147,9 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     setBusy(true); setNotice(null);
     try {
       const response = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const result = await response.json() as { error?: string; scheduled?: number };
+      const result = await response.json() as { error?: string; scheduled?: number; message?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
-      setNotice(result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");
+      setNotice(result.message || (result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase."));
       await load();
       return result;
     } catch (reason) {
@@ -346,7 +346,7 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
     visit: { eyebrow: "AGENDA DE VISITAS", title: "Agendar visita", description: "A visita será vinculada ao lead e ao negócio.", submit: "Agendar visita" },
     proposal: { eyebrow: "NEGOCIAÇÃO", title: "Gerar proposta", description: "Salva a proposta no histórico sem enviá-la automaticamente.", submit: "Salvar proposta" },
     financing: { eyebrow: "CRÉDITO IMOBILIÁRIO", title: "Abrir ficha de financiamento", description: "Cria uma ficha em rascunho para completar depois.", submit: "Criar ficha" },
-    transfer: { eyebrow: "DISTRIBUIÇÃO", title: "Transferir atendimento", description: "Escolha o corretor que assumirá este negócio.", submit: "Transferir" },
+    transfer: { eyebrow: "DISTRIBUIÇÃO", title: "Transferir atendimento", description: "O corretor oferece o atendimento para aceite. A gestão pode reassociar diretamente.", submit: "Continuar transferência" },
     note: { eyebrow: "HISTÓRICO DO LEAD", title: "Adicionar observação", description: "A observação ficará visível neste painel.", submit: "Salvar observação" },
   };
   const selectedProduct = products.find((item) => item.id === productId);

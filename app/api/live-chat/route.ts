@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesInsert } from "../../lib/supabase/database.types";
+import { resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { papelNoGrupo } from "../../lib/papeis";
 import { textoRepetidoRecente } from "../../lib/anti-repeticao";
 import { hojeOperacao, normalizarInstanteSaoPaulo } from "../../lib/timezone";
 
@@ -320,9 +322,41 @@ export async function POST(request: Request) {
   if (action === "transfer") {
     const brokerId = Number(body.brokerId);
     if (!Number.isSafeInteger(dealId) || dealId < 1 || !Number.isSafeInteger(brokerId) || brokerId < 1) return Response.json({ error: "Escolha um corretor válido." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("transferir_negocio", { p_negocio_id: dealId, p_corretor_id: brokerId });
+
+    // A consulta passa pelo RLS: corretor só enxerga negócio próprio; gestão
+    // enxerga o escopo permitido pelo banco. Não confie apenas na RPC legada,
+    // porque SECURITY DEFINER ignora as policies da tabela que ela altera.
+    const [{ data: deal, error: dealError }, { data: allowedBrokers, error: brokersError }, access] = await Promise.all([
+      auth.supabase.from("negocios").select("id,corretor_id").eq("id", dealId).maybeSingle(),
+      auth.supabase.rpc("listar_corretores_transferencia"),
+      resolveEffectiveAccess(auth.supabase, auth.user.id),
+    ]);
+    if (dealError || !deal) return Response.json({ error: "O negócio não existe ou não pertence à sua carteira." }, { status: 403 });
+    if (brokersError || !access.resolved) return Response.json({ error: "Não foi possível validar a transferência." }, { status: 502 });
+    if (!(allowedBrokers ?? []).some((broker) => Number(broker.id) === brokerId)) {
+      return Response.json({ error: "O corretor escolhido não está disponível para receber este atendimento." }, { status: 403 });
+    }
+    if (Number(deal.corretor_id) === brokerId) return Response.json({ error: "Este corretor já é o responsável pelo negócio." }, { status: 409 });
+
+    // Gestão transfere de forma explícita. O corretor oferece ao colega, que
+    // deve aceitar; assim a posse não muda silenciosamente entre corretores.
+    const direct = papelNoGrupo(access.role, "gestao");
+    const command = direct ? "transferir_negocio" : "transferir_com_aceite";
+    const args = direct
+      ? { p_negocio_id: dealId, p_corretor_id: brokerId }
+      : { p_negocio: dealId, p_corretor: brokerId };
+    const { data, error } = await auth.supabase.rpc(command, args);
     const result = data && typeof data === "object" ? data as Record<string, unknown> : null;
-    return error || result?.ok === false ? Response.json({ error: error?.message || text(result?.error, 300) || "Não foi possível transferir o atendimento." }, { status: 502 }) : Response.json({ success: true, result: data });
+    return error || result?.ok === false
+      ? Response.json({ error: error?.message || text(result?.error, 300) || "Não foi possível transferir o atendimento." }, { status: 502 })
+      : Response.json({
+        success: true,
+        transferStatus: direct ? "transferred" : "pending_acceptance",
+        message: direct
+          ? "Atendimento transferido e registrado no histórico."
+          : "Transferência oferecida. O novo corretor precisa aceitar para assumir o atendimento.",
+        result: data,
+      });
   }
   if (action === "proposal") {
     const value = Number(body.value);

@@ -95,6 +95,10 @@ O cutover está desenhado em `P0_PUBLIC_LINKS_HARDENING_DRAFT.sql`.
 
 ## Chamadores comprovados
 
+- o Chat ao Vivo chamava `transferir_negocio` diretamente. A rota local agora
+  confirma o negócio pelo RLS, valida o destino, usa transferência direta para
+  gestão e oferta pendente para corretor; o banco principal ainda mantém a RPC
+  antiga até o draft atravessar ensaio isolado;
 - `funil_mover` é chamada por `funil_aplicar_sara`, `funil_cascata_tick` e
   `motor_momento_lead`; não há chamador direto no aplicativo local;
 - `wa_conhecido_gravar` é chamada pela Edge Function
@@ -120,3 +124,15 @@ O cutover está desenhado em `P0_PUBLIC_LINKS_HARDENING_DRAFT.sql`.
 
 Não usar `revoke execute on all functions`: o lote misturaria funções humanas,
 serviço, triggers e contratos públicos e poderia interromper a operação.
+
+## Correção local preparada
+
+`P0_CRM_OWNERSHIP_GUARDS_DRAFT.sql` preserva as assinaturas das sete mutações
+humanas, adiciona lock, ownership/hierarquia, transições por pipeline,
+idempotência de estado, deduplicação curta e auditoria. `redistribuir_lead`
+fica service-only porque a roleta não recebe chave idempotente; gestão usa o
+destino explícito. O draft não está em `supabase/migrations` e não foi aplicado.
+
+Gate local: 7/7 contratos direcionados, 494/494 testes frontend, typecheck,
+lint e build aprovados. Ensaio Postgres por papel e E2E autenticado permanecem
+pendentes por inexistência de branch Supabase isolada.

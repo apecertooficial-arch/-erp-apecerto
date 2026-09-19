@@ -113,5 +113,5 @@ aplicado porque não existe branch Supabase isolada disponível.
 - o gate está importado por `tests/supabase-seguranca.test.mjs`;
 - 27/27 testes direcionados passaram (a execução combinada registra os testes
   dos drafts uma vez pelo arquivo direto e outra pela importação);
-- gate frontend 487/487, typecheck e build aprovados; lint sem erros e com um
+- gate frontend 494/494, typecheck e build aprovados; lint sem erros e com um
   aviso preexistente de otimização da imagem da agenda.
