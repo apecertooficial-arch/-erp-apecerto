@@ -26,7 +26,12 @@ backoff limitado. A Edge exige JWT no gateway, segredo interno em comparação
 constante e service role apenas no runtime; não registra áudio ou transcrição
 em log.
 
-Aceite local atual: 7/7 contratos da fatia e gate frontend 517/517. A API da
+O dispatcher do draft repete o padrão canônico cron → Edge → claim, com lote
+limitado, lease de despacho, retry devido e recuperação de transcrição travada.
+Ele nasce `enabled=false`, é service-only e só lê URL, JWT do gateway e segredo
+interno por três nomes no Vault; nenhum valor é criado ou incorporado à fonte.
+
+Aceite local atual: 8/8 contratos da fatia e gate frontend 518/518. A API da
 Agenda reserva, calcula SHA-256, envia com o JWT do usuário e consulta o estado;
 o componente compartilhado fica invisível até o servidor declarar a capacidade
 e exige confirmação humana antes de copiar a transcrição. O harness sanitizado

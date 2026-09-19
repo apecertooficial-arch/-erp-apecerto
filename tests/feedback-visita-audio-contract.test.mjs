@@ -89,3 +89,19 @@ test("desktop e aplicativo compartilham gravador fail-closed e exigem confirmaç
   assert.match(desktop, /visitId=\{resultadoPendente\.id\}/);
   assert.match(mobile, /visitId=\{resultadoPendente\.id\}/);
 });
+
+test("dispatcher é service-only, limitado, desligado por padrão e lê segredos do Vault", () => {
+  assert.match(sql, /f2_visita_feedback_audio_config/);
+  assert.match(sql, /values\(true,false,5\)/i);
+  assert.match(sql, /f2_feedback_audio_tick/);
+  assert.match(sql, /if v_cfg\.enabled is not true then/i);
+  assert.match(sql, /visita_feedback_transcricao_url/);
+  assert.match(sql, /visita_feedback_transcricao_gateway_jwt/);
+  assert.match(sql, /visita_feedback_transcricao_secret/);
+  assert.match(sql, /vault\.decrypted_secrets/);
+  assert.match(sql, /net\.http_post/);
+  assert.match(sql, /authorization.*bearer/is);
+  assert.match(sql, /limit v_cfg\.lote/i);
+  assert.match(sql, /grant execute on function public\.f2_feedback_audio_tick\(\) to service_role/i);
+  assert.doesNotMatch(sql, /grant execute on function public\.f2_feedback_audio_tick\(\)[^\n]*authenticated/i);
+});

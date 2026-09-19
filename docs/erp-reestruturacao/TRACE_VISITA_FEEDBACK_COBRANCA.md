@@ -105,10 +105,10 @@ forçar perguntas próprias de uma visita que não ocorreu.
    ponta.
 6. A RPC de gravação ainda permite o atalho administrativo direto no banco. As
    APIs locais já o bloqueiam, mas a defesa em profundidade depende de migration.
-7. Contrato privado, upload server-side, consulta e interface compartilhada de
-   áudio estão preparados localmente. Ainda faltam ensaio SQL/Deno, ligação
-   determinística ao motor de retries e validação autenticada com persistência
-   antes de anunciar áudio como funcional.
+7. Contrato privado, upload server-side, consulta, interface compartilhada e
+   dispatcher cron → Edge → claim estão preparados localmente. O dispatcher
+   nasce desligado e sem segredos. Ainda faltam ensaio SQL/Deno e validação
+   autenticada com persistência antes de anunciar áudio como funcional.
 
 ## Contrato de banco preparado, ainda não aplicado
 
@@ -145,14 +145,17 @@ de MIME/tamanho, ownership, claim service-only e retry com backoff. A fonte
 local `f2-feedback-visita-transcrever` verifica segredo, bytes e SHA-256 antes
 de chamar a transcrição, com timeout e erro sanitizado. A API e a interface
 falham fechadas sem a migration, usam o JWT do corretor no Storage e exigem
-confirmação humana para levar a transcrição ao resumo. Seus 7/7 contratos e o
-gate frontend 517/517 passaram; desktop e 390 × 844 foram validados com dados
+confirmação humana para levar a transcrição ao resumo. O dispatcher limitado e
+service-only lê três segredos nomeados do Vault, possui lease/retry e nasce
+desligado. Seus 8/8 contratos e o
+gate frontend 518/518 passaram; desktop e 390 × 844 foram validados com dados
 sanitizados e zero mutações. Nada foi aplicado ou enviado.
 
 ## Próximo gate
 
-Gerar a migration pela CLI oficial em ambiente isolado, aplicar o contrato,
-ligar um chamador determinístico da Edge e executar cenários de corretor dono,
+Gerar a migration pela CLI oficial em ambiente isolado, aplicar o contrato e
+executar cenários de corretor dono,
 gestor, corretor diferente, troca de dono, concorrência, retry, resolução e
-cron. Rodar advisors de segurança/desempenho. Nenhuma aplicação produtiva ou
-efeito externo está autorizado por este draft.
+cron ainda com `enabled=false`. Rodar advisors de segurança/desempenho. A
+ativação, os segredos e qualquer chamada externa exigem cutover separado;
+nenhuma aplicação produtiva ou efeito externo está autorizado por este draft.

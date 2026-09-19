@@ -312,7 +312,9 @@ declarar o ERP inteiro pronto sem evidência.
   append-only, SHA-256, limite 20 MiB, claim service-only, timeout e retry com
   backoff. A Agenda ganhou upload/consulta autenticados e o mesmo gravador no
   desktop e aplicativo, oculto até a capacidade existir e com confirmação
-  humana da transcrição. 7/7 contratos, gate frontend 517/517, typecheck,
+  humana da transcrição. O draft agora inclui dispatcher cron → Edge → claim,
+  lote/lease/retry, service-only, `enabled=false` e três segredos apenas por nome
+  no Vault. 8/8 contratos, gate frontend 518/518, typecheck,
   ESLint e build passaram; harness desktop/390 × 844 registrou apenas GETs
   locais e zero erros. Nenhum áudio real foi enviado e nada foi aplicado;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
@@ -338,8 +340,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Ligar o áudio a um chamador determinístico de transcrição/retry e preparar o
-ensaio isolado dos contratos de confirmação, visita, áudio e alertas. A
+Preparar o ensaio isolado dos contratos de confirmação, visita, áudio e
+alertas, mantendo o dispatcher de áudio desligado. A
 fatia `ação → Sara → próxima ação → Meu Dia` está no commit `9ef77038` e o
 feedback estruturado de visita está no commit `714dbfd5`; nenhum deles inclui o
 symlink `node_modules`. Para publicar os commits locais, reparar somente o

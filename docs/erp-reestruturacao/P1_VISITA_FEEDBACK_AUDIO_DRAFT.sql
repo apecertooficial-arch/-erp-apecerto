@@ -10,10 +10,14 @@ begin
   if to_regclass('public.f2_visita') is null
      or to_regclass('public.f2_lead') is null
      or to_regprocedure('public.current_broker_id()') is null
-     or to_regprocedure('public.f2_admin()') is null then
+     or to_regprocedure('public.f2_admin()') is null
+     or to_regclass('vault.decrypted_secrets') is null
+     or not exists(select 1 from pg_extension where extname='pg_net')
+     or not exists(select 1 from pg_extension where extname='pg_cron') then
     raise exception 'preflight_feedback_audio_incompleto';
   end if;
   if to_regclass('public.f2_visita_feedback_audio') is not null
+     or to_regclass('public.f2_visita_feedback_audio_config') is not null
      or exists(select 1 from storage.buckets where id='visita-feedback-audio')
      or exists(select 1 from pg_policies where policyname in (
        'f2_feedback_audio_read','f2_feedback_audio_upload'
@@ -24,7 +28,9 @@ begin
      or to_regprocedure('public.f2_feedback_audio_marcar_enviado(uuid)') is not null
      or to_regprocedure('public.f2_feedback_audio_consultar(uuid)') is not null
      or to_regprocedure('public.f2_feedback_audio_reivindicar(uuid)') is not null
-     or to_regprocedure('public.f2_feedback_audio_concluir(uuid,text,text,text)') is not null then
+     or to_regprocedure('public.f2_feedback_audio_concluir(uuid,text,text,text)') is not null
+     or to_regprocedure('public.f2_feedback_audio_tick()') is not null
+     or exists(select 1 from cron.job where jobname='f2-feedback-visita-audio') then
     raise exception 'colisao_feedback_audio';
   end if;
 end
@@ -61,6 +67,7 @@ create table public.f2_visita_feedback_audio(
   erro_codigo text,
   tentativas smallint not null default 0 check(tentativas between 0 and 5),
   proxima_tentativa_em timestamptz,
+  despachado_em timestamptz,
   enviado_por uuid not null references auth.users(id) on delete restrict,
   reservado_em timestamptz not null default statement_timestamp(),
   enviado_em timestamptz,
@@ -71,9 +78,20 @@ create table public.f2_visita_feedback_audio(
   check(status<>'falhou' or erro_codigo is not null)
 );
 
+create table public.f2_visita_feedback_audio_config(
+  id boolean primary key default true check(id),
+  enabled boolean not null default false,
+  lote smallint not null default 5 check(lote between 1 and 10),
+  atualizado_em timestamptz not null default statement_timestamp()
+);
+insert into public.f2_visita_feedback_audio_config(id,enabled,lote)
+values(true,false,5);
+
 alter table public.f2_visita_feedback_audio enable row level security;
 revoke all on table public.f2_visita_feedback_audio from public,anon,authenticated;
 grant select on table public.f2_visita_feedback_audio to authenticated,service_role;
+revoke all on table public.f2_visita_feedback_audio_config from public,anon,authenticated;
+grant select,update on table public.f2_visita_feedback_audio_config to service_role;
 
 create index if not exists ix_f2_visita_feedback_audio_fila
   on public.f2_visita_feedback_audio(status,proxima_tentativa_em,reservado_em,id)
@@ -273,11 +291,90 @@ begin
     erro_codigo=case when p_status='falhou' then left(p_erro_codigo,80) else null end,
     proxima_tentativa_em=case when p_status='falhou' then
       statement_timestamp()+pg_catalog.make_interval(mins=>least(60,power(2,greatest(tentativas-1,0))::integer)) else null end,
+    despachado_em=case when p_status='falhou' then null else despachado_em end,
     transcrito_em=case when p_status='transcrito' then statement_timestamp() else null end,
     atualizado_em=statement_timestamp()
   where id=p_id and status='transcrevendo';
   if not found then return pg_catalog.jsonb_build_object('ok',false,'erro','estado_conflito'); end if;
   return pg_catalog.jsonb_build_object('ok',true,'id',p_id,'status',p_status);
+end
+$fn$;
+
+create or replace function public.f2_feedback_audio_tick()
+returns jsonb
+language plpgsql security definer
+set search_path to ''
+as $fn$
+declare
+  v_cfg public.f2_visita_feedback_audio_config%rowtype;
+  v_url text;
+  v_gateway_jwt text;
+  v_secret text;
+  v_audio record;
+  v_despachados integer:=0;
+  v_falhas integer:=0;
+begin
+  select * into v_cfg from public.f2_visita_feedback_audio_config where id=true;
+  if v_cfg.enabled is not true then
+    return pg_catalog.jsonb_build_object('ok',true,'motivo','desligado','despachados',0);
+  end if;
+  begin
+    select
+      max(decrypted_secret) filter(where name='visita_feedback_transcricao_url'),
+      max(decrypted_secret) filter(where name='visita_feedback_transcricao_gateway_jwt'),
+      max(decrypted_secret) filter(where name='visita_feedback_transcricao_secret')
+      into v_url,v_gateway_jwt,v_secret
+      from vault.decrypted_secrets;
+  exception when others then
+    return pg_catalog.jsonb_build_object('ok',false,'erro','vault_indisponivel','despachados',0);
+  end;
+  if coalesce(v_url,'') !~ '^https://[a-z0-9-]+[.]supabase[.]co/functions/v1/f2-feedback-visita-transcrever$'
+     or length(coalesce(v_gateway_jwt,''))<20
+     or length(coalesce(v_secret,''))<32 then
+    return pg_catalog.jsonb_build_object('ok',false,'erro','configuracao_incompleta','despachados',0);
+  end if;
+
+  for v_audio in
+    with candidatos as (
+      select a.id
+      from public.f2_visita_feedback_audio a
+      where a.tentativas<5 and (
+        (a.status='enviado' and (a.despachado_em is null or a.despachado_em<statement_timestamp()-interval '2 minutes'))
+        or (a.status='falhou' and a.proxima_tentativa_em<=statement_timestamp()
+          and (a.despachado_em is null or a.despachado_em<statement_timestamp()-interval '2 minutes'))
+        or (a.status='transcrevendo' and a.atualizado_em<statement_timestamp()-interval '10 minutes'
+          and (a.despachado_em is null or a.despachado_em<statement_timestamp()-interval '10 minutes'))
+      )
+      order by coalesce(a.proxima_tentativa_em,a.enviado_em,a.reservado_em),a.id
+      limit v_cfg.lote
+      for update skip locked
+    ), marcados as (
+      update public.f2_visita_feedback_audio a
+         set despachado_em=statement_timestamp()
+        from candidatos c
+       where a.id=c.id
+      returning a.id
+    )
+    select id from marcados
+  loop
+    begin
+      perform net.http_post(
+        url:=v_url,
+        headers:=pg_catalog.jsonb_build_object(
+          'Content-Type','application/json',
+          'Authorization','Bearer '||v_gateway_jwt,
+          'x-internal-secret',v_secret
+        ),
+        body:=pg_catalog.jsonb_build_object('audio_id',v_audio.id),
+        timeout_milliseconds:=145000
+      );
+      v_despachados:=v_despachados+1;
+    exception when others then
+      update public.f2_visita_feedback_audio set despachado_em=null where id=v_audio.id;
+      v_falhas:=v_falhas+1;
+    end;
+  end loop;
+  return pg_catalog.jsonb_build_object('ok',v_falhas=0,'despachados',v_despachados,'falhas',v_falhas);
 end
 $fn$;
 
@@ -290,13 +387,23 @@ grant execute on function public.f2_feedback_audio_consultar(uuid) to authentica
 
 revoke all on function public.f2_feedback_audio_reivindicar(uuid) from public,anon,authenticated;
 revoke all on function public.f2_feedback_audio_concluir(uuid,text,text,text) from public,anon,authenticated;
+revoke all on function public.f2_feedback_audio_tick() from public,anon,authenticated;
 grant execute on function public.f2_feedback_audio_reivindicar(uuid) to service_role;
 grant execute on function public.f2_feedback_audio_concluir(uuid,text,text,text) to service_role;
+grant execute on function public.f2_feedback_audio_tick() to service_role;
+
+select cron.schedule(
+  'f2-feedback-visita-audio','* * * * *',
+  $cron$select public.f2_feedback_audio_tick();$cron$
+);
 
 do $assert$
 begin
   if exists(select 1 from storage.buckets where id='visita-feedback-audio' and public) then
     raise exception 'bucket_publico';
+  end if;
+  if exists(select 1 from public.f2_visita_feedback_audio_config where enabled) then
+    raise exception 'dispatcher_audio_ligado_sem_cutover';
   end if;
   if exists(select 1 from information_schema.role_table_grants where table_schema='public'
     and table_name='f2_visita_feedback_audio' and grantee='authenticated'
@@ -311,6 +418,7 @@ end
 $assert$;
 
 -- ROLLBACK MANUAL ANTES DO CUTOVER (somente se bucket/tabela ainda vazios):
+-- select cron.unschedule('f2-feedback-visita-audio');
 -- revoke execute on function public.f2_feedback_audio_* ...;
 -- drop policies f2_feedback_audio_*;
 -- drop functions e tabela; delete bucket apenas após provar zero objetos.
