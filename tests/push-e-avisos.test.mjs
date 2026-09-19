@@ -23,6 +23,7 @@ const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
 const PAGINA_AVISOS = ler("../app/(erp)/notificacoes/page.tsx");
 const TELA_AVISOS = ler("../app/features/notifications/NotificationsWorkspace.tsx");
+const PUSH = ler("../supabase/functions/ncrm-web-push/index.ts");
 
 /* ---------------- o barulho ---------------- */
 
@@ -112,4 +113,14 @@ test("o Funil2Mobile consome o ?lead= e apaga a query", () => {
 test("o sw.js continua levando o toque para dentro do app", () => {
   assert.match(SW, /notificationclick/);
   assert.match(SW, /url\.startsWith\("\/"\)/, "URL absoluta vinda do pacote abriria site de fora");
+});
+
+test("entrega push usa credenciais do Vault e RPCs publicas restritas ao service role", () => {
+  assert.match(PUSH, /rpc\("ncrm_push_credenciais"\)/);
+  assert.match(PUSH, /rpc\("ncrm_push_reservar"/);
+  assert.match(PUSH, /rpc\("ncrm_push_resultado"/);
+  assert.doesNotMatch(PUSH, /Deno\.env\.get\("VAPID_(?:PUBLIC_KEY|PRIVATE_KEY|SUBJECT)"\)/);
+  assert.doesNotMatch(PUSH, /Deno\.env\.get\("NCRM_PUSH_ATIVO"\)/);
+  assert.match(PUSH, /x-envio-interno/);
+  assert.match(PUSH, /ncrm_envio_token_valido/);
 });

@@ -5,6 +5,8 @@ import {
   fatosDaConversa,
   deveAplicarCadenciaSemResposta,
   filtrarCatalogoParaIa,
+  normalizarPrazoSugerido,
+  saidaNovaSemRespostaDesdeAnalise,
   validarSugestaoAutomatica,
 } from "../supabase/functions/_shared/sara-policy.mjs";
 
@@ -26,7 +28,10 @@ test("worker usa fatos, catalogo reduzido e guarda antes de devolver a sugestao"
   assert.match(edge, /fatosDaConversa\(mensagens\)/);
   assert.match(edge, /filtrarCatalogoParaIa\(c, catalogo, fatos\)/);
   assert.match(edge, /validarSugestaoAutomatica/);
-  assert.match(edge, /evidencia-id-v7-inteligencia-hibrida/);
+  assert.match(edge, /evidencia-id-v13-preservacao-protegida/);
+  assert.match(edge, /rpc\("f2_sara_orcamento_status"/);
+  assert.match(edge, /saidaNovaSemRespostaDesdeAnalise/);
+  assert.match(edge, /temperaturaPreservada/);
   assert.match(edge, /IaIndisponivelError/);
 });
 
@@ -107,6 +112,41 @@ test("retorno programado sem data nao movimenta automaticamente", () => {
   const momento = catalogo.find((item) => item.codigo === "RETORNO_PROGRAMADO");
   assert.equal(validarSugestaoAutomatica({ candidato, momento, fatos, confianca: 0.95, evidencias: ["me chama depois"], prazoSugerido: null }).ok, false);
   assert.equal(validarSugestaoAutomatica({ candidato, momento, fatos, confianca: 0.95, evidencias: ["me chama dia 30"], prazoSugerido: "2026-08-30T15:00:00Z" }).ok, true);
+});
+
+test("mensagem nova do corretor agenda reavaliacao somente depois da conversa", () => {
+  assert.equal(
+    saidaNovaSemRespostaDesdeAnalise(
+      [{ direcao: "recebida" }, { direcao: "enviada" }],
+      "conversation.message_sent",
+    ),
+    true,
+  );
+  assert.equal(
+    saidaNovaSemRespostaDesdeAnalise(
+      [{ direcao: "enviada" }, { direcao: "recebida" }],
+      "conversation.message_sent",
+    ),
+    false,
+  );
+  assert.equal(
+    saidaNovaSemRespostaDesdeAnalise([{ direcao: "enviada" }], "deadline.reached"),
+    false,
+  );
+});
+
+test("prazo sugerido aceita ISO e duracao curta, mas rejeita prazo ambiguo ou excessivo", () => {
+  const agora = Date.parse("2026-09-19T12:00:00.000Z");
+  assert.equal(
+    normalizarPrazoSugerido("2026-09-20T15:30:00-03:00", agora),
+    "2026-09-20T18:30:00.000Z",
+  );
+  assert.equal(
+    normalizarPrazoSugerido("em 2 horas", agora),
+    "2026-09-19T14:00:00.000Z",
+  );
+  assert.equal(normalizarPrazoSugerido("depois do almoço", agora), null);
+  assert.equal(normalizarPrazoSugerido("31 dias", agora), null);
 });
 
 test("migration adiciona a mesma guarda no registro e na aplicacao", () => {
