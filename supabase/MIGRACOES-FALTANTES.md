@@ -1,65 +1,92 @@
-# Migrações aplicadas em produção sem arquivo no repositório
+# Reconciliação das migrations do Supabase
 
-Levantado em **14/09/2026** durante a auditoria estrutural. Regenerável com
-`node scripts/migracoes-faltantes.mjs`.
+Levantamento somente leitura atualizado em **19/09/2026** no projeto
+`diaegvfveqezispcthwk`. Nenhuma migration foi aplicada ou reparada.
 
-| | |
-|---|---|
-| Migrações em produção a partir do baseline `20260727000000` | **571** |
-| Com arquivo neste repositório | **239** |
-| **Sem arquivo — existem só no banco** | **332 (58%)** |
+## Estado verificável
 
-## Por que isso importa
+| Evidência | Quantidade |
+|---|---:|
+| Registros remotos em `schema_migrations` | **953** |
+| Nomes remotos distintos | **952** |
+| Registros remotos a partir do baseline `20260727000000` | **608** |
+| Nomes remotos distintos após o baseline | **607** |
+| Arquivos SQL locais | **294** |
+| Nomes locais distintos | **293** |
+| Nomes pós-baseline remotos com arquivo local | **266** |
+| **Nomes pós-baseline remotos sem arquivo local** | **341** |
+| Arquivos locais cujo nome não aparece no histórico remoto | **27** |
+| Prefixos/timestamps locais duplicados | **4** |
 
-**O banco não pode ser reconstruído a partir deste repositório.** Na prática:
+O relatório anterior, de 14/09/2026, registrava 571 migrations pós-baseline e
+332 ausentes. O aumento para 608/341 comprova que o banco continuou recebendo
+alterações enquanto o repositório permanecia incompleto.
 
-- não existe ambiente de homologação fiel à produção;
-- não existe recuperação de desastre testável;
-- um comprador/auditor não consegue levantar uma cópia do sistema para avaliar;
-- alterações feitas direto em produção (painel, MCP, psql) não deixam rastro no código.
+## Veredito
+
+**O banco de produção não é reconstruível apenas com este repositório.** O
+arquivo `20260727000000_apecerto_legacy_baseline.sql` consolida o estado legado
+para instalações limpas, mas não substitui os 341 artefatos pós-baseline
+ausentes nem prova equivalência com o catálogo atual.
+
+Não é seguro executar `supabase db push` contra produção neste estado. Antes de
+qualquer aplicação é necessário reconstruir um pacote versionado, comparar o
+catálogo em ambiente isolado e resolver as colisões abaixo.
 
 ## Como comparar corretamente
 
-A comparação **tem de ser por nome**, não por versão: os arquivos deste repositório
-usam timestamps próprios, diferentes dos gravados em `schema_migrations`. Comparar
-por versão dá falso positivo (parece que faltam 557 quando faltam 332).
+A comparação é por **nome**, não pelo timestamp local. Os arquivos do
+repositório frequentemente usam versões diferentes das registradas
+remotamente. Comparar somente por versão cria falsos positivos.
 
-## Como resolver
+Também é necessário separar três conjuntos:
 
-```bash
-# 1. Trazer o conteúdo real das migrações que faltam
-supabase db pull --linked
+1. migrations aplicadas e versionadas localmente;
+2. migrations aplicadas cujo SQL só existe no banco/histórico operacional;
+3. arquivos locais ainda não registrados remotamente, que podem ser drafts,
+   consolidações para instalação limpa ou mudanças realmente pendentes.
 
-# 2. Conferir o que sobrou
-node scripts/migracoes-faltantes.mjs   # precisa de DATABASE_URL
+Nenhum item do terceiro conjunto pode ser aplicado por inferência.
 
-# 3. Validar de verdade: subir um projeto limpo só com o repositório
-#    e comparar o catálogo com produção. Enquanto esse diff não for vazio,
-#    o problema não está resolvido.
-```
+## Colisões locais que bloqueiam o fluxo automático
 
-## Regra que precisa passar a valer
+- `20260814160000`: `limpeza_desativados_com_arquivo` e
+  `remove_pescas_legadas_funil2_canonico`;
+- `20260814170000`: `disable_ncrm_parallel_entry_keep_funil2` e
+  `motor_nao_dispara_automacao_desligada`;
+- `20260820223000`: `central_automacoes_sara_conversa_tempo_real` e
+  `produtos_captador_unidade_obrigatorio`;
+- `20260917160000`: `fase2_datas_sp_sql` e
+  `fase3_site_lead_protegido`.
 
-Nenhuma alteração de schema em produção fora do fluxo de migração versionada.
-Isso inclui alterações feitas pelo painel do Supabase e por ferramentas de IA.
+Há ainda dois arquivos locais com o mesmo nome lógico,
+`funil_2_integridade_seguranca_performance`, em versões diferentes. No remoto,
+o único nome duplicado é `acao_enviar_notificacao_passa_a_funcionar`, registrado
+nas versões `20260811132205` e `20260811132208`.
 
-## Natureza do que está faltando (amostra)
+## Próxima reconciliação segura
 
-O conjunto não é acessório. Inclui, entre outros:
+1. preservar um snapshot lógico e os metadados antes de qualquer mudança;
+2. obter o SQL original das 341 migrations ausentes quando houver fonte
+   confiável; quando não houver, registrar explicitamente como irrecuperável;
+3. classificar os 27 arquivos locais sem registro remoto, sem aplicá-los;
+4. criar uma linha de base reproduzível em Postgres/Supabase isolado;
+5. comparar schemas, funções, grants, RLS, triggers, índices, cron, Auth e
+   Storage entre o ambiente reconstruído e produção;
+6. somente depois gerar migrations de reconciliação aditivas, revisáveis e com
+   rollback.
 
-- **Distribuição de leads e fila**: `regra_unica_de_distribuicao`, `fila_sequencial_com_peso`,
-  `portao_unico_de_distribuicao`, `resgate_orfaos_respeita_a_fila_sequencial`
-- **Sara / IA**: `sara_camada_de_interpretacao_estrutura`, `sara_corte_de_confianca_por_risco`,
-  `sara_tempo_real_eficiente`
-- **Funil 2.0**: `funil2_estrutura_definitiva_etapas_momentos`, `funil_mover_porta_unica`
-- **Tracking e atribuição**: `tracking_360_dashboard`, `tracking_360_attribution_scope`,
-  `tracking_identity_attribution`, `meta_crm_lead_identity`
-- **Segurança**: `harden_meta_lead_identity_rpc`, `fix_catalogo_publico_filtros_e_exposicao_anon`,
-  `funil2_revoga_anon_das_rpcs_novas`
-- **Financeiro**: `repasse_comissao_fonte_unica`, `extrato_bancario_importacao`
-- **Ajustes operacionais pontuais** feitos direto em produção:
-  `jamariz_pesos_temporarios_fds_20260904`, `reordenar_fila_tica_kapri_edrisia_20260908`,
-  `fixar_instancia_claudia_3785`
+`supabase db pull` pode ajudar a capturar o estado atual do schema, mas não
+recupera automaticamente o conteúdo histórico das migrations ausentes. Ele não
+é, sozinho, evidência de restaurabilidade.
 
-As duas últimas categorias são o sintoma mais claro: **regra de negócio da operação
-sendo alterada direto no banco**, sem passar pelo código.
+## Regra permanente proposta
+
+Nenhuma alteração de schema em produção fora do fluxo de migration versionada,
+revisada e testada em ambiente isolado. Isso inclui mudanças pelo painel,
+ferramentas de IA ou comandos avulsos.
+
+O script `scripts/migracoes-faltantes.mjs` continua útil para repetir a
+comparação por nome quando houver conexão read-only via `DATABASE_URL`; essa
+credencial e as ferramentas de Postgres não estão disponíveis no ambiente
+local atual e não serão criadas ou redefinidas automaticamente.

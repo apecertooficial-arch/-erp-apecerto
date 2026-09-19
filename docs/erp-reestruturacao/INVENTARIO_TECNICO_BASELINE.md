@@ -34,7 +34,7 @@ Consulta somente leitura em 2026-09-19, sem linhas de clientes:
 | Sara legada | `ncrm` em `observer`, runner desligado e tabelas marcadas como geração aposentada |
 | Cron relacionado | nenhum job ativo de Sara/motor/presença; cutover para worker confirmado |
 | Edge Functions remotas | 53 ativas contra 26 diretórios locais |
-| migrations remotas | histórico segue até 2026-09-18; nomes/versões não coincidem um a um com os arquivos locais |
+| migrations remotas | 953 registros/952 nomes; 608 registros pós-baseline, dos quais 341 nomes não têm arquivo local |
 
 A divergência Edge/migrations é bloqueio de release reproduzível. Alguns itens
 remotos podem ser integrações históricas deliberadas, mas nenhum será excluído
@@ -65,7 +65,7 @@ histórico, testes e presença equivalente em `origin/main`.
 | páginas Next | 28 |
 | rotas de API | 35 |
 | diretórios de feature | 22 |
-| migrations SQL locais | 294 |
+| migrations SQL locais | 294 arquivos/293 nomes distintos |
 | Edge Functions | 26 |
 | arquivos de worker | 4 |
 | arquivos de teste | 91 |
@@ -194,6 +194,23 @@ diferença para as 213 tabelas criadas localmente é um bloqueio de reconciliaç
 não evidência de perda: pode incluir tabelas pré-baseline, objetos de extensões,
 schemas externos, tabelas removidas ou ausência de migrations locais.
 
+## Reconciliação do histórico de migrations
+
+A leitura oficial do histórico remoto em 2026-09-19 confirmou:
+
+- 953 registros remotos e 952 nomes distintos;
+- 608 registros/607 nomes a partir do baseline `20260727000000`;
+- somente 266 desses nomes pós-baseline possuem arquivo local;
+- 341 nomes pós-baseline não têm SQL versionado nesta árvore;
+- 27 arquivos locais não aparecem pelo nome no histórico remoto;
+- quatro timestamps locais são compartilhados por dois arquivos;
+- há um nome local duplicado e um nome remoto duplicado.
+
+Consequência: o código pode ser construído e testado, mas o banco não pode ser
+recriado nem atualizado em bloco com segurança a partir desta árvore. O comando
+`supabase db push` fica bloqueado até existir reconciliação em ambiente isolado.
+O detalhamento vivo está em `supabase/MIGRACOES-FALTANTES.md`.
+
 ## Autoridades duplicadas já visíveis
 
 ### CRM/Sara
@@ -223,8 +240,8 @@ schemas externos, tabelas removidas ou ausência de migrations locais.
 
 ## Gates pendentes
 
-1. reconciliar migrations aplicadas e catálogo remoto por metadados;
-2. comparar as 53 Edge Functions remotas, versões e hashes com as 26 fontes locais;
+1. recuperar/classificar 341 migrations pós-baseline sem arquivo e 27 arquivos locais sem registro remoto;
+2. resolver quatro colisões de timestamp e os nomes duplicados sem reescrever histórico aplicado;
 3. comparar Auth, Storage, buckets, Cron e configurações sem expor segredos;
 4. mapear leitura/escrita de cada rota e feature;
 5. provar autorização server-side e políticas efetivas;

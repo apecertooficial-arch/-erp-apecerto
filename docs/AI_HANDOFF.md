@@ -13,10 +13,10 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: local isolado; usuário solicitou publicação de código validado,
-  mas o push desta branch/payload ainda aguarda confirmação explícita após o
-  gate de segurança da credencial
-- HEAD funcional validado antes deste checkpoint: `2ae7e80e`
+- ambiente: local isolado; usuário autorizou publicação de código validado,
+  mas push, merge e deploy ainda não foram executados e dependem dos gates do
+  payload, CI e confirmação do SHA efetivamente implantado
+- HEAD funcional validado antes deste checkpoint: `80cf8780`
 
 ## Concluído
 
@@ -92,9 +92,9 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- a branch contém onze commits funcionais à frente de `origin/main`, além deste
-  checkpoint; push e deploy continuam
-  pendentes da confirmação explícita do payload e destino.
+- a branch contém treze commits à frente de `origin/main`, além das mudanças
+  deste checkpoint; push e deploy continuam pendentes do gate do payload, CI e
+  validação do SHA, não de uma janela de duas horas.
 
 ## Arquivos alterados/relevantes
 
@@ -215,6 +215,11 @@ declarar o ERP inteiro pronto sem evidência.
 - `meta-audience-sync` está implantada e ativa, mas as RPCs `prepare`, `claim` e
   `finish` que ela chama não existem no banco. O fluxo foi classificado como
   quebrado, sem tentativa de reativação;
+- histórico remoto de migrations recontado por nome: 953 registros/952 nomes;
+  608 registros pós-baseline, 607 nomes, somente 266 cobertos localmente e 341
+  sem arquivo. Há 27 arquivos locais sem registro remoto, quatro timestamps
+  locais duplicados, um nome local duplicado e um nome remoto duplicado. `db
+  push` está bloqueado; nenhum SQL foi aplicado;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
@@ -224,9 +229,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 - árvore contém mudanças locais do trabalho visual; preservar integralmente;
 - nenhuma integração à tela canônica foi feita;
-- tentativa de push da branch falhou porque o helper Git aponta para um `gh`
-  removido. O fallback pelo Keychain foi bloqueado pelo gate de segurança por
-  envolver o ERP completo e documentação interna; nenhum dado saiu da máquina;
+- tentativa anterior de push da branch falhou porque o helper Git aponta para
+  um `gh` removido. Nenhum dado saiu da máquina; antes de nova tentativa, o
+  payload deve passar por varredura de segredo e ter seu SHA registrado;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
 - a fila de cobrança local cobre todo o histórico atual, mas ainda herda da RPC
@@ -236,10 +241,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Reconciliar migrations aplicadas versus arquivos locais e fechar a decisão
-técnica de `meta-audience-sync` sem inventar RPCs: localizar o produto dono,
-contrato e chamador antes de restaurar ou tombstonar. Em seguida, continuar no
-P0 de alertas/cobrança sem aplicar SQL em produção. Para publicar, ainda é
-necessária a confirmação explícita para enviar a branch
-`codex/erp-crm-visual-concept` ao remoto GitHub; merge, deploy de código e
-migration continuam etapas distintas e verificáveis.
+Classificar os 27 arquivos locais sem registro remoto e preparar o desenho do
+ambiente isolado que possa provar a reconstrução das 341 migrations ausentes,
+sem aplicar SQL em produção. Em seguida, continuar no P0 de alertas/cobrança.
+Push da branch, merge/deploy de código e migration permanecem etapas distintas
+e verificáveis; nunca agrupar `db push` ao deploy de aplicação.

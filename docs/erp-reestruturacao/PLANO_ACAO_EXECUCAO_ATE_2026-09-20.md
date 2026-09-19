@@ -53,8 +53,8 @@ ser considerada concluída se contradizer esse contrato.
 
 - não trabalhar diretamente em `main`;
 - preservar todas as alterações existentes;
-- deploy e publicação de código estão autorizados somente depois dos gates da
-  fatia; confirmar build e validar produção após cada publicação;
+- o usuário autorizou publicar o código, mas cada fatia só segue para produção
+  depois dos gates; confirmar build e validar produção após cada publicação;
 - migrations de produção continuam exigindo confirmação específica; quando
   necessárias, preparar somente opções aditivas, reversíveis e com rollback;
 - não fazer cutover de produto ou alteração destrutiva de schema/dados;
@@ -284,7 +284,10 @@ autoridade.
 
 ### P0
 
-- reconciliar a deriva entre commit publicado, migrations remotas e 53 Edge Functions;
+- reconstruir a rastreabilidade das migrations: há 341 nomes pós-baseline sem
+  arquivo local, 27 arquivos locais sem registro remoto e quatro colisões de
+  timestamp; `db push` permanece bloqueado;
+- reconciliar a deriva entre commit publicado e 53 Edge Functions;
 - decidir o destino de `meta-audience-sync`: a função remota está ativa, mas as
   três RPCs exigidas não existem, portanto o fluxo está comprovadamente quebrado;
 - provar e manter `f2_*` + `motor_fila` como autoridade de lead, etapa, momento e próxima ação;
@@ -339,10 +342,10 @@ com push/WhatsApp desligados. Aplicação e validação isolada continuam penden
 
 ## Fronteiras de autorização que afetam a sequência
 
-- código: preparação, testes e commits locais estão autorizados; o envio da
-  branch `codex/erp-crm-visual-concept` ao remoto e o deploy do payload completo
-  ainda aguardam confirmação explícita, porque a branch contém o ERP e
-  documentação interna. Push, merge e deploy são etapas separadas;
+- código: preparação, testes, commits e publicação foram autorizados pelo
+  usuário. Ainda assim, push, merge e deploy são etapas separadas: primeiro
+  revisar o payload, excluir qualquer segredo, obter CI verde e identificar o
+  SHA exato; só então publicar e validar o mesmo SHA em produção;
 - banco: inventário, desenho e testes locais estão autorizados; migration real
   no Supabase exige confirmação específica antes de aplicar;
 - legado: pode ser classificado e isolado localmente; remoção destrutiva em
@@ -354,13 +357,15 @@ com push/WhatsApp desligados. Aplicação e validação isolada continuam penden
 
 ## Gate final de domingo
 
-- baseline reproduzível;
+- baseline do código reproduzível e divergência do banco quantificada; o banco
+  só pode ser chamado de reproduzível após ensaio isolado de reconstrução;
 - inventário e matriz vivos;
 - backlog P0/P1/P2 com evidências;
 - ao menos uma jornada vertical crítica localmente comprovada;
 - identidade visual aplicada apenas ao que estiver funcionalmente coberto;
 - testes direcionados e gate ampliado registrados;
-- build publicado confirmado e produção validada em desktop e PWA/aplicativo;
+- para cada fatia que receber autorização e atravessar os gates: build
+  publicado confirmado e produção validada em desktop e PWA/aplicativo;
 - riscos, lacunas e próximos passos explícitos;
 - nenhuma declaração de “ERP pronto” ou “vendável” sem cumprir os critérios.
 
