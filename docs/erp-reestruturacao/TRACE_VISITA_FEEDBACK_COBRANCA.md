@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; três correções P0 locais validadas
+Estado: fatia em reconstrução; quatro correções P0 locais validadas
 
 ## Contrato atual comprovado
 
@@ -11,7 +11,8 @@ PATCH /api/agenda registerVisitResult → f2_registrar_resultado_visita`
 
 - desktop e aplicativo usam a mesma API e a mesma RPC de gravação;
 - resultado exige `status`, motivo compatível e justificativa útil;
-- a RPC limita leitura ao gestor ou ao corretor dono da carteira;
+- a fila permite leitura ao gestor ou ao corretor dono da carteira;
+- as duas APIs locais de gravação exigem que o usuário seja o corretor dono;
 - o resultado atualiza visita, lead, próxima ação e histórico;
 - a fila inclui visita passada ainda agendada/confirmada e encerramento sem
   motivo ou justificativa suficiente.
@@ -43,11 +44,18 @@ somente o corretor dono recebe a ação `Responder`. Web e aplicativo repetem a
 mesma regra. Isso não substitui o futuro escalonamento persistido; apenas impede
 que a cobrança seja confundida com execução pelo gerente.
 
+As duas entradas de gravação (`/api/agenda` e `/api/funil2`) agora também
+confirmam, no servidor, que o usuário atual é o corretor dono do card antes de
+chamar a RPC. Gestor, usuário sem carteira e corretor diferente falham de forma
+fechada. A RPC remota ainda aceita o administrador diretamente por reutilizar
+`f2_pode_operar_lead`; portanto a invariável só estará completa quando a mesma
+regra existir no banco por migration aditiva validada em ambiente isolado.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
-- testes direcionados: 33/33 passaram;
-- gate frontend oficial ampliado com os novos contratos: 436/436 passou;
+- testes direcionados após a barreira nas APIs: 63/63 passaram;
+- gate frontend oficial ampliado com os novos contratos: 437/437 passou;
 - ESLint dos arquivos alterados: passou;
 - build Vinext completo: passou;
 - `git diff --check`: passou.
@@ -72,6 +80,12 @@ que a cobrança seja confundida com execução pelo gerente.
    indicadores por corretor ainda não estão comprovados ponta a ponta.
 4. A validação autenticada no navegador local depende de configuração pública
    segura do Supabase; nenhum segredo foi copiado ou criado.
+5. A base possui notificações de visita próxima, mas não foi encontrada uma
+   notificação persistente pós-visita ligada à visita/card para cobrar corretor
+   e escalar à gestão. Logo, o aviso progressivo ainda não existe de ponta a
+   ponta.
+6. A RPC de gravação ainda permite o atalho administrativo direto no banco. As
+   APIs locais já o bloqueiam, mas a defesa em profundidade depende de migration.
 
 ## Próximo gate
 

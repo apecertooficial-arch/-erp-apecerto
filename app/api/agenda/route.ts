@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 import { hojeOperacao, instanteSaoPaulo, somarDias } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 
@@ -377,6 +378,8 @@ export async function PATCH(request: Request) {
     if (!visitId || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
     const denied = guard("editar", "Você não tem permissão para registrar o resultado de visitas.");
     if (denied) return denied;
+    const ownership = await verificarDonoResultadoVisita(auth.supabase as unknown as SupabaseClient, visitId);
+    if (!ownership.permitido) return Response.json({ error: ownership.mensagem }, { status: ownership.status });
 
     const { data: result, error } = await (auth.supabase as unknown as SupabaseClient).rpc("f2_registrar_resultado_visita", {
       p_visita_id: visitId,

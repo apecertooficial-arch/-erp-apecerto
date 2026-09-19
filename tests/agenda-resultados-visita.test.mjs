@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const apiFunil = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
 const agendaWeb = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
 const agendaApp = await readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8");
+const autorizacaoResultado = await readFile(new URL("../app/lib/supabase/autorizarResultadoVisita.ts", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/migrations/20260911163500_resultado_obrigatorio_visitas.sql", import.meta.url), "utf8");
 
 test("cada desfecho oferece somente motivos compatíveis", () => {
@@ -80,4 +82,31 @@ test("gerente cobra o corretor e não responde a visita por ele", () => {
   assert.match(agendaApp, /Aguardando corretor/);
   assert.match(agendaApp, /aguardam os corretores/);
   assert.match(agendaApp, /Cobre o responsável/);
+  assert.match(autorizacaoResultado, /current_broker_id/);
+  assert.match(autorizacaoResultado, /from\("f2_visita"\)/);
+  assert.match(autorizacaoResultado, /from\("f2_lead"\)/);
+  assert.match(apiAgenda, /verificarDonoResultadoVisita/);
+  assert.match(apiFunil, /verificarDonoResultadoVisita/);
+});
+
+test("as APIs autorizam somente o corretor dono da carteira", async () => {
+  const db = (corretorAtual, corretorDono) => ({
+    rpc: async () => ({ data: corretorAtual, error: null }),
+    from: (tabela) => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => tabela === "f2_visita"
+            ? { data: { funil_lead_id: "20000000-0000-4000-8000-000000000001" }, error: null }
+            : { data: { corretor_id: corretorDono }, error: null },
+        }),
+      }),
+    }),
+  });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(7, 7), "10000000-0000-4000-8000-000000000001"), { permitido: true });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(9, 7), "10000000-0000-4000-8000-000000000001"), {
+    permitido: false, status: 403, mensagem: "O feedback deve ser registrado pelo corretor responsável.",
+  });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(null, 7), "10000000-0000-4000-8000-000000000001"), {
+    permitido: false, status: 403, mensagem: "O feedback deve ser registrado pelo corretor responsável.",
+  });
 });

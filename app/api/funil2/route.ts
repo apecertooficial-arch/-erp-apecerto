@@ -4,6 +4,7 @@ import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
 import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
+import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -490,6 +491,8 @@ export async function POST(request: Request) {
       const justificativa = String(body.justificativa ?? "").trim().slice(0, 800);
       const erroResultado = validarResultadoVisita(statusVisita, resultadoCodigo, justificativa);
       if (!body.id || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
+      const ownership = await verificarDonoResultadoVisita(auth.db, String(body.id));
+      if (!ownership.permitido) return Response.json({ error: ownership.mensagem }, { status: ownership.status });
       rpc = "f2_registrar_resultado_visita";
       args = { p_visita_id: body.id, p_status: statusVisita, p_resultado_codigo: resultadoCodigo, p_justificativa: justificativa };
     } else {

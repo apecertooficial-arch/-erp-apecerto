@@ -136,6 +136,15 @@ declarar o ERP inteiro pronto sem evidência.
   corretor. Web e aplicativo agora deixam a gestão somente acompanhar, agrupam
   por responsável e mostram idade; somente pendência própria oferece
   `Responder`;
+- as duas APIs de gravação agora confirmam no servidor que o usuário é o
+  corretor dono do card; gestor, usuário sem carteira e corretor diferente
+  falham fechados. A RPC remota ainda reutiliza `f2_pode_operar_lead` e permite
+  admin direto, então a invariável no banco permanece um gate de migration;
+- o catálogo remoto mostrou notificações de visita próxima, mas nenhuma
+  cobrança pós-visita persistente ligada à visita/card; escalonamento ainda não
+  deve ser anunciado como funcional;
+- após a barreira nas APIs: 63/63 testes direcionados, 437/437 no gate
+  frontend, ESLint e build completo passaram;
 - após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
 - navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem
