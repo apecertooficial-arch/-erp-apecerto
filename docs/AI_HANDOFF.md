@@ -33,10 +33,22 @@ declarar o ERP inteiro pronto sem evidência.
   de runtime sem evidência;
 - métricas agregadas provaram p50 6,5 s e p95 10,3 s para mensagem → análise
   recente, mas 338/671 cards têm próxima ação vencida;
-- P0 operacional novo: 344 alertas de gestão abertos para só 132 clientes;
-  77 clientes têm duplicatas e um chegou a 35. Oito alertas são de leads já
-  descartados. A correção real precisa ocorrer no contrato do banco, não apenas
-  ocultar linhas no frontend;
+- P0 operacional novo: a primeira leitura encontrou 690 alertas da Sara
+  abertos para só 132 cards; minutos depois já eram 694 (347 para gestão e 347
+  para corretores). Há 154 grupos duplicados, um card/público chegou a 35 e 16
+  alertas pertencem a cards descartados. A chave produtiva usa `execution_id`,
+  portanto o estoque continua crescendo. A correção real precisa ocorrer no
+  contrato do banco, não apenas ocultar linhas no frontend;
+- contrato SQL aditivo e não destrutivo preparado em
+  `docs/erp-reestruturacao/P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, com rastreio em
+  `P0_ALERTAS_SARA_RASTREIO.md`: vínculo direto ao card, índice único por
+  card/público, consolidação preservando histórico, resolução por evidência,
+  descarte, confirmação ou troca de dono e contadores calculados antes do
+  `LIMIT 100`. O draft não é migration e não foi aplicado;
+- regressão de autoridade encontrada no construtor: a migration publica a
+  automação sistêmica `sara-ciclo-event-trigger`, mas um revert anterior removeu
+  esse gatilho do catálogo e da allowlist do editor sem remover o teste. O
+  contrato visual foi restaurado localmente com a menor mudança possível;
 - execução contínua criada como objetivo ativo da tarefa; o heartbeat de duas
   horas foi pausado para evitar espera artificial, duplicidade e gasto inútil;
 - requisitos da conversa matinal consolidados em
@@ -109,9 +121,13 @@ declarar o ERP inteiro pronto sem evidência.
 - navegador local sanitizado: desktop 1600 × 1000 abriu em `Meu Dia`, 50 linhas
   carregadas, sem overflow ou erro/aviso; aplicativo 390 × 844 permaneceu na
   carteira móvel, sem overflow horizontal e sem erro/aviso;
-- gate ampliado selecionado: 147/148 passaram; a única falha já existente é o
-  contrato `sara-ciclo-event-trigger` ausente no editor de automações e não foi
-  causada pela correção desta fatia;
+- gate frontend ampliado após restaurar o contrato do gatilho: 446/446 passou;
+- testes direcionados de Sara, push e deduplicação: 33/33 passaram;
+- build completo após a correção do construtor: passou;
+- tentativa de validação visual local da tela `/automacoes`: a rota compilou e
+  respondeu 200, mas a árvore não possui a configuração pública local do
+  Supabase e o shell encerrou com erro explícito. Nenhum segredo foi criado ou
+  copiado; validação autenticada permanece pendente de ambiente adequado;
 - ESLint de rota, modelo, workspace e fixture alterados: passou;
 - metadados remotos: dispatcher `worker`, heartbeat 4 s, lag 0, nenhuma fila vencida/falha.
 
@@ -126,6 +142,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Preparar a correção aditiva do P0 de alertas duplicados por cliente com teste,
-histórico e rollback; como migration de produção exige confirmação específica,
-continuar em paralelo pela integração visual canônica e validação local.
+Gerar a migration do P0 com a CLI oficial em ambiente isolado, aplicar os
+cenários de contrato e advisors e apresentar antes/depois + rollback. A CLI não
+está disponível e não será instalada sem autorização; produção permanece
+inalterada. Em paralelo, continuar as correções locais que não dependem desse
+gate e publicar a branch assim que houver autorização específica para o push.

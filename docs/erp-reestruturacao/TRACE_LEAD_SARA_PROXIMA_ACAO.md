@@ -81,10 +81,12 @@ cobranças ao corretor e ao gerente.
 
 ## P0 descoberto — alertas duplicados por cliente
 
-Produção possui 344 alertas `acao_vencida` abertos para gestão, correspondentes
-a apenas 132 clientes. Setenta e sete clientes têm mais de um alerta aberto; o
-máximo observado foi 35 alertas para o mesmo cliente. Os mesmos 344 alertas
-existem para corretores. Oito pertencem a leads já descartados.
+Produção possuía 690 alertas `acao_vencida` da Sara abertos na primeira leitura
+desta fatia, correspondentes a apenas 132 cards. Minutos depois eram 694: 347
+para gestão e 347 para corretores. Existem 154 grupos `card + público` com mais
+de um alerta; o máximo observado foi 35 alertas para o mesmo card e público.
+Dezesseis alertas pertencem a cards já descartados. A variação durante a própria
+inspeção comprova que o produtor continua ampliando o estoque.
 
 Todos os alertas atuais têm `execution_id`, mas a chave idempotente é por
 execução/checkpoint, não por cliente + público. Assim, cada novo prazo vencido
@@ -96,6 +98,14 @@ cliente, preservar as ocorrências anteriores como histórico e resolver alertas
 quando o corretor produzir evidência válida ou o lead sair da carteira. Isso não
 deve ser mascarado apenas no frontend. Alterar a função em produção continua no
 gate de migration específica.
+
+O contrato local dessa correção está em
+`P0_ALERTAS_SARA_DEDUPE_DRAFT.sql`, acompanhado por sete testes de invariantes.
+Ele adiciona vínculo direto ao card F2, consolida sem `DELETE`, fecha descartados,
+impõe unicidade parcial sob concorrência, resolve por evidência/confirmação e
+separa o total autorizado do limite visual de cem itens. Permanece fora de
+`supabase/migrations` porque a CLI oficial não está disponível e nomes de
+migration não serão inventados manualmente.
 
 ## Lacunas e próximos gates
 
