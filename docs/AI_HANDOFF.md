@@ -132,8 +132,15 @@ declarar o ERP inteiro pronto sem evidência.
   mensal, contra 8 de setembro. A API local agora usa a janela máxima segura de
   365 dias da RPC e cobre todo o histórico real atual sem depender do mês
   exibido;
-- após as correções da Agenda: 28/28 testes de Agenda/fuso, 433/433 no gate
+- a gestão conseguia abrir o formulário e registrar resultado no lugar do
+  corretor. Web e aplicativo agora deixam a gestão somente acompanhar, agrupam
+  por responsável e mostram idade; somente pendência própria oferece
+  `Responder`;
+- após as correções da Agenda: 44/44 testes direcionados, 436/436 no gate
   frontend oficial ampliado, ESLint e build Vinext completo passaram;
+- navegador sanitizado validou desktop 1600 × 1000 e móvel 375 × 844 sem
+  overflow, agrupamento/idade, separação gestão × corretor, formulário do
+  corretor e o estado de erro com calendário preservado;
 - a execução indiscriminada de todos os arquivos `tests/*.test.mjs` também
   encontrou falhas preexistentes fora do gate oficial (incluindo fonte Studio
   ausente e expectativas antigas de Automações/CSS). Elas não foram ocultadas

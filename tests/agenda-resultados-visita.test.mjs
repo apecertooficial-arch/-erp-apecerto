@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { RESULTADOS_VISITA, resultadoPermitido, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const apiFunil = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
@@ -60,4 +60,24 @@ test("falha da fila de cobrança nunca vira zero pendências silencioso", () => 
   assert.match(agendaWeb, /pendencias_resultado_erro/);
   assert.match(agendaApp, /Não foi possível verificar os resultados pendentes/);
   assert.match(agendaApp, /pendencias_resultado_erro/);
+});
+
+test("gestão enxerga atraso e responsável de cada cobrança", () => {
+  assert.equal(rotuloAtrasoResultado("2026-09-19", "2026-09-19"), "hoje");
+  assert.equal(rotuloAtrasoResultado("2026-09-18", "2026-09-19"), "há 1 dia");
+  assert.equal(rotuloAtrasoResultado("2026-08-19", "2026-09-19"), "há 31 dias");
+  assert.equal(rotuloAtrasoResultado("data-inválida", "2026-09-19"), "data não confirmada");
+  assert.match(agendaWeb, /pendenciasPorCorretor/);
+  assert.match(agendaWeb, /rotuloAtrasoResultado\(item\.data\)/);
+  assert.match(agendaApp, /Responsável:/);
+  assert.match(agendaApp, /rotuloAtrasoResultado\(item\.data\)/);
+});
+
+test("gerente cobra o corretor e não responde a visita por ele", () => {
+  assert.match(agendaWeb, /item\.meu\s*\?\s*<button/);
+  assert.match(agendaApp, /item\.meu\s*\?\s*<button/);
+  assert.match(agendaWeb, /Aguardando corretor/);
+  assert.match(agendaApp, /Aguardando corretor/);
+  assert.match(agendaApp, /aguardam os corretores/);
+  assert.match(agendaApp, /Cobre o responsável/);
 });

@@ -29,7 +29,7 @@ import {
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { HorariosVisita } from "../funil-2/HorariosVisita";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
-import type { StatusResultadoVisita } from "./resultadoVisita";
+import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
 type LeadAgenda = { id: number; nome: string };
@@ -177,6 +177,7 @@ export function TelaAgendaMobile({ accessToken }: {
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
+  const gerenciandoPendencias = pendenciasResultado.length > 0 && pendenciasResultado.every((item) => !item.meu);
 
   /* No mes a lista de baixo e SOMENTE do dia tocado. */
   const paraListar = useMemo(
@@ -222,9 +223,9 @@ export function TelaAgendaMobile({ accessToken }: {
         <button type="button" onClick={recarregar}>Tentar novamente</button>
       </section>}
       {!erroPendenciasResultado && pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
-        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas precisam da sua resposta</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
-        <p>Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa.</p>
-        <div>{pendenciasResultado.map((item) => <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button>)}</div>
+        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas {gerenciandoPendencias ? "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+        <p>{gerenciandoPendencias ? "Cobre o responsável. A pendência sai da fila quando o corretor registra um desfecho válido." : "Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa."}</p>
+        <div>{pendenciasResultado.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>
       </section>}
       {prox ? (
         <section className="ape-agenda-proximo" aria-label="Próximo compromisso">

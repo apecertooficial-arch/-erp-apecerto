@@ -201,12 +201,17 @@
 .calendar-workspace .calendar-resultados-kpis span { border-radius: 12px; background: #fff; padding: 9px 12px; color: #6E6760; font-size: 12px; }
 .calendar-workspace .calendar-resultados-kpis b { color: #A32C2C; font-size: 16px; }
 .calendar-workspace .calendar-resultados-lista { max-height: 270px; margin-top: 12px; overflow-y: auto; border-radius: 14px; background: #fff; }
-.calendar-workspace .calendar-resultados-lista > button { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) 150px 150px; align-items: center; gap: 12px; border: 0; border-bottom: 1px solid #F2EFEC; background: transparent; padding: 11px 13px; color: #1F1C1A; text-align: left; cursor: pointer; }
-.calendar-workspace .calendar-resultados-lista > button:hover { background: #FFF3EA; }
+.calendar-workspace .calendar-resultados-grupo > header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #E9E3DC; background: #F8F4F1; padding: 8px 13px; }
+.calendar-workspace .calendar-resultados-grupo > header strong { color: #4D4842; font-size: 12px; }
+.calendar-workspace .calendar-resultados-grupo > header span { margin-left: auto; color: #A32C2C; font-size: 11px; font-weight: 700; }
+.calendar-workspace .calendar-resultados-grupo > :is(button,.calendar-resultado-cobranca) { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) 150px 150px; align-items: center; gap: 12px; border: 0; border-bottom: 1px solid #F2EFEC; background: transparent; padding: 11px 13px; color: #1F1C1A; text-align: left; }
+.calendar-workspace .calendar-resultados-grupo > button { cursor: pointer; }
+.calendar-workspace .calendar-resultados-grupo > button:hover { background: #FFF3EA; }
+.calendar-workspace .calendar-resultado-cobranca { background: #FCFAF8; }
 .calendar-workspace .calendar-resultados-lista span b,.calendar-workspace .calendar-resultados-lista span small { display: block; }
 .calendar-workspace .calendar-resultados-lista span small { margin-top: 2px; color: #9A938B; font-size: 11px; }
 .calendar-workspace .calendar-resultados-lista em { color: #6E6760; font-size: 12px; font-style: normal; }
-.calendar-workspace .calendar-resultados-lista > button > strong { color: #CC5800; font-size: 12px; text-align: right; }
+.calendar-workspace .calendar-resultados-grupo > :is(button,.calendar-resultado-cobranca) > strong { color: #CC5800; font-size: 12px; text-align: right; }
 
 .resultado-visita-form { width: min(620px,calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 24px; background: #fff; padding: 24px; box-shadow: 0 24px 60px rgba(31,28,26,.24); color: #1F1C1A; }
 .resultado-visita-form > header { display: flex; align-items: flex-start; gap: 12px; }

@@ -26,12 +26,14 @@
   .ape-agenda-resultados header > strong { margin-left: auto; flex: none; border-radius: 999px; background: #FBE5E5; padding: 5px 8px; color: #A32C2C; font-size: 10px; }
   .ape-agenda-resultados > p { margin: 8px 0 12px; color: #6B635C; font-size: 12px; line-height: 1.45; }
   .ape-agenda-resultados > div { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
-  .ape-agenda-resultados > div > button { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: #fff; padding: 11px; color: #1F1C1A; text-align: left; box-shadow: 0 1px 3px rgba(31,28,26,.05); }
+  .ape-agenda-resultados > div > :is(button,.ape-agenda-cobranca) { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 13px; background: #fff; padding: 11px; color: #1F1C1A; text-align: left; box-shadow: 0 1px 3px rgba(31,28,26,.05); }
+  .ape-agenda-resultados > div > .ape-agenda-cobranca { background: #FCFAF8; }
   .ape-agenda-resultados.erro > button { width: 100%; min-height: 46px; border: 1px solid #D93E3E; border-radius: 999px; background: #fff; color: #A32C2C; font-size: 12px; font-weight: 800; }
-  .ape-agenda-resultados button span { min-width: 0; }
-  .ape-agenda-resultados button b,.ape-agenda-resultados button small { display: block; }
-  .ape-agenda-resultados button small { margin-top: 3px; color: #9A918A; font-size: 10px; line-height: 1.35; }
-  .ape-agenda-resultados button > strong { margin-left: auto; flex: none; color: #CC5800; font-size: 11px; }
+  .ape-agenda-resultados :is(button,.ape-agenda-cobranca) span { min-width: 0; }
+  .ape-agenda-resultados :is(button,.ape-agenda-cobranca) b,.ape-agenda-resultados :is(button,.ape-agenda-cobranca) small { display: block; }
+  .ape-agenda-resultados :is(button,.ape-agenda-cobranca) small { margin-top: 3px; color: #9A918A; font-size: 10px; line-height: 1.35; }
+  .ape-agenda-resultados :is(button,.ape-agenda-cobranca) > strong { margin-left: auto; flex: none; color: #CC5800; font-size: 11px; text-align: right; }
+  .ape-agenda-resultados .ape-agenda-cobranca > strong { width: 78px; line-height: 1.25; white-space: normal; }
   .resultado-visita-mobile { padding: 0 0 calc(16px + env(safe-area-inset-bottom,0px)); }
   .resultado-visita-mobile .resultado-visita-form { width: 100%; max-height: none; border-radius: 0; padding: 20px; box-shadow: none; }
   .resultado-visita-mobile .resultado-visita-status { grid-template-columns: 1fr; }

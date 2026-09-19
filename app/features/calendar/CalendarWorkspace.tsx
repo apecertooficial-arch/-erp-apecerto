@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
-import type { StatusResultadoVisita } from "./resultadoVisita";
+import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -48,6 +48,14 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
   const [salvandoResultado, setSalvandoResultado] = useState(false);
   const [erroResultado, setErroResultado] = useState("");
   const isAdmin = data.role === "admin" || data.role === "gestor";
+  const pendenciasPorCorretor = useMemo(() => {
+    if (!isAdmin) return [] as Array<{ corretor: string; itens: ResultadoPendente[] }>;
+    const grupos = new Map<string, ResultadoPendente[]>();
+    for (const item of data.pendencias_resultado ?? []) {
+      grupos.set(item.corretor, [...(grupos.get(item.corretor) ?? []), item]);
+    }
+    return [...grupos].map(([corretor, itens]) => ({ corretor, itens }));
+  }, [data.pendencias_resultado, isAdmin]);
   const gerenteNomeGeral = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.nome ?? null, [data.gerentes]);
   const geralGerenteId = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.id ?? null, [data.gerentes]);
 
@@ -159,6 +167,7 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
     <span>{item.status === "realizada" ? "✓ " : item.status === "cancelada" ? "× " : ""}{item.time !== "—" ? `${item.time} · ` : ""}{item.label}</span>
     {!compact && <small>{item.brokerId ? brokerById.get(item.brokerId) ?? "Sem corretor" : item.type === "task" ? "Tarefa" : "Sem corretor"}</small>}
   </button>;
+  const conteudoCobranca = (item: ResultadoPendente, acao: string) => <><span><b>{item.cliente}</b><small>{new Date(`${item.data}T12:00:00`).toLocaleDateString("pt-BR")} · {item.hora} · {item.produto || "Imóvel não informado"}</small></span><em>{rotuloAtrasoResultado(item.data)}</em><strong>{acao}</strong></>;
 
   const hourItems = (date: string, hour: number) => (byDate.get(date) ?? []).filter((item) => item.time !== "—" && Number(item.time.slice(0, 2)) === hour);
   const noTimeItems = (date: string) => (byDate.get(date) ?? []).filter((item) => item.time === "—");
@@ -171,9 +180,9 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
         <header><div><small>VERIFICAÇÃO INCOMPLETA</small><h2>Não foi possível verificar os resultados pendentes</h2><p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p></div><button type="button" onClick={() => void load()}>Tentar novamente</button></header>
       </section>}
       {!data.pendencias_resultado_erro && (data.resumo_resultados?.pendentes ?? 0) > 0 && <section className="calendar-resultados-pendentes">
-        <header><div><small>PRESTAÇÃO DE CONTAS DO MÊS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos.</p></div><strong>{data.resumo_resultados?.justificadas ?? 0}/{(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas</strong></header>
+        <header><div><small>PRESTAÇÃO DE CONTAS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>{isAdmin ? "Cobre o corretor responsável. A pendência sai da fila quando ele registra um desfecho válido." : "Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos."}</p></div><strong>{data.resumo_resultados?.justificadas ?? 0}/{(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas</strong></header>
         <div className="calendar-resultados-kpis"><span><b>{data.resumo_resultados?.passadas_sem_desfecho ?? 0}</b> sem desfecho</span><span><b>{data.resumo_resultados?.realizadas_sem_feedback ?? 0}</b> realizadas sem feedback</span><span><b>{data.resumo_resultados?.canceladas_sem_motivo ?? 0}</b> canceladas sem motivo</span></div>
-        <div className="calendar-resultados-lista">{(data.pendencias_resultado ?? []).map((item) => <button type="button" key={item.id} onClick={() => { setErroResultado(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{new Date(`${item.data}T12:00:00`).toLocaleDateString("pt-BR")} · {item.hora} · {item.produto || "Imóvel não informado"}</small></span><em>{item.corretor}</em><strong>Informar resultado</strong></button>)}</div>
+        <div className="calendar-resultados-lista">{(isAdmin ? pendenciasPorCorretor : [{ corretor: "", itens: data.pendencias_resultado ?? [] }]).map((grupo) => <section key={grupo.corretor || "minhas-pendencias"} className="calendar-resultados-grupo">{isAdmin && <header><strong>{grupo.corretor}</strong><span>{grupo.itens.length} pendência{grupo.itens.length === 1 ? "" : "s"}</span></header>}{grupo.itens.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroResultado(""); setResultadoPendente(item); }}>{conteudoCobranca(item, "Informar resultado")}</button> : <div className="calendar-resultado-cobranca" key={item.id}>{conteudoCobranca(item, "Aguardando corretor")}</div>)}</section>)}</div>
       </section>}
       <div className="calendar-nav">
         <button type="button" onClick={() => navigate(-1)}>‹</button>

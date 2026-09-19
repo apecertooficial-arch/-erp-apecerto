@@ -1,7 +1,7 @@
 # Trace — visita, resultado e cobrança
 
 Atualizado em: 2026-09-19
-Estado: fatia em reconstrução; duas correções P0 locais validadas
+Estado: fatia em reconstrução; três correções P0 locais validadas
 
 ## Contrato atual comprovado
 
@@ -36,14 +36,29 @@ o máximo seguro dentro do limite vigente da RPC, e deixa de vincular a cobranç
 ao mês exibido no calendário. Isso cobre integralmente o histórico atual, que
 começa em agosto de 2026.
 
+A fila também permitia que a gestão abrisse o formulário e registrasse o
+resultado no lugar do corretor. A interface foi fechada para esse atalho: a
+gestão agora vê pendências agrupadas por responsável, quantidade e idade, mas
+somente o corretor dono recebe a ação `Responder`. Web e aplicativo repetem a
+mesma regra. Isso não substitui o futuro escalonamento persistido; apenas impede
+que a cobrança seja confundida com execução pelo gerente.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
 - testes direcionados: 33/33 passaram;
-- gate frontend oficial ampliado com os novos contratos: 433/433 passou;
+- gate frontend oficial ampliado com os novos contratos: 436/436 passou;
 - ESLint dos arquivos alterados: passou;
 - build Vinext completo: passou;
 - `git diff --check`: passou.
+- navegador desktop 1600 × 1000: 2 grupos, 3 cobranças, 0 botões de resultado
+  para a gestão, largura do documento igual à viewport e console limpo;
+- navegador móvel 375 × 844: 3 cobranças com responsável/idade, 0 botões de
+  resultado para a gestão e nenhum overflow horizontal;
+- perfil corretor no navegador: 2 pendências próprias com `Responder`, uma de
+  terceiro somente leitura, formulário validado e erro de escrita explícito no
+  harness que bloqueia mutações;
+- estado de erro no navegador: alerta, calendário preservado e nova tentativa.
 
 ## Lacunas ainda abertas
 
@@ -60,6 +75,7 @@ começa em agosto de 2026.
 
 ## Próximo gate
 
-Desenhar o contrato aditivo sem expiração para todas as pendências abertas, com
-índice, autorização, paginação e métricas. Criar migration apenas pela CLI
-oficial quando a ferramenta e o ambiente isolado forem autorizados/disponibilizados.
+Desenhar o contrato aditivo sem expiração e o escalonamento persistido por
+corretor/gestão, com índice, autorização, paginação e métricas. Criar migration
+apenas pela CLI oficial quando a ferramenta e o ambiente isolado forem
+autorizados/disponibilizados.

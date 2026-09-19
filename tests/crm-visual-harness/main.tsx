@@ -7,6 +7,7 @@ import "../../app/styles/redesign-apecerto.css";
 import "../../app/styles/redesign-apecerto-menu.css";
 import "../../app/styles/app-mobile-aprovado.css";
 import "../../app/styles/app-mobile-gestor.css";
+import "../../app/styles/redesign-apecerto-calendario.css";
 import "../../app/styles/funil.css";
 import "./concept.css";
 import "./premium-concept.css";
@@ -19,6 +20,8 @@ import PaginaCrm from "../../app/(erp)/crm/page";
 import { CrmPremiumConcept } from "./CrmPremiumConcept";
 import { CrmReimaginedConcept } from "./CrmReimaginedConcept";
 import { CrmKanbanReimagined } from "./CrmKanbanReimagined";
+import { CalendarWorkspace } from "../../app/features/calendar/CalendarWorkspace";
+import { TelaAgendaMobile } from "../../app/features/calendar/TelaAgendaMobile";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -40,6 +43,19 @@ const payloadMeuDia = {
   ...payloadNormal,
   leads: leadsMeuDia,
   negociosVinculados: payloadNormal.negociosVinculados.filter((item) => leadsMeuDia.some((lead) => lead.id === item.funil_lead_id)),
+};
+const pendenciasAgenda = [
+  { id: "10000000-0000-4000-8000-000000000001", data: "2026-08-17", hora: "10:00", tipo: "visita", cliente: "Cliente sanitizado 1", local: "Local sanitizado", produto: "Produto Alfa", negocio_id: 101, status: "realizada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -47_000, com_gerente: true, gerente_id: 1 },
+  { id: "10000000-0000-4000-8000-000000000002", data: "2026-08-23", hora: "14:30", tipo: "visita", cliente: "Cliente sanitizado 2", local: "Local sanitizado", produto: "Produto Beta", negocio_id: 102, status: "agendada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -38_000, com_gerente: false, gerente_id: null },
+  { id: "10000000-0000-4000-8000-000000000003", data: "2026-09-12", hora: "09:00", tipo: "visita", cliente: "Cliente sanitizado 3", local: "Local sanitizado", produto: "Produto Gama", negocio_id: 103, status: "cancelada", corretor: "Corretor Beta", corretor_id: 8, meu: false, faltam_min: -10_000, com_gerente: true, gerente_id: 1 },
+];
+const payloadAgenda = {
+  ok: true, periodo: "mes", dia: "2026-09-19", inicio: "2026-09-01", fim: "2026-09-30",
+  total: 0, itens: [], pendencias_resultado: pendenciasAgenda,
+  resumo_resultados: { total: 3, pendentes: 3, passadas_sem_desfecho: 1, realizadas_sem_feedback: 1, canceladas_sem_motivo: 1, justificadas: 0, futuras: 0 },
+  brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
+  leads: [], deals: [], cards: [], products: [], visits: [], tasks: [],
+  gerentes: [{ id: 1, nome: "Gerente sanitizado", geral: true, corretor_id: null }], role: papel,
 };
 const gravadorVisivel = parametros.get("evidence") === "1";
 const requisicoes: RegistroRede[] = [];
@@ -105,6 +121,12 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json({ leads: leads.slice(0, 8).map((lead) => ({ id: lead.id, nome: lead.nome, telefoneMascarado: "••••0000", negocioId: lead.origem_negocio_id, corretorNome: lead.corretor_nome })), pagina: 1, curta: false, temMais: false });
   }
   if (url.pathname === "/api/crm/sales") return json(vendasVazias);
+  if (url.pathname === "/api/agenda") {
+    if (estado === "loading") return new Promise<Response>(() => undefined);
+    if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
+    if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
+    return json(payloadAgenda);
+  }
   registro.blocked = true;
   sincronizarLogRede();
   return json({ error: "Leitura fora do inventário do harness." }, 404);
@@ -166,9 +188,10 @@ document.body.append(transferenciaEvidencia);
 
 createRoot(document.getElementById("root")!).render(
   <ErpSessionCtx.Provider value={contexto}>
-    {tela === "reimagined-kanban" ? <CrmKanbanReimagined /> : tela === "reimagined-crm" ? <CrmReimaginedConcept /> : tela === "premium-crm" ? <CrmPremiumConcept /> : <ErpShell>
+    {tela === "agenda-mobile" ? <TelaAgendaMobile accessToken="harness-test-only" /> : tela === "reimagined-kanban" ? <CrmKanbanReimagined /> : tela === "reimagined-crm" ? <CrmReimaginedConcept /> : tela === "premium-crm" ? <CrmPremiumConcept /> : <ErpShell>
         {tela === "mobile-day"
           ? <InicioApp accessToken="harness-test-only" nome={perfil.name ?? "Corretor teste"} onIr={() => undefined} />
+          : tela === "agenda-manager" ? <CalendarWorkspace accessToken="harness-test-only" />
           : <PaginaCrm />}
       </ErpShell>}
   </ErpSessionCtx.Provider>,
