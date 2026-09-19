@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import "./p0-anon-security-definer-draft.test.mjs";
+
 const migration = readFileSync(new URL("../supabase/migrations/20260814210000_views_respeitam_rls.sql", import.meta.url), "utf8");
 const datacrazyCronMigration = readFileSync(
   new URL("../supabase/migrations/20260814220000_neutralizar_crons_datacrazy_desativados.sql", import.meta.url),

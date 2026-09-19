@@ -196,7 +196,7 @@ selecionada CRM/Funil 104/104; typecheck aprovado; lint sem erros. Quatro
 contratos de Produtos permanecem marcados como pendentes pela própria suíte e
 não são contabilizados como função concluída nesta fatia.
 
-Gate ampliado mais recente: 469/469 testes frontend aprovados. Isso comprova os
+Gate ampliado mais recente: 474/474 testes frontend aprovados. Isso comprova os
 contratos cobertos pela suíte, não o funcionamento integral de módulos que ainda
 não passaram por banco isolado, navegador autenticado e produção.
 
@@ -292,6 +292,9 @@ autoridade.
   três RPCs exigidas não existem, portanto o fluxo está comprovadamente quebrado;
 - provar e manter `f2_*` + `motor_fila` como autoridade de lead, etapa, momento e próxima ação;
 - provar autenticação, RLS e ausência de escrita privilegiada no frontend;
+- fechar 47 RPCs `SECURITY DEFINER` atualmente executáveis por `anon` e auditar
+  por papel as 276 executáveis por `authenticated`; preservar apenas contratos
+  públicos intencionais depois de hash, expiração, rate limit e auditoria;
 - medir a latência agregada da Sara e da atualização da próxima ação;
 - consolidar alertas da Sara por cliente/público: hoje há 344 alertas de gestão
   para 132 clientes, com até 35 abertos para o mesmo cliente;
@@ -315,6 +318,12 @@ remoto pelo mesmo nome foram classificados. A maioria corresponde a aliases,
 consolidações ou efeitos já presentes; o baseline é apenas para instalação
 limpa; três casos estão ausentes/parciais e permanecem bloqueados. Nenhum será
 reaplicado automaticamente.
+
+Novo P0 comprovado pelo advisor oficial: 47 RPCs `SECURITY DEFINER` executáveis
+sem login e owned by `postgres`. O catálogo foi separado em operações
+autenticadas, service-only e três exceções públicas legadas. O draft fail-closed
+e seus testes estão prontos, mas a aplicação depende de ensaio isolado; as
+exceções por token ainda exigem hash, expiração, revogação e rate limit.
 
 ### P1
 

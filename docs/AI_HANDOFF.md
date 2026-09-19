@@ -225,6 +225,14 @@ declarar o ERP inteiro pronto sem evidência.
   já presente; o baseline é para instalação limpa; roleta igualitária e regras
   de valor/m² não estão presentes, e o pacote de alertas está somente parcial.
   Nenhum dos 27 deve ser reaplicado automaticamente;
+- advisors oficiais: 47 funções `SECURITY DEFINER` estão executáveis por
+  `anon`, 276 por `authenticated`, há 1 search_path mutável, 2 extensões em
+  `public` e proteção de senha vazada desabilitada. O P0 anônimo foi catalogado
+  em `SEGURANCA_SUPABASE_BASELINE.md`; draft explícito separa 42 operações
+  autenticadas, 2 service-only e 3 exceções públicas legadas. Estas exceções
+  usam token em texto sem expiração/rate limit comprovados e permanecem P0. O
+  contrato está fora de `supabase/migrations`; 9/9 testes direcionados e o gate
+  frontend 474/474 passaram, sem aplicar SQL;
 - metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
   última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
   movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
