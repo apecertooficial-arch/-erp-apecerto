@@ -90,6 +90,14 @@ qualidade só poderá começar quando o contrato estruturado estiver persistido;
 registros legados permanecem como histórico, sem receber nota retroativa
 inventada.
 
+O contrato local agora prepara `f2_feedback_visita_performance`: somente gestão
+consulta a série, o período é limitado, a nota usa a mesma rubrica persistida e
+o tempo de resposta é comparado ao `feedback_visita_min` configurado. A API
+trata função ausente como `indisponivel` e acesso de corretor como `restrito`.
+Enquanto a migration não existir, desktop e aplicativo mostram o baseline como
+indisponível; quando houver envelopes válidos, exibem média, volume, percentual
+no prazo e tempo médio por corretor. A tela nunca tenta pontuar texto legado.
+
 ## Evidência
 
 - teste escrito antes da correção falhou no comportamento anterior;
@@ -130,6 +138,11 @@ inventada.
   overflow ou erros de console. O teste determinístico cobre ordenação por
   risco e preserva o estado `Sem responsável`; gate frontend 539/539,
   typecheck, ESLint sem erros e build completo aprovados.
+- qualidade gerencial validada com dois estados no harness: baseline real de
+  94 legados/zero estruturados e série futura sanitizada com dois corretores.
+  Desktop 1440 × 1000 e aplicativo 390 × 844 ficaram sem overflow ou console;
+  o perfil corretor não recebeu a região de gestão. Gate frontend 541/541,
+  33/33 testes direcionados, typecheck, ESLint sem erros e build aprovados.
 
 ## Lacunas ainda abertas
 
@@ -181,6 +194,8 @@ O contrato aditivo está em `P0_VISITA_OWNER_COBRANCA_DRAFT.sql`. Ele propõe:
   vezes esse prazo;
 - resolução imediata quando o corretor registra feedback válido;
 - nota de qualidade 0–10 com mínimo 9, repetida no banco e auditada no evento;
+- série gerencial por corretor baseada somente em `FEEDBACK_VISITA_V1`, com
+  legado contabilizado separadamente e sem inferência retroativa;
 - reconciliador privado a cada dez minutos, somente in-app;
 - push/WhatsApp desligados até autorização separada.
 

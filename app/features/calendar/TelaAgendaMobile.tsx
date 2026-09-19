@@ -37,6 +37,8 @@ type NegocioAgenda = { id: number; lead_id: number };
 type CardAgenda = { id: string; origem_negocio_id: number };
 type ProdutoAgenda = { id: string; nome: string };
 type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; cards: CardAgenda[]; products: ProdutoAgenda[] };
+type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_percentual: number };
+type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
 
 /** "agosto de 2026" - minuscula, como o resto do app. */
 function mesPorExtenso(iso: string): string {
@@ -62,8 +64,9 @@ const podeEditarVisita = (c: Compromisso) => {
   return ehVisita(c) && c.meu && status !== "cancelada" && status !== "realizada";
 };
 
-export function TelaAgendaMobile({ accessToken }: {
+export function TelaAgendaMobile({ accessToken, role }: {
   accessToken: string;
+  role: "admin" | "gestor" | "corretor";
 }) {
   const [dia, setDia] = useState<string>(() => hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoAgenda>("mes");
@@ -85,6 +88,7 @@ export function TelaAgendaMobile({ accessToken }: {
   const [pendenciasResultado, setPendenciasResultado] = useState<Compromisso[]>([]);
   const [resumoResultados, setResumoResultados] = useState<{ pendentes?: number; justificadas?: number }>({});
   const [erroPendenciasResultado, setErroPendenciasResultado] = useState("");
+  const [performanceFeedback, setPerformanceFeedback] = useState<PerformanceFeedback>({});
   const [horarioRemarcado, setHorarioRemarcado] = useState("");
   const [remarcarComGerente, setRemarcarComGerente] = useState(false);
   const [horarioCriacao, setHorarioCriacao] = useState("");
@@ -102,8 +106,8 @@ export function TelaAgendaMobile({ accessToken }: {
     });
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null };
-    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "" };
+    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null; performance_feedback?: PerformanceFeedback };
+    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -112,7 +116,7 @@ export function TelaAgendaMobile({ accessToken }: {
     /* NAO zeramos a lista aqui: manter o que ja esta na tela enquanto a nova
        chega evita o pisca-e-encolhe ao trocar de aba. */
     carregar(ctrl.signal)
-      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErroPendenciasResultado(dados.erroPendencias); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErroPendenciasResultado(dados.erroPendencias); setPerformanceFeedback(dados.performance); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
@@ -236,6 +240,12 @@ export function TelaAgendaMobile({ accessToken }: {
         {gerenciandoPendencias && <section className="ape-agenda-cobranca-resumo" aria-label="Resumo gerencial das cobranças"><span><b>{resumoCobrancaGerencial.responsaveis}</b> corretores envolvidos</span><span><b>{resumoCobrancaGerencial.haDoisDiasOuMais}</b> há 2+ dias</span><span><b>{resumoCobrancaGerencial.maisAntigaDias ?? "—"}</b> dias da mais antiga</span>{resumoCobrancaGerencial.semResponsavel > 0 && <span className="risco"><b>{resumoCobrancaGerencial.semResponsavel}</b> sem responsável</span>}</section>}
         {gerenciandoPendencias && <section className="ape-agenda-cobranca-corretores" aria-label="Cobranças por corretor">{cobrancasPorCorretor.map((item) => <article key={item.chave}><strong>{item.corretor}</strong><span>{item.total} pendência{item.total === 1 ? "" : "s"}</span><small>{item.haDoisDiasOuMais} há 2+ dias · {item.maisAntigaDias == null ? "idade não confirmada" : `${item.maisAntigaDias}d mais antiga`}</small></article>)}</section>}
         <div>{pendenciasResultado.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>
+      </section>}
+      {(role === "admin" || role === "gestor") && <section className="ape-agenda-feedback-performance" aria-label="Qualidade dos feedbacks de visita">
+        <header><div><small>QUALIDADE DOS FEEDBACKS</small><h2>Série 0–10</h2></div>{performanceFeedback.status === "ok" && <strong>{performanceFeedback.estruturados_total ?? 0} avaliados</strong>}</header>
+        {performanceFeedback.status === "ok" && (performanceFeedback.estruturados_total ?? 0) > 0
+          ? <div>{(performanceFeedback.itens ?? []).map((item) => <article key={item.corretor_id ?? item.corretor}><span><b>{item.corretor}</b><small>{item.feedbacks} feedback{item.feedbacks === 1 ? "" : "s"} · {item.dentro_prazo_percentual.toFixed(0)}% no prazo</small></span><strong>{item.nota_media.toFixed(1)}<small>/10</small></strong></article>)}</div>
+          : <p><strong>Baseline ainda indisponível.</strong> {performanceFeedback.status === "ok" ? `${performanceFeedback.legados_total ?? 0} resultados legados foram preservados sem nota retroativa.` : "O contrato estruturado ainda não está ativo no banco; nenhum texto antigo será pontuado por estimativa."}</p>}
       </section>}
       {prox ? (
         <section className="ape-agenda-proximo" aria-label="Próximo compromisso">

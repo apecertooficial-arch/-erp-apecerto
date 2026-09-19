@@ -131,10 +131,16 @@ export async function GET(request: Request) {
      A RPC vigente aceita no máximo 366 dias; cobrimos todo o histórico real
      atual sem deixar uma pendência desaparecer na virada do mês. */
   const hoje = hojeOperacao();
-  const pendencias = await supabase.rpc("f2_visitas_resultado_pendente", {
-    p_inicio: somarDias(hoje, -365),
-    p_fim: hoje,
-  } as never);
+  const [pendencias, performanceFeedback] = await Promise.all([
+    supabase.rpc("f2_visitas_resultado_pendente", {
+      p_inicio: somarDias(hoje, -365),
+      p_fim: hoje,
+    } as never),
+    supabase.rpc("f2_feedback_visita_performance", {
+      p_inicio: somarDias(hoje, -89),
+      p_fim: hoje,
+    } as never),
+  ]);
   const resultadoPendencias = pendencias.error
     ? null
     : (pendencias.data ?? {}) as { itens?: unknown[]; resumo?: Record<string, unknown> };
@@ -143,6 +149,12 @@ export async function GET(request: Request) {
   result.pendencias_resultado_erro = pendencias.error
     ? "Não foi possível verificar os resultados pendentes."
     : null;
+  const performance = performanceFeedback.error
+    ? null
+    : (performanceFeedback.data ?? {}) as { ok?: boolean; erro?: string; itens?: unknown[] };
+  result.performance_feedback = performance?.ok === true
+    ? { ...performance, status: "ok", itens: Array.isArray(performance.itens) ? performance.itens : [] }
+    : { status: performance?.erro === "sem_permissao" ? "restrito" : "indisponivel", itens: [] };
   if (params.get("workspace") !== "1") {
     /* A RPC histórica entrega a agenda inteira, mas não informa o acompanhamento.
        Enriquecemos somente os IDs já autorizados por ela, sem ampliar o escopo. */

@@ -113,6 +113,17 @@ test("gestão prioriza corretores por volume e atraso sem fabricar nota", () => 
   assert.doesNotMatch(agendaWeb, /nota média fictícia/i);
 });
 
+test("qualidade por corretor falha fechada e não pontua histórico legado", () => {
+  assert.match(apiAgenda, /f2_feedback_visita_performance/);
+  assert.match(apiAgenda, /status:\s*performance\?\.erro === "sem_permissao" \? "restrito" : "indisponivel"/);
+  assert.match(agendaWeb, /Baseline ainda indisponível/);
+  assert.match(agendaWeb, /histórico legado continua preservado, sem avaliação retroativa/);
+  assert.match(agendaApp, /Baseline ainda indisponível/);
+  assert.match(agendaApp, /nenhum texto antigo será pontuado por estimativa/);
+  assert.match(agendaWeb, /estruturados_total/);
+  assert.match(agendaApp, /estruturados_total/);
+});
+
 test("gerente cobra o corretor e não responde a visita por ele", () => {
   assert.match(agendaWeb, /item\.meu\s*\?\s*<button/);
   assert.match(agendaApp, /item\.meu\s*\?\s*<button/);

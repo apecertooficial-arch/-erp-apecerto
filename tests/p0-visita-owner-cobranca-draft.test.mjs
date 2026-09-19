@@ -52,3 +52,16 @@ test("a migration futura aborta se a invariavel nao estiver presente", () => {
   assert.match(sql, /F2_VISITA_OWNER_GUARD_AUSENTE/);
   assert.match(sql, /having count\(\*\)>1/);
 });
+
+test("performance gerencial mede apenas feedback estruturado e preserva legado", () => {
+  assert.match(sql, /f2_feedback_visita_performance/);
+  assert.match(sql, /public\.f2_admin\(\) is not true/);
+  assert.match(sql, /resultado_justificativa like 'FEEDBACK_VISITA_V1 \|%'/);
+  assert.match(sql, /'historico_total',v_historico_total/);
+  assert.match(sql, /'estruturados_total',v_estruturados_total/);
+  assert.match(sql, /'legados_total',v_historico_total-v_estruturados_total/);
+  assert.match(sql, /public\.f2_feedback_visita_nota\(v\.resultado_justificativa\)/);
+  assert.match(sql, /dentro_prazo_percentual/);
+  assert.match(sql, /revoke all on function public\.f2_feedback_visita_performance\(date,date\)/);
+  assert.doesNotMatch(sql, /nota_retroativa|inferir_qualidade_legada/i);
+});

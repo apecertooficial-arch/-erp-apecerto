@@ -360,6 +360,12 @@ declarar o ERP inteiro pronto sem evidência.
   visitas realizadas e zero envelopes estruturados; por isso nenhuma nota
   histórica foi fabricada. Testes direcionados 12/12, typecheck e ESLint
   aprovados; gate frontend 539/539 e build completo também passaram.
+- contrato local `f2_feedback_visita_performance` acrescenta a futura série
+  gerencial 0–10 sem reclassificar texto legado: média, volume, prazo e tempo de
+  resposta por corretor; API falha fechada se a RPC não existir e restringe o
+  corretor. Baseline 94/0 e amostra estruturada foram validados em desktop e
+  aplicativo; gate frontend 541/541, 33/33 direcionados, typecheck, lint e build
+  passaram. A RPC segue apenas no draft, sem migration ou alteração remota.
 
 ## Riscos e limites
 

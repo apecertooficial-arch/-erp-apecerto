@@ -34,6 +34,7 @@ const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
 const tela = parametros.get("screen") ?? "desktop-crm";
 const estadoAudio = parametros.get("audio") ?? "indisponivel";
+const qualidadeExemplo = parametros.get("quality") === "sample";
 const indicesMeuDia = [0, 1, 18, 19, 36, 37, 54, 55, 72, 90];
 const deslocamentosMinutos = [-10, 15, -180, -40, 30, 75, 150, 240, 360, 1560];
 const leadsMeuDia = indicesMeuDia.map((indice, posicao) => ({
@@ -73,6 +74,13 @@ const payloadAgenda = {
   ok: true, periodo: "mes", dia: "2026-09-19", inicio: "2026-09-01", fim: "2026-09-30",
   total: 0, itens: [], pendencias_resultado: pendenciasAgenda,
   resumo_resultados: { total: 3, pendentes: 3, passadas_sem_desfecho: 1, realizadas_sem_feedback: 1, canceladas_sem_motivo: 1, justificadas: 0, futuras: 0 },
+  performance_feedback: papel === "corretor" ? { status: "restrito", itens: [] } : qualidadeExemplo ? {
+    status: "ok", historico_total: 14, estruturados_total: 14, legados_total: 0, feedback_visita_min: 120,
+    itens: [
+      { corretor_id: 7, corretor: "Corretora Alfa", feedbacks: 8, nota_media: 9.4, resposta_media_min: 74, abaixo_minimo: 0, dentro_prazo_percentual: 87.5 },
+      { corretor_id: 8, corretor: "Corretor Beta", feedbacks: 6, nota_media: 9.0, resposta_media_min: 138, abaixo_minimo: 0, dentro_prazo_percentual: 66.7 },
+    ],
+  } : { status: "ok", historico_total: 94, estruturados_total: 0, legados_total: 94, feedback_visita_min: 120, itens: [] },
   brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
   leads: [], deals: [], cards: [], products: [], visits: [], tasks: [],
   gerentes: [{ id: 1, nome: "Gerente sanitizado", geral: true, corretor_id: null }], role: papel,
@@ -227,7 +235,7 @@ document.body.append(transferenciaEvidencia);
 
 createRoot(document.getElementById("root")!).render(
   <ErpSessionCtx.Provider value={contexto}>
-    {tela === "agenda-mobile" ? <TelaAgendaMobile accessToken="harness-test-only" /> : tela === "reimagined-kanban" ? <CrmKanbanReimagined /> : tela === "reimagined-crm" ? <CrmReimaginedConcept /> : tela === "premium-crm" ? <CrmPremiumConcept /> : <ErpShell>
+    {tela === "agenda-mobile" ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} /> : tela === "reimagined-kanban" ? <CrmKanbanReimagined /> : tela === "reimagined-crm" ? <CrmReimaginedConcept /> : tela === "premium-crm" ? <CrmPremiumConcept /> : <ErpShell>
         {tela === "mobile-day"
           ? <InicioApp accessToken="harness-test-only" nome={perfil.name ?? "Corretor teste"} onIr={() => undefined} />
           : tela === "agenda-manager" ? <CalendarWorkspace accessToken="harness-test-only" />
