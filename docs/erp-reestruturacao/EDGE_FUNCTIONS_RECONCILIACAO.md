@@ -101,10 +101,33 @@ remota foi alterada.
 
 ## Demais funções somente remotas
 
-As 23 funções restantes foram classificadas provisoriamente por nome e consumidor:
-site, tracking/Meta, DataCrazy legado, diagnóstico, limpeza/smoke e operação do
-ERP. Nome ou ausência de referência direta no frontend não prova obsolescência;
-jobs, webhooks e provedores podem chamá-las externamente.
+As 23 funções restantes foram inspecionadas por fonte remota, referências no
+repositório, chamadores no banco/cron e metadados agregados, sem PII:
+
+| Grupo | Slugs | Evidência | Classificação |
+| --- | --- | --- | --- |
+| tombstones 410 | `codex-media-upload-once`, `crm-mover`, `dapi-diag`, `dapi-explorar`, `datacrazy-sync`, `dc-dryrun`, `dc-probe`, `dc-scan`, `produtos-smoke-storage-cleanup`, `render-proxy` | a fonte implantada contém somente resposta `410 funcao_desativada`; os quatro crons DataCrazy estão inativos | legado preservado; não copiar para o núcleo nem remover sem logs/rollback |
+| unificada | `ia-notas-atendimento` | stub informa que a avaliação foi absorvida por `ia-avaliar-lote` | legado de compatibilidade |
+| produto Site | `sara-site`, `site-financing-lead`, `site-media`, `site-seo`, `site-track`, `site-lead` | cinco fontes pertencem ao remoto `apecerto-site`; quatro são idênticas ao implantado e `site-track` remoto acrescenta `consent_prompt`/`prompt_source`; `site-lead` existe somente no runtime | produto separado; manter ownership no Site e contrato de integração com o ERP |
+| captação Instagram | `corretores-publicos`, `lead-instagram` | comentários e contrato apontam para o projeto externo `apecerto-instagram`; não há repositório local; tabelas `integracao.ig_*` estão vazias | dependência externa/dormente a confirmar, não absorver por conveniência |
+| entrada genérica | `captura-lead` | encaminha para `webhook_captura_lead` e `motor_fila`; não há chamador no código/cron e ela sobrepõe parte da responsabilidade de `site-lead`/`entrada` | duplicada/conflitante até prova do provedor externo |
+| conversa D-API antiga | `dapi-chat-history` | nenhum chamador no código/banco e `dapi_chat_cache` possui zero linhas | candidato a legado; pode existir cliente externo antigo |
+| DataCrazy | `dc-movimentacao-webhook` | crons do conector estão inativos e a tabela de movimentações possui zero linhas | legado ainda implantado; endpoint público com dívida de segurança |
+| Meta audience | `meta-audience-sync` | a Edge ativa chama três RPCs ausentes: `meta_audience_sync_prepare`, `claim` e `finish` | quebrada/bloqueada; não pode ser anunciada como funcional |
+
+O banco confirma atividade histórica do Site: `site_leads` possui 18 linhas e a
+última gravação agregada observada foi em 2026-09-08; os recibos de financiamento
+possuem três linhas na mesma data. Em contraste, cache D-API, movimentações
+DataCrazy e tabelas Instagram observadas possuem zero linhas. Ausência de linha
+não prova ausência de um chamador externo, portanto não autoriza exclusão.
+
+No repositório canônico do Site
+`apecertooficial-arch/apecerto-site` (cópia
+`/Users/samuelnoviski/Documents/ChatGPT/apecerto-Site/repo`), `sara-site`,
+`site-financing-lead`, `site-media` e `site-seo` são exatamente iguais aos
+pacotes implantados. `site-track` está duas entradas de contrato atrás da versão
+remota. `site-lead` precisa ser restaurada no repositório do Site, não copiada
+para o núcleo do ERP.
 
 Nenhuma função será removida até existir, para cada slug, prova de ownership,
 chamadores, logs, segredos necessários, substituição, teste e rollback.

@@ -208,6 +208,17 @@ declarar o ERP inteiro pronto sem evidência.
   copiado; validação autenticada permanece pendente de ambiente adequado;
 - ESLint de rota, modelo, workspace e fixture alterados: passou;
 - metadados remotos: dispatcher `worker`, heartbeat 4 s, lag 0, nenhuma fila vencida/falha.
+- as 23 funções somente remotas foram classificadas: dez tombstones 410, uma
+  unificada, seis do produto Site e seis integrações/legados a decidir. Quatro
+  fontes do Site são idênticas ao remoto; `site-track` remoto está dois campos
+  à frente e `site-lead` não está versionada no repositório do Site;
+- `meta-audience-sync` está implantada e ativa, mas as RPCs `prepare`, `claim` e
+  `finish` que ela chama não existem no banco. O fluxo foi classificado como
+  quebrado, sem tentativa de reativação;
+- metadados agregados: `site_leads` 18 linhas e recibos de financiamento 3, com
+  última atividade em 2026-09-08; cache D-API antigo, tabelas Instagram e
+  movimentações DataCrazy estão vazios. Isso orienta prioridade, mas não prova
+  ausência de chamadores externos.
 
 ## Riscos e limites
 
@@ -225,9 +236,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Classificar as 23 funções ainda somente remotas por owner, chamadores e efeito,
-priorizando as que possuem consumidor vivo no ERP. Depois, reconciliar migrations
-aplicadas versus arquivos locais e seguir no P0 de alertas/cobrança sem aplicar
-SQL em produção. Para publicar, ainda é necessária a confirmação explícita para
-enviar a branch `codex/erp-crm-visual-concept` ao remoto GitHub; merge, deploy de
-código e migration continuam etapas distintas e verificáveis.
+Reconciliar migrations aplicadas versus arquivos locais e fechar a decisão
+técnica de `meta-audience-sync` sem inventar RPCs: localizar o produto dono,
+contrato e chamador antes de restaurar ou tombstonar. Em seguida, continuar no
+P0 de alertas/cobrança sem aplicar SQL em produção. Para publicar, ainda é
+necessária a confirmação explícita para enviar a branch
+`codex/erp-crm-visual-concept` ao remoto GitHub; merge, deploy de código e
+migration continuam etapas distintas e verificáveis.

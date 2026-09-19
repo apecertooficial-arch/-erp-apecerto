@@ -285,6 +285,8 @@ autoridade.
 ### P0
 
 - reconciliar a deriva entre commit publicado, migrations remotas e 53 Edge Functions;
+- decidir o destino de `meta-audience-sync`: a função remota está ativa, mas as
+  três RPCs exigidas não existem, portanto o fluxo está comprovadamente quebrado;
 - provar e manter `f2_*` + `motor_fila` como autoridade de lead, etapa, momento e próxima ação;
 - provar autenticação, RLS e ausência de escrita privilegiada no frontend;
 - medir a latência agregada da Sara e da atualização da próxima ação;
