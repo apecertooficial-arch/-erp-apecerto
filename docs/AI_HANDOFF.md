@@ -325,6 +325,14 @@ declarar o ERP inteiro pronto sem evidência.
   2+ dias, idade máxima e ausência de dono. Um novo contrato elevou o gate a
   521/521; desktop e aplicativo foram validados com fixtures sanitizadas, sem
   permitir ao gerente responder pelo corretor;
+- reentrada de lead: o motor atual foi confrontado e dois P0 foram provados —
+  telefone preenchido ignorava e-mail, e a proteção da roleta não consultava
+  `f2_visita`/`f2_negociacao`. O draft fail-closed e o editor atualizado estão
+  prontos localmente: conflitos de identidade param sem PII, nome não une
+  homônimos, negociação/visita preservam dono e o fluxo continua para a
+  abordagem. 52/52 contratos combinados e o gate 527/527 passaram, junto com
+  typecheck, ESLint, build e navegador sintético sem rede externa; SQL segue
+  não aplicado;
 - snapshot sanitizado atual: 675 cards ativos não legados, 375 ações vencidas,
   527 com temperatura, 343 com nota + resumo de qualidade e 561 reavaliados
   pela Sara. Dispatcher em `worker`, heartbeat 6 s, lag 0, último sucesso 79 s,

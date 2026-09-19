@@ -316,6 +316,15 @@ corretor dono; o contrato aditivo de banco para repetir essa invariável e criar
 cobrança pós-visita persistente está preparado fora de `supabase/migrations`,
 com push/WhatsApp desligados. Aplicação e validação isolada continuam pendentes.
 
+Também reproduzido e corrigido localmente na fatia de entrada: a identidade
+ignorava o e-mail sempre que havia telefone, e a roleta não consultava a Agenda
+nem a Esteira canônicas para preservar o dono. O draft agora confronta telefone
+e e-mail, falha fechado em conflito/divergência, nunca mescla apenas por nome,
+e protege visita ou negociação sem impedir o próximo bloco de abordagem. São
+52/52 contratos combinados e gate frontend 527/527 aprovados, com typecheck,
+ESLint, build e editor sintético validados; ensaio Postgres, migration e
+produção continuam pendentes.
+
 Também concluído em modo somente leitura: os 27 arquivos locais sem registro
 remoto pelo mesmo nome foram classificados. A maioria corresponde a aliases,
 consolidações ou efeitos já presentes; o baseline é apenas para instalação
