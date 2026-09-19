@@ -17,7 +17,7 @@ declarar o ERP inteiro pronto sem evidência.
   usuário autorizou publicação de código validado. Os commits locais mais
   recentes ainda não foram enviados por falha do helper Git; merge e deploy
   não foram executados
-- HEAD local funcional validado: `9ef77038`
+- HEAD local funcional validado: `714dbfd5`
 - HEAD remoto da branch: `f900d7f8`
 
 ## Concluído
@@ -318,7 +318,7 @@ declarar o ERP inteiro pronto sem evidência.
 - o helper Git configurado aponta para um `gh` removido. O chaveiro não
   forneceu credencial utilizável nesta sessão e a integração GitHub confirmou
   leitura, mas recusou escrita com `403 Resource not accessible by integration`.
-  Não alterar/rotacionar credenciais sem autoridade; os dois commits locais
+  Não alterar/rotacionar credenciais sem autoridade; os seis commits locais
   permanecem recuperáveis e testados;
 - migrations reais continuam exigindo confirmação específica; preparar plano
   aditivo, reversível e com rollback quando forem necessárias;
@@ -329,9 +329,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Registrar e commitar a fatia local de feedback estruturado; depois preparar o
-ensaio isolado dos contratos de confirmação, visita e alertas. A fatia
-`ação → Sara → próxima ação → Meu Dia` está no commit local `9ef77038`, sem o
+Preparar o ensaio isolado dos contratos de confirmação, visita e alertas. A
+fatia `ação → Sara → próxima ação → Meu Dia` está no commit `9ef77038` e o
+feedback estruturado de visita está no commit `714dbfd5`; nenhum deles inclui o
 symlink `node_modules`. Para publicar os commits locais, reparar somente o
 acesso de escrita do GitHub (novo login do `gh` ou helper válido), sem
 criar/rotacionar credenciais automaticamente. Não usar `main` do Supabase como
