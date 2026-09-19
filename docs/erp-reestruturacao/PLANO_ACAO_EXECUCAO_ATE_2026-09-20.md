@@ -25,6 +25,26 @@ P0/P1 que atravesse todos os gates e publicar somente fatias comprovadas. Não �
 uma promessa de reescrever e certificar todos os módulos em menos de dois dias;
 qualquer área sem evidência permanece explicitamente no roadmap.
 
+## Compromisso real de entrega
+
+O trabalho não é executado em lotes de duas horas. Ele permanece contínuo e
+cada fatia avança assim que atravessa os gates. O compromisso deste ciclo é:
+
+- manter todo o escopo funcional descrito neste plano, sem esquecer decisões
+  da conversa;
+- corrigir e publicar somente o que estiver comprovado por código, banco,
+  autorização, testes, build e navegador real;
+- informar objetivamente o que ficou pronto, parcial, bloqueado ou ainda não
+  iniciado;
+- nunca trocar abrangência aparente por uma publicação insegura;
+- continuar pelas fatias seguintes sem aguardar um horário artificial.
+
+Isso não equivale a garantir a reconstrução e certificação integral de CRM,
+Sara, visitas, aplicativo, produtos, captação, vendas, financeiro, banco,
+automações, observabilidade e provisionamento em menos de dois dias. A garantia
+possível é de método, rastreabilidade e evidência para cada item declarado
+pronto. O restante continua no backlog vivo até atravessar os mesmos gates.
+
 O contrato funcional completo das decisões do usuário está em
 `docs/erp-reestruturacao/REQUISITOS_CANONICOS_OPERACAO.md`. Nenhuma fatia pode
 ser considerada concluída se contradizer esse contrato.
@@ -317,7 +337,10 @@ com push/WhatsApp desligados. Aplicação e validação isolada continuam penden
 
 ## Fronteiras de autorização que afetam a sequência
 
-- código: autorizado para publicação depois dos gates e confirmação do build;
+- código: preparação, testes e commits locais estão autorizados; o envio da
+  branch `codex/erp-crm-visual-concept` ao remoto e o deploy do payload completo
+  ainda aguardam confirmação explícita, porque a branch contém o ERP e
+  documentação interna. Push, merge e deploy são etapas separadas;
 - banco: inventário, desenho e testes locais estão autorizados; migration real
   no Supabase exige confirmação específica antes de aplicar;
 - legado: pode ser classificado e isolado localmente; remoção destrutiva em
@@ -338,3 +361,7 @@ com push/WhatsApp desligados. Aplicação e validação isolada continuam penden
 - build publicado confirmado e produção validada em desktop e PWA/aplicativo;
 - riscos, lacunas e próximos passos explícitos;
 - nenhuma declaração de “ERP pronto” ou “vendável” sem cumprir os critérios.
+
+O gate final não converte automaticamente todo o roadmap em entregue. Cada
+módulo terá sua própria classificação na matriz, e apenas itens com evidência
+positiva serão marcados como concluídos.

@@ -16,7 +16,7 @@ declarar o ERP inteiro pronto sem evidência.
 - ambiente: local isolado; usuário solicitou publicação de código validado,
   mas o push desta branch/payload ainda aguarda confirmação explícita após o
   gate de segurança da credencial
-- HEAD local validado antes deste draft: `c7b4040c`
+- HEAD local validado: `c944846a`
 
 ## Concluído
 
@@ -89,6 +89,10 @@ declarar o ERP inteiro pronto sem evidência.
   banco/Edge: 53 funções remotas e migrations aplicadas até 2026-09-18;
 - inventário e matriz foram iniciados; ainda precisam de reconciliação remota,
   leitura/escrita por rota e evidência comportamental.
+- a execução é contínua; a automação antiga de duas horas permanece pausada e
+  não governa nem limita o trabalho;
+- a branch está nove commits à frente de `origin/main`; push e deploy continuam
+  pendentes da confirmação explícita do payload e destino.
 
 ## Arquivos alterados/relevantes
 
