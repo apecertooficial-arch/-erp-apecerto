@@ -465,7 +465,6 @@ export async function POST(request: Request) {
         message: direct
           ? "Atendimento transferido e registrado no histórico."
           : "Transferência oferecida. O novo corretor precisa aceitar para assumir o atendimento.",
-        result: data,
       });
   }
   if (action === "proposal") {

@@ -41,14 +41,13 @@ podia induzir repetição sobre um efeito já aplicado.
 
 ## Evidência
 
-- 6/6 contratos específicos do Chat ao Vivo;
-- 34/34 no recorte Chat + ownership + idempotência WhatsApp;
-- 662/662 no gate frontend completo;
-- 426/426 ao reproduzir a fatia isolada diretamente sobre a base publicada;
+- 7/7 contratos específicos do Chat ao Vivo;
+- 110/110 no recorte Chat + autorização + idempotência WhatsApp;
+- 493/493 no gate frontend completo;
 - typecheck, lint focado e build completo aprovados;
-- navegador real sanitizado em 1280 px e 390 px: erro explícito, ação de tentar
-  novamente, zero falso “0 conversas”, zero mutações, zero console e nenhum
-  overflow horizontal.
+- navegador real sanitizado em 1280 px e 390 px: conversa normal, erro inicial e
+  erro de agendamentos explícitos, ação de tentar novamente com alvo mínimo de
+  44 px, zero falso “0 conversas”, zero mutações e nenhum overflow horizontal.
 
 Nenhum envio real, mutation remota, migration, push ou deploy foi executado.
 

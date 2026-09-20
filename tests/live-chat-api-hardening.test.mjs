@@ -4,6 +4,8 @@ import test from "node:test";
 
 const route = readFileSync(new URL("../app/api/live-chat/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/chat/LiveChatWorkspace.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const harness = readFileSync(new URL("./live-chat-visual-harness/main.tsx", import.meta.url), "utf8");
 
 test("Chat ao Vivo sanitiza falhas técnicas sem registrar payload ou PII", () => {
   assert.match(route, /function falhaLiveChat\(/);
@@ -11,6 +13,7 @@ test("Chat ao Vivo sanitiza falhas técnicas sem registrar payload ou PII", () =
   assert.doesNotMatch(route, /Response\.json\(\{ error: (?:[A-Za-z]+Error|error|uploadError|approachError|dealError|brokersError|readError)\??\.message/);
   assert.doesNotMatch(route, /console\.(?:error|warn|log)\([^\n]*(?:phone|telefone|content|conteudo|payload|body)/i);
   assert.doesNotMatch(route, /success: true, (?:url: publicUrl\.publicUrl, )?[^}]*result: data/);
+  assert.doesNotMatch(route, /result: data/);
 });
 
 test("leituras obrigatórias falham fechadas e a conversa não devolve raw", () => {
@@ -59,4 +62,19 @@ test("interface não converte falha de agendamento em lista vazia ou cancelament
   assert.match(ui, /chatStatus === "error"/);
   assert.match(ui, /Não foi possível carregar o Chat ao Vivo/);
   assert.match(ui, /Tentar novamente/);
+  assert.match(css, /\.live-chat \.crm-empty-view button \{[^}]*min-height:44px/);
+  assert.match(css, /\.chat-sched-error button\{[^}]*min-height:44px/);
+  assert.match(css, /\.chat-sched-msg \.chat-sched-cancelbtn\{[^}]*min-height:44px/);
+  assert.match(css, /@media\(max-width:820px\)\{[\s\S]*?\.live-chat > header\{[^}]*flex-direction:column/);
+  assert.match(css, /\.live-chat > header label\{[^}]*width:100%/);
+  assert.equal((ui.match(/activeConversation\.current = selectedId/g) ?? []).length, 1, "a troca de conversa deve disparar uma única carga");
+});
+
+test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
+  assert.match(harness, /LiveChatWorkspace/);
+  assert.match(harness, /liveChatHarness = "sanitizado"/);
+  assert.match(harness, /action === "listScheduled"/);
+  assert.match(harness, /Harness visual: mutação bloqueada/);
+  assert.match(harness, /url\.origin !== window\.location\.origin/);
+  assert.doesNotMatch(harness, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
 });
