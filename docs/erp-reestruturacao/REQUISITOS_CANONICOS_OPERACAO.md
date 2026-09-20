@@ -62,7 +62,8 @@ Regras:
 - qualidade do feedback recebe avaliação; meta operacional mínima configurável;
 - todo cliente visitado precisa de definição explícita e próxima ação;
 - cliente sem decisão permanece em carteira de acompanhamento;
-- perda/cancelamento usa motivo estruturado e pode exigir aprovação do gerente;
+- perda/cancelamento usa motivo estruturado; em visita, proposta ou negociação,
+  o corretor solicita o encerramento e o gerente aprova ou devolve para ajuste;
 - motivos incluem falta de fit, financiamento negado, busca exploratória,
   produto inadequado, preço e expectativa incompatível com recursos;
 - gerente cobra o corretor; não assume o atendimento do cliente;
