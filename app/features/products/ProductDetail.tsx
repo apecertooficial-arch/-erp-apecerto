@@ -559,7 +559,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="field-grid">
               {(["nome", "incorporadora", "area_util", "dormitorios", "suites", "vagas", "banheiros"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["area_util","dormitorios","suites","vagas","banheiros"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
             </div>
-            <MoneyInput key={`principal-${draft.finalidade}`} defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={draft.finalidade === "aluguel" ? "Aluguel mensal" : "Preço do imóvel"} value={draft.preco} onChange={(value) => setDraft({ ...draft, preco: value })} />
+            <MoneyInput key={`principal-${draft.finalidade}`} purpose={typeof draft.finalidade === "string" ? draft.finalidade : null} defaultMode={draft.finalidade === "aluguel" ? "reais" : "milhares"} label={draft.finalidade === "aluguel" ? "Aluguel mensal" : "Preço do imóvel"} value={draft.preco} onChange={(value) => setDraft({ ...draft, preco: value })} />
             <h3>Endereço e custos</h3><div className="field-grid">
               {(["endereco", "numero", "complemento", "bairro", "cidade", "uf", "cep", "condominio_valor", "iptu", "outros_custos"] as const).map((field) => <label key={field}>{field.replaceAll("_", " ")}<input type={["condominio_valor","iptu","outros_custos"].includes(field) ? "number" : "text"} value={draft[field] ?? ""} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
             </div>

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   assessProductQuality,
+  interpretMoneyInput,
   productPricePerSquareMeterBounds,
   validateProductPricePerSquareMeter,
 } from "../app/features/products/quality.ts";
@@ -29,6 +30,10 @@ test("preço em milhares tem confirmação visual e validação também no servi
   assert.match(quality, /productPriceBounds/);
   assert.match(quality, /raw\.replace\(\/\\\.\/g, ""\)/);
   assert.match(capture, /validateProductPrice/);
+  assert.deepEqual(interpretMoneyInput("710", "milhares", "venda"), { value: 710_000, mode: "milhares", inferredFullValue: false });
+  assert.deepEqual(interpretMoneyInput("710000", "milhares", "venda"), { value: 710_000, mode: "reais", inferredFullValue: true });
+  assert.deepEqual(interpretMoneyInput("R$ 1.250.000", "milhares", "venda"), { value: 1_250_000, mode: "reais", inferredFullValue: true });
+  assert.deepEqual(interpretMoneyInput("3,5", "milhares", "aluguel"), { value: 3_500, mode: "milhares", inferredFullValue: false });
 });
 
 test("preço por m² incompatível bloqueia um imóvel mesmo com nota alta", () => {
