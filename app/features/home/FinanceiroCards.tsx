@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { VBars, HBars, Sparkline, CompositionBar } from "./charts";
 import { ModalPortal } from "./ModalPortal";
+import { DashboardSectionError, fetchDashboardSection, isRecord } from "./dashboard-client";
 
 type Financeiro = {
   month_vgv: number; month_count: number; month_comissao: number;
@@ -21,17 +22,25 @@ function monthLabel(m: string) { const mm = Number(m.split("-")[1]); return ["ja
 
 type CardSpec = { key: string; icon: string; tone: string; feat?: boolean; label: string; value: string; foot: string; micro: ReactNode; title: string; subtitle: string; legend: string; chart: ReactNode };
 
+const isFinanceiro = (value: unknown): value is Financeiro => isRecord(value)
+  && ["month_vgv", "month_count", "month_comissao", "total_vgv", "total_count", "total_comissao", "negociacao_vgv", "negociacao_count", "meta_mes"]
+    .every((key) => typeof value[key] === "number" && Number.isFinite(value[key]))
+  && Array.isArray(value.by_month)
+  && Array.isArray(value.ranking);
+
 export function FinanceiroCards({ accessToken, onNavigate }: { accessToken: string; onNavigate?: (module: string) => void }) {
   const [data, setData] = useState<Financeiro | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [active, setActive] = useState<CardSpec | null>(null);
 
   useEffect(() => {
-    void fetch("/api/dashboard?section=financeiro", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-      .then((j: { financeiro: Financeiro }) => setData(j.financeiro))
-      .catch(() => setFailed(true));
-  }, [accessToken]);
+    const controller = new AbortController();
+    void fetchDashboardSection(accessToken, "financeiro", "financeiro", isFinanceiro, controller.signal)
+      .then((financeiro) => { if (!controller.signal.aborted) { setFailed(false); setData(financeiro); } })
+      .catch(() => { if (!controller.signal.aborted) { setData(null); setFailed(true); } });
+    return () => controller.abort();
+  }, [accessToken, retry]);
 
   const cards = useMemo<CardSpec[]>(() => {
     if (!data) return [];
@@ -63,7 +72,7 @@ export function FinanceiroCards({ accessToken, onNavigate }: { accessToken: stri
     ];
   }, [data]);
 
-  if (failed) return null;
+  if (failed) return <DashboardSectionError titulo="Financeiro do mês" onRetry={() => { setFailed(false); setRetry((v) => v + 1); }} />;
 
   return <>
     <div className="hv2-sec"><span className="hv2-sec-bar" /><h2>Financeiro do mês</h2><small>Toque em um card para ver o gráfico</small></div>

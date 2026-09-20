@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { VBars, HBars, Sparkline, CompositionBar } from "./charts";
 import { ModalPortal } from "./ModalPortal";
+import { DashboardSectionError, fetchDashboardSection, isRecord } from "./dashboard-client";
 
 type Rodagem = {
   leads_today: number; leads_week: number; leads_total: number; open_deals: number; parados_7d: number;
@@ -32,17 +33,30 @@ function prettyOrigem(k: string) {
 
 type CardSpec = { key: string; icon: string; tone: string; danger?: boolean; label: string; value: string; foot: string; micro: ReactNode; title: string; subtitle: string; legend: string; chart: ReactNode };
 
+const isRodagem = (value: unknown): value is Rodagem => isRecord(value)
+  && ["leads_today", "leads_week", "leads_total", "open_deals", "parados_7d", "tempo_resp_min", "aguardando_total"]
+    .every((key) => typeof value[key] === "number" && Number.isFinite(value[key]))
+  && isRecord(value.parados_faixa)
+  && isRecord(value.atend_hoje)
+  && Array.isArray(value.leads_per_day)
+  && Array.isArray(value.leads_by_origem)
+  && Array.isArray(value.open_by_corretor)
+  && Array.isArray(value.atend_por_dia)
+  && Array.isArray(value.aguardando_por_corretor);
+
 export function RodagemCards({ accessToken, onNavigate }: { accessToken: string; onNavigate?: (module: string) => void }) {
   const [data, setData] = useState<Rodagem | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [active, setActive] = useState<CardSpec | null>(null);
 
   useEffect(() => {
-    void fetch("/api/dashboard", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-      .then((j: { rodagem: Rodagem }) => setData(j.rodagem))
-      .catch(() => setFailed(true));
-  }, [accessToken]);
+    const controller = new AbortController();
+    void fetchDashboardSection(accessToken, "rodagem", "rodagem", isRodagem, controller.signal)
+      .then((rodagem) => { if (!controller.signal.aborted) { setFailed(false); setData(rodagem); } })
+      .catch(() => { if (!controller.signal.aborted) { setData(null); setFailed(true); } });
+    return () => controller.abort();
+  }, [accessToken, retry]);
 
   const cards = useMemo<CardSpec[]>(() => {
     if (!data) return [];
@@ -89,7 +103,7 @@ export function RodagemCards({ accessToken, onNavigate }: { accessToken: string;
     ];
   }, [data]);
 
-  if (failed) return null;
+  if (failed) return <DashboardSectionError titulo="Rodagem do atendimento" onRetry={() => { setFailed(false); setRetry((v) => v + 1); }} />;
 
   return <>
     <div className="hv2-sec"><span className="hv2-sec-bar" /><h2>Rodagem do atendimento</h2><small>Toque em um card para ver o gráfico</small></div>

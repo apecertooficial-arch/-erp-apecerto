@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { VBars, HBars, Sparkline, CompositionBar } from "./charts";
 import { ModalPortal } from "./ModalPortal";
+import { DashboardSectionError, fetchDashboardSection, isRecord } from "./dashboard-client";
 
 type Funil = {
   open_deals: number;
@@ -21,17 +22,26 @@ function faseLabel(k: string) { return k.replace(/^\d+\s·\s/, ""); }
 
 type CardSpec = { key: string; icon: string; tone: string; danger?: boolean; label: string; value: string; foot: string; micro: ReactNode; title: string; subtitle: string; legend: string; chart: ReactNode };
 
+const isFunil = (value: unknown): value is Funil => isRecord(value)
+  && typeof value.open_deals === "number"
+  && typeof value.em_risco_total === "number"
+  && Array.isArray(value.macro_fases)
+  && Array.isArray(value.em_risco_por_corretor)
+  && Array.isArray(value.conv_por_mes);
+
 export function FunilCards({ accessToken, onNavigate }: { accessToken: string; onNavigate?: (module: string) => void }) {
   const [data, setData] = useState<Funil | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [active, setActive] = useState<CardSpec | null>(null);
 
   useEffect(() => {
-    void fetch("/api/dashboard?section=funil", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-      .then((j: { funil: Funil }) => setData(j.funil))
-      .catch(() => setFailed(true));
-  }, [accessToken]);
+    const controller = new AbortController();
+    void fetchDashboardSection(accessToken, "funil", "funil", isFunil, controller.signal)
+      .then((funil) => { if (!controller.signal.aborted) { setFailed(false); setData(funil); } })
+      .catch(() => { if (!controller.signal.aborted) { setData(null); setFailed(true); } });
+    return () => controller.abort();
+  }, [accessToken, retry]);
 
   const cards = useMemo<CardSpec[]>(() => {
     if (!data) return [];
@@ -58,7 +68,7 @@ export function FunilCards({ accessToken, onNavigate }: { accessToken: string; o
     ];
   }, [data]);
 
-  if (failed) return null;
+  if (failed) return <DashboardSectionError titulo="Funil e conversão" onRetry={() => { setFailed(false); setRetry((v) => v + 1); }} />;
 
   return <>
     <div className="hv2-sec"><span className="hv2-sec-bar purple" /><h2>Funil e conversão</h2><small>Toque em um card para ver o gráfico</small></div>

@@ -7,12 +7,19 @@ import { FinanceiroCards } from "./FinanceiroCards";
 import { NaMesaCards } from "./NaMesaCards";
 import { InicioApp } from "./InicioApp";
 import { useEhCelular } from "../system/useFormato";
+import { isRecord } from "./dashboard-client";
 
 type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; data_conclusao?: string | null; status?: string | null };
 type Cash = { tipo: string; valor: number };
 type Goal = { nome?: string | null; meta_vgv?: number | null };
 type FinanceData = { sales: Sale[]; cash: Cash[]; goals: Goal[]; receipts: Array<{ status?: string | null }> };
 type DashboardData = { finance: FinanceData };
+
+const isFinanceData = (value: unknown): value is FinanceData => isRecord(value)
+  && Array.isArray(value.sales)
+  && Array.isArray(value.cash)
+  && Array.isArray(value.goals)
+  && Array.isArray(value.receipts);
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -26,17 +33,26 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [metaMesGlobal, setMetaMesGlobal] = useState<number | null>(null);
+  const [metaFalhou, setMetaFalhou] = useState(false);
   const ehCelular = useEhCelular();
   const ehDesktop = ehCelular === false;
 
   useEffect(() => {
+    const controller = new AbortController();
     const now = new Date();
-    void fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((response) => response.ok ? response.json() : { metas: [] })
-      .then((json: { metas?: Array<{ corretor_id: number | null; periodo_tipo: string; ano: number; periodo: number; meta_vgv: number }> }) => {
-        const found = (json.metas ?? []).find((m) => m.corretor_id === null && m.periodo_tipo === "mensal" && m.ano === now.getFullYear() && m.periodo === now.getMonth() + 1);
-        setMetaMesGlobal(found ? Number(found.meta_vgv) : null);
-      }).catch(() => setMetaMesGlobal(null));
+    void fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const json = await response.json().catch(() => null) as unknown;
+        if (!response.ok || !isRecord(json) || !Array.isArray(json.metas)) throw new Error("metas_indisponiveis");
+        return json.metas as Array<{ corretor_id: number | null; periodo_tipo: string; ano: number; periodo: number; meta_vgv: number }>;
+      })
+      .then((metas) => {
+        if (controller.signal.aborted) return;
+        const found = metas.find((m) => m.corretor_id === null && m.periodo_tipo === "mensal" && m.ano === now.getFullYear() && m.periodo === now.getMonth() + 1);
+        setMetaMesGlobal(found && Number.isFinite(Number(found.meta_vgv)) ? Number(found.meta_vgv) : null);
+        setMetaFalhou(false);
+      }).catch(() => { if (!controller.signal.aborted) { setMetaMesGlobal(null); setMetaFalhou(true); } });
+    return () => controller.abort();
   }, [accessToken]);
 
   useEffect(() => {
@@ -44,13 +60,17 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
        usa diretamente o Funil 2.0; esconder o painel por CSS ainda faria o
        aparelho baixar dados que não mostra. */
     if (!ehDesktop) return;
+    const controller = new AbortController();
     const headers = { Authorization: `Bearer ${accessToken}` };
-    void fetch("/api/finance", { headers }).then(async (response) => {
+    void fetch("/api/finance", { headers, cache: "no-store", signal: controller.signal }).then(async (response) => {
       if (!response.ok) throw new Error("Não foi possível carregar os indicadores financeiros.");
-      const finance = await response.json();
+      const finance = await response.json().catch(() => null) as unknown;
+      if (!isFinanceData(finance)) throw new Error("Não foi possível confirmar os indicadores financeiros.");
+      if (controller.signal.aborted) return;
       setError(null);
-      setData({ finance } as DashboardData);
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar o início."));
+      setData({ finance });
+    }).catch(() => { if (!controller.signal.aborted) { setData(null); setError("Não foi possível confirmar os indicadores do início."); } });
+    return () => controller.abort();
   }, [accessToken, ehDesktop]);
 
   const metrics = useMemo(() => {
@@ -110,7 +130,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
       </div>
       <div className="hv2-top-r">
         <div className="hv2-date">{dateStr} · {daysLeft} {daysLeft === 1 ? "dia" : "dias"} pra fechar o mês</div>
-        <span className="hv2-badge"><i />Dados reais · sessão protegida</span>
+        <span className={`hv2-badge${metaFalhou ? " parcial" : ""}`}><i />{metaFalhou ? "Dados parciais · meta não confirmada" : "Dados reais · sessão protegida"}</span>
       </div>
     </div>
 

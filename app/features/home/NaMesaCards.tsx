@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { HBars, CompositionBar } from "./charts";
 import { ModalPortal } from "./ModalPortal";
+import { DashboardSectionError, fetchDashboardSection, isRecord } from "./dashboard-client";
 
 type NaMesa = {
   total_count: number; total_vgv: number; aguardando_pgto: number;
@@ -26,17 +27,23 @@ const ETAPA: Record<string, { nome: string; ordem: number }> = {
 
 type CardSpec = { key: string; icon: string; tone: string; label: string; value: string; foot: string; micro: ReactNode; title: string; subtitle: string; legend: string; chart: ReactNode };
 
+const isNaMesa = (value: unknown): value is NaMesa => isRecord(value)
+  && ["total_count", "total_vgv", "aguardando_pgto"].every((key) => typeof value[key] === "number" && Number.isFinite(value[key]))
+  && Array.isArray(value.por_etapa);
+
 export function NaMesaCards({ accessToken, onNavigate }: { accessToken: string; onNavigate?: (module: string) => void }) {
   const [data, setData] = useState<NaMesa | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [active, setActive] = useState<CardSpec | null>(null);
 
   useEffect(() => {
-    void fetch("/api/dashboard?section=namesa", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
-      .then((j: { naMesa: NaMesa }) => setData(j.naMesa))
-      .catch(() => setFailed(true));
-  }, [accessToken]);
+    const controller = new AbortController();
+    void fetchDashboardSection(accessToken, "namesa", "naMesa", isNaMesa, controller.signal)
+      .then((naMesa) => { if (!controller.signal.aborted) { setFailed(false); setData(naMesa); } })
+      .catch(() => { if (!controller.signal.aborted) { setData(null); setFailed(true); } });
+    return () => controller.abort();
+  }, [accessToken, retry]);
 
   const cards = useMemo<CardSpec[]>(() => {
     if (!data) return [];
@@ -64,7 +71,7 @@ export function NaMesaCards({ accessToken, onNavigate }: { accessToken: string; 
     ];
   }, [data]);
 
-  if (failed) return null;
+  if (failed) return <DashboardSectionError titulo="Na mesa" onRetry={() => { setFailed(false); setRetry((v) => v + 1); }} />;
 
   return <>
     <div className="hv2-sec"><span className="hv2-sec-bar" /><h2>Na mesa</h2><small>Negócios rodando na esteira de vendas</small></div>
