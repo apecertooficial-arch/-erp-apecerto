@@ -126,16 +126,22 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
     finally { setGenBusy(false); }
   }
 
-  async function load() {
-    setLoading(true); setError("");
-    const response = await fetch("/api/campaigns", { headers: { Authorization: `Bearer ${accessToken}` } });
-    const body = await response.json() as CampaignData & { error?: string };
-    if (!response.ok) setError(body.error ?? "Não foi possível carregar os disparos."); else {
+  async function load(background = false) {
+    if (!background) { setLoading(true); setError(""); }
+    try {
+      const response = await fetch("/api/campaigns", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const body = await response.json() as CampaignData & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar os disparos.");
       setData(body);
       const withInstances = (body.brokers ?? []).filter((b) => (body.instances ?? []).some((i) => i.corretor_id === b.id) || (body.instanceLinks ?? []).some((l) => l.corretor_id === b.id));
       setSelectedBrokers((prev) => prev.length ? prev : withInstances.map((b) => b.id));
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Não foi possível carregar os disparos.";
+      if (background) throw new Error(message);
+      setError(message);
+    } finally {
+      if (!background) setLoading(false);
     }
-    setLoading(false);
   }
   useEffect(() => { void load(); }, [accessToken]);
   const tags = useMemo(() => [...new Set(data.leads.flatMap((lead) => (lead.tags ?? []).map(tagName)).filter(Boolean))].sort(), [data.leads]);
@@ -184,12 +190,22 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
     if (!activeInstanceIds.length) { setNotice("Os corretores escolhidos não têm instância ativa para envio."); return; }
     setReviewOpen(false);
     setBusy(true); setNotice("");
-    // Envia as ABORDAGENS por id (o backend expande mídia + texto) e, à parte, só a
-    // mensagem digitada como variação de texto. Evita duplicar a abordagem como texto puro.
-    const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), approachIds: selectedApproaches, message: message.trim(), rate: Number(rate), start: `${startDate}T${startTime}:00`, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
-    const body = await response.json() as { error?: string; scheduled?: number };
-    if (!response.ok) setNotice(body.error ?? "Não foi possível agendar."); else { setNotice(`${body.scheduled} mensagens agendadas.`); await load(); }
-    setBusy(false);
+    try {
+      // Envia as ABORDAGENS por id (o backend expande mídia + texto) e, à parte, só a
+      // mensagem digitada como variação de texto. Evita duplicar a abordagem como texto puro.
+      const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), approachIds: selectedApproaches, message: message.trim(), rate: Number(rate), start: `${startDate}T${startTime}:00`, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
+      const body = await response.json().catch(() => ({})) as { error?: string; scheduled?: number };
+      if (!response.ok) { setNotice(body.error ?? "Não foi possível agendar."); return; }
+      const successMessage = `${body.scheduled ?? 0} mensagens agendadas.`;
+      try {
+        await load(true);
+        setNotice(successMessage);
+      } catch {
+        setNotice(`${successMessage} As mensagens foram agendadas, mas o painel não pôde ser atualizado. Recarregue antes de repetir.`);
+      }
+    } catch {
+      setNotice("Não foi possível confirmar se as mensagens foram agendadas. Recarregue antes de repetir.");
+    } finally { setBusy(false); }
   }
 
   return <div className="campaign-workspace">

@@ -3,6 +3,22 @@ import type { TablesInsert } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
+type ErroCampanha = { code?: string; message?: string } | null | undefined;
+
+function falhaCampanha(error: ErroCampanha, operacao: string, status = 502) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  console.error("campanha_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para concluir esta operação."
+      : "Não foi possível concluir esta operação de campanhas no momento.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : status });
+}
+
 // Passo de disparo já normalizado (uma linha em mensagens_agendadas).
 type DispatchStep = { tipo: string; texto?: string | null; url?: string | null; file_name?: string | null; mimetype?: string | null; delayMs?: number };
 
@@ -58,7 +74,7 @@ export async function GET(request: Request) {
     auth.supabase.from("corretor_instancias").select("corretor_id,instancia_id"),
   ]);
   const firstError = [leads, deals, stages, approaches, products, recent, instances, brokers, instanceLinks].find((result) => result.error)?.error;
-  if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
+  if (firstError) return falhaCampanha(firstError, "carregar_campanhas");
   return Response.json({ leads: leads.data ?? [], deals: deals.data ?? [], stages: stages.data ?? [], approaches: approaches.data ?? [], products: products.data ?? [], recent: recent.data ?? [], instances: instances.data ?? [], brokers: brokers.data ?? [], instanceLinks: instanceLinks.data ?? [] });
 }
 
@@ -79,15 +95,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Escolha a etapa de saída, a etapa de destino e ao menos uma mensagem/abordagem." }, { status: 422 });
   }
   const { data: stages, error: stagesError } = await auth.supabase.from("pipeline_stages").select("id,pipeline_id").in("id", [sourceStageId, destinationStageId]);
-  if (stagesError) return Response.json({ error: stagesError.message }, { status: 502 });
+  if (stagesError) return falhaCampanha(stagesError, "validar_etapas");
   if (stages?.length !== 2 || stages[0].pipeline_id !== stages[1].pipeline_id) return Response.json({ error: "As etapas de saída e destino precisam pertencer ao mesmo funil." }, { status: 422 });
   const { data: deals, error: dealsError } = await auth.supabase.from("negocios").select("lead_id").in("lead_id", leadIds).eq("stage_id", sourceStageId).neq("status", "perdido");
-  if (dealsError) return Response.json({ error: dealsError.message }, { status: 502 });
+  if (dealsError) return falhaCampanha(dealsError, "validar_leads_da_etapa");
   const dealLeadIds = new Set((deals ?? []).map((deal) => deal.lead_id));
   const scopedLeadIds = leadIds.filter((id) => dealLeadIds.has(id));
   if (!scopedLeadIds.length) return Response.json({ error: "Nenhum dos leads selecionados continua na etapa de saída escolhida." }, { status: 422 });
   const { data: leads, error: leadsError } = await auth.supabase.from("leads").select("id,nome,telefone,disparo_optout").in("id", scopedLeadIds);
-  if (leadsError) return Response.json({ error: leadsError.message }, { status: 502 });
+  if (leadsError) return falhaCampanha(leadsError, "carregar_leads");
   const valid = (leads ?? []).filter((lead) => lead.telefone && !lead.disparo_optout);
   if (!valid.length) return Response.json({ error: "Nenhum lead elegível possui telefone e autorização para disparo." }, { status: 422 });
   // CORRETORES escolhidos → o sistema deriva as instâncias ativas deles (link + dono direto).
@@ -100,34 +116,38 @@ export async function POST(request: Request) {
       auth.supabase.from("instancias").select("id").in("corretor_id", brokerIds).eq("ativa", true),
       auth.supabase.from("corretor_instancias").select("instancia_id").in("corretor_id", brokerIds),
     ]);
-    if (ownErr || linkErr) return Response.json({ error: (ownErr || linkErr)!.message }, { status: 502 });
+    if (ownErr || linkErr) return falhaCampanha(ownErr || linkErr, "carregar_instancias_dos_corretores");
     const candidate = new Set<number>();
     (ownRows ?? []).forEach((row) => candidate.add(row.id));
     (linkRows ?? []).forEach((row) => candidate.add(row.instancia_id));
     if (candidate.size) {
       const { data: activeRows, error: activeErr } = await auth.supabase.from("instancias").select("id").in("id", [...candidate]).eq("ativa", true);
-      if (activeErr) return Response.json({ error: activeErr.message }, { status: 502 });
+      if (activeErr) return falhaCampanha(activeErr, "validar_instancias_ativas");
       instanceIds = (activeRows ?? []).map((row) => row.id);
     }
     if (!instanceIds.length) return Response.json({ error: "Os corretores escolhidos não têm instância ativa para o envio." }, { status: 422 });
   } else if (rawInstanceIds.length) {
     const { data: instRows, error: instErr } = await auth.supabase.from("instancias").select("id").in("id", rawInstanceIds).eq("ativa", true);
-    if (instErr) return Response.json({ error: instErr.message }, { status: 502 });
+    if (instErr) return falhaCampanha(instErr, "validar_instancias_informadas");
     const allowed = new Set((instRows ?? []).map((row) => row.id));
     instanceIds = rawInstanceIds.filter((id) => allowed.has(id));
   }
   if (!instanceIds.length) return Response.json({ error: "Selecione ao menos um corretor com instância ativa para o envio." }, { status: 422 });
-  const { data: brokerRow } = await auth.supabase.from("corretores").select("nome,apelido").eq("usuario_id", auth.user.id).maybeSingle();
+  const { data: brokerRow, error: brokerError } = await auth.supabase.from("corretores").select("nome,apelido").eq("usuario_id", auth.user.id).maybeSingle();
+  if (brokerError) return falhaCampanha(brokerError, "carregar_corretor_autor");
   // Assinatura = apelido (ex.: "Eliz") quando houver, senão o nome.
   const corretorNome = brokerRow?.apelido || brokerRow?.nome || null;
 
   // Nome do corretor que ASSINA cada instância (dono da instância). Assim, numa campanha
   // com vários corretores, cada mensagem é assinada por quem realmente envia.
-  const { data: instOwners } = await auth.supabase.from("instancias").select("id, corretor_id").in("id", instanceIds);
+  const { data: instOwners, error: instOwnersError } = await auth.supabase.from("instancias").select("id, corretor_id").in("id", instanceIds);
+  if (instOwnersError) return falhaCampanha(instOwnersError, "carregar_donos_das_instancias");
   const ownerIds = [...new Set((instOwners ?? []).map((r) => r.corretor_id).filter((x): x is number => Number.isSafeInteger(x)))];
-  const { data: corrNames } = ownerIds.length || brokerIds.length
+  const corrNamesResult = ownerIds.length || brokerIds.length
     ? await auth.supabase.from("corretores").select("id, nome, apelido").in("id", [...new Set([...ownerIds, ...brokerIds])])
-    : { data: [] as Array<{ id: number; nome: string; apelido: string | null }> };
+    : { data: [] as Array<{ id: number; nome: string; apelido: string | null }>, error: null };
+  if (corrNamesResult.error) return falhaCampanha(corrNamesResult.error, "carregar_nomes_dos_corretores");
+  const corrNames = corrNamesResult.data;
   const nameByCorretor = new Map((corrNames ?? []).map((c) => [c.id, c.apelido || c.nome]));
   const nameByInstance = new Map<number, string | null>();
   for (const inst of instOwners ?? []) {
@@ -137,7 +157,8 @@ export async function POST(request: Request) {
   // Variantes de conteúdo: cada abordagem (com mídia + texto) e/ou a mensagem digitada.
   const variants: DispatchStep[][] = [];
   if (approachIds.length) {
-    const { data: aps } = await auth.supabase.from("abordagens").select("id, mensagens, ativo").in("id", approachIds).eq("ativo", true);
+    const { data: aps, error: approachesError } = await auth.supabase.from("abordagens").select("id, mensagens, ativo").in("id", approachIds).eq("ativo", true);
+    if (approachesError) return falhaCampanha(approachesError, "carregar_abordagens");
     for (const id of approachIds) { const ap = (aps ?? []).find((x) => x.id === id); if (!ap) continue; const steps = normalizeSteps(ap.mensagens); if (steps.some((s) => s.tipo !== "__delay")) variants.push(steps); }
   }
   for (const txt of pool) variants.push([{ tipo: "text", texto: txt }]);
@@ -170,6 +191,14 @@ export async function POST(request: Request) {
       offset += 1500; // 1,5s entre passos sem delay explícito — mantém a ordem (mídia antes do texto)
     }
   });
-  const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
-  return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, campaignId, scheduled: rows.length, leads: valid.length, instances: instanceCount, ignored: leadIds.length - valid.length });
+  const { data: inserted, error } = await auth.supabase.from("mensagens_agendadas").insert(rows).select("id");
+  if (error) return falhaCampanha(error, "agendar_campanha");
+  if (inserted?.length !== rows.length) {
+    console.error("campanha_operacao_falhou", { operacao: "confirmar_agendamento", codigo: "contagem_incompleta" });
+    return Response.json({
+      error: "O agendamento não pôde ser confirmado por completo. Recarregue antes de repetir.",
+      erro: "reconciliacao_necessaria",
+    }, { status: 409 });
+  }
+  return Response.json({ success: true, campaignId, scheduled: inserted.length, leads: valid.length, instances: instanceCount, ignored: leadIds.length - valid.length });
 }
