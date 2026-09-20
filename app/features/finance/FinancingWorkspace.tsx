@@ -20,6 +20,7 @@ type Ficha = {
 };
 
 const dinheiro = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const ERRO_CARREGAMENTO = "Não foi possível carregar as fichas agora.";
 
 function statusDaFicha(ficha: Ficha) {
   if (ficha.concluida_em || ficha.status === "concluida") return "Concluída";
@@ -28,10 +29,20 @@ function statusDaFicha(ficha: Ficha) {
 }
 
 async function buscarFichas(accessToken: string) {
-  const response = await fetch("/api/financiamento", { headers: { Authorization: `Bearer ${accessToken}` } });
-  const result = await response.json() as { fichas?: Ficha[]; error?: string };
-  if (!response.ok) throw new Error(result.error || "Não foi possível carregar as fichas.");
-  return result.fichas ?? [];
+  let response: Response;
+  try {
+    response = await fetch("/api/financiamento", { headers: { Authorization: `Bearer ${accessToken}` } });
+  } catch {
+    throw new Error(ERRO_CARREGAMENTO);
+  }
+  let result: { fichas?: Ficha[] };
+  try {
+    result = await response.json() as { fichas?: Ficha[] };
+  } catch {
+    throw new Error(ERRO_CARREGAMENTO);
+  }
+  if (!response.ok || !Array.isArray(result.fichas)) throw new Error(ERRO_CARREGAMENTO);
+  return result.fichas;
 }
 
 export function FinancingWorkspace({ accessToken }: { accessToken: string }) {
@@ -48,8 +59,8 @@ export function FinancingWorkspace({ accessToken }: { accessToken: string }) {
       const result = await buscarFichas(accessToken);
       setFichas(result);
       setSelecionada((atual) => atual && result.some((ficha) => ficha.id === atual) ? atual : result[0]?.id ?? null);
-    } catch (reason) {
-      setErro(reason instanceof Error ? reason.message : "Não foi possível carregar as fichas.");
+    } catch {
+      setErro(ERRO_CARREGAMENTO);
     } finally {
       setCarregando(false);
     }
@@ -61,8 +72,8 @@ export function FinancingWorkspace({ accessToken }: { accessToken: string }) {
       if (!ativo) return;
       setFichas(result);
       setSelecionada(result[0]?.id ?? null);
-    }).catch((reason: unknown) => {
-      if (ativo) setErro(reason instanceof Error ? reason.message : "Não foi possível carregar as fichas.");
+    }).catch(() => {
+      if (ativo) setErro(ERRO_CARREGAMENTO);
     }).finally(() => {
       if (ativo) setCarregando(false);
     });

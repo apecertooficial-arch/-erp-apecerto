@@ -15,6 +15,8 @@
     "test:automations-dispatcher": "node --test tests/automations-dispatcher.test.mjs tests/central-sara-evento-unico.test.mjs",
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "test:financiamento-hardening": "node --test tests/financiamento-api-hardening.test.mjs",
+    "pretest:frontend": "node --test tests/financiamento-api-hardening.test.mjs",
     "smoke:products-auth": "node scripts/smoke-products-auth.mjs",
     "test:products-contract": "node --test tests/produtos-integridade.test.mjs tests/produtos-privacy-contract.test.mjs tests/produtos-auth-smoke.test.mjs",
     "lint:edge": "deno lint supabase/functions && deno check supabase/functions/*/*.ts",
