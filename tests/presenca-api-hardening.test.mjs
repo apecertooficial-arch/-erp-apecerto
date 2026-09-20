@@ -21,7 +21,7 @@ test("falha do status nunca é interpretada como saída explícita da rede", () 
 });
 
 test("falha ao conferir o IP não é convertida silenciosamente em false", () => {
-  assert.match(rota, /return \{ noEscritorio: data === true, error \}/);
+  assert.match(rota, /const noEscritorio = data === true;[\s\S]*return \{[\s\S]*noEscritorio,[\s\S]*error,/);
   assert.match(rota, /if \(rede\.error\) return falhaPresenca\(rede\.error, "conferir_rede_escritorio"\)/);
   assert.doesNotMatch(rota, /return !error && data === true/);
 });

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { criarDiagnosticoPresenca } from "../../features/presence/presenceDiagnostic.mjs";
 
 type SupabaseLike = ReturnType<typeof createServerSupabaseClient>;
 type ErroPresenca = { code?: string; message?: string } | null | undefined;
@@ -43,9 +44,19 @@ function ipDaRequisicao(request: Request): string {
 
 async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike) {
   const ip = ipDaRequisicao(request);
-  if (!ip) return { noEscritorio: false, error: null };
+  const observadoEm = new Date().toISOString();
+  if (!ip) return {
+    noEscritorio: false,
+    error: null,
+    diagnostico: criarDiagnosticoPresenca({ ip: "", corresponde: false, observadoEm }),
+  };
   const { data, error } = await supabase.rpc("presenca_ip_confere", { p_ip: ip });
-  return { noEscritorio: data === true, error };
+  const noEscritorio = data === true;
+  return {
+    noEscritorio,
+    error,
+    diagnostico: criarDiagnosticoPresenca({ ip, corresponde: noEscritorio, observadoEm }),
+  };
 }
 
 export async function GET(request: Request) {
@@ -67,7 +78,11 @@ export async function GET(request: Request) {
   if (error) return falhaPresenca(error, "carregar_status");
 
   const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
-  return Response.json({ ...status, no_escritorio_ip: rede.noEscritorio });
+  return Response.json({
+    ...status,
+    no_escritorio_ip: rede.noEscritorio,
+    diagnostico_ip: rede.diagnostico,
+  });
 }
 
 export async function POST(request: Request) {
