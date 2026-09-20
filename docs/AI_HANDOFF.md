@@ -144,16 +144,17 @@ declarar o ERP inteiro pronto sem evidência.
   sobrevive à navegação. São 20/20 contratos de push/tela mais o contrato mobile
   de gestão, e gate frontend 567/567. Navegador real sanitizado passou em
   desktop e 390 × 844, sem overflow
-  nem erros/avisos. A subfatia anterior foi registrada em commit local; o push
-  permaneceu bloqueado pela política de aprovação do ambiente e não foi
-  contornado.
-- catálogo remoto revalidado somente por agregados: os seis tipos abertos são
+  nem erros/avisos. A fatia foi enviada à branch de reconstrução e extraída no
+  candidato mínimo `codex/deploy-alertas-avisos`.
+- catálogo remoto revalidado somente por agregados: os sete tipos técnicos abertos são
   `acao_vencida`, `canal_indisponivel`, `primeira_abordagem_pendente`,
   `presenca_pendente`, `cliente_respondeu` e transições Sara. O estoque Sara
   chegou a 798; os 697 antigos de automação permanecem. Três avisos de presença
   estavam genéricos; agora são urgentes, dizem `Confirmar presença` e abrem Meu
   Dia, onde a confirmação global já valida sessão e IP. Gate frontend 568/568;
-  navegador móvel sem overflow ou erro. Nenhuma escrita remota.
+  navegador móvel sem overflow ou erro. Os dois `cliente_respondeu` pertencem
+  à automação 49/bloco removido `b3` e já integram os 699 itens classificados
+  pelo draft de ciclo. Nenhuma escrita remota.
 
 ## Arquivos alterados/relevantes
 

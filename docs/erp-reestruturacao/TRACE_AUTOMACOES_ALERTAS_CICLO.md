@@ -28,8 +28,9 @@ Leituras agregadas no projeto `diaegvfveqezispcthwk` provaram:
 - 696 desses alertas ainda usam a chave legada de quatro partes; somente um já
   usa a chave atual de seis partes, que inclui público e tipo;
 - nenhuma chave aberta exata está repetida;
-- a automação ativa 49 ainda possui dois alertas de um bloco `b3` que não existe
-  mais no mapa publicado;
+- a automação ativa 49 ainda possui dois alertas `cliente_respondeu`, público
+  `gestao`, do bloco `b3`; o bloco não existe mais no mapa publicado e não há
+  ação de notificação correspondente;
 - automações ativas 65, 66, 70 e 71 possuem alertas de blocos ainda publicados,
   principalmente `canal_indisponivel` e `primeira_abordagem_pendente`. Eles não
   foram classificados como lixo nem incluídos na reconciliação automática.
@@ -127,7 +128,7 @@ ensaio Postgres isolado.
 
 ## Revalidação da superfície acionável
 
-Uma nova leitura somente agregada, sem PII, encontrou seis tipos abertos no
+Uma nova leitura somente agregada, sem PII, encontrou sete tipos técnicos abertos no
 catálogo produtivo: `acao_vencida`, `canal_indisponivel`,
 `primeira_abordagem_pendente`, `presenca_pendente`, `cliente_respondeu` e as
 duas transições da Sara. O estoque Sara chegou a 798 `acao_vencida`; os 697
@@ -135,6 +136,12 @@ alertas antigos de automações arquivadas permanecem e 696 continuam sem
 `deep_link`. Ações ainda configuradas somam 164 no novo recorte; o preflight
 128/34 continua sendo evidência do snapshot anterior e precisa ser recalculado
 transacionalmente antes da futura migration.
+
+O recorte por chave confirmou que os dois `cliente_respondeu` são exatamente
+`automacao:49:b3:*`, ambos para gestão. Eles não ampliam o estoque configurado:
+já são os dois itens `ação removida ou alterada` incluídos nos 699 alertas sem
+autoridade do draft de ciclo. Criar outra rotina de encerramento para esse tipo
+duplicaria autoridade e foi descartado.
 
 A interface local passou a cobrir todos os tipos atualmente abertos com ação
 real: negócio abre a ficha, canal abre diretamente Conexões inclusive no celular
