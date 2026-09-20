@@ -1,23 +1,73 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesInsert, TablesUpdate } from "../../lib/supabase/database.types";
+import { papelNoGrupo } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
 
-function extractToken(request: Request) {
-  const header = request.headers.get("authorization");
-  return header?.startsWith("Bearer ") ? header.slice(7) : null;
+type ErroAgentes = { code?: string; message?: string } | null | undefined;
+
+function falhaAgentes(error: ErroAgentes, operacao: string, parcial = false) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  console.error("agentes_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: parcial
+      ? "A operação foi aplicada apenas em parte. Não repita a ação; solicite reconciliação."
+      : semPermissao
+        ? "Você não tem permissão para concluir esta operação."
+        : "Não foi possível concluir a operação de agentes no momento.",
+    erro: parcial ? "reconciliacao_necessaria" : semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: parcial ? 502 : semPermissao ? 403 : 502 });
 }
 
-async function authed(request: Request) {
-  const token = extractToken(request);
-  if (!token) return null;
+async function autenticar(request: Request) {
+  const header = request.headers.get("authorization");
+  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return { status: "missing" as const };
   const supabase = createServerSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
-  return error || !data.user ? null : { supabase, token };
+  if (error) return { status: "auth_error" as const, error };
+  if (!data.user) return { status: "invalid" as const };
+  return { status: "ok" as const, supabase, token, user: data.user };
+}
+
+async function acessoSupervisor(request: Request) {
+  const auth = await autenticar(request);
+  if (auth.status !== "ok") return auth;
+  const { data: profile, error } = await auth.supabase
+    .from("usuarios").select("role,ativo").eq("id", auth.user.id).maybeSingle();
+  if (error) return { status: "profile_error" as const, error };
+  if (!profile?.ativo || !papelNoGrupo(profile.role, "supervisao_ia")) return { status: "forbidden" as const };
+  return auth;
+}
+
+function falhaAcesso(access: Awaited<ReturnType<typeof acessoSupervisor>>) {
+  if (access.status === "missing" || access.status === "invalid") return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  if (access.status === "forbidden") return Response.json({ error: "Apenas a supervisão de IA pode acessar este laboratório." }, { status: 403 });
+  if (access.status === "auth_error") return falhaAgentes(access.error, "autenticar");
+  if (access.status === "profile_error") return falhaAgentes(access.error, "autorizar_supervisao");
+  return falhaAgentes(null, "autorizar_supervisao");
+}
+
+async function respostaIntegracao(response: Response) {
+  let payload: unknown;
+  try {
+    payload = await response.json() as unknown;
+  } catch {
+    return Response.json({ error: "A integração de IA retornou uma resposta inválida.", erro: "falha_integracao" }, { status: 502 });
+  }
+  if (!response.ok) return Response.json({ error: "A integração de IA não concluiu a operação.", erro: "falha_integracao" }, { status: 502 });
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return Response.json({ error: "A integração de IA retornou uma resposta inválida.", erro: "falha_integracao" }, { status: 502 });
+  }
+  return Response.json(payload);
 }
 
 const str = (v: unknown, max = 8000) => (typeof v === "string" ? v.slice(0, max) : "");
-const STATUSES = ["rascunho", "em_teste", "revisao", "aprovado", "publicado"];
+const STATUSES = ["rascunho", "em_teste", "revisao", "aprovado", "publicado", "arquivado"];
+const MODELOS = ["gpt-4o-mini", "gpt-4o", "gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.4", "gpt-5.5", "gpt-5.6-luna", "gpt-5.6-sol"];
 const anonimizar = (texto: string) => texto
   .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[email]")
   .replace(/\b(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}\b/g, "[telefone]")
@@ -25,8 +75,9 @@ const anonimizar = (texto: string) => texto
   .replace(/\s+/g, " ").trim().slice(0, 500);
 
 export async function GET(request: Request) {
-  const auth = await authed(request);
-  if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const access = await acessoSupervisor(request);
+  if (access.status !== "ok") return falhaAcesso(access);
+  const auth = access;
   const slug = new URL(request.url).searchParams.get("slug");
 
   if (!slug) {
@@ -35,7 +86,7 @@ export async function GET(request: Request) {
       .select("id,slug,nome,tipo,categoria,modelo,status,versao_atual,ativo,missao")
       .order("ativo", { ascending: false })
       .order("id");
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ agentes: data ?? [] });
+    return error ? falhaAgentes(error, "listar_agentes") : Response.json({ agentes: data ?? [] });
   }
 
   const { data: agente, error: aErr } = await auth.supabase
@@ -43,7 +94,8 @@ export async function GET(request: Request) {
     .select("id,slug,nome,tipo,categoria,modelo,status,versao_atual,ativo,missao,indicadores,publico,canais,gatilhos,system_prompt,config")
     .eq("slug", slug)
     .maybeSingle();
-  if (aErr || !agente) return Response.json({ error: "Agente não encontrado." }, { status: 404 });
+  if (aErr) return falhaAgentes(aErr, "carregar_agente");
+  if (!agente) return Response.json({ error: "Agente não encontrado." }, { status: 404 });
 
   const [links, ferrs, perms, cenarios, avals, execs] = await Promise.all([
     auth.supabase.from("agente_fonte_links").select("fonte_id").eq("agente_id", agente.id),
@@ -53,12 +105,15 @@ export async function GET(request: Request) {
     auth.supabase.from("agente_avaliacoes").select("cenario_id,agente_versao,nota_auto,aprovado,regras_descumpridas,criado_em").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(400),
     auth.supabase.from("agente_execucoes").select("id,modelo,tokens_entrada,tokens_saida,custo_usd,status,ferramentas_acionadas,fontes_consultadas,latencia_ms,criado_em,avaliacao_humana,usuario,tela").eq("agente_id", agente.id).order("criado_em", { ascending: false }).limit(200),
   ]);
+  const detailError = [links, ferrs, perms, cenarios, avals, execs].find((result) => result.error)?.error;
+  if (detailError) return falhaAgentes(detailError, "carregar_detalhe");
 
   const fonteLinks = (links.data ?? []).map((l) => l.fonte_id);
-  const { data: fontes } = await auth.supabase
+  const { data: fontes, error: fontesError } = await auth.supabase
     .from("agente_fontes")
     .select("id,titulo,tipo,conteudo,versao,situacao,responsavel,validade,atualizado_em")
     .order("id", { ascending: false });
+  if (fontesError) return falhaAgentes(fontesError, "carregar_fontes");
 
   const execucoes = execs.data ?? [];
   const desde = Date.now() - 30 * 86400000;
@@ -80,14 +135,16 @@ export async function GET(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (supabaseUrl && publishableKey) {
-    const pResp = await fetch(`${supabaseUrl}/rest/v1/sara_piloto_participantes?select=usuario_id,ativo`, {
-      headers: { Authorization:`Bearer ${auth.token}`,apikey:publishableKey },cache:"no-store",
-    });
-    if (pResp.ok) {
-      const rows = await pResp.json() as Array<{ usuario_id: string; ativo: boolean }>;
-      const ativos = new Set(rows.filter((p) => p.ativo).map((p) => p.usuario_id));
-      piloto = { ok:true,participantes:rows.length,ativos:ativos.size,execucoes_30d:rec.filter((e) => e.usuario && ativos.has(e.usuario)).length,jornadas:["Localizar lead","Agenda completa","Direção do dia"] };
-    }
+    try {
+      const pResp = await fetch(`${supabaseUrl}/rest/v1/sara_piloto_participantes?select=usuario_id,ativo`, {
+        headers: { Authorization:`Bearer ${auth.token}`,apikey:publishableKey },cache:"no-store",
+      });
+      if (pResp.ok) {
+        const rows = await pResp.json() as Array<{ usuario_id: string; ativo: boolean }>;
+        const ativos = new Set(rows.filter((p) => p.ativo).map((p) => p.usuario_id));
+        piloto = { ok:true,participantes:rows.length,ativos:ativos.size,execucoes_30d:rec.filter((e) => e.usuario && ativos.has(e.usuario)).length,jornadas:["Localizar lead","Agenda completa","Direção do dia"] };
+      }
+    } catch { /* métrica opcional; o restante do laboratório permanece disponível */ }
   }
 
   // latest evaluation per cenario
@@ -127,9 +184,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await authed(request);
-  if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const body = await request.json() as Record<string, unknown>;
+  const access = await acessoSupervisor(request);
+  if (access.status !== "ok") return falhaAcesso(access);
+  const auth = access;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "Envie um corpo JSON válido." }, { status: 400 });
+  }
   const action = str(body.action, 40);
   const slug = str(body.slug, 80);
 
@@ -139,21 +202,34 @@ export async function POST(request: Request) {
     if (typeof body.nome === "string") update.nome = str(body.nome, 120);
     if (typeof body.missao === "string") update.missao = str(body.missao, 2000);
     if (typeof body.system_prompt === "string") update.system_prompt = str(body.system_prompt, 20000);
-    if (typeof body.modelo === "string") update.modelo = str(body.modelo, 40);
-    if (typeof body.status === "string" && STATUSES.includes(body.status)) update.status = body.status;
+    if (typeof body.modelo === "string") {
+      const modelo = str(body.modelo, 40);
+      if (!MODELOS.includes(modelo)) return Response.json({ error: "Modelo de IA inválido." }, { status: 422 });
+      update.modelo = modelo;
+    }
+    if (typeof body.status === "string") {
+      const status = str(body.status, 30);
+      if (!STATUSES.includes(status)) return Response.json({ error: "Status do agente inválido." }, { status: 422 });
+      update.status = status;
+    }
     update.atualizado_em = new Date().toISOString();
-    const { error } = await auth.supabase.from("agentes_ia").update(update).eq("slug", slug);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+    const { data: updated, error } = await auth.supabase.from("agentes_ia").update(update).eq("slug", slug).select("id").maybeSingle();
+    if (error) return falhaAgentes(error, "atualizar_agente");
+    if (!updated) return Response.json({ error: "Agente não encontrado.", erro: "confirmar_agente" }, { status: 404 });
+    return Response.json({ ok: true });
   }
 
   if (action === "toggleFerramenta") {
     const agenteId = Number(body.agente_id), ferramentaId = Number(body.ferramenta_id);
     const habilitado = body.habilitado === true;
     if (!Number.isSafeInteger(agenteId) || !Number.isSafeInteger(ferramentaId)) return Response.json({ error: "Parâmetros inválidos." }, { status: 422 });
-    const { error } = await auth.supabase
+    const { data: permission, error } = await auth.supabase
       .from("agente_ferramenta_permissoes")
-      .upsert({ agente_id: agenteId, ferramenta_id: ferramentaId, habilitado }, { onConflict: "agente_id,ferramenta_id" });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+      .upsert({ agente_id: agenteId, ferramenta_id: ferramentaId, habilitado }, { onConflict: "agente_id,ferramenta_id" })
+      .select("agente_id,ferramenta_id").maybeSingle();
+    if (error) return falhaAgentes(error, "salvar_permissao_ferramenta");
+    if (!permission) return falhaAgentes(null, "confirmar_permissao_ferramenta");
+    return Response.json({ ok: true });
   }
 
   if (action === "salvarFonte") {
@@ -173,15 +249,20 @@ export async function POST(request: Request) {
     };
     const fonteId = Number(body.fonte_id);
     if (Number.isSafeInteger(fonteId) && fonteId > 0) {
-      const { error } = await auth.supabase.from("agente_fontes").update(row).eq("id", fonteId);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true, fonte_id: fonteId });
+      const { data: updated, error } = await auth.supabase.from("agente_fontes").update(row).eq("id", fonteId).select("id").maybeSingle();
+      if (error) return falhaAgentes(error, "atualizar_fonte");
+      if (!updated) return Response.json({ error: "Fonte não encontrada.", erro: "confirmar_fonte" }, { status: 404 });
+      return Response.json({ ok: true, fonte_id: fonteId });
     }
-    const { data, error } = await auth.supabase.from("agente_fontes").insert(row).select("id").maybeSingle();
-    if (error || !data) return Response.json({ error: error?.message || "Falha ao criar fonte." }, { status: 502 });
     const agenteId = Number(body.agente_id);
-    if (Number.isSafeInteger(agenteId)) {
-      await auth.supabase.from("agente_fonte_links").upsert({ agente_id: agenteId, fonte_id: data.id }, { onConflict: "agente_id,fonte_id" });
-    }
+    if (!Number.isSafeInteger(agenteId) || agenteId <= 0) return Response.json({ error: "Agente inválido para vincular a fonte." }, { status: 422 });
+    const { data, error } = await auth.supabase.from("agente_fontes").insert(row).select("id").maybeSingle();
+    if (error) return falhaAgentes(error, "criar_fonte");
+    if (!data) return falhaAgentes(null, "confirmar_fonte");
+    const { data: linked, error: linkError } = await auth.supabase.from("agente_fonte_links")
+      .upsert({ agente_id: agenteId, fonte_id: data.id }, { onConflict: "agente_id,fonte_id" })
+      .select("agente_id,fonte_id").maybeSingle();
+    if (linkError || !linked) return falhaAgentes(linkError, "vincular_fonte_criada", true);
     return Response.json({ ok: true, fonte_id: data.id });
   }
 
@@ -189,35 +270,51 @@ export async function POST(request: Request) {
     const agenteId = Number(body.agente_id), fonteId = Number(body.fonte_id);
     if (!Number.isSafeInteger(agenteId) || !Number.isSafeInteger(fonteId)) return Response.json({ error: "Parâmetros inválidos." }, { status: 422 });
     if (body.vincular === true) {
-      const { error } = await auth.supabase.from("agente_fonte_links").upsert({ agente_id: agenteId, fonte_id: fonteId }, { onConflict: "agente_id,fonte_id" });
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+      const { data: linked, error } = await auth.supabase.from("agente_fonte_links")
+        .upsert({ agente_id: agenteId, fonte_id: fonteId }, { onConflict: "agente_id,fonte_id" })
+        .select("agente_id,fonte_id").maybeSingle();
+      if (error) return falhaAgentes(error, "vincular_fonte");
+      if (!linked) return falhaAgentes(null, "confirmar_vinculo_fonte");
+      return Response.json({ ok: true });
     }
     const { error } = await auth.supabase.from("agente_fonte_links").delete().eq("agente_id", agenteId).eq("fonte_id", fonteId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ ok: true });
+    return error ? falhaAgentes(error, "desvincular_fonte") : Response.json({ ok: true });
   }
 
   if (action === "testar") {
     if (!slug || !body.input) return Response.json({ error: "Informe a mensagem de teste." }, { status: 422 });
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-router`;
-    const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ agente_slug: slug, input: str(body.input, 2000) }) });
-    return Response.json(await r.json(), { status: r.ok ? 200 : 502 });
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!baseUrl) return Response.json({ error: "A integração de IA não está configurada.", erro: "falha_integracao" }, { status: 502 });
+    try {
+      const r = await fetch(`${baseUrl}/functions/v1/ia-router`, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ agente_slug: slug, input: str(body.input, 2000) }) });
+      return respostaIntegracao(r);
+    } catch {
+      return Response.json({ error: "A integração de IA não respondeu.", erro: "falha_integracao" }, { status: 502 });
+    }
   }
 
   if (action === "bateria") {
     if (!slug) return Response.json({ error: "Agente não informado." }, { status: 422 });
-    const offset = Number(body.offset ?? 0), limit = Math.min(Number(body.limit ?? 5), 8);
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/ia-testes`;
-    const r = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ agente_slug: slug, offset, limit }) });
-    return Response.json(await r.json(), { status: r.ok ? 200 : 502 });
+    const offset = Number(body.offset ?? 0), limit = Number(body.limit ?? 5);
+    if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 8) return Response.json({ error: "Paginação inválida para a bateria." }, { status: 422 });
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!baseUrl) return Response.json({ error: "A integração de IA não está configurada.", erro: "falha_integracao" }, { status: 502 });
+    try {
+      const r = await fetch(`${baseUrl}/functions/v1/ia-testes`, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ agente_slug: slug, offset, limit }) });
+      return respostaIntegracao(r);
+    } catch {
+      return Response.json({ error: "A integração de IA não respondeu.", erro: "falha_integracao" }, { status: 502 });
+    }
   }
 
   if (action === "promoverDuvidas") {
     if (!slug) return Response.json({ error: "Agente não informado." }, { status: 422 });
-    const { data: agente } = await auth.supabase.from("agentes_ia").select("id").eq("slug", slug).maybeSingle();
+    const { data: agente, error: agenteError } = await auth.supabase.from("agentes_ia").select("id").eq("slug", slug).maybeSingle();
+    if (agenteError) return falhaAgentes(agenteError, "carregar_agente_promocao");
     if (!agente) return Response.json({ error: "Agente não encontrado." }, { status: 404 });
     const { data: execucoes, error } = await auth.supabase.from("agente_execucoes")
       .select("id,entrada").eq("agente_id", agente.id).eq("status", "ok").order("criado_em", { ascending: false }).limit(80);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaAgentes(error, "carregar_execucoes_promocao");
     const perguntas: Array<{ pergunta: string; execucao_id: number }> = [];
     for (const e of execucoes ?? []) {
       const entrada = e.entrada && typeof e.entrada === "object" && !Array.isArray(e.entrada) ? e.entrada : null;
@@ -237,6 +334,7 @@ export async function POST(request: Request) {
     }
     if (!perguntas.length) return Response.json({ ok: true, criados: 0 });
     const existentes = await auth.supabase.from("agente_cenarios").select("pergunta").eq("agente_id", agente.id);
+    if (existentes.error) return falhaAgentes(existentes.error, "carregar_cenarios_existentes");
     const ja = new Set((existentes.data ?? []).map((c) => c.pergunta.toLowerCase()));
     const novos: TablesInsert<"agente_cenarios">[] = perguntas.filter((p) => !ja.has(p.pergunta.toLowerCase())).map((p) => ({
       agente_id:agente.id,pergunta:p.pergunta,categoria:"duvida_real_anonimizada",peso:2,
@@ -245,8 +343,11 @@ export async function POST(request: Request) {
       criterio_aprovacao:"Resposta útil, segura, verificável e coerente com a operação.",
       contexto:{ origem:"execucao_anonimizada",execucao_id:p.execucao_id },
     }));
-    const { error: iErr } = novos.length ? await auth.supabase.from("agente_cenarios").insert(novos) : { error:null };
-    return iErr ? Response.json({ error:iErr.message }, { status:502 }) : Response.json({ ok:true,criados:novos.length });
+    if (!novos.length) return Response.json({ ok:true,criados:0 });
+    const { data: created, error: iErr } = await auth.supabase.from("agente_cenarios").insert(novos).select("id");
+    if (iErr) return falhaAgentes(iErr, "criar_cenarios_promovidos");
+    if ((created ?? []).length !== novos.length) return falhaAgentes(null, "confirmar_cenarios_promovidos", true);
+    return Response.json({ ok:true,criados:novos.length });
   }
 
   return Response.json({ error: "Ação inválida." }, { status: 422 });

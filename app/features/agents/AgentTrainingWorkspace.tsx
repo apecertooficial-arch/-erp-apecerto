@@ -49,14 +49,16 @@ type BatteryResponse = {
 };
 type AgentListResponse = { agentes: AgentSummary[] };
 
-const mensagemErro = (error: unknown) => error instanceof Error ? error.message : "Falha na operação.";
+const ERRO_OPERACAO = "Não foi possível concluir a operação agora.";
+class ApiError extends Error {}
+const mensagemErro = (error: unknown) => error instanceof ApiError ? error.message : ERRO_OPERACAO;
 
 /* A lista precisa acompanhar os modelos aceitos pelo ia-router. Se o modelo
    publicado nao existir neste select, o navegador cai visualmente no primeiro
    item e um simples "Salvar" rebaixa o agente sem o gestor perceber. */
 const MODELOS = [
   "gpt-4o-mini", "gpt-4o",
-  "gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.4", "gpt-5.5", "gpt-5.6-sol",
+  "gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.4", "gpt-5.5", "gpt-5.6-luna", "gpt-5.6-sol",
 ];
 const STATUS = [
   { v: "rascunho", label: "Rascunho" },
@@ -72,6 +74,8 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const [agentes, setAgentes] = useState<AgentSummary[]>([]);
   const [slug, setSlug] = useState<string | null>(null);
   const [detail, setDetail] = useState<AgentDetail | null>(null);
+  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
+  const [detailState, setDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [tab, setTab] = useState("instrucao");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -94,13 +98,36 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
   const [fonteEdit, setFonteEdit] = useState<FonteEdit | null>(null);
 
   const api = useCallback(async <T,>(method: string, path: string, body?: Record<string, unknown>): Promise<T> => {
-    const res = await fetch(path, {
-      method,
-      headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { "Content-Type": "application/json" } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    const payload = await res.json();
-    if (!res.ok) throw new Error(payload.error || payload.detalhe || "Falha na operação.");
+    let res: Response;
+    try {
+      res = await fetch(path, {
+        method,
+        headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch {
+      throw new ApiError(ERRO_OPERACAO);
+    }
+    let payload: unknown;
+    try {
+      payload = await res.json() as unknown;
+    } catch {
+      throw new ApiError(ERRO_OPERACAO);
+    }
+    if (!res.ok) {
+      const known = payload && typeof payload === "object" && !Array.isArray(payload) && "error" in payload && typeof payload.error === "string"
+        ? payload.error
+        : null;
+      const message = res.status === 401
+        ? "Sua sessão expirou. Entre novamente."
+        : res.status === 403
+          ? "Você não tem permissão para acessar este laboratório."
+          : res.status >= 400 && res.status < 500 && known
+            ? known
+            : ERRO_OPERACAO;
+      throw new ApiError(message);
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new ApiError(ERRO_OPERACAO);
     return payload as T;
   }, [accessToken]);
 
@@ -126,19 +153,44 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
     setBatResults([]); setProgress({ done: 0, total: 0 }); setTestResult(null);
   }, [api]);
 
+  const carregarListaInicial = useCallback(async () => {
+    setListState("loading");
+    setNotice(null);
+    try {
+      await loadList();
+      setListState("ready");
+    } catch (error) {
+      setListState("error");
+      setNotice(mensagemErro(error));
+    }
+  }, [loadList]);
+
+  const carregarDetalheInicial = useCallback(async (s: string) => {
+    setDetail(null);
+    setDetailState("loading");
+    setNotice(null);
+    try {
+      await loadDetail(s);
+      setDetailState("ready");
+    } catch (error) {
+      setDetailState("error");
+      setNotice(mensagemErro(error));
+    }
+  }, [loadDetail]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadList().catch((e) => setNotice(mensagemErro(e)));
+      void carregarListaInicial();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadList]);
+  }, [carregarListaInicial]);
   useEffect(() => {
     if (!slug) return;
     const timer = window.setTimeout(() => {
-      void loadDetail(slug).catch((e) => setNotice(mensagemErro(e)));
+      void carregarDetalheInicial(slug);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadDetail, slug]);
+  }, [carregarDetalheInicial, slug]);
 
   const salvar = async () => {
     if (!slug) return;
@@ -267,7 +319,23 @@ export function AgentTrainingWorkspace({ accessToken }: { accessToken: string })
         </aside>
 
         <section className="lab-main">
-          {!detail ? <div className="lab-loading">Carregando agente…</div> : (
+          {listState === "error" ? (
+            <div className="lab-empty" role="alert">
+              <strong>Não foi possível carregar o laboratório de IA.</strong>
+              <p>Nenhuma configuração foi liberada para edição.</p>
+              <button className="primary" type="button" onClick={() => void carregarListaInicial()}>Tentar novamente</button>
+            </div>
+          ) : listState === "loading" ? (
+            <div className="lab-loading">Carregando agentes…</div>
+          ) : !agentes.length ? (
+            <div className="lab-empty">Nenhum agente está configurado neste ambiente.</div>
+          ) : detailState === "error" ? (
+            <div className="lab-empty" role="alert">
+              <strong>Não foi possível carregar este agente.</strong>
+              <p>Nenhuma configuração foi liberada para edição.</p>
+              <button className="primary" type="button" onClick={() => slug && void carregarDetalheInicial(slug)}>Tentar novamente</button>
+            </div>
+          ) : !detail ? <div className="lab-loading">Carregando agente…</div> : (
             <>
               <div className="lab-agent-top">
                 <div>
