@@ -2348,6 +2348,11 @@ body.automation-builder-focus .app-shell > .sidebar {
   gap: 6px;
 }
 
+.central-revisao-acoes button {
+  min-height: 44px;
+  padding-inline: 14px;
+}
+
 .central-lista b { color: var(--fg-1); font-size: 11px; }
 .central-lista span { color: var(--fg-muted); font-size: 11px; }
 .central-lista p { margin: 3px 0 0; color: var(--fg-2); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }

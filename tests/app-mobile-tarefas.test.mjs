@@ -7,6 +7,7 @@ const tela = ler("../app/features/tasks/SaraTasksMobile.tsx");
 const pagina = ler("../app/(erp)/tarefas/page.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const central = ler("../app/features/automations/CentralOperationsPanel.tsx");
+const estilos = ler("../app/styles/automation-workspace.css");
 
 test("celular usa Tarefas da Sara e desktop preserva Projetos", () => {
   assert.match(pagina, /ehCelular \? <SaraTasksMobile/);
@@ -34,6 +35,7 @@ test("revisão humana fica acionável somente na Central de gestão", () => {
   assert.match(central, /action: "decidirSugestao"/);
   assert.match(central, /decidirSara\(item\.analise_id, "aceita"\)/);
   assert.match(central, /decidirSara\(item\.analise_id, "recusada"\)/);
+  assert.match(estilos, /\.central-revisao-acoes button\s*\{[^}]*min-height:\s*44px;/s);
   assert.doesNotMatch(api, /send-text-message|enviarMensagem/);
 });
 
