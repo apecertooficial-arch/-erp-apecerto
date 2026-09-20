@@ -294,7 +294,7 @@ async function boot(){
   try{const [pr,ab]=await Promise.all([sbGet('/produtos?select=id,nome,ativo&order=nome'),sbGet('/abordagens?select=id,produto_id,nome,grupo,ordem,ativo,mensagens&ativo=is.true&order=grupo,ordem,id')]);ref.produtos=pr||[];ref.abordagens=ab||[];}catch(_p){ref.produtos=[];ref.abordagens=[];}
   try{ref.agentes=await sbGet('/agentes_ia?select=id,slug,nome,categoria,ativo&ativo=is.true&order=categoria,nome')||[];}catch(_ag){ref.agentes=[];}
   setStatus('Conectado — '+au.filter(a=>!a.arquivada).length+' disponíveis','#10b981');renderSidebar();
-  if(_ctx&&_ctx.initialAutomationId){const app=ROOT.querySelector('.app');if(app)app.classList.add('sb-collapsed');await openAutomacao(+_ctx.initialAutomationId);}
+  if(_ctx&&_ctx.initialAutomationId){collapseSidebar(false);await openAutomacao(+_ctx.initialAutomationId);}
  }catch(e){console.error(e);setStatus('Falha de conexão','#dc2626');toast('Erro ao conectar: '+e.message,'err');}
 }
 let sbFilter='todas';
@@ -954,8 +954,9 @@ canvasEl.addEventListener('dragleave',e=>{if(!canvasEl.contains(e.relatedTarget)
 canvasEl.addEventListener('drop',e=>{canvasEl.classList.remove('drop-ready');const type=e.dataTransfer&&e.dataTransfer.getData('application/x-apecerto-block');if(!type||!PUBLISHABLE_TYPES.has(type))return;e.preventDefault();if(!cur){toast('Abra ou crie uma automação');return;}const rect=canvasEl.getBoundingClientRect();addNode(type,(e.clientX-rect.left-view.x)/view.scale,(e.clientY-rect.top-view.y)/view.scale);});
 function collapseSidebar(on){const app=ROOT.querySelector('.app');if(!app)return;app.classList.toggle('sb-collapsed',!!on);requestAnimationFrame(()=>requestAnimationFrame(()=>{try{fitView(true);}catch(e){}}));setTimeout(()=>{try{fitView(true);}catch(e){}},240);}
 (function(){const c=document.getElementById('sbCollapse');if(c)c.onclick=()=>collapseSidebar(true);const o=document.getElementById('sbOpen');if(o)o.onclick=()=>collapseSidebar(false);})();
-document.getElementById('paletteClose').onclick=()=>{document.getElementById('palette').style.display='none';document.getElementById('paletteToggle').style.display='flex';};
-document.getElementById('paletteToggle').onclick=()=>{document.getElementById('palette').style.display='block';document.getElementById('paletteToggle').style.display='none';};
+function setPaletteOpen(open){const palette=document.getElementById('palette'),toggle=document.getElementById('paletteToggle'),expanded=!!open;if(!palette||!toggle)return;palette.style.display=expanded?'block':'none';toggle.style.display=expanded?'none':'flex';toggle.setAttribute('aria-expanded',String(expanded));}
+document.getElementById('paletteClose').onclick=()=>setPaletteOpen(false);
+document.getElementById('paletteToggle').onclick=()=>setPaletteOpen(true);
 document.getElementById('sbSearch').oninput=e=>renderSidebar(e.target.value);
 async function createAutomation(grupoFixo){
  const nm=prompt('Nome da nova automação:');if(!nm||!nm.trim())return;
@@ -1332,6 +1333,8 @@ _ctx.__organizeHorizontal=organizeHorizontal;
 _ctx.__organizeVertical=organizeVertical;
 _ctx.__hasUnsavedChanges=()=>dirty;
 setupImportButton();
+const paletteToggle=document.getElementById('paletteToggle');paletteToggle.title='Abrir biblioteca de módulos';paletteToggle.setAttribute('aria-controls','palette');
+const paletteHeading=document.querySelector('.palette-h h3');if(paletteHeading)paletteHeading.textContent='Biblioteca de módulos';
 renderPalette();
 ROOT.querySelectorAll('button[title]').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',b.title);});
 const saveButton=document.getElementById('tbSave');saveButton.classList.add('tb-save');saveButton.insertAdjacentHTML('beforeend','<span>Salvar</span>');
@@ -1340,7 +1343,7 @@ function toolbarGroup(label,selectors){const group=document.createElement('div')
 toolbarGroup('Editar',['#tbHide','#tbEdit','#tbDup','#tbNote','#tbDownload','#tbTrash','#tbNext']);
 toolbarGroup('Verificar',['#btnUndo','#btnRedo','.tb-preview','#btnValidate']);
 toolbarGroup('Salvar e publicar',['#tbSave','#btnVersions','#btnPublish']);
-document.getElementById('palette').style.display='none';document.getElementById('paletteToggle').style.display='flex';
+setPaletteOpen(!window.matchMedia('(max-width: 900px)').matches);
 boot();
 }
 
