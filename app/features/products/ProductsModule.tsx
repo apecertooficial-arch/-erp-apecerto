@@ -22,6 +22,7 @@ import { sitePropertyUrl, type Product } from "./products";
 import type { ProductQuality } from "./quality";
 import { isPlausibleProductPrice, normalizedKey } from "./quality";
 import { retryProductMediaImage } from "./media-image";
+import { productFailureMessage, productResponse, productSuccessMessage } from "./product-client";
 import type { InventorySummary, QualityRepairAction } from "./product-domain";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { useErpSession } from "../system/ErpSession";
@@ -260,10 +261,9 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     const motivo = approve ? "" : (window.prompt("Motivo da reprovação (opcional):", "") ?? "");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: empId, action: "decideUnit", unidadeId, approve, motivo }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { window.alert(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível concluir a decisão."); return; }
+      await productResponse(response, "Não foi possível concluir a decisão.");
       void loadCatalog(accessToken);
-    } catch { window.alert("Falha de conexão. Tente novamente."); }
+    } catch (error) { window.alert(productFailureMessage(error, "Falha de conexão. Tente novamente.")); }
   }, [accessToken, loadCatalog]);
 
   const confirmDeleteProduct = useCallback(async () => {
@@ -271,10 +271,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     setDeleting(true);
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: deleteTarget.id, action: "deleteProduct" }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { window.alert(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível excluir o produto."); }
-      else { void loadCatalog(accessToken); }
-    } catch { window.alert("Falha de conexão ao excluir. Tente novamente."); }
+      const result = await productResponse(response, "Não foi possível excluir o produto.");
+      void loadCatalog(accessToken);
+      const warning = productSuccessMessage(result, "");
+      if (warning) window.alert(warning);
+    } catch (error) { window.alert(productFailureMessage(error, "Falha de conexão ao excluir. Tente novamente.")); }
     finally { setDeleting(false); setDeleteTarget(null); }
   }, [accessToken, deleteTarget, loadCatalog]);
 
@@ -284,10 +285,11 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     try {
       const action = product.unitId ? (publish ? "publishUnit" : "unpublishUnit") : (publish ? "publish" : "unpublish");
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: product.id, action, unidadeId: product.unitId ?? undefined }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { window.alert(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível alterar a publicação do imóvel."); return; }
+      const result = await productResponse(response, "Não foi possível alterar a publicação do imóvel.");
       await loadCatalog(accessToken);
-    } catch { window.alert("Falha de conexão ao alterar a publicação. Tente novamente."); }
+      const warning = productSuccessMessage(result, "");
+      if (warning) window.alert(warning);
+    } catch (error) { window.alert(productFailureMessage(error, "Falha de conexão ao alterar a publicação. Tente novamente.")); }
     finally { setPublishing(false); setPublicationTarget(null); setOpenMenuId(null); }
   }, [accessToken, loadCatalog]);
 

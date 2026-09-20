@@ -6,6 +6,7 @@ import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier, type PendingMediaItem } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
+import { ProductClientError, productFailureMessage, productResponse } from "./product-client";
 
 type UnitWizardProps = { accessToken: string; onClose: () => void; onSaved: () => void; onCreateCondominium?: () => void; onCreateStandalone?: () => void };
 type Building = { id: string; nome: string; bairro: string | null; cidade: string | null; finalidade: string | null; origem: string | null; condominio_id: string | null };
@@ -160,10 +161,8 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
             },
           }),
         });
-        const created = await response.json() as { unidadeId?: string; userId?: string; resumed?: boolean; error?: string };
-        if (!response.ok || !created.unidadeId || !created.userId) {
-          throw new Error(created.error ?? "Não foi possível cadastrar a unidade.");
-        }
+        const created = await productResponse(response, "Não foi possível cadastrar a unidade.") as { unidadeId?: string; userId?: string; resumed?: boolean };
+        if (!created.unidadeId || !created.userId) throw new ProductClientError("O cadastro da unidade não foi confirmado.");
         unitId = created.unidadeId;
         userId = created.userId;
         setCreatedUnitId(unitId);
@@ -187,30 +186,30 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
             objectName: storagePath,
             onProgress: (fileProgress) => setUploadProgress(Math.round(((completed.size + fileProgress / 100) / photos.length) * 100)),
           });
-          const { error: mediaError } = await supabase.from("midias").upsert({
+          const { data: savedMedia, error: mediaError } = await supabase.from("midias").upsert({
             empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
             storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
-          } as never, { onConflict: "storage_path" });
-          if (mediaError) throw new Error(`Falha ao registrar: ${mediaError.message}`);
+          } as never, { onConflict: "storage_path" }).select("id").maybeSingle();
+          if (mediaError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
           completed.add(item.id);
           enviadaComSucesso += 1;
           setUploadedItemIds(Array.from(completed));
           setUploadProgress(Math.round((completed.size / photos.length) * 100));
         } catch (reason) {
-          const detail = reason instanceof Error ? reason.message : "falha desconhecida";
+          const detail = productFailureMessage(reason, "falha no envio ou registro");
           arquivosComFalha.push(`${item.file.name}: ${detail}`);
         }
       }
 
       if (arquivosComFalha.length > 0) {
-        throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
+        throw new ProductClientError(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
       }
 
       setMessage("Unidade enviada para aprovação.");
       await new Promise((resolve) => setTimeout(resolve, 700));
       onSaved();
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : "Não foi possível cadastrar a unidade.";
+      const detail = productFailureMessage(reason, "Não foi possível cadastrar a unidade.");
       setMessage(unitId
         ? `A unidade foi criada sem duplicar o cadastro, mas nem todas as fotos chegaram. ${detail} Clique em “Enviar fotos restantes” para continuar.`
         : detail);

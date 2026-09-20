@@ -550,6 +550,7 @@ export async function PATCH(request: Request) {
       removedMedia: storageWarning ? 0 : paths.length,
       storageCleanupPending: Boolean(storageWarning),
       warning: storageWarning,
+      code: storageWarning ? "RECONCILIATION_REQUIRED" : undefined,
     });
   }
 
@@ -801,6 +802,7 @@ export async function PATCH(request: Request) {
       removedMedia: storageWarning ? 0 : paths.length,
       storageCleanupPending: Boolean(storageWarning),
       warning: storageWarning,
+      code: storageWarning ? "RECONCILIATION_REQUIRED" : undefined,
     });
   }
 

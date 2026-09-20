@@ -11,6 +11,7 @@ import { sitePropertyUrl } from "./products";
 import { retryProductMediaImage as retryMediaImage } from "./media-image";
 import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
 import { captureFailureMessage, captureResponse } from "./capture-client";
+import { ProductClientError, productFailureMessage, productResponse, productSuccessMessage } from "./product-client";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; condominio_valor?: number | null; iptu?: number | null; outros_custos?: number | null; compre_ja_alugado?: boolean; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean; pode_ver_proprietario?: boolean; owner_complete?: boolean };
@@ -114,8 +115,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   const load = useCallback(async () => {
     setMessage("");
     const response = await fetch(`/api/product?id=${encodeURIComponent(productId)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error ?? "Não foi possível abrir o produto.");
+    const result = await productResponse(response, "Não foi possível abrir o produto.");
     const next = result.product as ProductDetailData;
     setProduct(next);
     if (next.pode_editar === false) setEditing(false);
@@ -133,7 +133,7 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
   }, [accessToken, productId]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load().catch((error: Error) => setMessage(error.message)); }, 0);
+    const timer = window.setTimeout(() => { void load().catch((error: unknown) => setMessage(productFailureMessage(error, "Não foi possível abrir o produto."))); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
   // Galeria do PRÉDIO/produto = mídia sem unidade_id. As fotos de unidade de indicação aparecem no detalhe da unidade.
@@ -222,20 +222,18 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
       const payload = Object.fromEntries(Object.entries(draft).map(([key, value]) => [key, numeric.has(key) && value !== "" ? Number(value) : value]));
       const condominium = condominiumId ? { id: condominiumId } : newCondominiumName.trim() ? { id: null, nome: newCondominiumName, endereco: draft.endereco, numero: draft.numero, bairro: draft.bairro, cidade: draft.cidade, uf: draft.uf, cep: draft.cep } : null;
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, product: payload, owner: product?.origem === "terceiros" ? owner : null, units, condominium, origin: product?.origem }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível salvar.");
+      await productResponse(response, "Não foi possível salvar.");
       await load(); onChanged(); setEditing(false); setMessage("Alterações salvas no Supabase.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao salvar."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao salvar.")); } finally { setBusy(false); }
   }
 
   async function setCover(mediaId: string) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "setCover", mediaId }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível definir a capa.");
+      await productResponse(response, "Não foi possível definir a capa.");
       await load(); onChanged(); setMessage("Foto de capa atualizada.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao definir a capa."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao definir a capa.")); } finally { setBusy(false); }
   }
 
   async function upload(files: FileList | null, forcedCategory?: string) {
@@ -255,27 +253,26 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           const path = await buildProductMediaPath(user.id, productId, null, originalFile);
           await uploadProductMediaResumable({ accessToken: token, bucketName: "empreendimentos", file, objectName: path });
           const tipo = mediaType(file);
-          const { error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, storage_path: path, tipo, categoria: forcedCategory ?? category, nome: file.name, is_capa: tipo === "foto" && photos.length + enviadaComSucesso === 0 }, { onConflict: "storage_path" });
-          if (insertError) throw insertError;
+          const { data: savedMedia, error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, storage_path: path, tipo, categoria: forcedCategory ?? category, nome: file.name, is_capa: tipo === "foto" && photos.length + enviadaComSucesso === 0 }, { onConflict: "storage_path" }).select("id").maybeSingle();
+          if (insertError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
           enviadaComSucesso += 1;
         } catch (reason) {
-          arquivosComFalha.push(`${originalFile.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
+          arquivosComFalha.push(`${originalFile.name}: ${productFailureMessage(reason, "falha no envio ou registro")}`);
         }
       }
       await load(); onChanged();
-      if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
+      if (arquivosComFalha.length) throw new ProductClientError(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
       setMessage(`${enviadaComSucesso} material(is) adicionado(s).`);
-    } catch (error) { console.error("[produto upload]", error); setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Falha no upload.")); } finally { setBusy(false); }
   }
 
   async function mediaAction(action: "updateMedia" | "deleteMedia", mediaId: string, categoryValue?: string) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action, mediaId, category: categoryValue }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível alterar a mídia.");
-      await load(); onChanged(); setMessage(action === "deleteMedia" ? "Material removido." : "Classificação atualizada.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao alterar a mídia."); } finally { setBusy(false); }
+      const result = await productResponse(response, "Não foi possível alterar a mídia.");
+      await load(); onChanged(); setMessage(productSuccessMessage(result, action === "deleteMedia" ? "Material removido." : "Classificação atualizada."));
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao alterar a mídia.")); } finally { setBusy(false); }
   }
 
   async function productAction(action: "toggleFavorite" | "linkLead" | "unlinkLead", value?: string | number | boolean) {
@@ -283,20 +280,18 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     try {
       const body = action === "toggleFavorite" ? { id: productId, action, favorite: value } : { id: productId, action, leadId: value };
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a ação.");
+      await productResponse(response, "Não foi possível concluir a ação.");
       await load(); onChanged(); setLeadId(""); setMessage(action === "toggleFavorite" ? "Favoritos atualizados." : "Vínculo com o lead atualizado.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao concluir a ação."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao concluir a ação.")); } finally { setBusy(false); }
   }
 
   async function publishAction(publish: boolean, unitId?: string) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: unitId ? (publish ? "publishUnit" : "unpublishUnit") : (publish ? "publish" : "unpublish"), unidadeId: unitId }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a ação.");
+      await productResponse(response, "Não foi possível concluir a ação.");
       await load(); onChanged(); setConfirmUnpublish(null); setMessage(publish ? "Imóvel publicado novamente no site." : "Imóvel retirado do ar. O cadastro, a aprovação e a disponibilidade foram mantidos.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao publicar."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao publicar.")); } finally { setBusy(false); }
   }
   async function decideUnit(unidadeId: string, approve: boolean) {
     let motivo: string | null = null;
@@ -304,10 +299,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "decideUnit", unidadeId, approve, motivo }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a decisão.");
+      await productResponse(response, "Não foi possível concluir a decisão.");
       setUnitDetail(null); await load(); onChanged(); setMessage(approve ? "Unidade aprovada." : "Unidade reprovada.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao decidir a unidade."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao decidir a unidade.")); } finally { setBusy(false); }
   }
 
   async function saveUnit() {
@@ -315,31 +309,30 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "updateUnit", unidadeId: unitEdit.id, unidade: unitEdit }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível salvar a unidade.");
+      const result = await productResponse(response, "Não foi possível salvar a unidade.");
       setUnitEdit(null); setUnitDetail(null); await load(); onChanged(); setMessage(result.approval === "pendente" ? "Unidade atualizada e reenviada para aprovação." : "Unidade atualizada.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao salvar a unidade."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao salvar a unidade.")); } finally { setBusy(false); }
   }
 
   async function setUnitAvailability(unit: Unit, disponivel: boolean) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "setUnitAvailability", unidadeId: unit.id, disponivel }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível alterar a disponibilidade do imóvel.");
+      await productResponse(response, "Não foi possível alterar a disponibilidade do imóvel.");
       setConfirmUnitAvailability(null); setUnitDetail(null); await load(); onChanged();
       setMessage(disponivel ? "Imóvel reativado. Ele continua fora do site até uma nova publicação." : "Imóvel inativado e retirado do site, sem perder o cadastro.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao alterar o imóvel."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao alterar o imóvel.")); } finally { setBusy(false); }
   }
 
   async function deleteUnit(unit: Unit) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "deleteUnit", unidadeId: unit.id }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível excluir o imóvel.");
+      const result = await productResponse(response, "Não foi possível excluir o imóvel.");
       setConfirmDeleteUnit(null); setUnitDetail(null); onChanged(); onClose();
-    } catch (error) { setConfirmDeleteUnit(null); setMessage(error instanceof Error ? error.message : "Erro ao excluir o imóvel."); } finally { setBusy(false); }
+      const warning = productSuccessMessage(result, "");
+      if (warning) window.alert(warning);
+    } catch (error) { setConfirmDeleteUnit(null); setMessage(productFailureMessage(error, "Erro ao excluir o imóvel.")); } finally { setBusy(false); }
   }
 
   async function uploadUnitMedia(files: FileList | null, unit: Unit) {
@@ -361,28 +354,27 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           await uploadProductMediaResumable({ accessToken: token, bucketName: "empreendimentos", file, objectName: path });
           const tipo = mediaType(file);
           const isCover = tipo === "foto" && unitPhotoCount === 0;
-          const { error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover }, { onConflict: "storage_path" });
-          if (insertError) throw insertError;
+          const { data: savedMedia, error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover }, { onConflict: "storage_path" }).select("id").maybeSingle();
+          if (insertError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
           if (tipo === "foto") unitPhotoCount += 1;
           enviadaComSucesso += 1;
         } catch (reason) {
-          arquivosComFalha.push(`${originalFile.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
+          arquivosComFalha.push(`${originalFile.name}: ${productFailureMessage(reason, "falha no envio ou registro")}`);
         }
       }
       await load(); onChanged();
-      if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
+      if (arquivosComFalha.length) throw new ProductClientError(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}`);
       setMessage(`${enviadaComSucesso} mídia(s) da unidade adicionada(s) com a marca d’água oficial.`);
-    } catch (error) { setMessage(error instanceof Error ? `Falha no upload: ${error.message}` : "Falha no upload."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Falha no upload.")); } finally { setBusy(false); }
   }
 
   async function submitRequest() {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "solicitar" }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível enviar a solicitação.");
+      await productResponse(response, "Não foi possível enviar a solicitação.");
       await load(); onChanged(); setMessage("Solicitação enviada — aguardando aprovação do gestor.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao enviar solicitação."); } finally { setBusy(false); }
+    } catch (error) { setMessage(productFailureMessage(error, "Erro ao enviar solicitação.")); } finally { setBusy(false); }
   }
 
   async function decideProduct(approve: boolean) {
@@ -402,10 +394,11 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "deleteProduct" }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { setMessage(typeof (data as { error?: unknown }).error === "string" ? (data as { error: string }).error : "Não foi possível excluir o produto."); setConfirmDeleteProduct(false); return; }
+      const result = await productResponse(response, "Não foi possível excluir o produto.");
       onChanged(); onClose();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao excluir."); } finally { setBusy(false); }
+      const warning = productSuccessMessage(result, "");
+      if (warning) window.alert(warning);
+    } catch (error) { setConfirmDeleteProduct(false); setMessage(productFailureMessage(error, "Falha ao excluir.")); } finally { setBusy(false); }
   }
 
   const publishButton = product && (canPublish
