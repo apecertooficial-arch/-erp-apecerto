@@ -14,6 +14,61 @@ export type PayloadEntradaInvalido = {
   status: 400 | 413;
 };
 
+export type JsonBodyResult =
+  | { ok: true; value: unknown }
+  | { ok: false; error: "INVALID_JSON" | "PAYLOAD_TOO_LARGE"; status: 400 | 413 };
+
+/** Le o corpo com teto real, inclusive quando nao existe Content-Length. */
+export async function readBoundedJson(
+  request: Request,
+  maxBytes = MAX_ENTRADA_BYTES,
+): Promise<JsonBodyResult> {
+  const declared = request.headers.get("content-length");
+  if (declared) {
+    const size = Number(declared);
+    if (Number.isFinite(size) && size > maxBytes) {
+      return { ok: false, error: "PAYLOAD_TOO_LARGE", status: 413 };
+    }
+  }
+
+  if (!request.body) return { ok: false, error: "INVALID_JSON", status: 400 };
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel("PAYLOAD_TOO_LARGE").catch(() => undefined);
+        return { ok: false, error: "PAYLOAD_TOO_LARGE", status: 413 };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, error: "INVALID_JSON", status: 400 };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return { ok: false, error: "INVALID_JSON", status: 400 };
+  }
+}
+
+export function parseAutomationId(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function scalarString(value: unknown): string {
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" && Number.isFinite(value)) return String(value);

@@ -6,7 +6,9 @@ import {
   firstScalarString,
   MAX_ENTRADA_BYTES,
   normalizePayloadEntrada,
+  parseAutomationId,
   parseQueueSuccess,
+  readBoundedJson,
   stableJson,
 } from "../supabase/functions/_shared/entrada-policy.ts";
 
@@ -31,6 +33,38 @@ test("payload válido normaliza contato e preserva campos declarados pela automa
 test("identificador numérico também gera chave explícita estável", () => {
   assert.equal(firstScalarString(undefined, 123456, "outro"), "123456");
   assert.equal(firstScalarString({}, false, "  "), "");
+});
+
+test("id da automacao precisa ser inteiro positivo e seguro", () => {
+  assert.equal(parseAutomationId("49"), 49);
+  assert.equal(parseAutomationId("0"), null);
+  assert.equal(parseAutomationId("-1"), null);
+  assert.equal(parseAutomationId("1.5"), null);
+  assert.equal(parseAutomationId("9007199254740992"), null);
+});
+
+test("leitura limita bytes antes do parse e rejeita JSON invalido", async () => {
+  const valid = await readBoundedJson(new Request("https://example.invalid", {
+    method: "POST",
+    body: JSON.stringify({ nome: "Lead sanitizado" }),
+  }));
+  assert.equal(valid.ok, true);
+
+  const oversized = await readBoundedJson(new Request("https://example.invalid", {
+    method: "POST",
+    body: JSON.stringify({ texto: "x".repeat(64) }),
+  }), 32);
+  assert.deepEqual(oversized, {
+    ok: false,
+    error: "PAYLOAD_TOO_LARGE",
+    status: 413,
+  });
+
+  const invalid = await readBoundedJson(new Request("https://example.invalid", {
+    method: "POST",
+    body: "{nao-json",
+  }));
+  assert.deepEqual(invalid, { ok: false, error: "INVALID_JSON", status: 400 });
 });
 
 test("payload não objeto, grande, profundo ou com campo de protótipo falha antes da fila", () => {
@@ -65,6 +99,9 @@ test("sucesso da fila exige contrato completo e fila positiva", () => {
 });
 
 test("Edge falha fechada sem expor Postgres, configuração ou exceção", () => {
+  assert.match(source, /readBoundedJson\(request\)/);
+  assert.doesNotMatch(source, /request\.json\(\)/);
+  assert.match(source, /parseAutomationId\(rawAutomationId\)/);
   assert.match(source, /if \(!automationResponse\.ok\)/);
   assert.match(source, /AUTOMATION_LOOKUP_FAILED/);
   assert.match(source, /AUTOMATION_LOOKUP_INVALID_RESPONSE/);
