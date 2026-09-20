@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,27 @@ async function clienteAutenticado(request: Request) {
   const supabase = createServerSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return { erro: Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 }) };
-  return { db: supabase as unknown as SupabaseClient };
+  return { db: supabase, user: data.user };
+}
+
+function falhaExplicador(error: { code?: string } | null, operacao: string) {
+  console.error("automacoes_explicar_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: "Não foi possível consultar as automações no momento.",
+    erro: "falha_banco",
+  }, { status: 502 });
 }
 
 export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
+  const access = await resolveEffectiveAccess(auth.db, auth.user.id);
+  if (!access.resolved) return falhaExplicador(null, "validar_autorizacao");
+  const denied = denyIfCannot(access, [["automacoes", "ver"]]);
+  if (denied) return denied;
 
   const id = new URL(request.url).searchParams.get("id");
 
@@ -32,7 +47,7 @@ export async function GET(request: Request) {
       .select("id,nome,ativa,status,grupo")
       .neq("arquivada", true)
       .order("id", { ascending: false });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaExplicador(error, "listar_automacoes");
     return Response.json({ automacoes: data ?? [] });
   }
 
@@ -42,7 +57,7 @@ export async function GET(request: Request) {
   }
 
   const { data, error } = await auth.db.rpc("automacao_explicar", { p_id: numero });
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) return falhaExplicador(error, "explicar_automacao");
 
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
   if (resultado.ok === false) {

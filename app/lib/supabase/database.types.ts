@@ -12313,6 +12313,19 @@ export type Database = {
         Returns: Json
       }
       can_manage_all: { Args: never; Returns: boolean }
+      central_abordagem_emergencia: {
+        Args: { p_liberar: boolean }
+        Returns: Json
+      }
+      central_reprocessar_fila: {
+        Args: { p_fila_id: number }
+        Returns: Json
+      }
+      central_reprocessar_fila_versao_publicada: {
+        Args: { p_fila_id: number }
+        Returns: Json
+      }
+      central_saude_operacional: { Args: never; Returns: Json }
       classificar_caixa: {
         Args: {
           p_descricao: string
