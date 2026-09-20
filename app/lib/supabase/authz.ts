@@ -22,11 +22,12 @@ export async function resolveEffectiveAccess(
   const role = (userProfile as { role?: string }).role ?? "";
   let permissions = (userProfile as { permissoes?: PermissionMap | null }).permissoes ?? null;
   if (!permissions || Object.keys(permissions).length === 0) {
-    const { data: roleProfile } = await supabase
+    const { data: roleProfile, error: roleError } = await supabase
       .from("perfis")
       .select("permissoes")
       .eq("id", role)
       .maybeSingle();
+    if (roleError || !roleProfile) return { role: "", permissions: {}, resolved: false };
     permissions = (roleProfile as { permissoes?: PermissionMap | null } | null)?.permissoes ?? {};
   }
   return { role, permissions: permissions ?? {}, resolved: true };

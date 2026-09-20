@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
-import { resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 
 export const dynamic = "force-dynamic";
@@ -39,10 +39,25 @@ async function authenticatedClient(request: Request) {
 }
 
 const text = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
+const uuid = (value: string) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value);
+
+function mensagens(value: unknown, optional = false) {
+  if (optional && value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 60) return null;
+  try {
+    return JSON.stringify(value).length <= 100_000 ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  if (!access.resolved) return falhaAbordagens(null, "validar_autorizacao_leitura");
+  const denied = denyIfCannot(access, [["abordagens", "ver"]]);
+  if (denied) return denied;
   const [approaches, products] = await Promise.all([
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id,empreendimento_id,grupo,ativo,ordem,criado_em").order("ordem"),
     auth.supabase.from("empreendimentos").select("id,nome").eq("rascunho", false).order("nome").limit(400),
@@ -60,8 +75,21 @@ export async function PATCH(request: Request) {
   if (!papelNoGrupo(access.role, "gestao")) {
     return Response.json({ error: "A biblioteca de abordagens só pode ser alterada pela gestão." }, { status: 403 });
   }
-  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) return Response.json({ error: "Envie uma alteração de abordagem válida." }, { status: 422 });
   const action = text(body.action, 40);
+  const permissionByAction: Record<string, string> = {
+    createProduct: "criar",
+    createApproach: "criar",
+    updateApproach: "editar",
+    toggleApproach: "publicar",
+    deleteApproach: "excluir",
+    renameGroup: "editar",
+  };
+  const permission = permissionByAction[action];
+  if (!permission) return Response.json({ error: "Ação desconhecida." }, { status: 400 });
+  const denied = denyIfCannot(access, [["abordagens", permission]]);
+  if (denied) return denied;
 
   if (action === "createProduct") {
     return Response.json({ error: "Produtos devem ser cadastrados no módulo Produtos; esta ação foi aposentada." }, { status: 410 });
@@ -71,8 +99,8 @@ export async function PATCH(request: Request) {
     const name = text(body.name, 120);
     const empreendimentoId = body.empreendimentoId ? text(body.empreendimentoId, 60) : null;
     const grupo = text(body.grupo, 80) || null;
-    if (!name || (empreendimentoId !== null && !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(empreendimentoId))) return Response.json({ error: "Dados da abordagem inválidos." }, { status: 422 });
-    const messages = Array.isArray(body.messages) ? body.messages.slice(0, 60) : [];
+    const messages = mensagens(body.messages, true);
+    if (!name || (empreendimentoId !== null && !uuid(empreendimentoId)) || !messages) return Response.json({ error: "Dados da abordagem inválidos." }, { status: 422 });
     const countQuery = auth.supabase.from("abordagens").select("*", { count: "exact", head: true });
     const { data: countData, count, error: countError } = empreendimentoId === null ? await countQuery.is("empreendimento_id", null) : await countQuery.eq("empreendimento_id", empreendimentoId);
     void countData;
@@ -85,8 +113,8 @@ export async function PATCH(request: Request) {
 
   if (action === "updateApproach") {
     const id = Number(body.id); const name = text(body.name, 120);
-    const messages = Array.isArray(body.messages) ? body.messages.slice(0, 60) : [];
-    if (!Number.isSafeInteger(id) || !name) return Response.json({ error: "Abordagem inválida." }, { status: 422 });
+    const messages = mensagens(body.messages);
+    if (!Number.isSafeInteger(id) || !name || !messages) return Response.json({ error: "Abordagem inválida." }, { status: 422 });
     const update: TablesUpdate<"abordagens"> = { nome: name, mensagens: messages };
     if (body.grupo !== undefined) update.grupo = text(body.grupo, 80) || null;
     const { data: updated, error } = await auth.supabase.from("abordagens").update(update).eq("id", id).select("id").maybeSingle();
@@ -96,8 +124,8 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "toggleApproach") {
-    const id = Number(body.id); const active = body.active === true;
-    if (!Number.isSafeInteger(id)) return Response.json({ error: "Abordagem inválida." }, { status: 422 });
+    const id = Number(body.id); const active = body.active;
+    if (!Number.isSafeInteger(id) || typeof active !== "boolean") return Response.json({ error: "Abordagem inválida." }, { status: 422 });
     const { data: updated, error } = await auth.supabase.from("abordagens").update({ ativo: active }).eq("id", id).select("id").maybeSingle();
     if (error) return falhaAbordagens(error, "alternar_abordagem");
     if (!updated) return Response.json({ error: "A abordagem não existe ou não está disponível.", erro: "abordagem_nao_encontrada" }, { status: 404 });
@@ -110,9 +138,11 @@ export async function PATCH(request: Request) {
 
   /* Doc §11 — CRUD de grupos: renomear/dissolver move todas as abordagens do grupo */
   if (action === "renameGroup") {
+    if ((body.from !== null && typeof body.from !== "string") || (body.to !== null && typeof body.to !== "string")) return Response.json({ error: "Grupo inválido." }, { status: 422 });
     const from = text(body.from, 80) || null;
     const to = body.to === null ? null : text(body.to, 80) || null;
     const empreendimentoId = body.empreendimentoId ? text(body.empreendimentoId, 60) : null;
+    if ((empreendimentoId !== null && !uuid(empreendimentoId)) || from === to) return Response.json({ error: "Grupo inválido." }, { status: 422 });
     let update = auth.supabase.from("abordagens").update({ grupo: to });
     update = from === null ? update.is("grupo", null) : update.eq("grupo", from);
     update = empreendimentoId === null ? update.is("empreendimento_id", null) : update.eq("empreendimento_id", empreendimentoId);
@@ -121,6 +151,4 @@ export async function PATCH(request: Request) {
     if (!updated?.length) return Response.json({ error: "Nenhuma abordagem foi encontrada neste grupo.", erro: "grupo_nao_encontrado" }, { status: 404 });
     return Response.json({ success: true, updated: updated.length });
   }
-
-  return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }

@@ -4,6 +4,8 @@ import test from "node:test";
 
 const route = readFileSync(new URL("../app/api/approaches/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/approaches/ApproachesWorkspace.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const authz = readFileSync(new URL("../app/lib/supabase/authz.ts", import.meta.url), "utf8");
 
 test("Abordagens sanitiza falhas técnicas sem payload ou mensagem SQL", () => {
   assert.match(route, /function falhaAbordagens\(/);
@@ -16,6 +18,13 @@ test("mutações exigem gestão resolvida no servidor", () => {
   assert.match(route, /if \(!access\.resolved\) return falhaAbordagens\(/);
   assert.match(route, /papelNoGrupo\(access\.role, "gestao"\)/);
   assert.match(route, /A biblioteca de abordagens só pode ser alterada pela gestão/);
+  assert.match(route, /denyIfCannot\(access, \[\["abordagens", permission\]\]\)/);
+});
+
+test("leitura exige a permissão efetiva de Abordagens", () => {
+  assert.match(route, /validar_autorizacao_leitura/);
+  assert.match(route, /denyIfCannot\(access, \[\["abordagens", "ver"\]\]\)/);
+  assert.match(authz, /if \(roleError \|\| !roleProfile\) return \{ role: "", permissions: \{\}, resolved: false \}/);
 });
 
 test("criação comprova contagem e linha persistida", () => {
@@ -47,4 +56,13 @@ test("grupo comprova linhas e interface separa falha de vazio real", () => {
   assert.match(ui, /Não foi possível carregar a biblioteca de abordagens/);
   assert.match(ui, /Tentar novamente/);
   assert.match(ui, /A alteração foi salva, mas a biblioteca não pôde ser atualizada\. Recarregue antes de repetir\./);
+});
+
+test("entrada incompleta e resposta 2xx inválida não viram mutação ou sucesso", () => {
+  assert.match(route, /typeof active !== "boolean"/);
+  assert.match(route, /JSON\.stringify\(value\)\.length <= 100_000/);
+  assert.match(route, /from === to/);
+  assert.match(ui, /!payload \|\| payload\.success !== true/);
+  assert.match(ui, /response\.json\(\)\.catch\(\(\) => null\)/);
+  assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.approaches-workspace button[^}]*min-height:44px/);
 });

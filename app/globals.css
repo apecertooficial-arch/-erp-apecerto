@@ -2042,6 +2042,11 @@ body { overflow:hidden; background:#eee8e2; }
 .approach-products .approach-add-group { display:block; text-align:center; margin-top:10px; border:1px dashed #e3d9d1; border-radius:10px; padding:10px; background:transparent; color:#8a807a; font-weight:700; font-size:12px; cursor:pointer; }
 .approach-products .approach-add-group:hover { border-color:#ffad74; color:#ff6900; background:#fffaf5; }
 @media(max-width:1100px){ .approach-list .approach-cards { grid-template-columns:1fr; } }
+@media(max-width:800px){
+  .approaches-workspace button,.approaches-workspace select,.approaches-workspace input{min-height:44px}
+  .approach-list .approach-card>footer .approach-edit-btn,.approach-list .approach-card>footer .approach-ico-btn{min-height:44px;height:44px}
+  .approach-drawer-scrim aside>header button{width:44px;height:44px}
+}
 
 /* ============================================================
    MINI CHAT DO LEAD — redesign fiel à nova referência (jul/2026)

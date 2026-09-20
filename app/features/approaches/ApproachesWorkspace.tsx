@@ -77,14 +77,19 @@ export function ApproachesWorkspace({ accessToken }: { accessToken: string }) {
     if (!background) { setLoadStatus("loading"); setLoadError(""); }
     try {
       const response = await fetch("/api/approaches", { headers: { Authorization: `Bearer ${accessToken}` } });
-      const payload = await response.json() as Data & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Não foi possível carregar as abordagens.");
+      const payload = await response.json().catch(() => null) as (Data & { error?: string }) | null;
+      if (!response.ok || !payload) {
+        const message = payload?.error || "Não foi possível carregar as abordagens.";
+        if (background) throw new Error(message);
+        setLoadError(message);
+        setLoadStatus("error");
+        return;
+      }
       setData(payload);
       if (!background) setLoadStatus("ready");
-    } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Não foi possível carregar as abordagens.";
-      if (background) throw new Error(message);
-      setLoadError(message);
+    } catch {
+      if (background) throw new Error("Não foi possível atualizar a biblioteca de abordagens.");
+      setLoadError("Não foi possível carregar as abordagens.");
       setLoadStatus("error");
     }
   }, [accessToken]);
@@ -95,8 +100,9 @@ export function ApproachesWorkspace({ accessToken }: { accessToken: string }) {
     setBusy(true); setNotice(null);
     try {
       const response = await fetch("/api/approaches", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const payload = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) { setNotice(payload.error || "Não foi possível salvar."); return; }
+      const payload = await response.json().catch(() => null) as { error?: string; success?: boolean } | null;
+      if (!response.ok) { setNotice(payload?.error || "Não foi possível salvar."); return; }
+      if (!payload || payload.success !== true) { setNotice("Não foi possível confirmar a alteração. Recarregue antes de repetir."); return; }
       try {
         await load(true);
         setNotice("Alteração salva.");

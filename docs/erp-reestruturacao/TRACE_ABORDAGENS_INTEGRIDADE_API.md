@@ -1,7 +1,7 @@
 # Trace — integridade da Biblioteca de Abordagens
 
 Atualizado em: 2026-09-20
-Estado: P0 de autorização e preservação corrigido localmente; ordenação concorrente ainda pendente
+Estado: P0 de autorização e preservação pronto para publicação; ordenação concorrente ainda pendente
 
 ## Falhas reproduzidas
 
@@ -19,8 +19,11 @@ mostrava uma biblioteca vazia com botões de criação e edição.
 
 - a leitura e todas as mutações sanitizam falhas técnicas e registram somente
   operação fixa e código, sem conteúdo das mensagens ou payload;
-- qualquer escrita exige papel do grupo canônico `gestao`; falha ao resolver o
-  acesso interrompe como indisponibilidade, não como falso `403`;
+- a leitura exige `abordagens:ver`; qualquer escrita exige papel do grupo
+  canônico `gestao` e a permissão específica de criar, editar, publicar ou
+  excluir; falha ao resolver o acesso interrompe como indisponibilidade;
+- JSON inválido, conteúdo acima do limite, arquivamento sem booleano e grupo
+  sem mudança são rejeitados antes da persistência;
 - criação verifica erro da contagem e exige a linha inserida de volta;
 - edição e arquivamento exigem uma linha realmente afetada;
 - renomear ou dissolver grupo confirma as linhas alcançadas e não finge sucesso
@@ -29,21 +32,22 @@ mostrava uma biblioteca vazia com botões de criação e edição.
 - exclusão física foi bloqueada; a operação suportada é arquivar, preservando
   histórico e referências das automações;
 - a interface separa loading, falha e vazio real, não expõe mutações durante
-  erro e preserva sucesso se somente a recarga posterior falhar.
+  erro, não aceita resposta `2xx` sem confirmação e preserva sucesso se somente
+  a recarga posterior falhar;
+- controles interativos críticos têm alvo mínimo de 44 px no celular.
 
 ## Evidência
 
-- 6/6 contratos específicos de Abordagens;
-- 28/28 no recorte Abordagens + harness visual;
-- 674/674 no gate frontend completo;
-- 426/426 ao reproduzir somente esta fatia sobre `origin/main`;
-- typecheck, lint sem erros e build completo aprovados;
+- 8/8 contratos específicos de Abordagens;
+- 47/47 no recorte de APIs endurecidas e 507/507 no gate frontend canônico;
+- typecheck e build completo aprovados; lint sem erros e com um aviso antigo de
+  imagem não otimizada na prévia;
 - navegador real sanitizado em 1280 × 800 e 390 × 844: erro explícito, retry
   disponível, nenhum controle mutável, somente GET local, zero console e nenhum
   overflow horizontal.
 
 Nenhuma abordagem, produto, automação, mensagem ou dado remoto foi alterado.
-Não houve migration, push ou deploy.
+Não houve migration nem alteração remota de dados.
 
 ## Limites ainda abertos
 
