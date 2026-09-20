@@ -1,7 +1,7 @@
 # Trace — integridade e fronteira da API Financeira
 
 Atualizado em: 2026-09-20
-Estado: P0 parcial, pacote de aplicação revalidado para promoção; banco intacto
+Estado: P0 parcial de aplicação publicado e validado; banco intacto
 
 ## Falhas reproduzidas no código
 
@@ -87,4 +87,7 @@ local sem efeitos externos.
 - componente produtivo validado em navegador a 1280 × 720 e 390 × 844, nos
   estados normal, vazio e erro, sem overflow ou console e com somente
   `GET /api/finance`;
-- branch local, sem migration, escrita produtiva ou deploy neste ponto.
+- commit publicado: `b87eb5af07f4452586c807def8f029c11f3a80a3`;
+- `/api/build` confirmou o SHA e o painel autenticado foi revalidado em
+  1280 × 720 e 390 × 844, sem alerta, log de erro/aviso ou overflow;
+- nenhuma migration ou escrita produtiva foi executada.
