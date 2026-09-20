@@ -2599,7 +2599,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 
 @media (max-width: 900px) {
   .automation-header-actions { width: 100%; }
-  .automation-header-actions > * { flex: 1; }
+  .automation-header-actions > * { min-height: 44px; flex: 1; }
   .automation-section-tabs { display: flex; overflow-x: auto; }
   .automation-section-tabs button { flex: 0 0 160px; }
   .automation-view-header { align-items: flex-start; flex-direction: column; gap: 6px; }
@@ -2612,6 +2612,11 @@ body.automation-builder-focus .app-shell > .sidebar {
   .central-exception-columns { grid-template-columns: 1fr; }
   .central-ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .central-execution-list { grid-template-columns: 1fr; }
+  .central-refresh,
+  .central-stop,
+  .central-release,
+  .central-lista button,
+  .central-ops-erro button { min-height: 44px; }
 }
 
 @media (max-width: 600px) {
