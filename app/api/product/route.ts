@@ -220,7 +220,11 @@ export async function GET(request: Request) {
       captorBrokerId: (u as { captador_corretor_id?: number | null }).captador_corretor_id,
     });
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
-    const podeVerProprietarioUnidade = gerenciaProdutosGet || unidadeMinha;
+    const podeVerProprietarioUnidade = canViewUnitOwner({
+      viewerBrokerId: broker?.id,
+      captorBrokerId: (u as { captador_corretor_id?: number | null }).captador_corretor_id,
+      isManager: gerenciaProdutosGet,
+    });
     const privateOwner = privateOwnerByUnit.get(u.id);
     const ownerComplete = ownerCompleteByUnit.get(u.id) ?? Boolean(u.proprietario_nome && u.proprietario_contato);
     return podeVerProprietarioUnidade

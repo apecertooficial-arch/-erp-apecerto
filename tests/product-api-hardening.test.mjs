@@ -32,7 +32,7 @@ test("leituras obrigatórias da ficha falham fechado", () => {
 test("somente gestão ou captador recebe dados do proprietário", () => {
   assert.match(getBlock, /const podeVerProprietarioProduto = gerenciaProdutosGet \|\| mine/);
   assert.match(getBlock, /proprietario_id: podeVerProprietarioProduto \? data\.proprietario_id : null/);
-  assert.match(getBlock, /const podeVerProprietarioUnidade = gerenciaProdutosGet \|\| unidadeMinha/);
+  assert.match(getBlock, /const podeVerProprietarioUnidade = canViewUnitOwner\(\{[\s\S]*?isManager: gerenciaProdutosGet/);
   assert.match(getBlock, /pode_ver_proprietario: podeVerProprietarioUnidade/);
 });
 
