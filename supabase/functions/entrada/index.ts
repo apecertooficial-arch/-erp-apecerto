@@ -1,4 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {
+  classifyQueueFailure,
+  firstScalarString,
+  normalizePayloadEntrada,
+  parseQueueSuccess,
+  stableJson,
+} from "../_shared/entrada-policy.ts";
 
 const cors = {
   "Content-Type": "application/json",
@@ -10,22 +17,6 @@ const cors = {
 
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: cors });
-
-function firstString(...values: unknown[]): string {
-  const value = values.find((item) => typeof item === "string" && item.trim());
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    const object = value as Record<string, unknown>;
-    return `{${Object.keys(object).sort().map((key) =>
-      `${JSON.stringify(key)}:${stableJson(object[key])}`
-    ).join(",")}}`;
-  }
-  return JSON.stringify(value) ?? "null";
-}
 
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -55,26 +46,39 @@ Deno.serve(async (request: Request) => {
     }
     const automationId = Number.parseInt(rawAutomationId, 10);
 
-    let body: Record<string, unknown>;
+    let rawBody: unknown;
     try {
-      body = await request.json();
+      rawBody = await request.json();
     } catch {
       return response({ ok: false, error: "INVALID_JSON" }, 400);
     }
+    const normalized = normalizePayloadEntrada(rawBody);
+    if (!normalized.ok) return response({ ok: false, error: normalized.error }, normalized.status);
+    const { body, lead } = normalized;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!supabaseUrl || !serviceRoleKey) {
+      return response({ ok: false, error: "SERVICE_CONFIGURATION_UNAVAILABLE" }, 503);
+    }
     const headers = {
       apikey: serviceRoleKey,
       Authorization: `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
     };
 
-    const automationRows = await fetch(
+    const automationResponse = await fetch(
       `${supabaseUrl}/rest/v1/automacoes?id=eq.${automationId}` +
         "&select=id,nome,ativa,status,arquivada,versao_publicada_id,webhook_token,webhook_token_enforced&limit=1",
       { headers },
-    ).then((result) => result.json());
+    );
+    if (!automationResponse.ok) {
+      return response({ ok: false, error: "AUTOMATION_LOOKUP_FAILED" }, 502);
+    }
+    const automationRows = await automationResponse.json().catch(() => null);
+    if (!Array.isArray(automationRows)) {
+      return response({ ok: false, error: "AUTOMATION_LOOKUP_INVALID_RESPONSE" }, 502);
+    }
     const automation = Array.isArray(automationRows) ? automationRows[0] : null;
     if (!automation) return response({ ok: false, error: "AUTOMATION_NOT_FOUND" }, 404);
 
@@ -96,22 +100,13 @@ Deno.serve(async (request: Request) => {
       }
     }
 
-    const lead: Record<string, unknown> = {
-      nome: body.nome ?? body.name ?? body.full_name ?? body.fullName ?? "Lead",
-      telefone: String(
-        body.telefone ?? body.phone ?? body.whatsapp ?? body.numero ?? body.celular ?? "",
-      ).replace(/\D/g, ""),
-      email: body.email ?? "",
-    };
-    for (const key of Object.keys(body)) if (!(key in lead)) lead[key] = body[key];
-
     const digits = String(lead.telefone ?? "");
     if (!digits && !String(lead.email ?? "").includes("@")) {
       return response({ ok: false, error: "LEAD_WITHOUT_CONTACT" }, 400);
     }
     if (digits && digits.length < 10) lead.telefone_suspeito = true;
 
-    const explicitIdempotencyKey = firstString(
+    const explicitIdempotencyKey = firstScalarString(
       request.headers.get("x-idempotency-key"),
       body.event_id,
       body.eventId,
@@ -141,16 +136,16 @@ Deno.serve(async (request: Request) => {
     );
     const rawQueueResult = await queued.text();
     if (!queued.ok) {
+      const failure = classifyQueueFailure(queued.status, rawQueueResult);
       return response({
         ok: false,
-        error: queued.status === 409 ? "IDEMPOTENCY_CONFLICT" : "AUTOMATION_QUEUE_REJECTED",
-        detail: rawQueueResult.slice(0, 400),
-      }, queued.status === 400 || queued.status === 409 ? 409 : 502);
+        error: failure.error,
+      }, failure.status);
     }
-    const queueResult = JSON.parse(rawQueueResult) as {
-      fila_id?: number;
-      duplicado?: boolean;
-    };
+    const queueResult = parseQueueSuccess(rawQueueResult);
+    if (!queueResult) {
+      return response({ ok: false, error: "AUTOMATION_QUEUE_INVALID_RESPONSE" }, 502);
+    }
 
     // Telemetria nao participa da decisao nem pode bloquear a entrada.
     fetch(`${supabaseUrl}/rest/v1/automacoes?id=eq.${automationId}`, {
@@ -171,7 +166,7 @@ Deno.serve(async (request: Request) => {
       versao_id: automation.versao_publicada_id,
       idempotencia_automatica: !explicitIdempotencyKey,
     });
-  } catch (error) {
-    return response({ ok: false, error: "UNEXPECTED_ERROR", detail: String(error) }, 500);
+  } catch {
+    return response({ ok: false, error: "UNEXPECTED_ERROR" }, 500);
   }
 });
