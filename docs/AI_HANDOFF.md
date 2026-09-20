@@ -13,10 +13,10 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `6a3f96c1`;
-  usuário autorizou publicação de código validado. Merge e deploy não foram
-  executados
-- HEAD local e remoto antes da fatia em curso: `6a3f96c1`
+- ambiente: branch isolada enviada ao repositório oficial até `95673aae`;
+  usuário autorizou publicação de código validado. Merge e deploy ainda não
+  foram executados
+- HEAD local e remoto: `95673aae`
 - árvore local em curso: ações operacionais dos alertas remanescentes;
   preservar o symlink local não versionado `node_modules`
 
@@ -118,7 +118,7 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- o remoto contém os commits até `29ea02e9`; a fatia de Avisos e o contrato de
+- o remoto contém os commits até `95673aae`; a fatia de Avisos e o contrato de
   ciclo dos alertas de automação foram testados e enviados à branch isolada.
   Merge e deploy continuam
   pendentes do gate do payload, CI e validação do SHA, não de uma janela de
@@ -440,10 +440,12 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Registrar a navegação real dos Avisos sem incluir o symlink `node_modules` e,
-quando houver autorização aceita pelo ambiente, enviar os commits locais para
-a branch isolada. Em seguida, avançar para a próxima lacuna P0 da jornada
-lead → primeira abordagem → Sara. Recalcular o preflight de evidência dentro da
+Separar do conjunto acumulado o payload promovível: a branch está 46 commits e
+123 arquivos à frente de `origin/main`, incluindo código pronto, documentação e
+drafts de banco que não podem virar migrations por acidente. Rodar o CI sobre o
+SHA candidato, promover somente o conteúdo aprovado, confirmar `/api/build` e
+revalidar desktop e PWA/aplicativo em produção. Em paralelo, avançar para a
+próxima lacuna P0 da jornada lead → primeira abordagem → Sara. Recalcular o preflight de evidência dentro da
 mesma transação do ensaio futuro; não reaproveitar 128/34 como contagem atual.
 Quando existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
