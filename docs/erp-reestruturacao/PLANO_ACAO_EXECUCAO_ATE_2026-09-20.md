@@ -6,7 +6,7 @@ Ambiente de implementação: worktree local isolada; publicação de código som
 Worktree: `/private/tmp/apecerto-erp-crm-visual`
 Branch: `codex/erp-crm-visual-concept`
 Base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-HEAD remoto antes da fatia em curso: `29ea02e93c68801638508354437f5b43209ad565`
+HEAD remoto antes da fatia em curso: `6a3f96c1`
 
 ## Resultado deste ciclo
 
@@ -366,6 +366,14 @@ aceitar justificativa genérica. Desktop, aplicativo, APIs e draft de banco
 exigem motivo estruturado e uma próxima ação explícita antes do encerramento.
 O gate passou 528/528 e o comportamento foi validado em 1440 × 1000 e
 390 × 844 sem enviar mutações.
+
+Também concluído localmente na interface de Avisos: falha de canal, transições
+da Sara e feedback de visita deixaram de cair na ação genérica `Abrir` e agora
+orientam respectivamente `Corrigir canal`, `Acompanhar lead`, `Priorizar lead`
+e `Dar feedback`. Falha real de canal passou a ser urgente no PWA. O gate
+frontend passou 564/564; navegador sanitizado passou em 1440 × 1000 e
+390 × 844, sem overflow nem erro/aviso de console. Não houve deploy nem escrita
+no banco.
 
 Também reproduzido e corrigido localmente na fatia de entrada: a identidade
 ignorava o e-mail sempre que havia telefone, e a roleta não consultava a Agenda

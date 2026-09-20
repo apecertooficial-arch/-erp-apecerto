@@ -13,11 +13,11 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `29ea02e9`;
+- ambiente: branch isolada enviada ao repositório oficial até `6a3f96c1`;
   usuário autorizou publicação de código validado. Merge e deploy não foram
   executados
-- HEAD local e remoto antes da fatia em curso: `29ea02e9`
-- árvore local em curso: contrato de resolução por evidência dos alertas;
+- HEAD local e remoto antes da fatia em curso: `6a3f96c1`
+- árvore local em curso: ações operacionais dos alertas remanescentes;
   preservar o symlink local não versionado `node_modules`
 
 ## Concluído
@@ -128,6 +128,13 @@ declarar o ERP inteiro pronto sem evidência.
   O preflight sanitizado encontrou prova para encerrar 128 e preserva 34 ainda
   acionáveis; o draft não foi aplicado. Nove contratos específicos e o gate
   frontend 561/561 passaram.
+- a interface dos alertas remanescentes foi fechada localmente: falha de canal
+  é urgente no PWA e leva a `Corrigir canal`; Sara leva a `Acompanhar lead` ou
+  `Priorizar lead`; visita sem feedback leva a `Dar feedback`. São 18/18
+  contratos direcionados e gate frontend 564/564. Navegador real sanitizado
+  passou em 1440 × 1000 e 390 × 844, sem overflow nem erros/avisos. A subfatia
+  foi registrada em commit local; o push permaneceu bloqueado pela política de
+  aprovação do ambiente e não foi contornado.
 
 ## Arquivos alterados/relevantes
 
@@ -137,6 +144,9 @@ declarar o ERP inteiro pronto sem evidência.
 - `tests/crm-visual-harness/reimagined-concept.css`
 - `tests/crm-visual-harness/CrmKanbanReimagined.tsx`
 - `tests/crm-visual-harness/kanban-reimagined.css`
+- `app/features/notifications/telaAvisos.logica.ts`
+- `public/sw.js`
+- `tests/push-e-avisos.test.mjs`
 - conceitos anteriores no mesmo diretório permanecem preservados.
 
 ## Evidências
@@ -151,6 +161,9 @@ declarar o ERP inteiro pronto sem evidência.
 - ESLint dos componentes do harness: passou;
 - `git diff --check`: passou;
 - navegador real: seleção Ana → Gabriel atualizou próxima ação; console limpo.
+- avisos acionáveis: 18/18 direcionados e 564/564 no gate frontend; typecheck e
+  build passaram; lint ficou em 0 erros e 10 avisos preexistentes; desktop
+  1440 × 1000 e celular 390 × 844 sem overflow ou erro/aviso de console.
 - `node --test tests/funil-2-sara-worker.test.mjs tests/crm-visual-harness.test.mjs`:
   21/21 passaram após demonstrar a falha antes da correção;
 - suíte CRM/Funil selecionada: 104/104 passou, incluindo igualdade entre CSS

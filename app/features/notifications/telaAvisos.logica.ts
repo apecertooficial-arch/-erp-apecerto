@@ -32,7 +32,11 @@ export const ICONE_POR_TIPO: Record<string, { glifo: string; cor: string }> = {
   primeira_abordagem_pendente: { glifo: "👤", cor: "roxo" },
   acao_vencida:                { glifo: "⚠", cor: "vermelho" },
   visita_proxima:              { glifo: "📅", cor: "verde" },
+  visita_feedback_pendente:    { glifo: "📝", cor: "laranja" },
   escalonamento:               { glifo: "⚠", cor: "vermelho" },
+  canal_indisponivel:          { glifo: "📵", cor: "vermelho" },
+  lead_em_atendimento:         { glifo: "💬", cor: "roxo" },
+  lead_quente:                 { glifo: "🔥", cor: "laranja" },
   lead_sem_corretor:           { glifo: "👤", cor: "roxo" },
   padrao:                      { glifo: "•", cor: "cinza" },
 };
@@ -43,7 +47,11 @@ export const ROTULO_ACAO_AVISO: Record<string, string> = {
   primeira_abordagem_pendente: "Atender agora",
   acao_vencida:                "Ver tarefa",
   visita_proxima:              "Ver visita",
+  visita_feedback_pendente:    "Dar feedback",
   escalonamento:               "Ver atendimento",
+  canal_indisponivel:          "Corrigir canal",
+  lead_em_atendimento:         "Acompanhar lead",
+  lead_quente:                 "Priorizar lead",
 };
 
 /**

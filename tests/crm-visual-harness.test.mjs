@@ -42,8 +42,12 @@ test("harness exercita cobertura parcial e reincidência na tela real de Avisos"
   assert.match(harness, /import \{ NotificationsWorkspace \}/);
   assert.match(harness, /tela === "notifications"/);
   assert.match(harness, /url\.pathname === "\/api\/notificacoes"/);
-  assert.match(harness, /cobertura: \{ status: "parcial", exibidos: 3, total: 148 \}/);
+  assert.match(harness, /cobertura: \{ status: "parcial", exibidos: 6, total: 148 \}/);
   assert.match(harness, /reaberturas: 37/);
+  assert.match(harness, /tipo: "canal_indisponivel", prioridade: 1/);
+  assert.match(harness, /tipo: "lead_em_atendimento", prioridade: 2/);
+  assert.match(harness, /tipo: "lead_quente", prioridade: 1/);
+  assert.match(harness, /tipo: "visita_feedback_pendente", prioridade: 2/);
 });
 
 test("conceito visual e isolado, responsivo e sem recursos externos", () => {

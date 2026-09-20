@@ -23,6 +23,7 @@ const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
 const PAGINA_AVISOS = ler("../app/(erp)/notificacoes/page.tsx");
 const TELA_AVISOS = ler("../app/features/notifications/NotificationsWorkspace.tsx");
+const LOGICA_AVISOS = ler("../app/features/notifications/telaAvisos.logica.ts");
 const PUSH = ler("../supabase/functions/ncrm-web-push/index.ts");
 
 /* ---------------- o barulho ---------------- */
@@ -34,6 +35,24 @@ test("lead novo, resposta e combinado vencendo/vencido são urgentes no aparelho
   for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "retorno_proximo", "acao_vencida"]) {
     assert.ok(bloco.includes(`"${tag}"`), `"${tag}" precisa estar na lista de urgentes do sw.js`);
   }
+});
+
+test("falha real de canal chega urgente e leva para a correção", () => {
+  const inicio = SW.indexOf("TAGS_URGENTES");
+  const bloco = SW.slice(inicio, SW.indexOf("]", inicio));
+  assert.ok(bloco.includes('"canal_indisponivel"'));
+  assert.match(LOGICA_AVISOS, /canal_indisponivel:\s*\{ glifo: "📵", cor: "vermelho" \}/);
+  assert.match(LOGICA_AVISOS, /canal_indisponivel:\s*"Corrigir canal"/);
+});
+
+test("transições da Sara mostram uma ação específica em vez de Abrir genérico", () => {
+  assert.match(LOGICA_AVISOS, /lead_em_atendimento:\s*"Acompanhar lead"/);
+  assert.match(LOGICA_AVISOS, /lead_quente:\s*"Priorizar lead"/);
+});
+
+test("pendência de feedback leva o corretor diretamente à ação esperada", () => {
+  assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*\{ glifo: "📝", cor: "laranja" \}/);
+  assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*"Dar feedback"/);
 });
 
 test("app confirma visualmente que o aparelho esta inscrito para lead novo", () => {

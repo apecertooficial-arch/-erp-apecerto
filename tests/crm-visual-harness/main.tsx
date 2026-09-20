@@ -90,13 +90,16 @@ const payloadAgenda = {
 const payloadNotificacoes = {
   ok: true,
   pendentes: 148,
-  urgentes: 2,
-  nao_vistas: 2,
-  cobertura: { status: "parcial", exibidos: 3, total: 148 },
+  urgentes: 3,
+  nao_vistas: 5,
+  cobertura: { status: "parcial", exibidos: 6, total: 148 },
   itens: [
-    { id: 501, tipo: "acao_vencida", prioridade: "critica", titulo: "Próxima ação vencida", detalhe: "Cliente sanitizado aguarda retorno do corretor.", negocio_id: 101, deep_link: "/negocio/101", criada_em: "2026-09-19T10:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 37 },
-    { id: 502, tipo: "visita_sem_feedback", prioridade: "alta", titulo: "Visita sem feedback", detalhe: "Registre o resultado para a gestão acompanhar.", negocio_id: 102, deep_link: "/negocio/102", criada_em: "2026-09-19T11:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
-    { id: 503, tipo: "cliente_respondeu", prioridade: "normal", titulo: "Cliente respondeu", detalhe: "Conversa pronta para continuidade.", negocio_id: 103, deep_link: "/negocio/103", criada_em: "2026-09-19T12:00:00Z", vista_em: "2026-09-19T12:00:00Z", resolvida_em: null, reaberturas: 0 },
+    { id: 501, tipo: "acao_vencida", prioridade: 1, titulo: "Próxima ação vencida", detalhe: "Cliente sanitizado aguarda retorno do corretor.", negocio_id: 101, deep_link: "/negocio/101", criada_em: "2026-09-19T10:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 37 },
+    { id: 502, tipo: "visita_feedback_pendente", prioridade: 2, titulo: "Visita sem feedback", detalhe: "Registre o resultado para a gestão acompanhar.", negocio_id: 102, deep_link: "/negocio/102", criada_em: "2026-09-19T11:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
+    { id: 503, tipo: "cliente_respondeu", prioridade: 3, titulo: "Cliente respondeu", detalhe: "Conversa pronta para continuidade.", negocio_id: 103, deep_link: "/negocio/103", criada_em: "2026-09-19T12:00:00Z", vista_em: "2026-09-19T12:00:00Z", resolvida_em: null, reaberturas: 0 },
+    { id: 504, tipo: "canal_indisponivel", prioridade: 1, titulo: "Canal de atendimento indisponível", detalhe: "Corrija a conexão antes da próxima abordagem.", negocio_id: 104, deep_link: "/negocio/104", criada_em: "2026-09-19T12:10:00Z", vista_em: null, resolvida_em: null, reaberturas: 1 },
+    { id: 505, tipo: "lead_em_atendimento", prioridade: 2, titulo: "Lead entrou em atendimento", detalhe: "Acompanhe a conversa e confirme o próximo passo.", negocio_id: 105, deep_link: "/negocio/105", criada_em: "2026-09-19T12:20:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
+    { id: 506, tipo: "lead_quente", prioridade: 1, titulo: "Lead com alta intenção", detalhe: "Priorize este atendimento enquanto o interesse está ativo.", negocio_id: 106, deep_link: "/negocio/106", criada_em: "2026-09-19T12:30:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
   ],
 };
 const gravadorVisivel = parametros.get("evidence") === "1";
