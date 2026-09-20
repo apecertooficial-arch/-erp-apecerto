@@ -4,6 +4,8 @@ import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
 import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
+import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
+import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -489,8 +491,11 @@ export async function POST(request: Request) {
     if (["realizada", "cancelada", "nao_compareceu"].includes(statusVisita)) {
       const resultadoCodigo = String(body.resultadoCodigo ?? "").slice(0, 60);
       const justificativa = String(body.justificativa ?? "").trim().slice(0, 800);
-      const erroResultado = validarResultadoVisita(statusVisita, resultadoCodigo, justificativa);
+      const erroResultado = validarResultadoVisita(statusVisita, resultadoCodigo, justificativa)
+        ?? validarEnvelopeFeedbackVisita(statusVisita as "realizada" | "cancelada" | "nao_compareceu", justificativa);
       if (!body.id || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
+      const ownership = await verificarDonoResultadoVisita(auth.db, String(body.id));
+      if (!ownership.permitido) return Response.json({ error: ownership.mensagem }, { status: ownership.status });
       rpc = "f2_registrar_resultado_visita";
       args = { p_visita_id: body.id, p_status: statusVisita, p_resultado_codigo: resultadoCodigo, p_justificativa: justificativa };
     } else {
@@ -597,6 +602,9 @@ const RECUSAS: Record<string, string> = {
   motivo_obrigatorio: "Escolha o motivo do descarte.",
   motivo_invalido: "Motivo de descarte desconhecido.",
   resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
+  feedback_incompleto: "Preencha o feedback estruturado da visita antes de salvar.",
+  feedback_qualidade_insuficiente: "Complete o feedback até atingir pelo menos 9/10 de qualidade.",
+  resultado_encaminhamento_incompleto: "Defina o motivo e a próxima ação antes de salvar o resultado da visita.",
   resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
   visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
   texto_vazio: "Escreva a nota antes de salvar.",

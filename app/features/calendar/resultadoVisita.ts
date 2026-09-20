@@ -1,3 +1,5 @@
+import { hojeOperacao } from "../../lib/timezone.ts";
+
 export const STATUS_RESULTADO_VISITA = ["realizada", "cancelada", "nao_compareceu"] as const;
 
 export type StatusResultadoVisita = (typeof STATUS_RESULTADO_VISITA)[number];
@@ -43,4 +45,32 @@ export function validarResultadoVisita(status: string, codigo: string, justifica
     return `Explique o que aconteceu em pelo menos ${MIN_JUSTIFICATIVA_VISITA} caracteres.`;
   }
   return null;
+}
+
+function diaUtc(data: string): number | null {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+  if (!partes) return null;
+  const ano = Number(partes[1]);
+  const mes = Number(partes[2]);
+  const dia = Number(partes[3]);
+  const valor = Date.UTC(ano, mes - 1, dia);
+  const conferido = new Date(valor);
+  return conferido.getUTCFullYear() === ano
+    && conferido.getUTCMonth() === mes - 1
+    && conferido.getUTCDate() === dia ? valor : null;
+}
+
+/** Idade operacional da pendência, sem depender do fuso do navegador. */
+export function diasAguardandoResultado(data: string, referencia = hojeOperacao()): number | null {
+  const inicio = diaUtc(data);
+  const fim = diaUtc(referencia);
+  if (inicio == null || fim == null) return null;
+  return Math.max(0, Math.floor((fim - inicio) / 86_400_000));
+}
+
+export function rotuloAtrasoResultado(data: string, referencia = hojeOperacao()): string {
+  const dias = diasAguardandoResultado(data, referencia);
+  if (dias == null) return "data não confirmada";
+  if (dias === 0) return "hoje";
+  return `há ${dias} ${dias === 1 ? "dia" : "dias"}`;
 }

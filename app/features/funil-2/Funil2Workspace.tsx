@@ -22,7 +22,8 @@ import { Funil2BoardToolbar } from "./Funil2BoardToolbar";
 import { HorariosVisita } from "./HorariosVisita";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
-import { RESULTADOS_VISITA, type StatusResultadoVisita, validarResultadoVisita } from "../calendar/resultadoVisita";
+import { ResultadoVisitaForm } from "../calendar/ResultadoVisitaForm";
+import { type StatusResultadoVisita } from "../calendar/resultadoVisita";
 
 type Perfil = { userId: string; role: string; name: string };
 type Payload = {
@@ -114,6 +115,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
      dentro. Guardamos a intencao para a ficha ja abrir no mini chat. */
   const [abrirNoChat, setAbrirNoChat] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [carregado, setCarregado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -151,6 +153,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     const resposta = await api(accessToken);
     setCarregando(false);
     if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil."); return; }
+    setCarregado(true);
     setLeads(resposta.json.leads ?? []);
     setMomentos(resposta.json.momentos ?? []);
     setEventos(resposta.json.eventos ?? []);
@@ -176,6 +179,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       if (!ativo) return;
       setCarregando(false);
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil."); return; }
+      setCarregado(true);
       const leadsCarregados = resposta.json.leads ?? [];
       setLeads(leadsCarregados);
       setMomentos(resposta.json.momentos ?? []);
@@ -297,10 +301,15 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       const resposta = await api(accessToken, { method: "POST", body: JSON.stringify({ action, ...body }) });
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível concluir a ação."); return false; }
       setModal(null);
-      const resultado = resposta.json.resultado as { gerente_removido?: boolean } | undefined;
-      if (action === "salvarVisita") setSucesso(resultado?.gerente_removido === true
-        ? "Visita agendada sem gerente porque o gerente escolhido já está ocupado nesse horário."
-        : "Visita agendada com sucesso. Ela já está na Agenda.");
+      const resultado = resposta.json.resultado as { gerente_removido?: boolean; resultado_rotulo?: string } | undefined;
+      if (action === "salvarVisita") {
+        const statusVisita = String(body.status ?? "agendada");
+        setSucesso(["realizada", "cancelada", "nao_compareceu"].includes(statusVisita)
+          ? `Resultado registrado${resultado?.resultado_rotulo ? `: ${resultado.resultado_rotulo}` : ""}. A visita saiu da fila pendente.`
+          : resultado?.gerente_removido === true
+            ? "Visita agendada sem gerente porque o gerente escolhido já está ocupado nesse horário."
+            : "Visita agendada com sucesso. Ela já está na Agenda.");
+      }
       await carregar(); return true;
     } catch {
       setErro("Não foi possível falar com o servidor. Confira a conexão e tente novamente.");
@@ -442,7 +451,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {aba === "config" && fontes?.operacao === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Configuração operacional indisponível.</strong><span>Não altere parâmetros até a leitura ser restabelecida.</span></div>}
       {carregando && <div className="f2-loading">Carregando o Funil…</div>}
 
-      {!carregando && !erro && aba === "quadro" && <main className="f2-main">
+      {!carregando && carregado && aba === "quadro" && <main className="f2-main">
         <Funil2BoardToolbar
           aquario={aquario.length}
           busca={buscaQuadro}
@@ -513,7 +522,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </section>}
       </main>}
 
-      {!carregando && !erro && aba === "dia" && <main className="f2-dia">
+      {!carregando && carregado && aba === "dia" && <main className="f2-dia">
         <section className="f2-dia-controles" aria-label="Filtros do Meu Dia">
           <div className="f2-indicadores">
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
@@ -552,11 +561,11 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </main>}
 
-      {!carregando && !erro && aba === "leads" && <TodosLeads leads={leadsDoFunil} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
-      {!carregando && !erro && aba === "visitas" && <PipeVisitas visitas={visitasDoFunil} leads={leadsDoFunil} momentos={momentosAtivos} busy={busy} onAbrir={setSelecionado} onSalvar={(visita) => void executar("salvarVisita", visita)} />}
+      {!carregando && carregado && aba === "leads" && <TodosLeads leads={leadsDoFunil} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
+      {!carregando && carregado && aba === "visitas" && <PipeVisitas accessToken={accessToken} erro={erro} visitas={visitasDoFunil} leads={leadsDoFunil} momentos={momentosAtivos} busy={busy} onAbrir={setSelecionado} onSalvar={(visita) => executar("salvarVisita", visita)} />}
       {/* A Esteira canônica entra como módulo funcional, sem duplicar o Funil. */}
-      {!carregando && !erro && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
-      {!carregando && !erro && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
+      {!carregando && carregado && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
+      {!carregando && carregado && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
       {modal === "visita" && lead && <ModalVisita key={lead.id} accessToken={accessToken} leadFoco={lead} busy={busy} erroExterno={erro} onFechar={() => setModal(null)} onSalvar={(dados) => executar("salvarVisita", dados)} />}
@@ -736,7 +745,7 @@ function ModalTrazerLeadAntigo({ alvo, etapas, momentos, busy, onFechar, onConfi
   </Modal>;
 }
 
-function PipeVisitas({ visitas, leads, momentos, busy, onAbrir, onSalvar }: { visitas: VisitaFunil2[]; leads: LeadFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
+function PipeVisitas({ accessToken, erro, visitas, leads, momentos, busy, onAbrir, onSalvar }: { accessToken: string; erro: string | null; visitas: VisitaFunil2[]; leads: LeadFunil2[]; momentos: MomentoFunil2[]; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => Promise<boolean> }) {
   const [modo, setModo] = useState<"agenda" | "quadro">("agenda");
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -759,7 +768,7 @@ function PipeVisitas({ visitas, leads, momentos, busy, onAbrir, onSalvar }: { vi
   return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários. Novos agendamentos são feitos no card do lead." />
     <div className="f2-visitas-modos" role="group" aria-label="Modo de visualização das visitas"><button type="button" className={modo === "agenda" ? "ativo" : ""} onClick={() => setModo("agenda")}>Agenda</button><button type="button" className={modo === "quadro" ? "ativo" : ""} onClick={() => setModo("quadro")}>Quadro por status</button></div>
     <details className="f2-visita-regra"><summary>Entender o fluxo de visitas</summary><div><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></div></details>
-    <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{gruposVisiveis.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => { const lead = leads.find((item) => item.id === visita.funil_lead_id); return <VisitaCard key={visita.id} visita={visita} lead={lead} momentoRotulo={momentos.find((momento) => momento.codigo === lead?.momento_codigo)?.rotulo} agora={agora} busy={busy} onAbrir={onAbrir} onSalvar={onSalvar} />; })}</div>)}{gruposVisiveis.length === 0 && <div className="f2-sem-resultado"><b>Nenhuma visita neste recorte.</b><span>Não há pendência para mostrar agora.</span></div>}</section>
+    <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{gruposVisiveis.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => { const lead = leads.find((item) => item.id === visita.funil_lead_id); return <VisitaCard key={visita.id} accessToken={accessToken} erro={erro} visita={visita} lead={lead} momentoRotulo={momentos.find((momento) => momento.codigo === lead?.momento_codigo)?.rotulo} agora={agora} busy={busy} onAbrir={onAbrir} onSalvar={onSalvar} />; })}</div>)}{gruposVisiveis.length === 0 && <div className="f2-sem-resultado"><b>Nenhuma visita neste recorte.</b><span>Não há pendência para mostrar agora.</span></div>}</section>
   </main>;
 }
 
@@ -768,18 +777,16 @@ function PipeVisitas({ visitas, leads, momentos, busy, onAbrir, onSalvar }: { vi
    errada ou trocava o imovel nao tinha como consertar: criava uma segunda
    visita e o pipe passava a mostrar duas para o mesmo cliente. Como a API ja
    faz upsert por id, mandar data e imovel editados corrige a mesma visita. */
-function VisitaCard({ visita, lead, momentoRotulo, agora, busy, onAbrir, onSalvar }: { visita: VisitaFunil2; lead?: LeadFunil2; momentoRotulo?: string; agora: number; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => void }) {
+function VisitaCard({ accessToken, erro, visita, lead, momentoRotulo, agora, busy, onAbrir, onSalvar }: { accessToken: string; erro: string | null; visita: VisitaFunil2; lead?: LeadFunil2; momentoRotulo?: string; agora: number; busy: boolean; onAbrir: (id: string) => void; onSalvar: (v: Record<string, unknown>) => Promise<boolean> }) {
   const [editando, setEditando] = useState(false);
+  const [resultadoAberto, setResultadoAberto] = useState(false);
   const [status, setStatus] = useState(visita.status);
-  const statusInicial = (["realizada", "cancelada", "nao_compareceu"].includes(visita.status) ? visita.status : "realizada") as StatusResultadoVisita;
-  const [resultadoCodigo, setResultadoCodigo] = useState(RESULTADOS_VISITA[statusInicial][0].codigo);
-  const [justificativa, setJustificativa] = useState("");
   const [inicio, setInicio] = useState(paraCampoLocal(visita.inicio_em));
   const [imovel, setImovel] = useState(visita.imovel ?? "");
   const precisaResultado = ["realizada", "cancelada", "nao_compareceu"].includes(status);
-  const erroResultado = precisaResultado ? validarResultadoVisita(status, resultadoCodigo, justificativa) : null;
   const precisaAtualizar = ["agendada", "confirmada"].includes(visita.status) && +new Date(visita.inicio_em) < agora;
   const rotulos: Record<VisitaFunil2["status"], string> = { agendada: "Agendada", confirmada: "Confirmada", realizada: "Realizada", cancelada: "Cancelada", nao_compareceu: "Não compareceu" };
+  const baseDaVisita = { id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, observacao: visita.observacao, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null };
   return <article className={!lead ? "f2-visita-vinculo-ausente" : precisaAtualizar ? "f2-visita-atrasada" : ""}><span>{dataCurta(visita.inicio_em)}</span><h4>{lead?.nome ?? "Correção administrativa"}</h4><p>{visita.imovel || "Imóvel não informado"}</p><em className={`f2-visita-status status-${visita.status}`}>{precisaAtualizar ? "Precisa atualizar" : rotulos[visita.status]}</em>
     {lead && <div className="f2-visita-contexto"><span><small>MOMENTO</small><b>{momentoRotulo ?? lead.momento_codigo}</b></span><span><small>TEMPERATURA</small><ChipTemperatura lead={lead} /></span></div>}
     {lead && <button type="button" className="f2-visita-abrir" onClick={() => onAbrir(lead.id)}>Abrir ficha de {lead.nome}</button>}
@@ -787,9 +794,21 @@ function VisitaCard({ visita, lead, momentoRotulo, agora, busy, onAbrir, onSalva
     {!editando && <button type="button" className={`f2-visita-editar${precisaAtualizar || !lead ? " primario" : ""}`} onClick={() => setEditando(true)}>{precisaAtualizar || !lead ? "Atualizar situação" : "Editar visita"}</button>}
     {editando && <div className="f2-visita-form"><input type="datetime-local" style={CAMPO_VISITA} disabled={busy} value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Data e hora da visita" />
     <input type="text" style={CAMPO_VISITA} disabled={busy} value={imovel} onChange={(e) => setImovel(e.target.value)} maxLength={120} placeholder="Imóvel ou unidade" aria-label="Imóvel da visita" />
-    <select disabled={busy} value={status} onChange={(e) => { const proximo = e.target.value as VisitaFunil2["status"]; setStatus(proximo); if (["realizada", "cancelada", "nao_compareceu"].includes(proximo)) setResultadoCodigo(RESULTADOS_VISITA[proximo as StatusResultadoVisita][0].codigo); }}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
-    {precisaResultado && <><select aria-label="Resultado da visita" value={resultadoCodigo} onChange={(e) => setResultadoCodigo(e.target.value)}>{RESULTADOS_VISITA[status as StatusResultadoVisita].map((opcao) => <option value={opcao.codigo} key={opcao.codigo}>{opcao.rotulo}</option>)}</select><textarea value={justificativa} onChange={(e) => setJustificativa(e.target.value)} placeholder="Justificativa obrigatória: o que aconteceu e qual será o próximo passo" minLength={10} maxLength={800} /></>}
-    <div className="f2-visita-form-acoes"><button type="button" onClick={() => setEditando(false)}>Cancelar</button><button type="button" disabled={busy || !inicio || Boolean(erroResultado)} onClick={() => onSalvar({ id: visita.id, leadId: visita.funil_lead_id, inicioEm: inicio, imovel: imovel.trim() || visita.imovel, status, observacao: visita.observacao, resultadoCodigo: precisaResultado ? resultadoCodigo : null, justificativa: precisaResultado ? justificativa.trim() : null, empreendimentoId: visita.empreendimento_id ?? null, unidade: visita.unidade ?? null, comGerente: visita.com_gerente === true, gerenteId: visita.gerente_id ?? null, fimEm: visita.fim_em ?? null })}>{busy ? "Salvando…" : precisaResultado ? "Registrar resultado" : "Salvar atualização"}</button></div></div>}
+    <select disabled={busy} value={status} onChange={(e) => { setStatus(e.target.value as VisitaFunil2["status"]); setResultadoAberto(false); }}><option value="agendada">Agendada</option><option value="confirmada">Confirmada</option><option value="realizada">Realizada</option><option value="cancelada">Cancelada</option><option value="nao_compareceu">Não compareceu</option></select>
+    {precisaResultado && <small>O encerramento exige o mesmo feedback completo usado na Agenda e no aplicativo.</small>}
+    <div className="f2-visita-form-acoes"><button type="button" onClick={() => { setResultadoAberto(false); setEditando(false); }}>Cancelar</button><button type="button" disabled={busy || !inicio} onClick={() => { if (precisaResultado) { setResultadoAberto(true); return; } void onSalvar({ ...baseDaVisita, status }).then((ok) => { if (ok) setEditando(false); }); }}>{busy ? "Salvando…" : precisaResultado ? "Preencher resultado completo" : "Salvar atualização"}</button></div></div>}
+    {resultadoAberto && precisaResultado && <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) setResultadoAberto(false); }}><ResultadoVisitaForm
+      key={status}
+      cliente={lead?.nome ?? "Visita sem ficha ativa"}
+      dataHora={inicio.replace("T", " às ")}
+      statusInicial={status as StatusResultadoVisita}
+      visitId={visita.id}
+      accessToken={accessToken}
+      busy={busy}
+      erro={erro ?? undefined}
+      onCancelar={() => setResultadoAberto(false)}
+      onSalvar={(dados) => { void onSalvar({ ...baseDaVisita, ...dados }).then((ok) => { if (ok) { setResultadoAberto(false); setEditando(false); } }); }}
+    /></div>}
     {visita.status === "realizada" && <small>{visita.feedback_em ? "Feedback concluído" : "Feedback pendente — novos leads podem ser bloqueados"}</small>}
   </article>;
 }

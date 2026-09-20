@@ -31,6 +31,7 @@ export function FunilEntry() {
           <>
             <style>{'@import url("/funil-web-sexta.css") screen and (min-width: 901px);'}</style>
             <Funil2Workspace
+              key={profile?.userId || "perfil-pendente"}
               accessToken={accessToken}
               profile={{
                 userId: profile?.userId ?? "",

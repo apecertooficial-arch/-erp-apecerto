@@ -29,7 +29,7 @@ import {
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { HorariosVisita } from "../funil-2/HorariosVisita";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
-import type { StatusResultadoVisita } from "./resultadoVisita";
+import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
 type LeadAgenda = { id: number; nome: string };
@@ -37,6 +37,8 @@ type NegocioAgenda = { id: number; lead_id: number };
 type CardAgenda = { id: string; origem_negocio_id: number };
 type ProdutoAgenda = { id: string; nome: string };
 type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; cards: CardAgenda[]; products: ProdutoAgenda[] };
+type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_percentual: number };
+type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
 
 /** "agosto de 2026" - minuscula, como o resto do app. */
 function mesPorExtenso(iso: string): string {
@@ -62,8 +64,9 @@ const podeEditarVisita = (c: Compromisso) => {
   return ehVisita(c) && c.meu && status !== "cancelada" && status !== "realizada";
 };
 
-export function TelaAgendaMobile({ accessToken }: {
+export function TelaAgendaMobile({ accessToken, role }: {
   accessToken: string;
+  role: "admin" | "gestor" | "corretor";
 }) {
   const [dia, setDia] = useState<string>(() => hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoAgenda>("mes");
@@ -84,6 +87,8 @@ export function TelaAgendaMobile({ accessToken }: {
   const [resultadoPendente, setResultadoPendente] = useState<Compromisso | null>(null);
   const [pendenciasResultado, setPendenciasResultado] = useState<Compromisso[]>([]);
   const [resumoResultados, setResumoResultados] = useState<{ pendentes?: number; justificadas?: number }>({});
+  const [erroPendenciasResultado, setErroPendenciasResultado] = useState("");
+  const [performanceFeedback, setPerformanceFeedback] = useState<PerformanceFeedback>({});
   const [horarioRemarcado, setHorarioRemarcado] = useState("");
   const [remarcarComGerente, setRemarcarComGerente] = useState(false);
   const [horarioCriacao, setHorarioCriacao] = useState("");
@@ -101,8 +106,8 @@ export function TelaAgendaMobile({ accessToken }: {
     });
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
-    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number } };
-    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {} };
+    const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null; performance_feedback?: PerformanceFeedback };
+    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -111,7 +116,7 @@ export function TelaAgendaMobile({ accessToken }: {
     /* NAO zeramos a lista aqui: manter o que ja esta na tela enquanto a nova
        chega evita o pisca-e-encolhe ao trocar de aba. */
     carregar(ctrl.signal)
-      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
+      .then((dados) => { if (vivo) { setItens(dados.itens); setPendenciasResultado(dados.pendencias); setResumoResultados(dados.resumo); setErroPendenciasResultado(dados.erroPendencias); setPerformanceFeedback(dados.performance); setErro(false); setSessaoExpirada(false); setAtualizadoEm(new Date()); } })
       .catch((e) => {
         if (!vivo || e?.name === "AbortError") return;
         if (e instanceof Error && e.message === "sessao_expirada") setSessaoExpirada(true);
@@ -135,7 +140,6 @@ export function TelaAgendaMobile({ accessToken }: {
       if (r.status === 401) { setSessaoExpirada(true); return false; }
       const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
       if (!r.ok || !j.success) {
-        console.error("agenda: falha ao gravar", corpo.action, j.error);
         /* A API da Agenda devolve mensagens operacionais já tratadas. Mostrar
            a causa evita que permissão, conflito de horário e dado inválido
            pareçam uma queda genérica de internet. */
@@ -176,6 +180,7 @@ export function TelaAgendaMobile({ accessToken }: {
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
+  const gerenciandoPendencias = pendenciasResultado.length > 0 && pendenciasResultado.every((item) => !item.meu);
 
   /* No mes a lista de baixo e SOMENTE do dia tocado. */
   const paraListar = useMemo(
@@ -215,10 +220,21 @@ export function TelaAgendaMobile({ accessToken }: {
   return (
     <div className="ape-agenda">
       <AppMobileOffline atualizadoEm={atualizadoEm} />
-      {pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
-        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas precisam da sua resposta</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
-        <p>Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa.</p>
-        <div>{pendenciasResultado.map((item) => <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button>)}</div>
+      {erroPendenciasResultado && <section className="ape-agenda-resultados erro" role="alert">
+        <header><div><small>VERIFICAÇÃO INCOMPLETA</small><h2>Não foi possível verificar os resultados pendentes</h2></div></header>
+        <p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p>
+        <button type="button" onClick={recarregar}>Tentar novamente</button>
+      </section>}
+      {!erroPendenciasResultado && pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
+        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas {gerenciandoPendencias ? "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+        <p>{gerenciandoPendencias ? "Cobre o responsável. A pendência sai da fila quando o corretor registra um desfecho válido." : "Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa."}</p>
+        <div>{pendenciasResultado.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>
+      </section>}
+      {(role === "admin" || role === "gestor") && <section className="ape-agenda-feedback-performance" aria-label="Qualidade dos feedbacks de visita">
+        <header><div><small>QUALIDADE DOS FEEDBACKS</small><h2>Série 0–10</h2></div>{performanceFeedback.status === "ok" && <strong>{performanceFeedback.estruturados_total ?? 0} avaliados</strong>}</header>
+        {performanceFeedback.status === "ok" && (performanceFeedback.estruturados_total ?? 0) > 0
+          ? <div>{(performanceFeedback.itens ?? []).map((item) => <article key={item.corretor_id ?? item.corretor}><span><b>{item.corretor}</b><small>{item.feedbacks} feedback{item.feedbacks === 1 ? "" : "s"} · {item.dentro_prazo_percentual.toFixed(0)}% no prazo</small></span><strong>{item.nota_media.toFixed(1)}<small>/10</small></strong></article>)}</div>
+          : <p><strong>Baseline ainda indisponível.</strong> {performanceFeedback.status === "ok" ? `${performanceFeedback.legados_total ?? 0} resultados legados foram preservados sem nota retroativa.` : "O contrato estruturado ainda não está ativo no banco; nenhum texto antigo será pontuado por estimativa."}</p>}
       </section>}
       {prox ? (
         <section className="ape-agenda-proximo" aria-label="Próximo compromisso">
@@ -477,6 +493,8 @@ export function TelaAgendaMobile({ accessToken }: {
           cliente={resultadoPendente.cliente}
           dataHora={`${diaPorExtenso(resultadoPendente.data)} · ${horaCurta(resultadoPendente.hora)}`}
           statusInicial={(["realizada", "cancelada", "nao_compareceu"].includes(String(resultadoPendente.status)) ? resultadoPendente.status : "realizada") as StatusResultadoVisita}
+          visitId={resultadoPendente.id}
+          accessToken={accessToken}
           busy={salvando}
           erro={erroEscrita}
           onCancelar={() => setResultadoPendente(null)}

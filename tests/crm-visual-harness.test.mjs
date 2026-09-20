@@ -7,6 +7,7 @@ const harness = read("./crm-visual-harness/main.tsx");
 const fixtures = read("./crm-visual-harness/fixtures.ts");
 const vite = read("./crm-visual-harness/vite.config.mjs");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
+const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
 const funilCss = read("../app/styles/funil.css");
 
@@ -18,10 +19,20 @@ test("harness renderiza a rota e o shell reais sem segunda interface", () => {
   assert.match(vite, /root: aqui/);
 });
 
+test("harness exercita a cobrança real da Agenda sem dados pessoais nem mutações", () => {
+  assert.match(harness, /import \{ CalendarWorkspace \}/);
+  assert.match(harness, /import \{ TelaAgendaMobile \}/);
+  assert.match(harness, /tela === "agenda-manager"/);
+  assert.match(harness, /tela === "agenda-mobile"/);
+  assert.match(harness, /url\.pathname === "\/api\/agenda"/);
+  assert.match(harness, /Cliente sanitizado 1/);
+  assert.doesNotMatch(harness, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
-  for (const rota of ["/api/funil2", "/api/funil2/conversa", "/api/funil2/carteira", "/api/crm/sales"]) {
+  for (const rota of ["/api/funil2", "/api/funil2/conversa", "/api/funil2/carteira", "/api/crm/sales", "/api/agenda"]) {
     assert.match(harness, new RegExp(rota.replaceAll("/", "\\/")));
   }
   assert.match(harness, /Harness visual: mutações são bloqueadas/);
@@ -43,11 +54,13 @@ test("roles e estados visuais são parametrizados somente no runner", () => {
   assert.doesNotMatch(`${workspace}\n${mobile}`, /crmHarness|harness-test-only|visual-sintetico/);
 });
 
-test("offline não gera rejeição solta nem mantém mutações disponíveis", () => {
+test("falha inicial não expõe mutações e falha posterior preserva a carteira", () => {
   assert.match(workspace, /try \{[\s\S]*await fetch\("\/api\/funil2"[\s\S]*catch \{/);
   assert.match(workspace, /Sem conexão — nenhum dado em cache está disponível/);
-  assert.match(workspace, /!carregando && !erro && aba === "quadro"/);
-  // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.
+  assert.match(workspace, /const \[carregado, setCarregado\] = useState\(false\)/);
+  assert.match(workspace, /!carregando && carregado && aba === "quadro"/);
+  assert.match(workspace, /setCarregado\(true\)/);
+  assert.match(entry, /<Funil2Workspace[\s\S]*key=\{profile\?\.userId \|\| "perfil-pendente"\}/);
 });
 
 test("Funil móvel remove junto o cabeçalho global oculto e o espaço reservado", () => {

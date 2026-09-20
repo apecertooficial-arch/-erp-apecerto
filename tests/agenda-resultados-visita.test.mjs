@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { RESULTADOS_VISITA, resultadoPermitido, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
+import { verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const apiFunil = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
 const agendaWeb = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
 const agendaApp = await readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8");
+const autorizacaoResultado = await readFile(new URL("../app/lib/supabase/autorizarResultadoVisita.ts", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/migrations/20260911163500_resultado_obrigatorio_visitas.sql", import.meta.url), "utf8");
 
 test("cada desfecho oferece somente motivos compatíveis", () => {
@@ -39,9 +41,88 @@ test("fila mensal considera visita passada e qualquer encerramento incompleto", 
   assert.match(migration, /public\.f2_admin\(\) IS TRUE OR c\.usuario_id=v_uid/);
 });
 
+test("cobrança não abandona pendências quando o calendário vira o mês", () => {
+  assert.match(apiAgenda, /const hoje = hojeOperacao\(\)/);
+  assert.match(apiAgenda, /somarDias\(hoje,\s*-365\)/);
+  assert.doesNotMatch(apiAgenda, /const inicioMes/);
+  assert.doesNotMatch(apiAgenda, /fimDoMes/);
+});
+
 test("histórico separa agendamento da justificativa do resultado", () => {
   assert.match(migration, /resultado_justificativa/);
   assert.match(migration, /resultado_detalhe_codigo/);
   assert.match(migration, /'visita_atualizada'/);
   assert.match(migration, /'justificativa',v_justificativa/);
+});
+
+test("falha da fila de cobrança nunca vira zero pendências silencioso", () => {
+  assert.match(apiAgenda, /pendencias_resultado_erro/);
+  assert.doesNotMatch(apiAgenda, /pendencias\.error\s*\?\s*\{\s*itens:\s*\[\],\s*resumo:\s*\{\}\s*\}/);
+  assert.match(agendaWeb, /Não foi possível verificar os resultados pendentes/);
+  assert.match(agendaWeb, /pendencias_resultado_erro/);
+  assert.match(agendaApp, /Não foi possível verificar os resultados pendentes/);
+  assert.match(agendaApp, /pendencias_resultado_erro/);
+});
+
+test("gestão enxerga atraso e responsável de cada cobrança", () => {
+  assert.equal(rotuloAtrasoResultado("2026-09-19", "2026-09-19"), "hoje");
+  assert.equal(rotuloAtrasoResultado("2026-09-18", "2026-09-19"), "há 1 dia");
+  assert.equal(rotuloAtrasoResultado("2026-08-19", "2026-09-19"), "há 31 dias");
+  assert.equal(rotuloAtrasoResultado("data-inválida", "2026-09-19"), "data não confirmada");
+  assert.match(agendaWeb, /pendenciasPorCorretor/);
+  assert.match(agendaWeb, /rotuloAtrasoResultado\(item\.data\)/);
+  assert.match(agendaApp, /Responsável:/);
+  assert.match(agendaApp, /rotuloAtrasoResultado\(item\.data\)/);
+});
+
+test("qualidade por corretor falha fechada e não pontua histórico legado", () => {
+  assert.match(apiAgenda, /f2_feedback_visita_performance/);
+  assert.match(apiAgenda, /status:\s*performance\?\.erro === "sem_permissao" \? "restrito" : "indisponivel"/);
+  assert.match(agendaWeb, /Baseline ainda indisponível/);
+  assert.match(agendaWeb, /histórico legado continua preservado, sem avaliação retroativa/);
+  assert.match(agendaApp, /Baseline ainda indisponível/);
+  assert.match(agendaApp, /nenhum texto antigo será pontuado por estimativa/);
+  assert.match(agendaWeb, /estruturados_total/);
+  assert.match(agendaApp, /estruturados_total/);
+});
+test("gerente cobra o corretor e não responde a visita por ele", () => {
+  assert.match(agendaWeb, /item\.meu\s*\?\s*<button/);
+  assert.match(agendaApp, /item\.meu\s*\?\s*<button/);
+  assert.match(agendaWeb, /Aguardando corretor/);
+  assert.match(agendaApp, /Aguardando corretor/);
+  assert.match(agendaApp, /aguardam os corretores/);
+  assert.match(agendaApp, /Cobre o responsável/);
+  assert.match(autorizacaoResultado, /current_broker_id/);
+  assert.match(autorizacaoResultado, /from\("f2_visita"\)/);
+  assert.match(autorizacaoResultado, /from\("f2_lead"\)/);
+  assert.match(apiAgenda, /verificarDonoResultadoVisita/);
+  assert.match(apiFunil, /verificarDonoResultadoVisita/);
+});
+
+test("as APIs autorizam somente o corretor dono da carteira", async () => {
+  const db = (corretorAtual, corretorDono) => ({
+    rpc: async () => ({ data: corretorAtual, error: null }),
+    from: (tabela) => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => tabela === "f2_visita"
+            ? { data: { funil_lead_id: "20000000-0000-4000-8000-000000000001" }, error: null }
+            : { data: { corretor_id: corretorDono }, error: null },
+        }),
+      }),
+    }),
+  });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(7, 7), "10000000-0000-4000-8000-000000000001"), { permitido: true });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(9, 7), "10000000-0000-4000-8000-000000000001"), {
+    permitido: false, status: 403, mensagem: "O feedback deve ser registrado pelo corretor responsável.",
+  });
+  assert.deepEqual(await verificarDonoResultadoVisita(db(null, 7), "10000000-0000-4000-8000-000000000001"), {
+    permitido: false, status: 403, mensagem: "O feedback deve ser registrado pelo corretor responsável.",
+  });
+});
+
+test("Agenda não devolve nem registra mensagem interna do banco", () => {
+  assert.doesNotMatch(apiAgenda, /error:\s*error\?\.message/);
+  assert.match(apiAgenda, /erro:\s*"falha_banco"/);
+  assert.doesNotMatch(agendaApp, /console\.error\([^\n]*j\.error/);
 });

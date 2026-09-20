@@ -9,8 +9,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
-import { fimDoMes, instanteSaoPaulo } from "../../lib/timezone";
+import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
+import { hojeOperacao, instanteSaoPaulo, somarDias } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
+import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -72,12 +74,46 @@ function lerPeriodo(bruto: string | null): "dia" | "semana" | "mes" {
   return bruto === "semana" || bruto === "mes" ? bruto : "dia";
 }
 
+const VISITA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const AUDIO_TIPOS = new Map([
+  ["audio/ogg", "ogg"],
+  ["audio/webm", "webm"],
+  ["audio/mpeg", "mp3"],
+  ["audio/mp4", "m4a"],
+  ["audio/wav", "wav"],
+]);
+const AUDIO_MAX_BYTES = 20 * 1024 * 1024;
+
+async function sha256Hex(blob: Blob) {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export async function GET(request: Request) {
   const auth = await autenticar(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   const params = new URL(request.url).searchParams;
   const supabase = auth.supabase as unknown as SupabaseClient;
+  const feedbackAudioVisitaId = params.get("feedbackAudioVisitaId");
+  if (feedbackAudioVisitaId !== null) {
+    if (!VISITA_UUID.test(feedbackAudioVisitaId)) {
+      return Response.json({ error: "Visita inválida." }, { status: 422 });
+    }
+    const consulta = await supabase.rpc("f2_feedback_audio_consultar", {
+      p_visita_id: feedbackAudioVisitaId,
+    } as never);
+    /* Antes da migration a RPC não existe. A capacidade fica desligada sem
+       derrubar a agenda nem exibir um gravador que não conseguiria persistir. */
+    if (consulta.error) {
+      return Response.json({ ok: true, disponivel: false, audios: [] });
+    }
+    const resultado = (consulta.data ?? {}) as { ok?: boolean; erro?: string; disponivel?: boolean; audios?: unknown[] };
+    if (resultado.ok !== true) {
+      return Response.json({ error: "Você não pode acessar o áudio desta visita." }, { status: resultado.erro === "sem_permissao" ? 403 : 409 });
+    }
+    return Response.json({ ok: true, disponivel: resultado.disponivel === true, audios: Array.isArray(resultado.audios) ? resultado.audios : [] });
+  }
   const agenda = await supabase.rpc("ncrm_agenda_corretor", {
     p_data: lerData(params.get("data")),
     p_periodo: lerPeriodo(params.get("periodo")),
@@ -91,20 +127,34 @@ export async function GET(request: Request) {
   /* A agenda continua carregando durante uma implantacao gradual, mesmo antes
      de a RPC nova existir. Depois da migration, a fila passa a vir no mesmo
      payload sem alterar o contrato antigo de `itens`. */
-  const diaReferencia = typeof result.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(result.dia) ? result.dia : null;
-  const inicioMes = diaReferencia ? `${diaReferencia.slice(0, 7)}-01` : null;
-  const fimMes = inicioMes
-    ? fimDoMes(inicioMes)
-    : null;
-  const pendencias = await supabase.rpc("f2_visitas_resultado_pendente", {
-    p_inicio: inicioMes,
-    p_fim: fimMes,
-  } as never);
+  /* Cobrança é uma obrigação operacional, não um filtro visual do calendário.
+     A RPC vigente aceita no máximo 366 dias; cobrimos todo o histórico real
+     atual sem deixar uma pendência desaparecer na virada do mês. */
+  const hoje = hojeOperacao();
+  const [pendencias, performanceFeedback] = await Promise.all([
+    supabase.rpc("f2_visitas_resultado_pendente", {
+      p_inicio: somarDias(hoje, -365),
+      p_fim: hoje,
+    } as never),
+    supabase.rpc("f2_feedback_visita_performance", {
+      p_inicio: somarDias(hoje, -89),
+      p_fim: hoje,
+    } as never),
+  ]);
   const resultadoPendencias = pendencias.error
-    ? { itens: [], resumo: {} }
+    ? null
     : (pendencias.data ?? {}) as { itens?: unknown[]; resumo?: Record<string, unknown> };
-  result.pendencias_resultado = resultadoPendencias.itens ?? [];
-  result.resumo_resultados = resultadoPendencias.resumo ?? {};
+  result.pendencias_resultado = resultadoPendencias?.itens ?? [];
+  result.resumo_resultados = resultadoPendencias?.resumo ?? {};
+  result.pendencias_resultado_erro = pendencias.error
+    ? "Não foi possível verificar os resultados pendentes."
+    : null;
+  const performance = performanceFeedback.error
+    ? null
+    : (performanceFeedback.data ?? {}) as { ok?: boolean; erro?: string; itens?: unknown[] };
+  result.performance_feedback = performance?.ok === true
+    ? { ...performance, status: "ok", itens: Array.isArray(performance.itens) ? performance.itens : [] }
+    : { status: performance?.erro === "sem_permissao" ? "restrito" : "indisponivel", itens: [] };
   if (params.get("workspace") !== "1") {
     /* A RPC histórica entrega a agenda inteira, mas não informa o acompanhamento.
        Enriquecemos somente os IDs já autorizados por ela, sem ampliar o escopo. */
@@ -155,6 +205,70 @@ export async function GET(request: Request) {
     gerentes: gerentes.data ?? [],
     role: profile.data?.role ?? "",
   });
+}
+
+export async function POST(request: Request) {
+  const auth = await autenticar(request);
+  if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+
+  const form = await request.formData().catch(() => null);
+  if (!form || form.get("action") !== "uploadVisitFeedbackAudio") {
+    return Response.json({ error: "Ação inválida." }, { status: 400 });
+  }
+  const visitaId = texto(form.get("visitId"), 40);
+  const arquivo = form.get("file");
+  if (!VISITA_UUID.test(visitaId) || !(arquivo instanceof File)) {
+    return Response.json({ error: "Visita ou áudio inválido." }, { status: 422 });
+  }
+  const extensao = AUDIO_TIPOS.get(arquivo.type);
+  if (!extensao || arquivo.size < 1 || arquivo.size > AUDIO_MAX_BYTES) {
+    return Response.json({ error: "Envie um áudio válido de até 20 MB." }, { status: 422 });
+  }
+
+  const sha256 = await sha256Hex(arquivo);
+  const id = crypto.randomUUID();
+  const storagePath = `visita/${visitaId}/${id}.${extensao}`;
+  const supabase = auth.supabase as unknown as SupabaseClient;
+  const reserva = await supabase.rpc("f2_feedback_audio_reservar", {
+    p_id: id,
+    p_visita_id: visitaId,
+    p_storage_path: storagePath,
+    p_mime_type: arquivo.type,
+    p_bytes: arquivo.size,
+    p_sha256: sha256,
+  } as never);
+  if (reserva.error) {
+    return Response.json({ error: "O áudio ainda não está disponível neste ambiente." }, { status: 503 });
+  }
+  const reservado = (reserva.data ?? {}) as {
+    ok?: boolean; erro?: string; id?: string; path?: string; status?: string; idempotente?: boolean;
+  };
+  if (reservado.ok !== true || !VISITA_UUID.test(reservado.id ?? "") || !reservado.path) {
+    const status = reservado.erro === "sem_permissao" ? 403 : reservado.erro === "audio_conflito" ? 409 : 422;
+    return Response.json({ error: status === 403 ? "Esta visita não pertence à sua agenda." : "Não foi possível reservar o áudio." }, { status });
+  }
+
+  if (reservado.status === "reservado") {
+    const bucket = supabase.storage.from("visita-feedback-audio");
+    const upload = await bucket.upload(reservado.path, arquivo, { contentType: arquivo.type, upsert: false });
+    if (upload.error) {
+      /* Uma repetição pode encontrar o objeto já gravado e o metadado ainda
+         reservado. Só prosseguimos se os bytes existentes forem exatamente os
+         mesmos; qualquer divergência fica bloqueada para investigação. */
+      const existente = await bucket.download(reservado.path);
+      if (existente.error || existente.data.size !== arquivo.size || await sha256Hex(existente.data) !== sha256) {
+        return Response.json({ error: "Não foi possível armazenar o áudio com integridade." }, { status: 502 });
+      }
+    }
+    const enviado = await supabase.rpc("f2_feedback_audio_marcar_enviado", { p_id: reservado.id } as never);
+    const resultado = (enviado.data ?? {}) as { ok?: boolean; erro?: string; status?: string };
+    if (enviado.error || resultado.ok !== true) {
+      return Response.json({ error: "O áudio foi preservado, mas ainda não entrou na fila de transcrição." }, { status: 502 });
+    }
+    reservado.status = resultado.status ?? "enviado";
+  }
+
+  return Response.json({ success: true, audio: { id: reservado.id, status: reservado.status ?? "enviado" } });
 }
 
 export async function PATCH(request: Request) {
@@ -371,10 +485,13 @@ export async function PATCH(request: Request) {
     const status = texto(body.status, 30);
     const resultadoCodigo = texto(body.resultadoCodigo, 60);
     const justificativa = texto(body.justificativa, 800);
-    const erroResultado = validarResultadoVisita(status, resultadoCodigo, justificativa);
+    const erroResultado = validarResultadoVisita(status, resultadoCodigo, justificativa)
+      ?? validarEnvelopeFeedbackVisita(status as "realizada" | "cancelada" | "nao_compareceu", justificativa);
     if (!visitId || erroResultado) return Response.json({ error: erroResultado ?? "Visita inválida." }, { status: 422 });
     const denied = guard("editar", "Você não tem permissão para registrar o resultado de visitas.");
     if (denied) return denied;
+    const ownership = await verificarDonoResultadoVisita(auth.supabase as unknown as SupabaseClient, visitId);
+    if (!ownership.permitido) return Response.json({ error: ownership.mensagem }, { status: ownership.status });
 
     const { data: result, error } = await (auth.supabase as unknown as SupabaseClient).rpc("f2_registrar_resultado_visita", {
       p_visita_id: visitId,
@@ -387,6 +504,9 @@ export async function PATCH(request: Request) {
       const mensagens: Record<string, string> = {
         sem_permissao: "Esta visita não pertence à sua agenda.",
         resultado_invalido: "Escolha o resultado e escreva uma justificativa completa.",
+        feedback_incompleto: "Preencha o feedback estruturado da visita antes de salvar.",
+        feedback_qualidade_insuficiente: "Complete o feedback até atingir pelo menos 9/10 de qualidade.",
+        resultado_encaminhamento_incompleto: "Defina o motivo e a próxima ação antes de salvar o resultado da visita.",
         resultado_incompativel: "O motivo escolhido não corresponde ao desfecho da visita.",
         visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
       };
@@ -417,7 +537,10 @@ export async function PATCH(request: Request) {
     } as never);
     const outcome = result as { ok?: boolean; erro?: string } | null;
     return error || !outcome?.ok
-      ? Response.json({ error: error?.message ?? `Não foi possível alterar a visita (${outcome?.erro ?? "erro desconhecido"}).` }, { status: 502 })
+      ? Response.json({
+        error: "Não foi possível alterar a visita no momento. Tente novamente.",
+        erro: "falha_banco",
+      }, { status: 502 })
       : Response.json({ success: true });
   }
 
