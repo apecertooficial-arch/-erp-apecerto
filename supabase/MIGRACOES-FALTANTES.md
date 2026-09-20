@@ -1,13 +1,28 @@
 # Migrações aplicadas em produção sem arquivo no repositório
 
-Levantado em **14/09/2026** durante a auditoria estrutural. Regenerável com
+Atualizado em **20/09/2026** durante a reconstrução do ERP. Regenerável com
 `node scripts/migracoes-faltantes.mjs`.
 
 | | |
 |---|---|
-| Migrações em produção a partir do baseline `20260727000000` | **571** |
-| Com arquivo neste repositório | **239** |
-| **Sem arquivo — existem só no banco** | **332 (58%)** |
+| Migrações em produção a partir do baseline `20260727000000` | **608** |
+| Com arquivo neste repositório, comparando por nome | **268** |
+| **Sem arquivo — existem só no banco** | **340 (56%)** |
+| Sem arquivo desde `20260824000000` | **41** |
+
+Nesta atualização, duas migrations remotas que não tinham fonte local foram
+recuperadas sem reaplicação no banco:
+
+- `20260901015921_blindagem_dono_visita_legado.sql`: conteúdo local e registro
+  remoto têm o mesmo MD5 `db23a94c6477a2db717eb090a619c1e9`;
+- `20260918174605_fix_f2_config_audit_tipo_carteira_antiga.sql`: conteúdo SQL
+  reconciliado pelo MD5 remoto `21eba3ebd9a09e5b1e40e7a243b73263` (desconsiderando
+  apenas a quebra de linha final do arquivo POSIX).
+
+A primeira restaura no repositório a autoridade de continuidade do dono que já
+opera em produção: identidade por IDs, telefone e e-mail; visita/negociação
+protegidas; conflito de donos bloqueado; alinhamento auditável entre lead,
+negócio e card. Ela não usa nome como identidade.
 
 ## Por que isso importa
 
