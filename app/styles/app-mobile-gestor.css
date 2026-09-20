@@ -18,6 +18,72 @@
   background: rgba(31, 28, 26, .42);
 }
 
+/* ---------- Início da gestão ----------
+   O gestor entra para cobrar a execução da equipe. A fila individual de
+   clientes continua exclusiva do corretor. */
+@media (max-width: 900px) {
+  .ape-inicio-gestao {
+    display: flex; width: 100%; max-width: 620px; min-height: 100%; margin: 0 auto;
+    flex-direction: column; gap: 14px; padding: 6px 16px calc(104px + env(safe-area-inset-bottom, 0px));
+    background: #FAF8F6; color: #1F1C1A; font-family: 'Quicksand', system-ui, sans-serif;
+    overflow-x: hidden; overflow-wrap: anywhere;
+  }
+  .ape-inicio-gestao > header > span,.ape-gestao-equipe > header span { color: #CC5800; font-size: 10px; font-weight: 800; letter-spacing: .11em; }
+  .ape-inicio-gestao > header h1 { margin: 4px 0 0; font-size: 27px; line-height: 1.1; letter-spacing: -.03em; }
+  .ape-inicio-gestao > header p { margin: 7px 0 0; color: #6B635C; font-size: 13px; line-height: 1.45; }
+
+  .ape-gestao-pulso { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+  .ape-gestao-pulso article { min-width: 0; border: 1px solid #F0D7C5; border-radius: 16px; background: #FFF8F3; padding: 11px 9px; }
+  .ape-gestao-pulso article:nth-child(2) { border-color: #E7D9F0; background: #FBF7FE; }
+  .ape-gestao-pulso article:nth-child(3) { border-color: #F0E2BE; background: #FFFBF0; }
+  .ape-gestao-pulso.ok article { border-color: #CDE7D7; background: #F4FBF7; }
+  .ape-gestao-pulso small,.ape-gestao-pulso strong,.ape-gestao-pulso span { display: block; }
+  .ape-gestao-pulso small { min-height: 28px; color: #756B64; font-size: 10px; font-weight: 750; line-height: 1.25; }
+  .ape-gestao-pulso strong { margin: 5px 0 3px; font-size: 25px; line-height: 1; }
+  .ape-gestao-pulso span { color: #958B84; font-size: 9px; line-height: 1.3; }
+
+  .ape-gestao-atalhos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ape-gestao-atalhos button,.ape-gestao-equipe article > button,.ape-gestao-erro button {
+    min-height: 44px; border: 1px solid #DDD5CF; border-radius: 999px; background: #fff;
+    color: #3B342F; font: 750 12px/1 'Quicksand',system-ui,sans-serif; cursor: pointer;
+  }
+  .ape-gestao-atalhos button:first-child,.ape-gestao-equipe article.urgente > button { border-color: #FF7000; background: #FF7000; color: #fff; }
+
+  .ape-gestao-equipe { display: flex; flex-direction: column; gap: 9px; }
+  .ape-gestao-equipe > header { display: flex; align-items: flex-end; gap: 10px; margin-top: 2px; }
+  .ape-gestao-equipe > header h2 { margin: 3px 0 0; font-size: 19px; letter-spacing: -.02em; }
+  .ape-gestao-equipe > header > b { margin-left: auto; border-radius: 999px; background: #EEE9E5; padding: 5px 8px; color: #6B635C; font-size: 10px; }
+  .ape-gestao-equipe > article { border: 1px solid #E7E0DA; border-radius: 18px; background: #fff; padding: 13px; box-shadow: 0 2px 8px rgba(31,28,26,.05); }
+  .ape-gestao-equipe > article.urgente { border-color: #F2C7A9; box-shadow: 0 3px 12px rgba(204,88,0,.08); }
+  .ape-gestao-corretor-topo { display: flex; align-items: center; gap: 9px; }
+  .ape-gestao-presenca { flex: 0 0 9px; width: 9px; height: 9px; border-radius: 999px; background: #C8C1BB; box-shadow: 0 0 0 4px #F1EEEB; }
+  .ape-gestao-presenca.online { background: #1E9E5A; box-shadow: 0 0 0 4px #E4F6EC; }
+  .ape-gestao-presenca.escritorio { background: #FF8A2B; box-shadow: 0 0 0 4px #FFF0E5; }
+  .ape-gestao-corretor-topo > div { min-width: 0; }
+  .ape-gestao-corretor-topo strong,.ape-gestao-corretor-topo small { display: block; }
+  .ape-gestao-corretor-topo strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .ape-gestao-corretor-topo small { margin-top: 2px; color: #8B827B; font-size: 10px; }
+  .ape-gestao-corretor-topo > b { margin-left: auto; border-radius: 999px; background: #E7F5ED; padding: 5px 8px; color: #147A45; font-size: 9px; text-transform: uppercase; }
+  .ape-gestao-equipe article.urgente .ape-gestao-corretor-topo > b { background: #FFE8D7; color: #B64E00; }
+  .ape-gestao-metricas { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 12px 0; }
+  .ape-gestao-metricas span { min-width: 0; border-radius: 10px; background: #FAF8F6; padding: 8px; color: #80766F; font-size: 9px; line-height: 1.25; }
+  .ape-gestao-metricas strong { display: block; color: #302B27; font-size: 16px; }
+  .ape-gestao-progresso > span { display: block; height: 5px; overflow: hidden; border-radius: 999px; background: #EEE9E5; }
+  .ape-gestao-progresso i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#FF7000,#8B00CC); }
+  .ape-gestao-progresso small { display: block; margin-top: 6px; color: #8B827B; font-size: 9px; }
+  .ape-gestao-equipe article > button { width: 100%; margin-top: 11px; }
+
+  .ape-gestao-erro,.ape-gestao-vazio { border: 1px solid #F0C7C7; border-radius: 16px; background: #FFF8F8; padding: 16px; color: #7F3030; }
+  .ape-gestao-erro strong,.ape-gestao-erro span { display: block; }
+  .ape-gestao-erro span { margin: 4px 0 12px; font-size: 12px; }
+  .ape-gestao-erro button { width: 100%; border-color: #C64A4A; color: #963535; }
+  .ape-gestao-vazio { margin: 0; font-size: 12px; line-height: 1.45; }
+  .ape-gestao-carregando { display: grid; gap: 9px; }
+  .ape-gestao-carregando i { height: 86px; border-radius: 16px; background: linear-gradient(90deg,#F1EDE9,#FBF9F7,#F1EDE9); background-size: 220% 100%; animation: ape-gestao-pulso 1.2s linear infinite; }
+}
+@keyframes ape-gestao-pulso { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) { .ape-gestao-carregando i { animation: none; } }
+
 @media (max-width: 900px) {
   .ape-agenda-resultados { margin: 12px 0 16px; border: 1px solid #F3C9C9; border-radius: 18px; background: #FFF9F8; padding: 14px; box-shadow: 0 3px 10px rgba(163,44,44,.07); }
   .ape-agenda-resultados > header { display: flex; align-items: flex-start; gap: 10px; }

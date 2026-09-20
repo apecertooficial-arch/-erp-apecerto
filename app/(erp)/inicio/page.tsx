@@ -16,6 +16,7 @@
 import { useRouter } from "next/navigation";
 import { HomeWorkspace } from "../../features/home/HomeWorkspace";
 import { InicioApp } from "../../features/home/InicioApp";
+import { InicioGestaoMobile } from "../../features/home/InicioGestaoMobile";
 import { GuardaModulo } from "../../features/system/GuardaModulo";
 import { useErpSession } from "../../features/system/ErpSession";
 import { pathDoModulo } from "../../features/system/erp-routes";
@@ -23,7 +24,7 @@ import { isModuleName } from "../../features/system/module-map";
 import { useEhCelular } from "../../features/system/useFormato";
 
 export default function Pagina() {
-  const { profile } = useErpSession();
+  const { profile, role, isManager } = useErpSession();
   const ehCelular = useEhCelular();
   const router = useRouter();
   return (
@@ -33,6 +34,16 @@ export default function Pagina() {
            Meu Dia no frame seguinte faria a tela piscar duas interfaces. */
         if (ehCelular === null) return null;
         if (ehCelular) {
+          const ehGestao = role !== "corretor" || isManager;
+          if (ehGestao) {
+            return (
+              <InicioGestaoMobile
+                accessToken={t}
+                nome={profile?.name ?? "Gestor"}
+                onIr={(destino) => router.push(destino)}
+              />
+            );
+          }
           return (
             <InicioApp
               accessToken={t}
