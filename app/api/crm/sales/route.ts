@@ -245,8 +245,10 @@ export async function PATCH(request: Request) {
     const update = isFinal
       ? { etapa: stage, atualizado_em: new Date().toISOString(), prazo_em: null }
       : { etapa: stage, atualizado_em: new Date().toISOString() };
-    const { error } = await auth.supabase.from("venda_processos").update(update).eq("id", processId);
-    return error ? falhaEsteira(error, "mover_etapa") : Response.json({ success: true });
+    const { data: movido, error } = await auth.supabase.from("venda_processos").update(update).eq("id", processId).eq("etapa", ctx.proc.etapa).select("id,etapa").maybeSingle();
+    if (error) return falhaEsteira(error, "mover_etapa");
+    if (!movido) return Response.json({ error: "Esta venda mudou de etapa enquanto você trabalhava. Recarregue e tente novamente." }, { status: 409 });
+    return Response.json({ success: true, stage: movido.etapa });
   }
 
   if (action === "addAnexo" || action === "removeAnexo") {
@@ -842,6 +844,9 @@ export async function PATCH(request: Request) {
     const processId = clean(body.processId, 60);
     const texto = clean(body.texto, 4000);
     if (!processId || !texto) return Response.json({ error: "Escreva a observação." }, { status: 422 });
+    const { data: processo, error: processoError } = await auth.supabase.from("venda_processos").select("id").eq("id", processId).maybeSingle();
+    if (processoError) return falhaEsteira(processoError, "autorizar_observacao");
+    if (!processo) return Response.json({ error: "Venda não encontrada ou sem acesso." }, { status: 404 });
     const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
     const { error } = await auth.supabase.from("venda_observacoes").insert({ processo_ref: processId, texto, autor: auth.user.id, autor_nome: me?.nome ?? null } as never);
     return error ? falhaEsteira(error, "adicionar_observacao") : Response.json({ success: true });
