@@ -9,8 +9,8 @@ export default function Pagina() {
   return (
     <GuardaModulo modulo="Notificações">
       {(t) => {
-        const abrirLead = (dealId: number) => router.push(`/crm?lead=${dealId}`);
-        return <NotificationsWorkspace accessToken={t} onOpenLead={abrirLead} />;
+        const navegar = (href: string) => router.push(href);
+        return <NotificationsWorkspace accessToken={t} onNavigate={navegar} />;
       }}
     </GuardaModulo>
   );

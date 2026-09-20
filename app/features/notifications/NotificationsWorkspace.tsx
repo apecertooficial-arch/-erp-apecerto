@@ -18,16 +18,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ICONE_POR_TIPO, agrupar, ROTULO_ACAO_AVISO, tempoRelativo,
+  ICONE_POR_TIPO, agrupar, destinoAviso, ROTULO_ACAO_AVISO, tempoRelativo,
   type Aviso, type CoberturaAvisos, type Faixa,
 } from "./telaAvisos.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 
 const POR_PAGINA = 20;
 
-export function NotificationsWorkspace({ accessToken, onOpenLead }: {
+export function NotificationsWorkspace({ accessToken, onNavigate }: {
   accessToken: string;
-  onOpenLead: (negocioId: number) => void;
+  onNavigate: (href: string) => void;
 }) {
   const [avisos, setAvisos] = useState<Aviso[] | null>(null);
   const [erro, setErro] = useState(false);
@@ -73,17 +73,19 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
   const pedemAcao = grupos.agora.length;
 
   const abrir = useCallback(async (aviso: Aviso) => {
-    if (!aviso.negocio_id) return;
+    const destino = destinoAviso(aviso);
+    if (!destino) return;
     if (!aviso.vista_em) {
       setAvisos((atuais) => (atuais ?? []).map((item) => item.id === aviso.id ? { ...item, vista_em: new Date().toISOString() } : item));
       void fetch("/api/notificacoes", {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ id: aviso.id }),
+        keepalive: true,
       });
     }
-    onOpenLead(aviso.negocio_id);
-  }, [accessToken, onOpenLead]);
+    onNavigate(destino);
+  }, [accessToken, onNavigate]);
 
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
 
@@ -168,7 +170,7 @@ export function NotificationsWorkspace({ accessToken, onOpenLead }: {
                       type="button"
                       className="av-acao ape-aviso-acao"
                       onClick={() => { void abrir(a); }}
-                      disabled={!a.negocio_id}
+                      disabled={!destinoAviso(a)}
                     >
                       {ROTULO_ACAO_AVISO[a.tipo] ?? "Abrir"} ›
                     </button>

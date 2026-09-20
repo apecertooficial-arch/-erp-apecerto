@@ -11,6 +11,7 @@ export type Aviso = {
   titulo: string;
   detalhe: string | null;
   negocio_id: number | null;
+  deep_link?: string | null;
   criada_em: string;
   vista_em: string | null;
   resolvida_em: string | null;
@@ -53,6 +54,36 @@ export const ROTULO_ACAO_AVISO: Record<string, string> = {
   lead_em_atendimento:         "Acompanhar lead",
   lead_quente:                 "Priorizar lead",
 };
+
+const ROTAS_INTERNAS_AVISO = new Set([
+  "/agenda",
+  "/configuracoes",
+  "/crm",
+  "/inicio",
+  "/notificacoes",
+]);
+
+/**
+ * Resolve o destino que realmente cumpre o rótulo mostrado no botão.
+ *
+ * O servidor já valida deep links, mas a interface repete a barreira: aviso é
+ * dado persistido e nunca pode transformar um valor antigo ou corrompido em
+ * navegação externa. Tipos operacionais que exigem outro módulo prevalecem
+ * sobre o link histórico do negócio.
+ */
+export function destinoAviso(aviso: Aviso): string | null {
+  if (aviso.tipo === "canal_indisponivel") return "/configuracoes?visao=conexoes";
+  if (aviso.tipo === "visita_feedback_pendente" || aviso.tipo === "visita_proxima") return "/agenda";
+
+  const link = aviso.deep_link?.trim() ?? "";
+  if (/^\/negocio\/[0-9]+(?:\/[a-z-]+)?$/.test(link)) return link;
+  if (ROTAS_INTERNAS_AVISO.has(link)) return link;
+  if (link === "/meu-dia") return "/inicio";
+  if (/^\/gestao\/[a-z-]+$/.test(link)) return "/inteligencia";
+
+  const negocioId = Number(aviso.negocio_id);
+  return Number.isSafeInteger(negocioId) && negocioId > 0 ? `/negocio/${negocioId}` : null;
+}
 
 /**
  * "há 6 min", "há 1 h", "há 2 d".

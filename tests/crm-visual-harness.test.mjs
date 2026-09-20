@@ -48,6 +48,7 @@ test("harness exercita cobertura parcial e reincidência na tela real de Avisos"
   assert.match(harness, /tipo: "lead_em_atendimento", prioridade: 2/);
   assert.match(harness, /tipo: "lead_quente", prioridade: 1/);
   assert.match(harness, /tipo: "visita_feedback_pendente", prioridade: 2/);
+  assert.match(harness, /dataset\.lastNotificationNavigation = href/);
 });
 
 test("conceito visual e isolado, responsivo e sem recursos externos", () => {

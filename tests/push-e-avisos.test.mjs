@@ -12,6 +12,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { destinoAviso } from "../app/features/notifications/telaAvisos.logica.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
@@ -53,6 +54,21 @@ test("transições da Sara mostram uma ação específica em vez de Abrir genér
 test("pendência de feedback leva o corretor diretamente à ação esperada", () => {
   assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*\{ glifo: "📝", cor: "laranja" \}/);
   assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*"Dar feedback"/);
+});
+
+test("cada ação abre o módulo que realmente resolve a pendência", () => {
+  const base = { id: 1, prioridade: 1, titulo: "Teste", detalhe: null, negocio_id: 104, criada_em: "2026-09-19T12:00:00Z", vista_em: null, resolvida_em: null };
+  assert.equal(destinoAviso({ ...base, tipo: "canal_indisponivel", deep_link: "/negocio/104" }), "/configuracoes?visao=conexoes");
+  assert.equal(destinoAviso({ ...base, tipo: "visita_feedback_pendente", deep_link: "/negocio/104" }), "/agenda");
+  assert.equal(destinoAviso({ ...base, tipo: "lead_quente", deep_link: "/negocio/104" }), "/negocio/104");
+  assert.equal(destinoAviso({ ...base, tipo: "lead_em_atendimento", deep_link: null }), "/negocio/104");
+});
+
+test("destino de aviso falha fechado para link externo ou rota inventada", () => {
+  const base = { id: 2, tipo: "falha_rotina", prioridade: 1, titulo: "Teste", detalhe: null, negocio_id: null, criada_em: "2026-09-19T12:00:00Z", vista_em: null, resolvida_em: null };
+  assert.equal(destinoAviso({ ...base, deep_link: "https://exemplo.invalid" }), null);
+  assert.equal(destinoAviso({ ...base, deep_link: "//exemplo.invalid" }), null);
+  assert.equal(destinoAviso({ ...base, deep_link: "/rota-inventada" }), null);
 });
 
 test("app confirma visualmente que o aparelho esta inscrito para lead novo", () => {
@@ -123,6 +139,7 @@ test("desktop e celular compartilham uma única tela e uma única fonte de aviso
   assert.match(PAGINA_AVISOS, /<NotificationsWorkspace/);
   assert.doesNotMatch(PAGINA_AVISOS, /useEhCelular|TelaAvisosMobile/);
   assert.match(TELA_AVISOS, /fetch\("\/api\/notificacoes"/);
+  assert.match(TELA_AVISOS, /keepalive: true/, "a confirmação de leitura precisa sobreviver à navegação");
   assert.doesNotMatch(TELA_AVISOS, /\/api\/crm|\/api\/live-chat|erp_auditoria/);
 });
 

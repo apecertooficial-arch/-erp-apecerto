@@ -6,6 +6,7 @@ import { itensDaNavegacao } from "../app/features/system/erp-routes.ts";
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const gestao = ler("../app/features/system/ManagementMobile.tsx");
 const shell = ler("../app/features/system/ErpShell.tsx");
+const configuracoes = ler("../app/(erp)/configuracoes/page.tsx");
 
 test("barra separa rotina de corretor e gestor", () => {
   const corretor = itensDaNavegacao({ role: "corretor", permissoes: { dashboard: ["ver"], crm: ["ver"], calendario: ["ver"], notificacoes: ["ver"] }, carregado: true, isManager: false });
@@ -24,4 +25,11 @@ test("Mais é uma folha real e Gestão respeita permissões", () => {
   assert.match(shell, /ape-mais-folha/);
   assert.match(shell, /<span>Mais<\/span>/);
   assert.match(gestao, /podeVer\(item\.modulo/);
+});
+
+test("alerta de canal abre Conexões no celular do gestor sem remover o hub de gestão", () => {
+  assert.match(configuracoes, /useSearchParams/);
+  assert.match(configuracoes, /searchParams\.get\("visao"\) === "conexoes"/);
+  assert.match(configuracoes, /forcarConexoes \? <SettingsWorkspace/);
+  assert.match(configuracoes, /ehCelular && isManager \? <ManagementMobile/);
 });

@@ -257,7 +257,10 @@ createRoot(document.getElementById("root")!).render(
         {tela === "mobile-day"
           ? <InicioApp accessToken="harness-test-only" nome={perfil.name ?? "Corretor teste"} onIr={() => undefined} />
           : tela === "agenda-manager" ? <CalendarWorkspace accessToken="harness-test-only" />
-          : tela === "notifications" ? <NotificationsWorkspace accessToken="harness-test-only" onOpenLead={() => undefined} />
+          : tela === "notifications" ? <NotificationsWorkspace
+            accessToken="harness-test-only"
+            onNavigate={(href) => { document.documentElement.dataset.lastNotificationNavigation = href; }}
+          />
           : <PaginaCrm />}
       </ErpShell>}
   </ErpSessionCtx.Provider>,

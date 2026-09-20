@@ -130,11 +130,16 @@ declarar o ERP inteiro pronto sem evidência.
   frontend 561/561 passaram.
 - a interface dos alertas remanescentes foi fechada localmente: falha de canal
   é urgente no PWA e leva a `Corrigir canal`; Sara leva a `Acompanhar lead` ou
-  `Priorizar lead`; visita sem feedback leva a `Dar feedback`. São 18/18
-  contratos direcionados e gate frontend 564/564. Navegador real sanitizado
-  passou em 1440 × 1000 e 390 × 844, sem overflow nem erros/avisos. A subfatia
-  foi registrada em commit local; o push permaneceu bloqueado pela política de
-  aprovação do ambiente e não foi contornado.
+  `Priorizar lead`; visita sem feedback leva a `Dar feedback`. A navegação
+  cumpre o texto: canal → `/configuracoes?visao=conexoes` (inclusive gestor no
+  celular), feedback → `/agenda`, lead → ficha;
+  links externos e rotas inventadas falham fechados e a confirmação de leitura
+  sobrevive à navegação. São 20/20 contratos de push/tela mais o contrato mobile
+  de gestão, e gate frontend 567/567. Navegador real sanitizado passou em
+  desktop e 390 × 844, sem overflow
+  nem erros/avisos. A subfatia anterior foi registrada em commit local; o push
+  permaneceu bloqueado pela política de aprovação do ambiente e não foi
+  contornado.
 
 ## Arquivos alterados/relevantes
 
@@ -428,8 +433,9 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Revisar e enviar o contrato de resolução por evidência sem incluir o symlink
-`node_modules`. Em seguida, avançar para a próxima lacuna P0 da jornada
+Registrar a navegação real dos Avisos sem incluir o symlink `node_modules` e,
+quando houver autorização aceita pelo ambiente, enviar os commits locais para
+a branch isolada. Em seguida, avançar para a próxima lacuna P0 da jornada
 lead → primeira abordagem → Sara, mantendo os 34 alertas sem prova abertos.
 Quando existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
