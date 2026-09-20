@@ -7,7 +7,7 @@ import { StatusTick, ackState } from "./statusTick";
 import { startOpusRecorder, type OpusHandle } from "../../lib/opusMic";
 import { hojeOperacao, paraDatetimeLocal, somarDias } from "../../lib/timezone";
 
-type Message = { id: string; conversa_id: string; direcao: string; tipo: string; conteudo: string | null; media_url?: string | null; raw?: unknown; criado_em: string | null; enviado_em?: string | null; status?: string | number | null; status_detalhe?: string | null };
+type Message = { id: string; conversa_id: string; direcao: string; tipo: string; conteudo: string | null; media_url?: string | null; criado_em: string | null; enviado_em?: string | null; status?: string | number | null; status_detalhe?: string | null };
 type Conversation = { id: string; contato_id: string; instancia_id: string; status: string; ultima_msg_em: string | null; origem: string | null };
 export type ChatData = {
   conversations: Conversation[];
@@ -35,6 +35,8 @@ const EMOJIS = ["😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", 
 
 export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitialLeadHandled }: { accessToken: string; initialLeadId?: number | null; onInitialLeadHandled?: () => void }) {
   const [data, setData] = useState<ChatData | null>(null);
+  const [chatStatus, setChatStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [chatLoadError, setChatLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const activeConversation = useRef<string | null>(null);
@@ -55,6 +57,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   const [recording, setRecording] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [scheduled, setScheduled] = useState<Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }>>([]);
+  const [scheduledLoadError, setScheduledLoadError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const opusRec = useRef<OpusHandle | null>(null);
   const recStream = useRef<MediaStream | null>(null);
@@ -67,6 +70,18 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     if (!response.ok) throw new Error(result.error || "Não foi possível carregar o chat.");
     setData(result);
     setSelectedId((current) => current || result.conversations[0]?.id || null);
+  };
+  const loadInitial = async () => {
+    setChatStatus("loading");
+    setChatLoadError(null);
+    try {
+      await load();
+      setChatStatus("ready");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Não foi possível carregar o Chat ao Vivo.";
+      setChatStatus("error");
+      setChatLoadError(message);
+    }
   };
   const loadMessages = async (id: string) => {
     const response = await fetch(`/api/live-chat?conversationId=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -81,7 +96,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     });
   };
 
-  useEffect(() => { void load().catch((reason) => setNotice(reason instanceof Error ? reason.message : "Erro ao carregar chat.")); }, [accessToken]);
+  useEffect(() => { void loadInitial(); }, [accessToken]);
   // Abre direto na conversa do lead quando chamado pela Central de atenção
   useEffect(() => {
     if (initialLeadId == null || !data) return;
@@ -97,7 +112,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   useEffect(() => {
     const supabase = getBrowserSupabaseClient();
     const channel = supabase.channel("live-chat-screen")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { if (selectedId) void loadMessages(selectedId); void load(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wa_mensagens" }, () => { if (selectedId) void loadMessages(selectedId).catch(() => setNotice("Não foi possível atualizar as mensagens.")); void load().catch(() => setNotice("Não foi possível atualizar a lista de conversas.")); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [selectedId]);
@@ -147,10 +162,15 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     setBusy(true); setNotice(null);
     try {
       const response = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const result = await response.json() as { error?: string; scheduled?: number };
+      const result = await response.json() as { error?: string; scheduled?: number; message?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
-      setNotice(result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");
-      await load();
+      const successMessage = result.message || (result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");
+      try {
+        await load();
+        setNotice(successMessage);
+      } catch {
+        setNotice(`${successMessage} A ação foi salva, mas o painel não pôde ser atualizado. Recarregue antes de repetir.`);
+      }
       return result;
     } catch (reason) {
       setNotice(reason instanceof Error ? reason.message : "Não foi possível concluir.");
@@ -158,18 +178,27 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     } finally { setBusy(false); }
   };
   const loadScheduled = async (lid?: number | null) => {
-    if (!lid) { setScheduled([]); return; }
+    if (!lid) { setScheduled([]); setScheduledLoadError(null); return; }
+    setScheduledLoadError(null);
     try {
       const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "listScheduled", leadId: lid }) });
-      const result = await response.json() as { agendadas?: Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }> };
+      const result = await response.json() as { agendadas?: Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }>; error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível carregar os agendamentos.");
       setScheduled(result.agendadas ?? []);
-    } catch { setScheduled([]); }
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Não foi possível carregar os agendamentos.";
+      setScheduledLoadError(message);
+      setNotice(message);
+    }
   };
   useEffect(() => { void loadScheduled(lead?.id ?? null); }, [lead?.id]);
   const cancelScheduled = async (id: number) => {
     try {
-      await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancelScheduled", scheduledId: id }) });
+      const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancelScheduled", scheduledId: id }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Não foi possível cancelar o agendamento.");
       setScheduled((prev) => prev.filter((item) => item.id !== id));
+      setNotice("Agendamento cancelado.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Não foi possível cancelar o agendamento."); }
   };
   const send = async (content: string, mediaId?: string) => {
@@ -188,7 +217,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
         const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", phone: contact.telefone, instanceId, content: text, mediaId, clientMessageId }) });
         const result = await response.json() as { error?: string };
         if (!response.ok) throw new Error(result.error || "Não foi possível enviar.");
-        void load();
+        void load().catch(() => setNotice("Mensagem enviada, mas o painel não pôde ser atualizado. Recarregue antes de repetir."));
       } catch (reason) {
         setNotice(reason instanceof Error ? reason.message : "Não foi possível enviar.");
         setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, conteudo: `${m.conteudo || ""} ⚠️ (falha ao enviar)` } : m));
@@ -231,6 +260,10 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     setQuickAction(action);
   };
 
+  if (chatStatus !== "ready") {
+    return <div className="live-chat"><section className="crm-empty-view" role={chatStatus === "error" ? "alert" : undefined}><h1>{chatStatus === "error" ? "Não foi possível carregar o Chat ao Vivo" : "Carregando conversas…"}</h1>{chatStatus === "error" && <><p>{chatLoadError || "Tente novamente em instantes."}</p><button type="button" onClick={() => void loadInitial()}>Tentar novamente</button></>}</section></div>;
+  }
+
   return <div className="live-chat">
     <header><div><span>WHATSAPP EM TEMPO REAL</span><h1>Chat ao vivo</h1><p>{data?.conversations.length || 0} conversas conectadas às instâncias do Supabase</p></div><label><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead ou telefone" /></label></header>
     {notice && <button className="live-notice" type="button" onClick={() => setNotice(null)}>{notice} ×</button>}
@@ -238,7 +271,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
       <aside className="conversation-list"><nav><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")} type="button">Todas <b>{data?.conversations.length || 0}</b></button><button className={filter === "unanswered" ? "active" : ""} onClick={() => setFilter("unanswered")} type="button">Sem resposta <b>{unansweredCount}</b></button><button className={filter === "critical" ? "active" : ""} onClick={() => setFilter("critical")} type="button">Críticas <b>{criticalCount}</b></button></nav><div className="chat-filter-row"><select aria-label="Filtrar por corretor" value={filterBroker} onChange={(event) => setFilterBroker(event.target.value ? Number(event.target.value) : "")}><option value="">Corretor</option>{(data?.brokers ?? []).map((broker) => <option value={broker.id} key={broker.id}>{broker.nome}</option>)}</select><select aria-label="Filtrar por etapa" value={filterStage} onChange={(event) => setFilterStage(event.target.value ? Number(event.target.value) : "")}><option value="">Etapa</option>{(data?.stages ?? []).map((stage) => <option value={stage.id} key={stage.id}>{stage.rotulo || stage.nome}</option>)}</select><select aria-label="Filtrar por instância" value={filterInstance} onChange={(event) => setFilterInstance(event.target.value)}><option value="">Instância</option>{(data?.instances ?? []).map((inst) => <option value={inst.id} key={inst.id}>{inst.rotulo || inst.session_id}</option>)}</select><select aria-label="Filtrar por tempo sem resposta" value={filterSlaDays} onChange={(event) => setFilterSlaDays(Number(event.target.value))}><option value={0}>SLA</option><option value={1}>+1 dia sem responder</option><option value={3}>+3 dias sem responder</option><option value={5}>+5 dias sem responder</option><option value={7}>+7 dias sem responder</option></select>{(filterBroker !== "" || filterStage !== "" || filterInstance !== "" || filterSlaDays !== 0) && <button type="button" className="chat-filter-clear" onClick={() => { setFilterBroker(""); setFilterStage(""); setFilterInstance(""); setFilterSlaDays(0); }}>Limpar filtros</button>}</div>{filtered.map((item) => { const person = contactById.get(item.contato_id); const leadNome = person?.lead_id ? leadById.get(person.lead_id)?.nome : null; const displayName = leadNome || person?.nome || person?.telefone || "Contato"; const last = data?.latest[item.id]; return <button className={item.id === selectedId ? "active" : ""} type="button" onClick={() => setSelectedId(item.id)} key={item.id}><span>{displayName.slice(0, 2).toUpperCase()}</span><div><strong>{displayName}</strong><small>{last?.conteudo || (last?.tipo ? `◉ ${last.tipo}` : "Conversa iniciada")}</small><em>{item.ultima_msg_em ? when.format(new Date(item.ultima_msg_em)) : ""}</em></div></button>; })}{filtered.length === 0 && <div className="conversation-empty">Nenhuma conversa neste filtro.</div>}</aside>
       <section className="chat-thread">
         <header><div><strong>{contact?.nome || contact?.telefone || "Selecione uma conversa"}</strong><small>ATENDENDO · {instance?.rotulo || instance?.session_id || "Sem instância"}</small>{relatedConversations.length > 0 && <label className="history-instance">Histórico da instância<select aria-label="Instância do histórico" value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value)}>{relatedConversations.map((item) => { const linked = instanceById.get(item.instancia_id); return <option value={item.id} key={item.id}>{linked?.rotulo || linked?.session_id || "Instância"} · {item.ultima_msg_em ? when.format(new Date(item.ultima_msg_em)) : "sem data"}</option>; })}</select></label>}</div><span className={dapi?.conectada ? "chat-connection connected" : "chat-connection"}>{dapi?.conectada ? "● conectada" : "○ offline"}</span></header>
-        <div className="message-stream" ref={messageStream}>{messages.map((message) => <article className={`${isOutgoing(message.direcao) ? "out" : "in"} ${isOutgoing(message.direcao) && ackState(message.status) === "erro" ? "msg-failed" : ""}`} key={message.id}><MessageMedia message={message} /><span>{message.conteudo}</span><small>{(message.enviado_em || message.criado_em) ? when.format(new Date((message.enviado_em || message.criado_em) as string)) : ""}{isOutgoing(message.direcao) && <StatusTick status={message.status} detalhe={message.status_detalhe} />}</small></article>)}{messages.length === 0 && scheduled.length === 0 && <div className="crm-empty-view">Nenhuma mensagem encontrada nesta instância.</div>}{scheduled.length > 0 && <div className="chat-sched-flow"><div className="chat-sched-sep"><span>⏰ AGENDADAS</span></div>{scheduled.map((item) => <div className="chat-sched-msg" key={item.id}><span className="chat-sched-when">{when.format(new Date(item.quando))}</span><p>{item.texto || <em className="chat-sched-kind">◉ {item.tipo}</em>}</p><button type="button" className="chat-sched-cancelbtn" onClick={() => void cancelScheduled(item.id)}>Cancelar agendamento</button></div>)}</div>}</div>
+        <div className="message-stream" ref={messageStream}>{messages.map((message) => <article className={`${isOutgoing(message.direcao) ? "out" : "in"} ${isOutgoing(message.direcao) && ackState(message.status) === "erro" ? "msg-failed" : ""}`} key={message.id}><MessageMedia message={message} /><span>{message.conteudo}</span><small>{(message.enviado_em || message.criado_em) ? when.format(new Date((message.enviado_em || message.criado_em) as string)) : ""}{isOutgoing(message.direcao) && <StatusTick status={message.status} detalhe={message.status_detalhe} />}</small></article>)}{scheduledLoadError && <div className="chat-sched-error" role="alert"><p>{scheduledLoadError}</p><button type="button" onClick={() => void loadScheduled(lead?.id ?? null)}>Tentar novamente</button></div>}{messages.length === 0 && scheduled.length === 0 && !scheduledLoadError && <div className="crm-empty-view">Nenhuma mensagem encontrada nesta instância.</div>}{scheduled.length > 0 && <div className="chat-sched-flow"><div className="chat-sched-sep"><span>⏰ AGENDADAS</span></div>{scheduled.map((item) => <div className="chat-sched-msg" key={item.id}><span className="chat-sched-when">{when.format(new Date(item.quando))}</span><p>{item.texto || <em className="chat-sched-kind">◉ {item.tipo}</em>}</p><button type="button" className="chat-sched-cancelbtn" onClick={() => void cancelScheduled(item.id)}>Cancelar agendamento</button></div>)}</div>}</div>
         <form className="chat-composer" onSubmit={(event) => { event.preventDefault(); void send(draft); }}><div className="composer-tools"><button className={recording ? "recording" : ""} type="button" title="Gravar áudio" aria-label="Gravar áudio" onClick={() => void toggleRecording()}>{recording ? <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /><line x1="12" y1="17" x2="12" y2="21" /></svg>}</button><button type="button" title="Enviar imagem, vídeo ou documento" aria-label="Anexar mídia" onClick={() => fileInput.current?.click()}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21.4 11.05 12.2 20.2a5 5 0 0 1-7.1-7.1l9.2-9.2a3.3 3.3 0 0 1 4.7 4.7l-9.2 9.2a1.6 1.6 0 0 1-2.3-2.3l8.5-8.5" /></svg></button><button type="button" title="Agendar mensagem" aria-label="Agendar mensagem" onClick={() => setScheduleOpen(true)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></button><button type="button" title="Enviar abordagem" aria-label="Enviar abordagem" onClick={() => setApproachOpen(true)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11.5 12 4l9 7.5" /><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" /></svg></button><button type="button" className={emojiOpen ? "chat-emoji-btn active" : "chat-emoji-btn"} title="Emojis" aria-label="Emojis" onClick={() => setEmojiOpen((value) => !value)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8.5 14a4 4 0 0 0 7 0" /><line x1="9" y1="9.5" x2="9" y2="9.5" /><line x1="15" y1="9.5" x2="15" y2="9.5" /></svg></button><input ref={fileInput} hidden type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" onChange={(event) => void upload(event.target.files?.[0])} /></div>{emojiOpen && <div className="chat-emoji-panel">{EMOJIS.map((emoji) => <button type="button" key={emoji} onClick={() => { setDraft((value) => value + emoji); setEmojiOpen(false); }}>{emoji}</button>)}</div>}<textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Escreva uma mensagem…" /><button disabled={busy || !draft.trim() || !instanceId} type="submit">➤</button></form>
       </section>
       <aside className="chat-sidebar"><div className="lead-summary"><span>{(lead?.nome || contact?.nome || "C").slice(0, 2).toUpperCase()}</span><div><strong>{lead?.nome || contact?.nome || "Contato sem vínculo"}</strong><small>{contact?.telefone}</small></div></div><article className="ai-summary"><b>RESUMO DO ATENDIMENTO</b><p>{lead ? `Lead de origem ${lead.origem || "não informada"}, com ${messages.length} mensagens nesta conversa.` : "Associe este contato a um lead para completar o resumo."}</p><span>Valor em negociação <strong>{deal?.valor ? money.format(deal.valor) : "a confirmar"}</strong></span></article><h3>Ações rápidas</h3><div className="quick-actions"><button type="button" onClick={() => openQuickAction("callReminder")}>☎ Lembrete de ligação</button><button type="button" onClick={() => openQuickAction("task")}>✓ Tarefa</button><button type="button" onClick={() => openQuickAction("visit")}>▣ Agendar visita</button><button type="button" onClick={() => setProductOpen(true)}>▥ Enviar produto</button><button type="button" onClick={() => openQuickAction("proposal")}>✎ Gerar proposta</button><button type="button" onClick={() => openQuickAction("financing")}>▤ Financiamento</button><button type="button" onClick={() => openQuickAction("transfer")}>⇄ Transferir</button><button type="button" onClick={() => openQuickAction("note")}>◯ Observação</button></div><h3>Observações</h3><div className="chat-notes">{(data?.activities ?? []).filter((item) => item.lead_id === lead?.id).slice(0, 5).map((item) => <article key={item.id}><p>{item.texto}</p><small>{when.format(new Date(item.criado_em))}</small></article>)}{!(data?.activities ?? []).some((item) => item.lead_id === lead?.id) && <small>Nenhuma observação ainda.</small>}</div></aside>

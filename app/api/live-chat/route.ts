@@ -1,9 +1,35 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesInsert } from "../../lib/supabase/database.types";
+import { resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { papelNoGrupo } from "../../lib/papeis";
 import { textoRepetidoRecente } from "../../lib/anti-repeticao";
 import { hojeOperacao, normalizarInstanteSaoPaulo } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
+
+type ErroLiveChat = { code?: string; message?: string } | null | undefined;
+
+function falhaLiveChat(error: ErroLiveChat, operacao: string, status = 502) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  console.error("live_chat_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para concluir esta operação."
+      : "Não foi possível concluir esta operação do chat no momento.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : status });
+}
+
+function falhaReconciliacao(error: ErroLiveChat, operacao: string, mensagem: string) {
+  console.error("live_chat_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "sem_linha_retornada",
+  });
+  return Response.json({ error: mensagem, erro: "reconciliacao_necessaria" }, { status: 409 });
+}
 
 async function authClient(request: Request) {
   const header = request.headers.get("authorization");
@@ -78,14 +104,15 @@ type AuthContext = NonNullable<Awaited<ReturnType<typeof authClient>>>;
 
 async function canUseInstance(auth: AuthContext, instanceId: number) {
   const { data, error } = await auth.supabase.from("instancias").select("id").eq("id", instanceId).maybeSingle();
-  return !error && Boolean(data);
+  return { allowed: !error && Boolean(data), error };
 }
 
 async function brokerNameForInstance(auth: AuthContext, instanceId: number) {
-  const { data: instance } = await auth.supabase.from("instancias").select("corretor_id").eq("id", instanceId).maybeSingle();
-  if (!instance?.corretor_id) return "";
-  const { data: broker } = await auth.supabase.from("corretores").select("nome").eq("id", instance.corretor_id).maybeSingle();
-  return text(broker?.nome, 120);
+  const { data: instance, error: instanceError } = await auth.supabase.from("instancias").select("corretor_id").eq("id", instanceId).maybeSingle();
+  if (instanceError) return { name: "", error: instanceError };
+  if (!instance?.corretor_id) return { name: "", error: null };
+  const { data: broker, error: brokerError } = await auth.supabase.from("corretores").select("nome").eq("id", instance.corretor_id).maybeSingle();
+  return { name: text(broker?.nome, 120), error: brokerError };
 }
 
 function fillApproachVariables(value: unknown, leadFirstName: string, brokerName: string) {
@@ -99,9 +126,39 @@ function fillApproachVariables(value: unknown, leadFirstName: string, brokerName
 
 async function canMessagePhone(auth: AuthContext, phone: string) {
   const requested = new Set(phoneKeys(phone));
-  if (!requested.size) return false;
+  if (!requested.size) return { allowed: false, error: null };
   const { data, error } = await auth.supabase.from("leads").select("telefone").limit(5000);
-  return !error && (data ?? []).some((lead) => phoneKeys(lead.telefone).some((key) => requested.has(key)));
+  return { allowed: !error && (data ?? []).some((lead) => phoneKeys(lead.telefone).some((key) => requested.has(key))), error };
+}
+
+async function validarDestinoDaMensagem(auth: AuthContext, instanceId: number, phone: string) {
+  const [instanceAccess, phoneAccess] = await Promise.all([
+    canUseInstance(auth, instanceId),
+    canMessagePhone(auth, phone),
+  ]);
+  if (instanceAccess.error) return falhaLiveChat(instanceAccess.error, "validar_instancia");
+  if (phoneAccess.error) return falhaLiveChat(phoneAccess.error, "validar_carteira");
+  if (!instanceAccess.allowed || !phoneAccess.allowed) {
+    return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+  }
+  return null;
+}
+
+async function validarLeadVisivel(auth: AuthContext, leadId: number) {
+  const { data: lead, error } = await auth.supabase.from("leads").select("id,telefone").eq("id", leadId).maybeSingle();
+  if (error) return { lead: null, response: falhaLiveChat(error, "validar_lead") };
+  if (!lead) return { lead: null, response: Response.json({ error: "O lead não existe ou não pertence à sua carteira." }, { status: 403 }) };
+  return { lead, response: null };
+}
+
+async function validarLeadDaMensagem(auth: AuthContext, leadId: number, phone: string) {
+  const { lead, response } = await validarLeadVisivel(auth, leadId);
+  if (response) return response;
+  const requested = new Set(phoneKeys(phone));
+  if (!phoneKeys(lead?.telefone).some((key) => requested.has(key))) {
+    return Response.json({ error: "O telefone não corresponde ao lead informado." }, { status: 409 });
+  }
+  return null;
 }
 
 export async function GET(request: Request) {
@@ -109,22 +166,28 @@ export async function GET(request: Request) {
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const conversationId = new URL(request.url).searchParams.get("conversationId");
   if (conversationId) {
-    const { data: conversation } = await auth.supabase.from("wa_conversas").select("contato_id").eq("id", conversationId).maybeSingle();
+    const { data: conversation, error: conversationError } = await auth.supabase.from("wa_conversas").select("contato_id").eq("id", conversationId).maybeSingle();
+    if (conversationError) return falhaLiveChat(conversationError, "carregar_conversa");
     if (!conversation) return Response.json({ error: "Conversa não encontrada." }, { status: 404 });
-    const { data: contact } = await auth.supabase.from("wa_contatos").select("lead_id,telefone").eq("id", conversation.contato_id).maybeSingle();
+    const { data: contact, error: contactError } = await auth.supabase.from("wa_contatos").select("lead_id,telefone").eq("id", conversation.contato_id).maybeSingle();
+    if (contactError) return falhaLiveChat(contactError, "carregar_contato");
     const contactPhoneKeys = new Set(phoneKeys(contact?.telefone));
-    let registeredLead = contact?.lead_id
-      ? (await auth.supabase.from("leads").select("id").eq("id", contact.lead_id).maybeSingle()).data
-      : null;
+    let registeredLead = null;
+    if (contact?.lead_id) {
+      const { data, error } = await auth.supabase.from("leads").select("id").eq("id", contact.lead_id).maybeSingle();
+      if (error) return falhaLiveChat(error, "validar_lead_da_conversa");
+      registeredLead = data;
+    }
     if (!registeredLead && contactPhoneKeys.size) {
-      const visibleLeads = (await auth.supabase.from("leads").select("id,telefone").limit(5000)).data ?? [];
-      registeredLead = visibleLeads.find((lead) => phoneKeys(lead.telefone).some((key) => contactPhoneKeys.has(key))) ?? null;
+      const { data: visibleLeads, error } = await auth.supabase.from("leads").select("id,telefone").limit(5000);
+      if (error) return falhaLiveChat(error, "validar_telefone_da_conversa");
+      registeredLead = (visibleLeads ?? []).find((lead) => phoneKeys(lead.telefone).some((key) => contactPhoneKeys.has(key))) ?? null;
     }
     if (!registeredLead) return Response.json({ error: "Esta conversa não pertence a um lead cadastrado no CRM." }, { status: 404 });
     const { data, error } = await auth.supabase.from("wa_mensagens")
-      .select("id,wa_message_id,conversa_id,instancia_id,direcao,tipo,conteudo,media_url,raw,criado_em,enviado_em,status,status_detalhe")
+      .select("id,wa_message_id,conversa_id,instancia_id,direcao,tipo,conteudo,media_url,criado_em,enviado_em,status,status_detalhe")
       .eq("conversa_id", conversationId).order("criado_em").limit(600);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ messages: data ?? [] });
+    return error ? falhaLiveChat(error, "carregar_mensagens") : Response.json({ messages: data ?? [] });
   }
   const [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages] = await Promise.all([
     auth.supabase.from("wa_conversas").select("id,contato_id,instancia_id,status,ultima_msg_em,origem").order("ultima_msg_em", { ascending: false, nullsFirst: false }).limit(800),
@@ -142,7 +205,7 @@ export async function GET(request: Request) {
   ]);
   const all = [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages];
   const error = all.find((item) => item.error)?.error;
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) return falhaLiveChat(error, "carregar_painel");
   const leadIds = new Map((leads.data ?? []).map((lead) => [idKey(lead.id), lead.id]));
   const leadByPhone = new Map<string, number>();
   for (const lead of leads.data ?? []) for (const key of phoneKeys(lead.telefone)) leadByPhone.set(key, lead.id);
@@ -161,6 +224,7 @@ export async function GET(request: Request) {
   }
   const sessions = [...new Set((instances.data ?? []).map((instance) => instance.session_id))];
   const dapi = sessions.length ? await auth.supabase.from("instancias").select("id,instancia_dapi,nome,conectada").in("instancia_dapi", sessions) : { data: [], error: null };
+  if (dapi.error) return falhaLiveChat(dapi.error, "carregar_instancias_dapi");
   return Response.json({ conversations: crmConversations, contacts: crmContacts, instances: instances.data ?? [], dapi: dapi.data ?? [], latest: Object.fromEntries(latest), leads: leads.data ?? [], deals: deals.data ?? [], brokers: brokers.data ?? [], products: products.data ?? [], media: media.data ?? [], activities: activities.data ?? [], approaches: approaches.data ?? [], stages: stages.data ?? [] });
 }
 
@@ -173,22 +237,29 @@ async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnT
   if (!(file instanceof File) || file.size === 0 || file.size > 50 * 1024 * 1024 || phone.length < 8 || !Number.isSafeInteger(instanceId)) {
     return Response.json({ error: "Arquivo, telefone ou instância inválidos. O limite é 50 MB." }, { status: 422 });
   }
-  if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+  const accessError = await validarDestinoDaMensagem(auth, instanceId, phone);
+  if (accessError) return accessError;
   const safeName = file.name.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120) || "arquivo";
   const path = `${auth.user.id}/${hojeOperacao()}/${crypto.randomUUID()}-${safeName}`;
   const { error: uploadError } = await auth.supabase.storage.from("chat-midia").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-  if (uploadError) return Response.json({ error: uploadError.message }, { status: 502 });
+  if (uploadError) return falhaLiveChat(uploadError, "armazenar_midia");
   const { data: publicUrl } = auth.supabase.storage.from("chat-midia").getPublicUrl(path);
   const kind = mediaKind(file.type || "application/octet-stream");
   const payload = { telefone: phone, instancia_id: instanceId, tipo: kind, url: publicUrl.publicUrl, legenda: caption || undefined, nome_arquivo: safeName, idempotency_key: idempotencyKey(form.get("clientMessageId")) };
   const { data, error } = await auth.supabase.functions.invoke("dapi-enviar", { body: payload });
   const remoteError = providerError(data);
   if (error || remoteError) {
-    await auth.supabase.storage.from("chat-midia").remove([path]);
+    const { error: cleanupError } = await auth.supabase.storage.from("chat-midia").remove([path]);
+    if (cleanupError) {
+      console.error("live_chat_operacao_falhou", {
+        operacao: "limpar_midia_apos_falha",
+        codigo: "storage_error",
+      });
+    }
     const motivo = remoteError || (error ? await invokeErrorMessage(error, "Não foi possível enviar a imagem agora — tente novamente em instantes.") : "Não foi possível enviar a mídia.");
     return Response.json({ error: motivo }, { status: 502 });
   }
-  return Response.json({ success: true, url: publicUrl.publicUrl, type: kind, result: data });
+  return Response.json({ success: true, type: kind });
 }
 
 export async function POST(request: Request) {
@@ -203,7 +274,8 @@ export async function POST(request: Request) {
   if (action === "send") {
     const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const mediaId = text(body.mediaId, 50);
     if (phone.length < 8 || !Number.isSafeInteger(instanceId) || (!content && !mediaId)) return Response.json({ error: "Mensagem, telefone ou instância inválidos." }, { status: 422 });
-    if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+    const accessError = await validarDestinoDaMensagem(auth, instanceId, phone);
+    if (accessError) return accessError;
     if (content && !mediaId) {
       const repetida = await textoRepetidoRecente(auth.supabase, phone, content);
       if (repetida) return Response.json({ error: repetida }, { status: 409 });
@@ -211,7 +283,8 @@ export async function POST(request: Request) {
     const chave = idempotencyKey(body.clientMessageId);
     let payload: Record<string, unknown> = { telefone: phone, instancia_id: instanceId, tipo: "texto", texto: content, idempotency_key: chave };
     if (mediaId) {
-      const { data: media } = await auth.supabase.from("midias").select("tipo,storage_path,nome").eq("id", mediaId).maybeSingle();
+      const { data: media, error: mediaError } = await auth.supabase.from("midias").select("tipo,storage_path,nome").eq("id", mediaId).maybeSingle();
+      if (mediaError) return falhaLiveChat(mediaError, "carregar_midia");
       if (!media) return Response.json({ error: "Material não encontrado." }, { status: 404 });
       const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const url = `${base}/storage/v1/object/public/empreendimentos/${media.storage_path.split("/").map(encodeURIComponent).join("/")}`;
@@ -223,41 +296,63 @@ export async function POST(request: Request) {
       const motivo = remoteError || (error ? await invokeErrorMessage(error, "Não foi possível enviar agora — tente novamente em instantes.") : "Não foi possível enviar.");
       return Response.json({ error: motivo }, { status: 502 });
     }
-    return Response.json({ success: true, result: data });
+    return Response.json({ success: true });
   }
   if (action === "schedule") {
     const phone = phoneNumber(body.phone); const content = text(body.content, 4000); const instanceId = Number(body.instanceId); const when = new Date(normalizarInstanteSaoPaulo(String(body.when ?? "")) ?? Number.NaN);
-    if (phone.length < 8 || !content || !Number.isSafeInteger(instanceId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Defina mensagem, instância e horário futuro válido." }, { status: 422 });
-    if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
-    const { error } = await auth.supabase.from("mensagens_agendadas").insert({ telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, tipo: "text", texto: content, quando: when.toISOString(), status: "agendado", criado_por: auth.user.id });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: 1 });
+    if (!Number.isSafeInteger(leadId) || leadId < 1 || phone.length < 8 || !content || !Number.isSafeInteger(instanceId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Defina lead, mensagem, instância e horário futuro válido." }, { status: 422 });
+    const accessError = await validarDestinoDaMensagem(auth, instanceId, phone);
+    if (accessError) return accessError;
+    const leadError = await validarLeadDaMensagem(auth, leadId, phone);
+    if (leadError) return leadError;
+    const { data: scheduled, error } = await auth.supabase.from("mensagens_agendadas").insert({ telefone: phone, instancia_id: instanceId, lead_id: leadId, tipo: "text", texto: content, quando: when.toISOString(), status: "agendado", criado_por: auth.user.id }).select("id").maybeSingle();
+    if (error) return falhaLiveChat(error, "criar_mensagem_agendada");
+    if (!scheduled) return falhaLiveChat(null, "confirmar_mensagem_agendada");
+    return Response.json({ success: true, scheduled: 1 });
   }
   if (action === "listScheduled") {
-    if (!Number.isSafeInteger(leadId) || leadId < 1) return Response.json({ agendadas: [] });
+    if (!Number.isSafeInteger(leadId) || leadId < 1) return Response.json({ error: "Lead inválido." }, { status: 422 });
+    const { response } = await validarLeadVisivel(auth, leadId);
+    if (response) return response;
     const { data, error } = await auth.supabase.from("mensagens_agendadas").select("id,texto,tipo,quando,status").eq("lead_id", leadId).eq("status", "agendado").order("quando", { ascending: true });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ agendadas: data ?? [] });
+    return error ? falhaLiveChat(error, "listar_mensagens_agendadas") : Response.json({ agendadas: data ?? [] });
   }
   if (action === "cancelScheduled") {
     const id = Number(body.scheduledId);
     if (!Number.isSafeInteger(id) || id < 1) return Response.json({ error: "Agendamento inválido." }, { status: 422 });
-    const { error } = await auth.supabase.from("mensagens_agendadas").update({ status: "cancelado" }).eq("id", id).eq("status", "agendado");
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: scheduled, error: scheduledError } = await auth.supabase.from("mensagens_agendadas").select("id,lead_id,status").eq("id", id).maybeSingle();
+    if (scheduledError) return falhaLiveChat(scheduledError, "carregar_mensagem_agendada");
+    if (!scheduled) return Response.json({ error: "Agendamento não encontrado.", erro: "agendamento_nao_encontrado" }, { status: 404 });
+    if (!scheduled.lead_id) return Response.json({ error: "O agendamento não possui um lead verificável.", erro: "agendamento_sem_lead" }, { status: 409 });
+    const { response } = await validarLeadVisivel(auth, scheduled.lead_id);
+    if (response) return response;
+    if (scheduled.status !== "agendado") return Response.json({ error: "O agendamento já foi encerrado.", erro: "agendamento_encerrado" }, { status: 409 });
+    const { data: cancelled, error } = await auth.supabase.from("mensagens_agendadas").update({ status: "cancelado" }).eq("id", id).eq("status", "agendado").select("id").maybeSingle();
+    if (error) return falhaLiveChat(error, "cancelar_mensagem_agendada");
+    if (!cancelled) return Response.json({ error: "Agendamento não encontrado ou já encerrado.", erro: "agendamento_nao_encontrado" }, { status: 404 });
+    return Response.json({ success: true });
   }
   if (action === "sendApproach") {
     const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId);
-    if (phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId)) return Response.json({ error: "Escolha a instância e a abordagem." }, { status: 422 });
-    if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+    if (!Number.isSafeInteger(leadId) || leadId < 1 || phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId)) return Response.json({ error: "Escolha o lead, a instância e a abordagem." }, { status: 422 });
+    const accessError = await validarDestinoDaMensagem(auth, instanceId, phone);
+    if (accessError) return accessError;
+    const leadError = await validarLeadDaMensagem(auth, leadId, phone);
+    if (leadError) return leadError;
     const { data: approach, error: approachError } = await auth.supabase.from("abordagens").select("mensagens").eq("id", approachId).eq("ativo", true).maybeSingle();
-    if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
+    if (approachError) return falhaLiveChat(approachError, "carregar_abordagem");
+    if (!approach || !Array.isArray(approach.mensagens)) return Response.json({ error: "Abordagem não encontrada." }, { status: 404 });
     let cursor = Date.now() + 5_000;
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
-    const brokerName = await brokerNameForInstance(auth, instanceId);
+    const brokerResult = await brokerNameForInstance(auth, instanceId);
+    if (brokerResult.error) return falhaLiveChat(brokerResult.error, "carregar_corretor_da_instancia");
+    const brokerName = brokerResult.name;
     const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
       if (name === "delay") { cursor += delayMilliseconds(options); continue; }
-      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
+      const common = { telefone: phone, instancia_id: instanceId, lead_id: leadId, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
       if (name === "send-text-message") {
         const content = fillApproachVariables(options.text, firstName, brokerName);
         if (content) rows.push({ ...common, tipo: "text", texto: content });
@@ -269,24 +364,32 @@ export async function POST(request: Request) {
       cursor += 1_000;
     }
     if (!rows.length) return Response.json({ error: "A abordagem não possui mensagens enviáveis." }, { status: 422 });
-    const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: rows.length });
+    const { data: scheduled, error } = await auth.supabase.from("mensagens_agendadas").insert(rows).select("id");
+    if (error) return falhaLiveChat(error, "criar_abordagem_agendada");
+    if (!scheduled || scheduled.length !== rows.length) return falhaLiveChat(null, "confirmar_abordagem_agendada");
+    return Response.json({ success: true, scheduled: rows.length });
   }
   if (action === "scheduleApproach") {
     const phone = phoneNumber(body.phone); const instanceId = Number(body.instanceId); const approachId = Number(body.approachId); const when = new Date(normalizarInstanteSaoPaulo(String(body.when ?? "")) ?? Number.NaN);
-    if (phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Escolha a instância, a abordagem e um horário futuro." }, { status: 422 });
-    if (!(await canUseInstance(auth, instanceId)) || !(await canMessagePhone(auth, phone))) return Response.json({ error: "A instância ou o lead não pertence à sua carteira." }, { status: 403 });
+    if (!Number.isSafeInteger(leadId) || leadId < 1 || phone.length < 8 || !Number.isSafeInteger(instanceId) || !Number.isSafeInteger(approachId) || Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 30_000) return Response.json({ error: "Escolha o lead, a instância, a abordagem e um horário futuro." }, { status: 422 });
+    const accessError = await validarDestinoDaMensagem(auth, instanceId, phone);
+    if (accessError) return accessError;
+    const leadError = await validarLeadDaMensagem(auth, leadId, phone);
+    if (leadError) return leadError;
     const { data: approach, error: approachError } = await auth.supabase.from("abordagens").select("mensagens").eq("id", approachId).eq("ativo", true).maybeSingle();
-    if (approachError || !approach || !Array.isArray(approach.mensagens)) return Response.json({ error: approachError?.message || "Abordagem não encontrada." }, { status: 404 });
+    if (approachError) return falhaLiveChat(approachError, "carregar_abordagem_programada");
+    if (!approach || !Array.isArray(approach.mensagens)) return Response.json({ error: "Abordagem não encontrada." }, { status: 404 });
     let cursor = when.getTime();
     const firstName = text(body.leadName, 120).split(/\s+/)[0] || "cliente";
-    const brokerName = await brokerNameForInstance(auth, instanceId);
+    const brokerResult = await brokerNameForInstance(auth, instanceId);
+    if (brokerResult.error) return falhaLiveChat(brokerResult.error, "carregar_corretor_da_instancia");
+    const brokerName = brokerResult.name;
     const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
     for (const rawPart of approach.mensagens) {
       if (!rawPart || typeof rawPart !== "object") continue;
       const part = rawPart as Record<string, unknown>; const name = text(part.name, 60); const options = part.options && typeof part.options === "object" ? part.options as Record<string, unknown> : {};
       if (name === "delay") { cursor += delayMilliseconds(options); continue; }
-      const common = { telefone: phone, instancia_id: instanceId, lead_id: Number.isSafeInteger(leadId) ? leadId : null, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
+      const common = { telefone: phone, instancia_id: instanceId, lead_id: leadId, corretor_nome: brokerName || null, quando: new Date(cursor).toISOString(), status: "agendado", criado_por: auth.user.id };
       if (name === "send-text-message") {
         const content = fillApproachVariables(options.text, firstName, brokerName);
         if (content) rows.push({ ...common, tipo: "text", texto: content });
@@ -298,50 +401,98 @@ export async function POST(request: Request) {
       cursor += 1_000;
     }
     if (!rows.length) return Response.json({ error: "A abordagem não possui mensagens enviáveis." }, { status: 422 });
-    const { error } = await auth.supabase.from("mensagens_agendadas").insert(rows);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, scheduled: rows.length });
+    const { data: scheduled, error } = await auth.supabase.from("mensagens_agendadas").insert(rows).select("id");
+    if (error) return falhaLiveChat(error, "programar_abordagem");
+    if (!scheduled || scheduled.length !== rows.length) return falhaLiveChat(null, "confirmar_abordagem_programada");
+    return Response.json({ success: true, scheduled: rows.length });
   }
   if (action === "note") {
     const content = text(body.content, 2000);
     if (!Number.isSafeInteger(leadId) || leadId < 1 || !content) return Response.json({ error: "Informe uma observação válida para o lead." }, { status: 422 });
-    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    const { error } = await auth.supabase.from("crm_atividades").insert({ lead_id: leadId, negocio_id: dealId || null, corretor_id: broker?.id ?? null, tipo: "observacao", texto: content, criado_por: auth.user.id });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: broker, error: brokerError } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    if (brokerError) return falhaLiveChat(brokerError, "carregar_corretor_da_observacao");
+    const { data: activity, error } = await auth.supabase.from("crm_atividades").insert({ lead_id: leadId, negocio_id: dealId || null, corretor_id: broker?.id ?? null, tipo: "observacao", texto: content, criado_por: auth.user.id }).select("id").maybeSingle();
+    if (error) return falhaLiveChat(error, "registrar_observacao");
+    if (!activity) return falhaLiveChat(null, "confirmar_observacao");
+    return Response.json({ success: true });
   }
   if (action === "task" || action === "callReminder") {
     const due = new Date(normalizarInstanteSaoPaulo(String(body.due ?? "")) ?? Number.NaN);
     const title = action === "callReminder" ? `Ligar para ${text(body.name, 120) || "cliente"}` : text(body.title, 180);
     const priority = text(body.priority, 20);
     if (!Number.isSafeInteger(leadId) || leadId < 1 || !title || Number.isNaN(due.getTime())) return Response.json({ error: "Informe o título e uma data válida." }, { status: 422 });
-    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    const { error } = await auth.supabase.from("crm_tarefas").insert({ lead_id: leadId, negocio_id: dealId || null, corretor_id: broker?.id ?? null, titulo: title, descricao: text(body.description, 500) || null, vencimento: due.toISOString(), prioridade: ["baixa", "normal", "alta"].includes(priority) ? priority : "normal", criado_por: auth.user.id, cliente_nome: text(body.name, 120) || null });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: broker, error: brokerError } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    if (brokerError) return falhaLiveChat(brokerError, "carregar_corretor_da_tarefa");
+    const { data: task, error } = await auth.supabase.from("crm_tarefas").insert({ lead_id: leadId, negocio_id: dealId || null, corretor_id: broker?.id ?? null, titulo: title, descricao: text(body.description, 500) || null, vencimento: due.toISOString(), prioridade: ["baixa", "normal", "alta"].includes(priority) ? priority : "normal", criado_por: auth.user.id, cliente_nome: text(body.name, 120) || null }).select("id").maybeSingle();
+    if (error) return falhaLiveChat(error, "registrar_tarefa");
+    if (!task) return falhaLiveChat(null, "confirmar_tarefa");
+    return Response.json({ success: true });
   }
   if (action === "transfer") {
     const brokerId = Number(body.brokerId);
     if (!Number.isSafeInteger(dealId) || dealId < 1 || !Number.isSafeInteger(brokerId) || brokerId < 1) return Response.json({ error: "Escolha um corretor válido." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("transferir_negocio", { p_negocio_id: dealId, p_corretor_id: brokerId });
+    // A consulta passa pelo RLS: corretor só enxerga negócio próprio; gestão
+    // enxerga o escopo permitido pelo banco. Não confie apenas na RPC legada,
+    // porque SECURITY DEFINER ignora as policies da tabela que ela altera.
+    const [{ data: deal, error: dealError }, { data: allowedBrokers, error: brokersError }, access] = await Promise.all([
+      auth.supabase.from("negocios").select("id,corretor_id").eq("id", dealId).maybeSingle(),
+      auth.supabase.rpc("listar_corretores_transferencia"),
+      resolveEffectiveAccess(auth.supabase, auth.user.id),
+    ]);
+    if (dealError) return falhaLiveChat(dealError, "validar_negocio_da_transferencia");
+    if (!deal) return Response.json({ error: "O negócio não existe ou não pertence à sua carteira." }, { status: 403 });
+    if (brokersError) return falhaLiveChat(brokersError, "listar_destinos_da_transferencia");
+    if (!access.resolved) return Response.json({ error: "Não foi possível validar a transferência.", erro: "autorizacao_indisponivel" }, { status: 502 });
+    if (!(allowedBrokers ?? []).some((broker) => Number(broker.id) === brokerId)) {
+      return Response.json({ error: "O corretor escolhido não está disponível para receber este atendimento." }, { status: 403 });
+    }
+    if (Number(deal.corretor_id) === brokerId) return Response.json({ error: "Este corretor já é o responsável pelo negócio." }, { status: 409 });
+
+    // Gestão transfere de forma explícita. O corretor oferece ao colega, que
+    // deve aceitar; assim a posse não muda silenciosamente entre corretores.
+    const direct = papelNoGrupo(access.role, "gestao");
+    const command = direct ? "transferir_negocio" : "transferir_com_aceite";
+    const args = direct
+      ? { p_negocio_id: dealId, p_corretor_id: brokerId }
+      : { p_negocio: dealId, p_corretor: brokerId };
+    const { data, error } = await auth.supabase.rpc(command, args);
     const result = data && typeof data === "object" ? data as Record<string, unknown> : null;
-    return error || result?.ok === false ? Response.json({ error: error?.message || text(result?.error, 300) || "Não foi possível transferir o atendimento." }, { status: 502 }) : Response.json({ success: true, result: data });
+    if (error) return falhaLiveChat(error, "executar_transferencia");
+    if (result?.ok === false) return Response.json({ error: "A transferência foi recusada pelo estado atual do negócio.", erro: "transferencia_recusada" }, { status: 409 });
+    return Response.json({
+        success: true,
+        transferStatus: direct ? "transferred" : "pending_acceptance",
+        message: direct
+          ? "Atendimento transferido e registrado no histórico."
+          : "Transferência oferecida. O novo corretor precisa aceitar para assumir o atendimento.",
+        result: data,
+      });
   }
   if (action === "proposal") {
     const value = Number(body.value);
     if (!Number.isSafeInteger(leadId) || leadId < 1 || !Number.isSafeInteger(dealId) || dealId < 1 || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Informe um valor válido para a proposta." }, { status: 422 });
     const productName = text(body.productName, 180) || "Produto do negócio";
     const conditions = text(body.conditions, 2000);
-    const { error: dealError } = await auth.supabase.from("negocios").update({ valor: value, ultima_movimentacao: new Date().toISOString() }).eq("id", dealId).eq("lead_id", leadId);
-    if (dealError) return Response.json({ error: dealError.message }, { status: 502 });
+    const { data: dealUpdated, error: dealError } = await auth.supabase.from("negocios").update({ valor: value, ultima_movimentacao: new Date().toISOString() }).eq("id", dealId).eq("lead_id", leadId).select("id").maybeSingle();
+    if (dealError) return falhaLiveChat(dealError, "atualizar_negocio_da_proposta");
+    if (!dealUpdated) return Response.json({ error: "O negócio mudou antes da proposta. Recarregue a conversa.", erro: "negocio_conflito" }, { status: 409 });
     const proposalText = [`Proposta para ${productName}: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)}.`, conditions].filter(Boolean).join(" ");
-    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    const { error } = await auth.supabase.from("crm_atividades").insert({ lead_id: leadId, negocio_id: dealId, corretor_id: broker?.id ?? null, tipo: "proposta", texto: proposalText, criado_por: auth.user.id });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: broker, error: brokerError } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+    if (brokerError) return falhaReconciliacao(brokerError, "carregar_corretor_da_proposta", "A proposta atualizou o negócio, mas o histórico não foi confirmado. Recarregue antes de repetir.");
+    const { data: activity, error } = await auth.supabase.from("crm_atividades").insert({ lead_id: leadId, negocio_id: dealId, corretor_id: broker?.id ?? null, tipo: "proposta", texto: proposalText, criado_por: auth.user.id }).select("id").maybeSingle();
+    if (error || !activity) return falhaReconciliacao(error, "registrar_historico_da_proposta", "A proposta atualizou o negócio, mas o histórico não foi confirmado. Recarregue antes de repetir.");
+    return Response.json({ success: true });
   }
   if (action === "financing") {
     const value = Number(body.value); const downPayment = Number(body.downPayment) || 0; const financing = Number(body.financing);
     if (!Number.isSafeInteger(dealId) || dealId < 1 || !Number.isFinite(value) || value <= 0 || downPayment < 0 || !Number.isFinite(financing)) return Response.json({ error: "Informe valores válidos para o financiamento." }, { status: 422 });
-    const { data: deal } = await auth.supabase.from("negocios").select("corretor_id").eq("id", dealId).maybeSingle();
-    const { error } = await auth.supabase.from("financiamento_fichas").insert({ created_by: auth.user.id, corretor_id: deal?.corretor_id ?? null, produto: text(body.productName, 180) || null, comprador_nome: text(body.name, 160) || null, telefone: text(body.phone, 40) || null, email: text(body.email, 180) || null, valor_imovel: value, valor_entrada: downPayment, valor_financiar: financing, consentimento_lgpd: body.consent === true, status: "rascunho" });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: deal, error: dealError } = await auth.supabase.from("negocios").select("corretor_id").eq("id", dealId).maybeSingle();
+    if (dealError) return falhaLiveChat(dealError, "validar_negocio_do_financiamento");
+    if (!deal) return Response.json({ error: "O negócio não existe ou não pertence à sua carteira." }, { status: 403 });
+    const { data: financingDraft, error } = await auth.supabase.from("financiamento_fichas").insert({ created_by: auth.user.id, corretor_id: deal.corretor_id ?? null, produto: text(body.productName, 180) || null, comprador_nome: text(body.name, 160) || null, telefone: text(body.phone, 40) || null, email: text(body.email, 180) || null, valor_imovel: value, valor_entrada: downPayment, valor_financiar: financing, consentimento_lgpd: body.consent === true, status: "rascunho" }).select("id").maybeSingle();
+    if (error) return falhaLiveChat(error, "criar_ficha_financiamento");
+    if (!financingDraft) return falhaLiveChat(null, "confirmar_ficha_financiamento");
+    return Response.json({ success: true });
   }
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
 }
