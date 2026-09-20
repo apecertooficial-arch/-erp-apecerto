@@ -37,6 +37,18 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
   const [endereco, setEndereco] = useState<Endereco>(emptyEndereco);
   const [bank, setBank] = useState<BankData>(emptyBank);
   const photoInput = useRef<HTMLInputElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const fecharComEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+    window.addEventListener("keydown", fecharComEscape);
+    closeButton.current?.focus();
+    return () => window.removeEventListener("keydown", fecharComEscape);
+  }, [onClose]);
 
   useEffect(() => {
     void getBrowserSupabaseClient().rpc("meu_perfil").then(async ({ data: result, error: rpcError }) => {
@@ -136,7 +148,7 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
   const initial = (name || email || "C").trim().slice(0, 1).toUpperCase();
 
   return <div className="profile-drawer-scrim" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside className="profile-drawer" aria-label="Meu perfil">
+    <aside className="profile-drawer" role="dialog" aria-modal="true" aria-labelledby="profile-panel-title">
       <header>
         <div className="profile-hero">
           <button className="profile-avatar" type="button" onClick={() => photoInput.current?.click()} title="Trocar foto">
@@ -144,9 +156,9 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
             <i>✎</i>
           </button>
           <input ref={photoInput} hidden type="file" accept="image/*" onChange={(event) => void uploadPhoto(event.target.files?.[0])} />
-          <div><small>MEU PERFIL</small><h2>{name || "—"}</h2><p>{roleLabel} · {email}</p></div>
+          <div><small>MEU PERFIL</small><h2 id="profile-panel-title">{name || "—"}</h2><p>{roleLabel} · {email}</p></div>
         </div>
-        <button className="profile-close" type="button" onClick={onClose} aria-label="Fechar">×</button>
+        <button ref={closeButton} className="profile-close" type="button" onClick={onClose} aria-label="Fechar">×</button>
       </header>
       {error && <div className="profile-note error">{error}</div>}
       {message && <div className="profile-note ok">{message}</div>}

@@ -91,3 +91,11 @@ test("aplicativo preserva um único marco principal no shell", () => {
   assert.match(telasMoveis, /aria-label="Tarefas da Sara"/);
   assert.match(telasMoveis, /aria-label="Gestão do dia"/);
 });
+
+test("painel de perfil se anuncia como diálogo e fecha pelo teclado", () => {
+  assert.match(telasMoveis, /role="dialog"/);
+  assert.match(telasMoveis, /aria-modal="true"/);
+  assert.match(telasMoveis, /aria-labelledby="profile-panel-title"/);
+  assert.match(telasMoveis, /event\.key !== "Escape"/);
+  assert.match(telasMoveis, /closeButton\.current\?\.focus\(\)/);
+});
