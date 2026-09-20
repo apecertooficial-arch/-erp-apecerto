@@ -84,6 +84,7 @@ import "./styles/app-mobile-aprovado.css";
 /* Telas do gestor no celular (folha "Mais" e Minha Equipe). Depois da folha
    aprovada porque reusa os mesmos valores e completa o que faltava dela. */
 import "./styles/app-mobile-gestor.css";
+import "./styles/funil-2-modal-fix.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
