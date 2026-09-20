@@ -20,7 +20,7 @@
 .approaches-workspace { background: #FAF8F6; color: #1F1C1A; }
 .approaches-workspace > header { padding: 20px 32px; border-bottom: 1px solid #F2EFEC; }
 .approaches-workspace > header span,
-.approaches-workspace main header span,
+.approaches-workspace .approaches-main header span,
 .approaches-workspace .approach-drawer-scrim aside > header span { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
 .approaches-workspace > header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 2px 0 0; }
 .approaches-workspace > header p { margin: 4px 0 0; color: #6E6760; font-size: 13px; }
@@ -31,7 +31,12 @@
 /* aviso de salvamento: pill verde, não caixa escura */
 .approaches-workspace .workspace-notice { top: 22px; border-radius: 999px; background: #E4F6EC; color: #127A44; font-size: 12px; font-weight: 700; padding: 11px 18px; white-space: nowrap; box-shadow: 0 10px 28px rgba(31,28,26,0.12); }
 
-.approaches-workspace > main { grid-template-columns: 268px minmax(0,1fr); }
+.approaches-workspace > .approaches-main {
+  display: grid;
+  height: calc(100% - 88px);
+  min-height: 0;
+  grid-template-columns: 268px minmax(0,1fr);
+}
 
 /* ===== coluna de produtos ===== */
 .approaches-workspace .approach-products { background: #fff; border-right: 1px solid #F2EFEC; padding: 18px 14px; gap: 6px; }
@@ -168,6 +173,7 @@
 .approaches-workspace .app-wa-inputbar span { background: #FAF8F6; border-radius: 999px; color: #9A938B; }
 
 @media (max-width: 800px) {
+  .approaches-workspace > .approaches-main { grid-template-columns: 1fr; }
   .approaches-workspace .approach-edit-btn,
   .approaches-workspace .approach-ico-btn {
     height: 44px !important;

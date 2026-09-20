@@ -433,7 +433,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
 
   if (ehCelular === null) return null;
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
-  if (ehCelular) return <main className="ape-produtos">
+  if (ehCelular) return <section className="ape-produtos" aria-label="Produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
     <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button><button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>Qualidade · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     {inventorySummary && <button type="button" className="ape-inventory-truth" aria-label="Abrir estoque completo" onClick={() => setSection("estoque")}><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></button>}
@@ -504,10 +504,10 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     {unitWizardOpen && <UnitWizard accessToken={accessToken} onCreateStandalone={() => { setUnitWizardOpen(false); setStandaloneOpen(true); }} onCreateCondominium={() => { setUnitWizardOpen(false); setReturnToUnitAfterCondominium(true); setCondominiumOpen(true); }} onClose={() => setUnitWizardOpen(false)} onSaved={() => { setUnitWizardOpen(false); void loadCatalog(accessToken); }} />}
     {selectedProductId && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialUnitAction={initialUnitAction} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setInitialUnitAction("view"); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
     {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
-  </main>;
+  </section>;
 
   return (
-    <main className="products-v3">
+    <section className="products-v3" aria-label="Produtos">
       <header className="pv3-header">
         <div><p className="pv3-breadcrumb">Gestão <span>›</span> Produtos</p><h1>Produtos</h1><p className="pv3-subtitle">Gerencie o que a apêcerto vende, publica e usa como referência.</p></div>
         <div className="pv3-header-actions"><button className="pv3-icon-button" aria-label="Notificações" type="button"><Icon name="bell" /></button><button className="pv3-primary" type="button" onClick={() => setRegistrationOpen(true)}><Icon name="plus" /> Cadastrar</button></div>
@@ -606,6 +606,6 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       {selectedProductId && accessToken && <ProductDetail productId={selectedProductId} accessToken={accessToken} sessionRole={role} initialUnitId={initialUnitId} initialUnitAction={initialUnitAction} initialEditing={openInEdit} captadorScore={products.find((p) => p.id === selectedProductId)?.capturedByScore ?? null} onClose={() => { setSelectedProductId(null); setInitialUnitId(null); setInitialUnitAction("view"); setOpenInEdit(false); }} onChanged={() => void loadCatalog(accessToken)} />}
       {deleteTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar exclusão do produto"><div><strong>Excluir este produto definitivamente?</strong><p><strong>{deleteTarget.name}</strong> e todas as suas unidades, fotos e vínculos serão removidos para sempre. Esta ação não pode ser desfeita.</p><footer><button type="button" onClick={() => setDeleteTarget(null)}>Cancelar</button><button className="danger" disabled={deleting} type="button" onClick={() => void confirmDeleteProduct()}>Excluir para sempre</button></footer></div></div>}
       {publicationTarget && <div className="delete-confirm" role="dialog" aria-modal="true" aria-label="Confirmar retirada do imóvel do site"><div><strong>Tirar este imóvel do ar?</strong><p><strong>{publicationTarget.name}</strong> desaparecerá do site imediatamente. O cadastro, a aprovação e a disponibilidade continuam preservados para edição e publicação posterior.</p><footer><button type="button" onClick={() => setPublicationTarget(null)}>Cancelar</button><button className="danger" disabled={publishing} type="button" onClick={() => void changePublicationFromCard(publicationTarget, false)}>Tirar do ar</button></footer></div></div>}
-    </main>
+    </section>
   );
 }

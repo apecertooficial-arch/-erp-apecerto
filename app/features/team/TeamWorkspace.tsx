@@ -155,7 +155,7 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
 
   return <div className="team-workspace">
     <header className="workspace-top"><div><h1>Usuários</h1><p>{data.brokers.length} usuários · gestão de acessos da equipe</p></div><div style={{ display: "flex", gap: 12, alignItems: "center" }}><a className="save-team" href="/configuracoes?visao=conexoes">Gerenciar conexões</a><button type="button" className="save-team" disabled={loading || Boolean(error)} onClick={() => { setAddOpen(true); setCreateError(""); }}>＋ Adicionar usuário</button><label className="workspace-search">⌕ <input value={query} onChange={(event) => { setQuery(event.target.value); setView("lista"); }} placeholder="Buscar usuário..." /></label></div></header>
-    <main className="team-main">
+    <section className="team-main" aria-label="Equipe">
       <div className="team-filters"><span>▽</span>{["Todos os perfis", "Admin", "Diretor", "Gerente", "Executivo", "Corretor"].map((item) => <button className={profile === item ? "active" : ""} onClick={() => setProfile(item)} type="button" key={item}>{item}</button>)}<i />{["Todos", "Ativos", "Online", "Inativos"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}<i />{([["lista", "☰ Lista"], ["hierarquia", "⌥ Hierarquia"]] as const).map(([key, label]) => <button className={view === key ? "active" : ""} onClick={() => setView(key)} type="button" key={key}>{label}</button>)}</div>
       {loading ? <div className="workspace-loading">Carregando equipe...</div> : error ? <div className="workspace-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div> : view === "hierarquia" ? <section className="team-table" style={{ padding: 16 }}>
         {(() => {
@@ -180,7 +180,7 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
           <span className="team-person"><b>{initials(broker.nome)}</b><em><strong>{broker.nome}</strong><small>{broker.email ?? "Sem e-mail"}</small></em></span><span><mark>{roleLabel(user?.role)}</mark></span><span className="team-instances">{instances.length ? instances.slice(0, 2).map((instance) => <i key={instance.id}>{instance.nome}</i>) : "—"}{instances.length > 2 && <i>+{instances.length - 2}</i>}</span><span><i className={broker.ativo ? "status-active" : "status-inactive"}>{broker.ativo ? "Ativo" : "Inativo"}</i></span><span className="online-state"><i className={broker.online ? "on" : ""} />{broker.online ? "Online" : "Offline"}</span><span><b className="row-action">Editar</b></span>
         </button>; })}
       </section>}
-    </main>
+    </section>
     {selected && <div className="team-drawer-scrim" onClick={() => setSelectedId(null)}><aside className="team-drawer" onClick={(event) => event.stopPropagation()}>
       <header><div className="team-person"><b>{initials(selected.nome)}</b><em><strong>{selected.nome}</strong><small>{selected.email ?? "Sem e-mail"}</small></em></div><button type="button" onClick={() => setSelectedId(null)}>×</button></header>
       <div className="team-drawer-body">

@@ -9,5 +9,5 @@ const itens = [
 ] as const;
 
 export function HelpWorkspace() {
-  return <main className="help-workspace"><header><span>CENTRAL NATIVA</span><h1>Ajuda</h1><p>Atalhos para a estrutura oficial do ERP, sem instruções das versões antigas.</p></header><section>{itens.map(([titulo, texto, href]) => <article key={titulo}><h2>{titulo}</h2><p>{texto}</p><Link href={href}>Abrir módulo</Link></article>)}</section><aside><strong>Encontrou um problema?</strong><p>Registre o caso com a tela, horário, usuário e o que esperava acontecer. Isso permite localizar o evento na Auditoria sem adivinhar.</p><Link href="/auditoria">Abrir Auditoria</Link></aside></main>;
+  return <section className="help-workspace" aria-label="Ajuda"><header><span>CENTRAL NATIVA</span><h1>Ajuda</h1><p>Atalhos para a estrutura oficial do ERP, sem instruções das versões antigas.</p></header><section>{itens.map(([titulo, texto, href]) => <article key={titulo}><h2>{titulo}</h2><p>{texto}</p><Link href={href}>Abrir módulo</Link></article>)}</section><aside><strong>Encontrou um problema?</strong><p>Registre o caso com a tela, horário, usuário e o que esperava acontecer. Isso permite localizar o evento na Auditoria sem adivinhar.</p><Link href="/auditoria">Abrir Auditoria</Link></aside></section>;
 }

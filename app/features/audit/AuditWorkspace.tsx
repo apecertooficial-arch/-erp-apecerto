@@ -57,7 +57,7 @@ export function AuditWorkspace() {
       <select value={userFilter} onChange={(event) => setUserFilter(event.target.value)} aria-label="Usuário">{users.map((item) => <option key={item}>{item === "Todos" ? "Todos os usuários" : item}</option>)}</select>
       <button className="audit-refresh" type="button" onClick={() => void load()}>↻ Atualizar</button>
     </div>
-    {loading ? <div className="workspace-loading">Carregando auditoria…</div> : error ? <div className="workspace-error">{error}</div> : <main className="audit-list">
+    {loading ? <div className="workspace-loading">Carregando auditoria…</div> : error ? <div className="workspace-error">{error}</div> : <section className="audit-list" aria-label="Registros de auditoria">
       {filtered.length === 0 && <div className="audit-empty">Nenhum evento no filtro atual. As ações auditadas (vendas, comissões, metas, funis, usuários, configurações, abordagens) aparecem aqui automaticamente.</div>}
       {filtered.map((row) => { const changes = changedKeys(row.antes, row.depois); const open = openId === row.id; return <article className={`audit-item ${row.acao}`} key={row.id}>
         <button type="button" onClick={() => setOpenId(open ? null : row.id)}>
@@ -74,6 +74,6 @@ export function AuditWorkspace() {
           </div>
         </div>}
       </article>; })}
-    </main>}
+    </section>}
   </div>;
 }

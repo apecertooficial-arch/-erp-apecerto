@@ -451,7 +451,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {aba === "config" && fontes?.operacao === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Configuração operacional indisponível.</strong><span>Não altere parâmetros até a leitura ser restabelecida.</span></div>}
       {carregando && <div className="f2-loading">Carregando o Funil…</div>}
 
-      {!carregando && carregado && aba === "quadro" && <main className="f2-main">
+      {!carregando && carregado && aba === "quadro" && <section className="f2-main" aria-label="Quadro do CRM">
         <Funil2BoardToolbar
           aquario={aquario.length}
           busca={buscaQuadro}
@@ -520,9 +520,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
             </div>;
           })}
         </section>}
-      </main>}
+      </section>}
 
-      {!carregando && carregado && aba === "dia" && <main className="f2-dia">
+      {!carregando && carregado && aba === "dia" && <section className="f2-dia" aria-label="Meu dia">
         <section className="f2-dia-controles" aria-label="Filtros do Meu Dia">
           <div className="f2-indicadores">
             <button type="button" className={`vermelho${filtroDia === "atrasadas" ? " f2-ind-ativo" : ""}`} aria-pressed={filtroDia === "atrasadas"} onClick={() => trocarFiltroDia("atrasadas")}><b>{atrasados}</b><span>ações atrasadas</span></button>
@@ -559,12 +559,12 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           {aFazer.length > limiteDia && <button type="button" className="f2-dia-mais" onClick={() => setLimiteDia((atual) => atual + 50)}>Mostrar mais 50 · ainda faltam {aFazer.length - limiteDia}</button>}
           {totalDoFiltro === 0 && <div className="f2-dia-vazio"><b>{filtroDia === "atrasadas" ? "Seu Meu Dia está em dia." : "Nada neste recorte."}</b><span>{filtroAtivo.vazio}</span></div>}
         </div>
-      </main>}
+      </section>}
 
       {!carregando && carregado && aba === "leads" && <TodosLeads leads={leadsDoFunil} momentos={momentosAtivos} etapas={etapasAtivas} accessToken={accessToken} busy={busy} onAbrir={(id) => setSelecionado(id)} onTrazer={(leadId, etapa, momento) => executar("trazerLeadAntigo", { leadId, etapa, momento })} />}
       {!carregando && carregado && aba === "visitas" && <PipeVisitas accessToken={accessToken} erro={erro} visitas={visitasDoFunil} leads={leadsDoFunil} momentos={momentosAtivos} busy={busy} onAbrir={setSelecionado} onSalvar={(visita) => executar("salvarVisita", visita)} />}
       {/* A Esteira canônica entra como módulo funcional, sem duplicar o Funil. */}
-      {!carregando && carregado && aba === "vendas" && <main className="f2-pagina f2-esteira-oficial"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></main>}
+      {!carregando && carregado && aba === "vendas" && <section className="f2-pagina f2-esteira-oficial" aria-label="Esteira de vendas"><SalesProcessView accessToken={accessToken} sessionRole={profile.role} /></section>}
       {!carregando && carregado && aba === "config" && <Configuracoes etapas={etapas} momentos={momentos} operacao={operacao} sara={sara} busy={busy} onEtapa={(dados) => executar("configurarEtapa", dados)} onMomento={(dados) => executar("configurarMomento", dados)} onOperacao={(dados) => executar("configurarOperacao", dados)} />}
 
       {modal === "pescar" && <ModalPescar candidatos={aquario} busy={busy} erro={erro} onFechar={() => setModal(null)} onPescar={(negocioId) => void executar("pescar", { negocioId })} />}
@@ -683,7 +683,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
     }, 350);
     return () => { vivo = false; window.clearTimeout(t); };
   }, [busca, accessToken]);
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Todos os Leads" texto="Encontre e compare a carteira por cliente, etapa, momento, ação e prazo." />
+  return <section className="f2-pagina" aria-label="Todos os leads"><CabecalhoPagina titulo="Todos os Leads" texto="Encontre e compare a carteira por cliente, etapa, momento, ação e prazo." />
     <div className="f2-leads-busca"><label><span>Buscar lead</span><input value={busca} onChange={(event) => { setBusca(event.target.value); setPagina(1); }} placeholder="Nome ou telefone" aria-label="Buscar lead por nome ou telefone" /></label><label><span>Situação do prazo</span><select value={situacao} onChange={(event) => { setSituacao(event.target.value); setPagina(1); }}><option value="todas">Todos os prazos</option><option value="atrasado">Atrasados</option><option value="urgente">Vencem em até 2h</option><option value="no-prazo">No prazo</option></select></label><b>{filtrados.length} encontrado(s)</b></div>
     <details className="f2-filtros-avancados">
       <summary>Filtros de etapa e temperatura <b>{filtro === "ativos" && temperatura === "todas" ? "Sem filtros adicionais" : "Filtro ativo"}</b></summary>
@@ -713,7 +713,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
     </section>}
 
     {alvo && <ModalTrazerLeadAntigo alvo={alvo} etapas={etapas} momentos={momentos} busy={busy} onFechar={() => setAlvo(null)} onConfirmar={async (etapa, momento) => { const ok = await onTrazer(alvo.lead_id, etapa, momento); if (ok) setAlvo(null); }} />}
-  </main>;
+  </section>;
 }
 
 /* Escolher etapa e momento na hora de trazer, e não cair sempre num padrão.
@@ -765,11 +765,11 @@ function PipeVisitas({ accessToken, erro, visitas, leads, momentos, busy, onAbri
   ];
   const grupos = modo === "agenda" ? gruposAgenda : colunas.map((coluna) => ({ ...coluna, itens: visitas.filter((visita) => coluna.codigo === "encerrada" ? ["cancelada", "nao_compareceu"].includes(visita.status) : visita.status === coluna.codigo) }));
   const gruposVisiveis = grupos.filter((grupo) => grupo.itens.length > 0);
-  return <main className="f2-pagina"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários. Novos agendamentos são feitos no card do lead." />
+  return <section className="f2-pagina" aria-label="Visitas"><CabecalhoPagina titulo="Visitas" texto="Agenda e Pipe de Visitas no mesmo lugar: veja primeiro atrasos, compromissos de hoje e próximos horários. Novos agendamentos são feitos no card do lead." />
     <div className="f2-visitas-modos" role="group" aria-label="Modo de visualização das visitas"><button type="button" className={modo === "agenda" ? "ativo" : ""} onClick={() => setModo("agenda")}>Agenda</button><button type="button" className={modo === "quadro" ? "ativo" : ""} onClick={() => setModo("quadro")}>Quadro por status</button></div>
     <details className="f2-visita-regra"><summary>Entender o fluxo de visitas</summary><div><b>Fluxo automático</b><span>Agendada → confirmar 24h antes</span><span>Realizada → feedback em até 2h</span><span>Cancelada/faltou → remarcar em até 12h</span></div></details>
     <section className={`f2-pipe ${modo === "agenda" ? "f2-agenda-visitas" : ""}`}>{gruposVisiveis.map((grupo) => <div key={grupo.codigo}><header><h3>{grupo.rotulo}</h3><b>{grupo.itens.length}</b></header>{grupo.itens.map((visita) => { const lead = leads.find((item) => item.id === visita.funil_lead_id); return <VisitaCard key={visita.id} accessToken={accessToken} erro={erro} visita={visita} lead={lead} momentoRotulo={momentos.find((momento) => momento.codigo === lead?.momento_codigo)?.rotulo} agora={agora} busy={busy} onAbrir={onAbrir} onSalvar={onSalvar} />; })}</div>)}{gruposVisiveis.length === 0 && <div className="f2-sem-resultado"><b>Nenhuma visita neste recorte.</b><span>Não há pendência para mostrar agora.</span></div>}</section>
-  </main>;
+  </section>;
 }
 
 /* VISITA SE CORRIGE NA PROPRIA VISITA.
@@ -835,7 +835,7 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     suspensaoNivel2H: operacao?.suspensao_nivel_2_h ?? 48, suspensaoNivel3H: operacao?.suspensao_nivel_3_h ?? 72,
   });
   const momentosVisiveis = filtroMomento === "todos" ? momentos : momentos.filter((m) => m.etapa === filtroMomento);
-  return <main className="f2-pagina f2-config-pagina"><CabecalhoPagina titulo="Regras do CRM" texto="Configurações da operação: etapas, momentos, prazos, Sara e limites oficiais." />
+  return <section className="f2-pagina f2-config-pagina" aria-label="Regras do CRM"><CabecalhoPagina titulo="Regras do CRM" texto="Configurações da operação: etapas, momentos, prazos, Sara e limites oficiais." />
     <section className="f2-sara-status f2-sara-status-compacto"><div><span className="f2-eyebrow">PAPEL DA SARA</span><h3>Ela lê, classifica e fiscaliza.</h3><small>O estado de cada função aparece separadamente, sem termos técnicos.</small>{!sara.reavaliacaoAutomaticaFunil2 && <p className="f2-sara-aviso">Reavaliação automática do Funil ainda não conectada.</p>}<details><summary>Como funciona</summary><p>Quando o D-API registra mensagem nova, a Sara relê a conversa, escolhe um momento oficial e recalcula ação e prazo. Ela está em <b>{sara.modo ?? "estado indisponível"}</b>; o runner está <b>{sara.runnerAtivo ? "ligado" : "desligado"}</b>. Ela não envia por você.</p></details></div><div className="f2-sara-estados"><span className="ativo"><b>Observação</b><small>Ativa</small></span><span className={sara.reavaliacaoAutomaticaFunil2 ? "ativo" : "pendente"}><b>Classificação</b><small>{sara.reavaliacaoAutomaticaFunil2 ? "Ativa" : "Inativa"}</small></span><span><b>Envio automático</b><small>Inativo</small></span></div></section>
     <nav className="f2-config-nav" aria-label="Seções das regras">
       <button type="button" className={secao === "etapas" ? "ativo" : ""} onClick={() => setSecao("etapas")}>Etapas</button>
@@ -859,7 +859,7 @@ function Configuracoes({ etapas, momentos, operacao, sara, busy, onEtapa, onMome
     </form></details>}
     {editor === "etapa" && <Modal titulo={etapa.codigo ? "Editar etapa" : "Nova etapa"} texto="A ordem reorganiza as demais colunas automaticamente, sem colisões." onFechar={() => setEditor(null)}><form className="f2-config-modal-form" onSubmit={(ev) => { ev.preventDefault(); void onEtapa(etapa).then((ok) => { if (ok) setEditor(null); }); }}><label>Código<input required disabled={Boolean(etapa.codigo)} value={etapa.codigo} onChange={(e) => setEtapa({...etapa,codigo:e.target.value.toLowerCase().replace(/\W+/g,"_")})}/></label><label>Nome<input required value={etapa.rotulo} onChange={(e) => setEtapa({...etapa,rotulo:e.target.value})}/></label><label className="largo">Descrição<input value={etapa.ajuda} onChange={(e) => setEtapa({...etapa,ajuda:e.target.value})}/></label><label>Posição no funil<input type="number" min="1" max="50" value={etapa.ordem} onChange={(e) => setEtapa({...etapa,ordem:Number(e.target.value)})}/></label><label className="f2-check"><input type="checkbox" checked={etapa.ativo} onChange={(e) => setEtapa({...etapa,ativo:e.target.checked})}/> Etapa ativa</label><button type="submit" disabled={busy}>{busy ? "Salvando…" : "Salvar etapa"}</button></form></Modal>}
     {editor === "momento" && <Modal titulo={momento.codigo ? "Editar momento" : "Novo momento"} texto="Defina a conduta, a ação esperada e o prazo do corretor." onFechar={() => setEditor(null)}><form className="f2-config-modal-form" onSubmit={(ev) => { ev.preventDefault(); void onMomento({...momento,prazoMinutos:momento.semPrazo ? null : Math.round(momento.prazoHoras*60)}).then((ok) => { if (ok) setEditor(null); }); }}><label>Código<input required disabled={Boolean(momento.codigo)} value={momento.codigo} onChange={(e) => setMomento({...momento,codigo:e.target.value.toUpperCase().replace(/\W+/g,"_")})}/></label><label>Etapa<select value={momento.etapa} onChange={(e) => { const novaEtapa = e.target.value; setMomento({...momento,etapa:novaEtapa,ordem:momento.codigo ? momento.ordem : proximaOrdemMomento(novaEtapa)}); }}>{etapas.filter((e) => e.ativo).map((e) => <option key={e.codigo} value={e.codigo}>{e.rotulo}</option>)}</select></label><label>Nome<input required value={momento.rotulo} onChange={(e) => setMomento({...momento,rotulo:e.target.value})}/></label><label>Posição na etapa<input type="number" min="1" max="100" value={momento.ordem} onChange={(e) => setMomento({...momento,ordem:Number(e.target.value)})}/></label><label className="largo">O que significa<input required value={momento.descricao} onChange={(e) => setMomento({...momento,descricao:e.target.value})}/></label><label className="largo">Ação oficial<input required value={momento.acaoRotulo} onChange={(e) => setMomento({...momento,acaoRotulo:e.target.value})}/></label><label>Horas permitidas<input type="number" min="0.1" max="720" step="0.5" disabled={momento.semPrazo} value={momento.prazoHoras} onChange={(e) => setMomento({...momento,prazoHoras:Number(e.target.value)})}/></label><label className="f2-check"><input type="checkbox" checked={momento.semPrazo} onChange={(e) => setMomento({...momento,semPrazo:e.target.checked})}/> Sem prazo</label><label className="f2-check"><input type="checkbox" checked={momento.exigeDapi} onChange={(e) => setMomento({...momento,exigeDapi:e.target.checked})}/> Exige confirmação do D-API</label><label className="f2-check"><input type="checkbox" checked={momento.ativo} onChange={(e) => setMomento({...momento,ativo:e.target.checked})}/> Momento ativo</label><button type="submit" disabled={busy}>{busy ? "Salvando…" : "Salvar momento e prazo"}</button></form></Modal>}
-  </main>;
+  </section>;
 }
 
 function CabecalhoPagina({ titulo, texto, acao, onAcao }: { titulo: string; texto: string; acao?: string; onAcao?: () => void }) { return <header className="f2-pagina-cab"><div><span className="f2-eyebrow">FUNIL</span><h2>{titulo}</h2><p>{texto}</p></div>{acao && <button type="button" onClick={onAcao}>{acao}</button>}</header>; }

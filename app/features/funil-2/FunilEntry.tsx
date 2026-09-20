@@ -23,7 +23,7 @@ export function FunilEntry() {
         if (ehCelular === null) return null;
         if (ehCelular) {
           if (vistaMobile === "vendas") {
-            return <main className="funil-oficial ape-app modo-crm" aria-label="Esteira de vendas">
+            return <section className="funil-oficial ape-app modo-crm" aria-label="Esteira de vendas">
               <header className="ape-abertura">
                 <span className="ape-sobrancelha">CRM</span>
                 <h1 className="ape-manchete">Esteira de vendas</h1>
@@ -32,7 +32,7 @@ export function FunilEntry() {
               <section className="ape-mobile-esteira">
                 <SalesProcessView accessToken={accessToken} sessionRole={role} />
               </section>
-            </main>;
+            </section>;
           }
           return (
             <Funil2Mobile

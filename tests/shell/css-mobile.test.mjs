@@ -3,7 +3,7 @@
 // regridem. Medicao real de viewport exige navegador (indisponivel no ambiente).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const css = readFileSync(new URL("../../app/styles/app-mobile.css", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../../app/layout.tsx", import.meta.url), "utf8");
@@ -15,6 +15,14 @@ const telasMoveis = [
   "../../app/features/funil-2/Funil2Mobile.tsx",
   "../../app/components/ProfilePanel.tsx",
 ].map((arquivo) => readFileSync(new URL(arquivo, import.meta.url), "utf8")).join("\n");
+function lerFeaturesTsx(diretorio) {
+  return readdirSync(diretorio, { withFileTypes: true }).flatMap((entrada) => {
+    const caminho = new URL(`${entrada.name}${entrada.isDirectory() ? "/" : ""}`, diretorio);
+    if (entrada.isDirectory()) return lerFeaturesTsx(caminho);
+    return entrada.name.endsWith(".tsx") ? [readFileSync(caminho, "utf8")] : [];
+  });
+}
+const featuresAutenticadas = lerFeaturesTsx(new URL("../../app/features/", import.meta.url)).join("\n");
 const bloco = css.slice(css.indexOf("CASCA DO APLICATIVO"));
 
 test("elementos mobile ficam ocultos por padrao (desktop intacto)", () => {
@@ -98,4 +106,8 @@ test("painel de perfil se anuncia como diálogo e fecha pelo teclado", () => {
   assert.match(telasMoveis, /aria-labelledby="profile-panel-title"/);
   assert.match(telasMoveis, /event\.key !== "Escape"/);
   assert.match(telasMoveis, /closeButton\.current\?\.focus\(\)/);
+});
+
+test("workspaces autenticados não criam um segundo marco principal", () => {
+  assert.doesNotMatch(featuresAutenticadas, /<\/?main\b/);
 });
