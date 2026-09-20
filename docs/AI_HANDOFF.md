@@ -154,7 +154,11 @@ declarar o ERP inteiro pronto sem evidência.
   Dia, onde a confirmação global já valida sessão e IP. Gate frontend 568/568;
   navegador móvel sem overflow ou erro. Os dois `cliente_respondeu` pertencem
   à automação 49/bloco removido `b3` e já integram os 699 itens classificados
-  pelo draft de ciclo. Nenhuma escrita remota.
+  pelo draft de ciclo. Os três avisos `presenca_pendente` estavam todos
+  contraditos por `presenca_estado`: a função produtiva retorna fora da janela
+  antes da limpeza. `P0_PRESENCA_ALERTAS_CICLO_DRAFT.sql` resolve primeiro,
+  preserva a criação na janela e restringe as três rotinas internas do
+  dispatcher a `service_role`. Nenhuma escrita remota.
 
 ## Arquivos alterados/relevantes
 
@@ -167,6 +171,9 @@ declarar o ERP inteiro pronto sem evidência.
 - `app/features/notifications/telaAvisos.logica.ts`
 - `public/sw.js`
 - `tests/push-e-avisos.test.mjs`
+- `docs/erp-reestruturacao/P0_PRESENCA_ALERTAS_CICLO_DRAFT.sql`
+- `docs/erp-reestruturacao/TRACE_PRESENCA_ALERTAS_CICLO.md`
+- `tests/p0-presenca-alertas-ciclo-draft.test.mjs`
 - conceitos anteriores no mesmo diretório permanecem preservados.
 
 ## Evidências

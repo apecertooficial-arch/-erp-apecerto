@@ -346,6 +346,9 @@ autoridade.
   adicionais apontam para ação já removida; dos 162 alertas de ações ativas e
   ainda configuradas, o preflight por estado/saída comprovou 128 já encerráveis
   e preservou 34 sem evidência de resolução;
+- corrigir o ciclo da presença: os três avisos abertos observados já estavam
+  contraditos por `presenca_estado`; resolver antes da janela e retirar de
+  `authenticated` as três rotinas internas do dispatcher;
 - reproduzir visita realizada sem feedback e sem escalonamento;
 - conectar Central de foco e Kanban a contratos reais apenas após os gates.
 - impedir nova divergência entre a fonte visual testada do CRM e o arquivo
@@ -379,10 +382,14 @@ passou em desktop e 390 × 844, sem overflow nem erro/aviso de console. Não hou
 deploy nem escrita no banco.
 
 A revalidação agregada do catálogo produtivo encontrou 3 avisos abertos de
-presença com destino Meu Dia. Essa lacuna também foi fechada localmente:
-`Confirmar presença` é urgente e abre a superfície onde o componente global
-valida sessão e IP. Todos os seis tipos hoje abertos têm ação específica. O gate
-subiu para 568/568; produção continuou somente leitura.
+presença com destino Meu Dia. A interface foi fechada localmente: `Confirmar
+presença` é urgente e abre a superfície onde o componente global valida sessão
+e IP. Todos os sete tipos técnicos hoje abertos têm ação específica. Uma
+segunda leitura provou que os três avisos já estavam contraditos pelo estado:
+a rotina retorna fora da janela antes de resolver e ainda é executável por
+`authenticated`. O draft de ciclo corrige ordem, `search_path` e grants sem
+apagar histórico. O gate anterior ficou em 568/568; produção continuou somente
+leitura.
 
 Também reproduzido e corrigido localmente na fatia de entrada: a identidade
 ignorava o e-mail sempre que havia telefone, e a roleta não consultava a Agenda
