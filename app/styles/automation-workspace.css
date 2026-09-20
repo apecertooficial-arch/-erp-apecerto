@@ -2600,6 +2600,7 @@ body.automation-builder-focus .app-shell > .sidebar {
 @media (max-width: 900px) {
   .automation-header-actions { width: 100%; }
   .automation-header-actions > * { min-height: 44px; flex: 1; }
+  .automation-header-actions .automation-primary { min-height: 44px; }
   .automation-section-tabs { display: flex; overflow-x: auto; }
   .automation-section-tabs button { flex: 0 0 160px; }
   .automation-view-header { align-items: flex-start; flex-direction: column; gap: 6px; }
