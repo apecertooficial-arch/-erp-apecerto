@@ -12,6 +12,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { destinoAviso } from "../app/features/notifications/telaAvisos.logica.ts";
 
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
@@ -23,16 +24,37 @@ const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
 const PAGINA_AVISOS = ler("../app/(erp)/notificacoes/page.tsx");
 const TELA_AVISOS = ler("../app/features/notifications/NotificationsWorkspace.tsx");
+const LOGICA_AVISOS = ler("../app/features/notifications/telaAvisos.logica.ts");
 
 /* ---------------- o barulho ---------------- */
 
-test("lead novo, resposta e combinado vencendo/vencido são urgentes no aparelho", () => {
+test("lead novo, resposta, presença e combinado vencendo/vencido são urgentes no aparelho", () => {
   const inicio = SW.indexOf("TAGS_URGENTES");
   assert.ok(inicio > -1, "a lista de urgentes precisa existir e ter nome");
   const bloco = SW.slice(inicio, SW.indexOf("]", inicio));
-  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "retorno_proximo", "acao_vencida"]) {
+  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "presenca_pendente", "retorno_proximo", "acao_vencida"]) {
     assert.ok(bloco.includes(`"${tag}"`), `"${tag}" precisa estar na lista de urgentes do sw.js`);
   }
+});
+
+test("tipos operacionais mostram ação específica e destino resolutivo", () => {
+  assert.match(LOGICA_AVISOS, /canal_indisponivel:\s*"Corrigir canal"/);
+  assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*"Dar feedback"/);
+  assert.match(LOGICA_AVISOS, /presenca_pendente:\s*"Confirmar presença"/);
+  assert.match(LOGICA_AVISOS, /lead_em_atendimento:\s*"Acompanhar lead"/);
+  assert.match(LOGICA_AVISOS, /lead_quente:\s*"Priorizar lead"/);
+  const base = { id: 1, prioridade: 1, titulo: "Teste", detalhe: null, negocio_id: 104, criada_em: "2026-09-19T12:00:00Z", vista_em: null, resolvida_em: null };
+  assert.equal(destinoAviso({ ...base, tipo: "canal_indisponivel", deep_link: "/negocio/104" }), "/configuracoes?visao=conexoes");
+  assert.equal(destinoAviso({ ...base, tipo: "visita_feedback_pendente", deep_link: "/negocio/104" }), "/agenda");
+  assert.equal(destinoAviso({ ...base, tipo: "presenca_pendente", negocio_id: null, deep_link: "/meu-dia" }), "/inicio");
+  assert.equal(destinoAviso({ ...base, tipo: "lead_quente", deep_link: "/negocio/104" }), "/negocio/104");
+});
+
+test("destino de aviso falha fechado para link externo ou rota inventada", () => {
+  const base = { id: 2, tipo: "falha_rotina", prioridade: 1, titulo: "Teste", detalhe: null, negocio_id: null, criada_em: "2026-09-19T12:00:00Z", vista_em: null, resolvida_em: null };
+  assert.equal(destinoAviso({ ...base, deep_link: "https://exemplo.invalid" }), null);
+  assert.equal(destinoAviso({ ...base, deep_link: "//exemplo.invalid" }), null);
+  assert.equal(destinoAviso({ ...base, deep_link: "/rota-inventada" }), null);
 });
 
 test("app confirma visualmente que o aparelho esta inscrito para lead novo", () => {
@@ -91,6 +113,7 @@ test("desktop e celular compartilham uma única tela e uma única fonte de aviso
   assert.match(PAGINA_AVISOS, /<NotificationsWorkspace/);
   assert.doesNotMatch(PAGINA_AVISOS, /useEhCelular|TelaAvisosMobile/);
   assert.match(TELA_AVISOS, /fetch\("\/api\/notificacoes"/);
+  assert.match(TELA_AVISOS, /keepalive: true/, "a confirmação de leitura precisa sobreviver à navegação");
   assert.doesNotMatch(TELA_AVISOS, /\/api\/crm|\/api\/live-chat|erp_auditoria/);
 });
 

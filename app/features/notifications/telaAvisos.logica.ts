@@ -11,6 +11,7 @@ export type Aviso = {
   titulo: string;
   detalhe: string | null;
   negocio_id: number | null;
+  deep_link?: string | null;
   criada_em: string;
   vista_em: string | null;
   resolvida_em: string | null;
@@ -25,7 +26,12 @@ export const ICONE_POR_TIPO: Record<string, { glifo: string; cor: string }> = {
   primeira_abordagem_pendente: { glifo: "👤", cor: "roxo" },
   acao_vencida:                { glifo: "⚠", cor: "vermelho" },
   visita_proxima:              { glifo: "📅", cor: "verde" },
+  visita_feedback_pendente:    { glifo: "📝", cor: "laranja" },
+  presenca_pendente:           { glifo: "📍", cor: "verde" },
   escalonamento:               { glifo: "⚠", cor: "vermelho" },
+  canal_indisponivel:          { glifo: "📵", cor: "vermelho" },
+  lead_em_atendimento:         { glifo: "💬", cor: "roxo" },
+  lead_quente:                 { glifo: "🔥", cor: "laranja" },
   lead_sem_corretor:           { glifo: "👤", cor: "roxo" },
   padrao:                      { glifo: "•", cor: "cinza" },
 };
@@ -36,8 +42,36 @@ export const ROTULO_ACAO_AVISO: Record<string, string> = {
   primeira_abordagem_pendente: "Atender agora",
   acao_vencida:                "Ver tarefa",
   visita_proxima:              "Ver visita",
+  visita_feedback_pendente:    "Dar feedback",
+  presenca_pendente:           "Confirmar presença",
   escalonamento:               "Ver atendimento",
+  canal_indisponivel:          "Corrigir canal",
+  lead_em_atendimento:         "Acompanhar lead",
+  lead_quente:                 "Priorizar lead",
 };
+
+const ROTAS_INTERNAS_AVISO = new Set([
+  "/agenda",
+  "/configuracoes",
+  "/crm",
+  "/inicio",
+  "/notificacoes",
+]);
+
+/** Resolve somente destinos internos que cumprem a ação indicada no aviso. */
+export function destinoAviso(aviso: Aviso): string | null {
+  if (aviso.tipo === "canal_indisponivel") return "/configuracoes?visao=conexoes";
+  if (aviso.tipo === "visita_feedback_pendente" || aviso.tipo === "visita_proxima") return "/agenda";
+
+  const link = aviso.deep_link?.trim() ?? "";
+  if (/^\/negocio\/[0-9]+(?:\/[a-z-]+)?$/.test(link)) return link;
+  if (ROTAS_INTERNAS_AVISO.has(link)) return link;
+  if (link === "/meu-dia") return "/inicio";
+  if (/^\/gestao\/[a-z-]+$/.test(link)) return "/inteligencia";
+
+  const negocioId = Number(aviso.negocio_id);
+  return Number.isSafeInteger(negocioId) && negocioId > 0 ? `/negocio/${negocioId}` : null;
+}
 
 /**
  * "há 6 min", "há 1 h", "há 2 d".
