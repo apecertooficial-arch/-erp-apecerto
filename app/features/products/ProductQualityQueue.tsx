@@ -52,7 +52,7 @@ export function ProductQualityQueue({
   return <section className="pv3-quality-queue">
     <header>
       <div>
-        <h2>Qualidade do estoque</h2>
+        <h2>Central de decisões</h2>
         <p>Corrija dados reais antes de apresentar ou publicar. O ERP não completa preço, foto ou proprietário por suposição.</p>
       </div>
       <strong>{items.length} {items.length === 1 ? "unidade" : "unidades"}</strong>
@@ -66,10 +66,12 @@ export function ProductQualityQueue({
       {visible.length ? <div className="pv3-quality-list">{visible.map((item) => {
       const labels = summarizeQualityIssues(item.issues);
       const action = qualityRepairAction(item.issues);
+      const severity = item.issues.includes("preco_invalido") || item.issues.includes("sem_foto_propria") ? "Bloqueador" : "Importante";
       return <button type="button" key={item.unitId} onClick={() => onOpen(item, action)}>
         <span className="pv3-quality-code">{item.codigo || `Unidade ${item.numero || "s/n"}`}</span>
         <span className="pv3-quality-title"><strong>{item.productName}</strong><small>{segmentLabels[item.segment] || item.segment}{item.capturedBy ? ` · ${item.capturedBy}` : ""}</small></span>
         <span className="pv3-quality-issues">{labels.map((label) => <em key={label}>{label}</em>)}</span>
+        <span className="pv3-quality-context"><small>Severidade</small><strong>{severity}</strong><small>Responsável</small><strong>{item.capturedBy || "Gestão de Produtos"}</strong><small>Tipo de estoque</small><strong>{segmentLabels[item.segment] || item.segment}</strong><small>Parado há</small><strong>Recência não mensurada</strong></span>
         <span className="pv3-quality-action">{action === "media" ? "Corrigir fotos" : action === "edit" ? "Corrigir cadastro" : "Ver orientação"} →</span>
       </button>;
     })}</div> : <div className="pv3-empty"><strong>Nenhuma pendência neste filtro</strong><p>Altere a busca ou escolha outro tipo de correção.</p></div>}

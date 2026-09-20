@@ -419,6 +419,29 @@
   color: #c17506;
 }
 
+.pv3-next-answer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  color: #5f3700;
+  background: #fff8ec;
+}
+
+.pv3-next-answer strong {
+  font-size: 11px;
+}
+
+.pv3-next-answer span {
+  color: var(--pv3-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+
 .pv3-detail-blockers {
   display: grid;
   gap: 6px;
@@ -436,6 +459,18 @@
   color: #8a5200;
   background: #fff6e5;
   font-size: 11px;
+  text-align: left;
+}
+
+.pv3-detail-blockers button > span {
+  display: grid;
+  gap: 2px;
+}
+
+.pv3-detail-blockers button small {
+  color: var(--pv3-muted);
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .pv3-detail-blockers em {

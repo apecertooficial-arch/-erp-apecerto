@@ -15,6 +15,14 @@ import { ProductClientError, productFailureMessage, productResponse, productSucc
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; condominio_valor?: number | null; iptu?: number | null; outros_custos?: number | null; compre_ja_alugado?: boolean; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean; pode_ver_proprietario?: boolean; owner_complete?: boolean };
+type UnitRecommendation = {
+  key: string;
+  severity: "Bloqueador" | "Importante";
+  title: string;
+  evidence: string;
+  action: string;
+  target: "dados" | "localizacao" | "galeria" | "proprietario";
+};
 type Owner = { nome: string; email: string; telefone: string };
 type Condo = { id: string; nome: string; endereco: string; numero: string | null; bairro: string | null; cidade: string; uf: string; cep: string | null };
 type LeadOption = { id: number; nome: string | null; telefone: string | null; linked: boolean };
@@ -168,6 +176,28 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     return values.length ? Math.round((values.filter(Boolean).length / values.length) * 100) : 0;
   }, [focusedUnitChecks]);
   const focusedUnitBlocking = Object.values(focusedUnitChecks).filter((value) => !value).length;
+  const focusedUnitRecommendations = useMemo<UnitRecommendation[]>(() => {
+    if (!focusedUnit) return [];
+    const items: UnitRecommendation[] = [];
+    if (!focusedUnitPriceValid) items.push({ key: "preco", severity: "Bloqueador", title: "Confirmar o preço completo", evidence: focusedUnitPrice == null ? "Nenhum valor foi informado." : `O valor ${money.format(Number(focusedUnitPrice))} está fora da faixa comercial esperada.`, action: "Revisar preço", target: "dados" });
+    if (!focusedUnitChecks["Dados básicos"]) items.push({ key: "basicos", severity: "Bloqueador", title: "Completar dados básicos", evidence: "Unidade, tipologia ou área privativa está ausente.", action: "Completar cadastro", target: "dados" });
+    if (!focusedUnitChecks.Endereço) items.push({ key: "endereco", severity: "Bloqueador", title: "Completar a localização", evidence: "Endereço, bairro ou cidade não foi informado.", action: "Abrir localização", target: "localizacao" });
+    if (!focusedUnitOwnPhotos.length) items.push({ key: "fotos", severity: "Bloqueador", title: "Adicionar fotos próprias da unidade", evidence: "A galeria tem 0 fotos privativas. Fotos do condomínio não substituem as fotos do imóvel.", action: "Editar fotos", target: "galeria" });
+    if (!focusedUnitChecks.Proprietário) items.push({ key: "proprietario", severity: "Bloqueador", title: "Completar proprietário e acesso", evidence: "A captação de terceiro não tem proprietário e instruções de acesso completos.", action: "Revisar proprietário", target: "proprietario" });
+    return items;
+  }, [focusedUnit, focusedUnitChecks, focusedUnitOwnPhotos.length, focusedUnitPrice, focusedUnitPriceValid]);
+
+  function openRecommendation(item: UnitRecommendation) {
+    if (!focusedUnit) return;
+    if (item.target === "galeria") {
+      setTab("galeria");
+      if (focusedUnit.pode_editar) setUnitMediaEdit({ ...focusedUnit });
+      return;
+    }
+    if (item.target === "localizacao") setTab("localizacao");
+    if (item.target === "proprietario") setTab("proprietario");
+    if (focusedUnit.pode_editar) setUnitEdit({ ...focusedUnit });
+  }
 
   useEffect(() => {
     if (!focusedUnit || !focusedUnit.pode_editar || initialUnitAction === "view") return;
@@ -477,7 +507,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
             <div className="pv3-detail-quick-actions">{canShowOnSite ? <a href={unitUrl} target="_blank" rel="noreferrer"><IcLink />Ver no site</a> : <button type="button" disabled title="O imóvel ainda não está publicado"><IcLink />Ver no site</button>}<button type="button" onClick={() => void copyListingLink(unit.id)}><IcLink />Copiar link</button><button type="button" onClick={() => void shareListing(unit.id)}><IcSend />Enviar ao cliente</button><button type="button" onClick={() => window.print()}><IcFile />Gerar book</button><a href={`/auditoria?produto=${currentProduct.id}`}><IcClock />Histórico</a></div>
             <div className={`pv3-detail-hero ${focusedUnitCover?.url ? "has-photo" : ""}`} style={focusedUnitCover?.url ? { backgroundImage:`url(${focusedUnitCover.url})` } : undefined}>{!focusedUnitCover?.url && <div><IcImages /><span>Nenhuma foto cadastrada</span></div>}{focusedUnitCover?.url && <span className="pv3-detail-photo-label">{focusedUnitCover.categoria || focusedUnitCover.nome || (focusedUnitUsesReferencePhotos ? "Foto do condomínio" : "Foto da unidade")}</span>}{unit.pode_editar && <button type="button" className="cover" onClick={() => setUnitMediaEdit({ ...unit })}><IcImages />Definir capa</button>}<button type="button" className="view" disabled={!focusedUnitPhotos.length} onClick={() => openGallery(0)}><IcImages />Ver {focusedUnitPhotos.length} fotos</button></div>
             {focusedUnitPhotos.length > 1 && <div className="pv3-detail-thumbs">{focusedUnitPhotos.slice(1,3).map((item,index) => <button key={item.id} type="button" onClick={() => openGallery(index + 1)} style={item.url ? { backgroundImage:`url(${item.url})` } : undefined}><span>{item.categoria || item.nome || `Foto ${index + 2}`}</span></button>)}</div>}
-            <section className={`pv3-detail-readiness ${focusedUnitBlocking === 0 ? "ready" : "blocked"}`}><header><span><IcSeal /></span><div><strong>{readinessTitle}</strong><small>{readinessDescription}</small></div><b>{focusedUnitScore}%</b></header>{focusedUnitBlocking > 0 && <div className="pv3-detail-blockers">{Object.entries(focusedUnitChecks).filter(([,ok]) => !ok).map(([label]) => <button type="button" key={label} onClick={() => unit.pode_editar && setUnitEdit({ ...unit })}><span>○ {label}</span>{unit.pode_editar && <em>{focusedUnitPublished ? "Ajustar" : "Corrigir"}</em>}</button>)}</div>}<div className="pv3-detail-ready-chips">{Object.entries(focusedUnitChecks).map(([label,ok]) => <span key={label} className={ok ? "done" : ""}>{ok ? "✓" : "○"} {label}</span>)}</div></section>
+            <section className={`pv3-detail-readiness pv3-next-action ${focusedUnitBlocking === 0 ? "ready" : "blocked"}`}>
+              <header><span><IcSeal /></span><div><strong>Próxima melhor ação</strong><small>{focusedUnitRecommendations.length ? "Corrija primeiro o item de maior impacto." : readinessDescription}</small></div><b>{focusedUnitScore}%</b></header>
+              <div className="pv3-next-answer"><strong>{focusedUnitBlocking === 0 ? "Pode publicar agora" : "Ainda não pode publicar"}</strong><span>{focusedUnitRecommendations[0]?.title || readinessTitle}</span></div>
+              {focusedUnitRecommendations.length > 0 && <div className="pv3-detail-blockers">{focusedUnitRecommendations.map((item) => <button type="button" key={item.key} onClick={() => openRecommendation(item)} disabled={!unit.pode_editar}><span><b>{item.severity}</b> · {item.title}<small>{item.evidence}</small></span>{unit.pode_editar && <em>{item.action}</em>}</button>)}</div>}
+              <div className="pv3-detail-ready-chips">{Object.entries(focusedUnitChecks).map(([label,ok]) => <span key={label} className={ok ? "done" : ""}>{ok ? "✓" : "○"} {label}</span>)}<span className="done">✓ Identidade pública protegida</span></div>
+            </section>
             <section className="pv3-detail-description"><header><h3>Sobre o imóvel</h3>{unit.pode_editar && <button type="button" onClick={() => setUnitEdit({ ...unit })}><IcEdit />Editar texto</button>}</header><p>{currentProduct.descricao || "Descrição comercial ainda não cadastrada para esta unidade."}</p></section>
           </div>}
 

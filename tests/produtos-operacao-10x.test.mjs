@@ -66,7 +66,7 @@ test("corretor recebe próxima melhor ação explicável e ligada ao campo corre
 test("gestor tem central única com risco, bloqueios, tempo e decisões", () => {
   assert.match(products, /Central de decisões/);
   assert.match(products, /Risco comercial imediato/);
-  assert.match(products, /Sem revisão há 30\+ dias/);
+  assert.match(products, /Recência ainda não mensurada/);
   assert.match(products, /Devolver com motivo/);
   assert.match(products, />Aprovar</);
   assert.match(qualityQueue, /Severidade/);

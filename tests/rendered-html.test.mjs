@@ -79,7 +79,7 @@ test("aplica a referência aprovada em Vendas & comissões", async () => {
   assert.match(css, /nth-of-type\(4n\+1\)>b \{ background:var\(--orange\)!important; \}/);
 });
 
-test("a Esteira preserva fotos, tags e identidade dos cards", async () => {
+test("a Esteira preserva fotos, tags e identidade dos cards atuais", async () => {
   const crm = await readFile(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
   const salesApi = await readFile(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -88,7 +88,8 @@ test("a Esteira preserva fotos, tags e identidade dos cards", async () => {
   assert.match(crm, /tagList\(lead\?\.tags\)\.slice\(0, 2\)/);
   assert.match(crm, /className="sale-card-content"/);
   assert.match(salesApi, /id,nome,telefone,email,corretor_id,tags,extras/);
-  assert.match(css, /\.crm-leads-table-v3 tbody tr\.lead-tone-1\{border-left-color:#ff6500!important\}/);
+  assert.match(css, /\.lead-avatar img\{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit\}/);
+  assert.match(css, /\.sale-card\{position:relative;overflow:hidden;padding:0!important;gap:0!important;border-radius:11px!important\}/);
   assert.match(css, /Vendas em processo: o mesmo desenho dos cards de lead do funil/);
 });
 
