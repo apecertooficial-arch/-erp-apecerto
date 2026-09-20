@@ -6,7 +6,7 @@ Ambiente de implementação: worktree local isolada; publicação de código som
 Worktree: `/private/tmp/apecerto-erp-crm-visual`
 Branch: `codex/erp-crm-visual-concept`
 Base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-HEAD de implementação revalidado: `1a3c894befb93e4a1f828f46e5fc9c2748e4226f`
+HEAD remoto antes da fatia em curso: `29ea02e93c68801638508354437f5b43209ad565`
 
 ## Resultado deste ciclo
 
@@ -343,8 +343,9 @@ autoridade.
   abertos para 138 negócios, 180 grupos duplicados e até 38 no mesmo grupo;
 - encerrar efeitos cuja automação perdeu autoridade sem apagar histórico: 697
   alertas `acao_vencida` pertencem a três automações arquivadas e dois alertas
-  adicionais apontam para ação já removida; 162 alertas de ações ativas e ainda
-  configuradas devem ser preservados;
+  adicionais apontam para ação já removida; dos 162 alertas de ações ativas e
+  ainda configuradas, o preflight por estado/saída comprovou 128 já encerráveis
+  e preservou 34 sem evidência de resolução;
 - reproduzir visita realizada sem feedback e sem escalonamento;
 - conectar Central de foco e Kanban a contratos reais apenas após os gates.
 - impedir nova divergência entre a fonte visual testada do CRM e o arquivo

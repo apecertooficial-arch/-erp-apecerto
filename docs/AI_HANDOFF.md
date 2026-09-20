@@ -13,12 +13,12 @@ declarar o ERP inteiro pronto sem evidência.
 - remoto: `https://github.com/apecertooficial-arch/-erp-apecerto.git`
 - branch: `codex/erp-crm-visual-concept`
 - base: `e478030e4eaf33d17562ceb5ac2b3bef34fd677a`
-- ambiente: branch isolada enviada ao repositório oficial até `1a3c894b`;
+- ambiente: branch isolada enviada ao repositório oficial até `29ea02e9`;
   usuário autorizou publicação de código validado. Merge e deploy não foram
   executados
-- HEAD local e remoto revalidado: `1a3c894b`
-- árvore local: limpa quanto a mudanças versionadas; preservar o symlink local
-  não versionado `node_modules`
+- HEAD local e remoto antes da fatia em curso: `29ea02e9`
+- árvore local em curso: contrato de resolução por evidência dos alertas;
+  preservar o symlink local não versionado `node_modules`
 
 ## Concluído
 
@@ -118,11 +118,16 @@ declarar o ERP inteiro pronto sem evidência.
   leitura/escrita por rota e evidência comportamental.
 - a execução é contínua; a automação antiga de duas horas permanece pausada e
   não governa nem limita o trabalho;
-- o remoto contém os commits até `1a3c894b`; a fatia de Avisos e o contrato de
+- o remoto contém os commits até `29ea02e9`; a fatia de Avisos e o contrato de
   ciclo dos alertas de automação foram testados e enviados à branch isolada.
   Merge e deploy continuam
   pendentes do gate do payload, CI e validação do SHA, não de uma janela de
   duas horas.
+- a resolução por evidência dos 162 alertas ativos está preparada localmente:
+  40 são primeira abordagem, 120 canal indisponível e duas transições da Sara.
+  O preflight sanitizado encontrou prova para encerrar 128 e preserva 34 ainda
+  acionáveis; o draft não foi aplicado. Nove contratos específicos e o gate
+  frontend 561/561 passaram.
 
 ## Arquivos alterados/relevantes
 
@@ -410,11 +415,10 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Avançar na resolução por evidência dos 162 alertas ativos, sem classificar idade
-como prova de obsolescência. Determinar, por metadados e contratos canônicos, a
-evidência de encerramento de `primeira_abordagem_pendente`,
-`canal_indisponivel`, `lead_em_atendimento` e `lead_quente`. Quando
-existir Postgres isolado com CLI oficial,
+Revisar e enviar o contrato de resolução por evidência sem incluir o symlink
+`node_modules`. Em seguida, avançar para a próxima lacuna P0 da jornada
+lead → primeira abordagem → Sara, mantendo os 34 alertas sem prova abertos.
+Quando existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
 mantendo os dispatchers desligados. Não usar `main` do Supabase como
 laboratório. Merge/deploy de código e migration permanecem etapas distintas e

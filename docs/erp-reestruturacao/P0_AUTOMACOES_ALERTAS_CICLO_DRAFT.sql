@@ -88,8 +88,9 @@ alter table public.ncrm_notificacao
 alter table public.ncrm_notificacao
   add constraint ncrm_notificacao_resolvida_por_check
   check (resolvida_por is null or resolvida_por in (
-    'automatica', 'usuario', 'automatica_f2', 'automacao_ciclo'
-  ));
+    'automatica', 'usuario', 'automatica_f2', 'f2_sync', 'troca_dono_f2',
+    'automacao_ciclo', 'automacao_evidencia'
+  ) or resolvida_por like 'central:%');
 
 create or replace function ncrm_private.automacao_notificacao_configurada(
   p_mapa jsonb,

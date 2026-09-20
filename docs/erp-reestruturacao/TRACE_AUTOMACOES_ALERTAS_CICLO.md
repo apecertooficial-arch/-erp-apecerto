@@ -1,6 +1,6 @@
 # Trace — ciclo de vida dos alertas de automação
 
-Atualizado em: 2026-09-19 20:10 America/Sao_Paulo
+Atualizado em: 2026-09-19 21:08 America/Sao_Paulo
 Escopo: código canônico local + metadados agregados de produção, sem PII e sem escrita.
 
 ## Veredito
@@ -72,6 +72,59 @@ Sara, gate frontend 552/552, typecheck e build aprovados; lint sem erros e com
 os mesmos dez avisos preexistentes. A validação desta fatia é de contrato e
 preflight agregado; comportamento persistente ainda depende do ensaio isolado.
 
+## Resolução por evidência dos 162 alertas preservados
+
+O estoque de ações ainda publicadas foi separado por obrigação, sem consultar
+nomes, telefones, e-mails, títulos, detalhes ou conteúdo de mensagens:
+
+| obrigação | abertos | evidência de encerramento encontrada | devem permanecer |
+|---|---:|---:|---:|
+| primeira abordagem pendente | 40 | 32 | 8 |
+| canal indisponível | 120 | 94 | 26 |
+| etapa/temperatura da Sara | 2 | 2 | 0 |
+| **total** | **162** | **128** | **34** |
+
+As regras foram derivadas do contrato produtivo, não da idade:
+
+- `primeira_abordagem_pendente`: fecha se o card foi descartado, deixou a etapa
+  `novo`, confirmou ação, trocou de corretor ou recebeu saída real posterior;
+- `canal_indisponivel`: não fecha por simples mudança de etapa; fecha somente
+  com descarte ou uma saída posterior confirmada pelo motor/D-API;
+- `lead_em_atendimento`: fecha quando o card deixa `em_atendimento`;
+- `lead_quente`: fecha quando a temperatura deixa `quente`;
+- remoção do card encerra a obrigação, preservando a notificação e registrando
+  a referência local do card removido.
+
+O banco já possui `f2_resolver_notificacao_obsoleta`, que acompanha
+`primeira_abordagem_pendente` por negócio, mas não reconcilia todas as
+notificações criadas depois de um estado já superado e não cobre
+`canal_indisponivel`, etapa ou temperatura. Também não registra a linha técnica
+que provou o encerramento.
+
+A inspeção encontrou ainda uma incompatibilidade produtiva: o trigger atual de
+troca de dono grava `troca_dono_f2`, enquanto o `CHECK` de `resolvida_por`
+aceita somente `automatica`, `usuario` e `automatica_f2`. Os drafts preservam os
+atores históricos conhecidos (`f2_sync` e `central:*`) e acrescentam os dois
+atores novos sem deixar o campo livre para qualquer texto.
+
+`P0_AUTOMACOES_ALERTAS_EVIDENCIA_DRAFT.sql` fecha essa lacuna de forma aditiva:
+
+1. registra tipo, referência local e horário da evidência;
+2. reconcilia o estado atual do F2 e impede nova abertura já obsoleta;
+3. observa confirmação do transporte no `motor_mensagem_partes`;
+4. observa saída real sincronizada pelo webhook em `wa_mensagens`;
+5. preserva os 34 alertas sem prova de resolução no snapshot observado;
+6. mantém todas as funções internas fora da Data API;
+7. aborta se restar alerta contradito pelo estado/evidência ou resolução sem
+   trilha técnica.
+
+O novo SQL também é draft, está fora de `supabase/migrations` e não foi
+executado. A contagem é um preflight do snapshot observado e deve ser medida
+novamente dentro da mesma transação antes de qualquer aplicação futura.
+Nove contratos específicos passaram e o gate frontend completo ficou em
+561/561; compilação SQL e comportamento persistente continuam reservados ao
+ensaio Postgres isolado.
+
 ## Gates restantes
 
 1. gerar a migration pela CLI oficial;
@@ -82,3 +135,5 @@ preflight agregado; comportamento persistente ainda depende do ensaio isolado.
    snapshot observado, e alertas de ações ainda publicadas devem permanecer;
 5. rodar advisors e plano de rollback;
 6. obter autorização específica antes de aplicar em produção.
+7. no ensaio isolado, confirmar 128 encerramentos e 34 preservações no snapshot
+   equivalente, além de inserts concorrentes e eventos fora de ordem.

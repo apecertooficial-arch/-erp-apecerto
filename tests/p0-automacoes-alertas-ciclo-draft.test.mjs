@@ -21,6 +21,8 @@ test("aviso ganha autoridade direta e auditavel", () => {
   assert.match(sql, /foreign key \(automacao_id\) references public\.automacoes\(id\)/);
   assert.match(sql, /foreign key \(lead_id\) references public\.leads\(id\)/);
   assert.match(sql, /automacao_ciclo/);
+  assert.match(sql, /troca_dono_f2/);
+  assert.match(sql, /resolvida_por like 'central:%'/);
 });
 
 test("backfill reconcilia chave legada e canonica sem perpetuar o legado", () => {
