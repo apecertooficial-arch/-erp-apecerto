@@ -440,8 +440,8 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Próximo passo exato
 
-Separar do conjunto acumulado o payload promovível: a branch está 46 commits e
-123 arquivos à frente de `origin/main`, incluindo código pronto, documentação e
+Separar do conjunto acumulado o payload promovível: a branch está mais de 40
+commits e 123 arquivos à frente de `origin/main`, incluindo código pronto, documentação e
 drafts de banco que não podem virar migrations por acidente. Rodar o CI sobre o
 SHA candidato, promover somente o conteúdo aprovado, confirmar `/api/build` e
 revalidar desktop e PWA/aplicativo em produção. Em paralelo, avançar para a
