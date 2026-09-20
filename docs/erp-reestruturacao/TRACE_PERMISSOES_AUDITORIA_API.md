@@ -1,7 +1,7 @@
 # Trace — permissões, falha fechada e auditoria
 
 Atualizado em: 2026-09-20
-Estado: API publicada; correção responsiva incorporada ao pacote seguinte; atomicidade banco + auditoria pendente
+Estado: API e correção responsiva publicadas; atomicidade banco + auditoria pendente
 
 ## Falhas reproduzidas
 
@@ -44,7 +44,11 @@ A validação autenticada desktop não encontrou erros de console. No celular, o
 mesmo gate revelou que a coluna de escopos mantinha o layout desktop e
 comprimia o conteúdo principal. A correção passou a empilhar navegação e
 conteúdo abaixo de 900 px, preservou controles legíveis e ganhou um contrato de
-regressão na suíte cumulativa.
+regressão na suíte cumulativa. Ela foi publicada no commit
+`58c4facf197492b043e7cdb7d4214461347848fd`. Em produção, a validação
+autenticada mediu 343 px para navegação, conteúdo e escopo em viewport de
+390 × 844, sem overflow horizontal ou erro de console; o desktop preservou as
+colunas de 240 px e 717 px.
 
 Os testes são locais e sanitizados. Nenhuma permissão real foi modificada,
 nenhuma chamada foi enviada ao banco produtivo e nenhum dado pessoal foi lido.

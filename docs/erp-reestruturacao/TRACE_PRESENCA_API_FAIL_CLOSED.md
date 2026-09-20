@@ -1,7 +1,7 @@
 # Trace — Presença fail-closed sem retirada indevida da fila
 
 Atualizado em: 2026-09-20
-Estado: pacote de aplicação revalidado para promoção; produção ainda não alterada
+Estado: aplicação publicada e validada; banco e configuração não alterados
 
 ## Falha reproduzida
 
@@ -38,15 +38,21 @@ ao listar corretores da configuração e devolvia sucesso na saída mesmo quando
   produziu apenas leituras GET, nenhum `POST /api/presenca`, nenhum erro de
   console e nenhum overflow horizontal.
 
+O pacote foi publicado no commit
+`58c4facf197492b043e7cdb7d4214461347848fd`, confirmado pelo endpoint público
+`/api/build`. A sessão autenticada real carregou a aplicação sem erro de
+console; o ramo negativo `401`/`502` permanece comprovado no harness isolado,
+pois provocar essa falha em produção seria inseguro.
+
 O POST bloqueado para `wa_v7_minha_presenca` observado no harness pertence à
 leitura inicial do cliente Supabase sintético; ele não é o comando de saída.
 O comando operacional `/api/presenca` não foi chamado.
 
 ## Limites
 
-O teste de navegador usou fixtures sanitizadas e bloqueou toda mutação. Ainda é
-necessário validar o mesmo build com sessão real controlada depois da promoção.
-Nenhuma RPC, migration, configuração de IP, fila ou dado produtivo foi alterado.
+O teste negativo de navegador usou fixtures sanitizadas e bloqueou toda
+mutação. Nenhuma RPC, migration, configuração de IP, fila ou dado produtivo foi
+alterado.
 
 ## Gate visual incorporado
 

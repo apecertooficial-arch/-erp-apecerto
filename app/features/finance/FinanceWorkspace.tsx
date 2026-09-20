@@ -396,17 +396,77 @@ function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceDat
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [metasStatus, setMetasStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [metasLoadError, setMetasLoadError] = useState<string | null>(null);
   const brokerById = new Map(data.brokers.map((b) => [b.id, b]));
   const saleCorretor = new Map(data.deals.filter((d) => d.venda_id).map((d) => [d.venda_id as string, d.corretor_id]));
-  const load = async () => { const r = await fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` } }); const j = await r.json() as { metas?: Meta[] }; setMetas(j.metas ?? []); };
-  useEffect(() => { void load(); }, []);
+  const load = async () => {
+    setMetasLoadError(null);
+    try {
+      const response = await fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const payload = await response.json() as { metas?: Meta[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível carregar as metas.");
+      setMetas(payload.metas ?? []);
+      setMetasStatus("ready");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível carregar as metas.";
+      setMetasStatus("error");
+      setMetasLoadError(message);
+      throw error;
+    }
+  };
+  useEffect(() => { void load().catch(() => undefined); }, []);
   const inPeriod = (dv: string, tipo: string, ano: number, periodo: number) => { const d = new Date(`${dv}T12:00:00`); if (d.getFullYear() !== ano) return false; const m = d.getMonth() + 1; if (tipo === "anual") return true; if (tipo === "mensal") return m === periodo; if (tipo === "semestral") return periodo === 1 ? m <= 6 : m >= 7; return false; };
   // Meta realizada = só venda concluída, medida no mês da conclusão.
   const realized = (meta: Meta) => { const rel = data.sales.filter((s) => s.data_conclusao && inPeriod(s.data_conclusao, meta.periodo_tipo, meta.ano, meta.periodo) && (meta.corretor_id === null || saleCorretor.get(s.id) === meta.corretor_id)); return { vgv: rel.reduce((sum, s) => sum + Number(s.vgv || 0), 0), count: rel.length }; };
-  const save = async () => { setBusy(true); setMsg(null); try { const r = await fetch("/api/metas", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", corretorId: form.corretorId, periodoTipo: form.periodoTipo, ano: Number(form.ano), periodo: form.periodoTipo === "anual" ? 0 : Number(form.periodo), metaVgv: Number(form.metaVgv), metaVendas: Number(form.metaVendas) }) }); const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error); setMsg(editingId ? "Meta atualizada." : "Meta salva."); setForm({ ...form, metaVgv: "", metaVendas: "" }); setEditingId(null); await load(); } catch (e) { setMsg(e instanceof Error ? e.message : "Erro ao salvar."); } finally { setBusy(false); } };
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const response = await fetch("/api/metas", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save", corretorId: form.corretorId, periodoTipo: form.periodoTipo, ano: Number(form.ano), periodo: form.periodoTipo === "anual" ? 0 : Number(form.periodo), metaVgv: form.metaVgv, metaVendas: form.metaVendas }),
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível salvar a meta.");
+      const successMessage = editingId ? "Meta atualizada." : "Meta salva.";
+      setForm({ ...form, metaVgv: "", metaVendas: "" });
+      setEditingId(null);
+      try {
+        await load();
+        setMsg(successMessage);
+      } catch {
+        setMsg(`${successMessage} A lista não pôde ser atualizada; recarregue a tela antes de repetir.`);
+      }
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : "Erro ao salvar.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const edit = (m: Meta) => { setEditingId(m.id); setMsg(null); setForm({ corretorId: m.corretor_id === null ? "global" : String(m.corretor_id), periodoTipo: m.periodo_tipo, ano: String(m.ano), periodo: String(m.periodo || (m.periodo_tipo === "anual" ? 0 : 1)), metaVgv: m.meta_vgv ? String(m.meta_vgv) : "", metaVendas: m.meta_vendas ? String(m.meta_vendas) : "" }); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
   const cancelEdit = () => { setEditingId(null); setForm({ ...form, metaVgv: "", metaVendas: "" }); };
-  const remove = async (id: string) => { setBusy(true); try { await fetch("/api/metas", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) }); if (editingId === id) { setEditingId(null); } await load(); } finally { setBusy(false); } };
+  const remove = async (id: string) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const response = await fetch("/api/metas", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível apagar a meta.");
+      if (editingId === id) setEditingId(null);
+      try {
+        await load();
+        setMsg("Meta apagada.");
+      } catch {
+        setMsg("Meta apagada, mas a lista não pôde ser atualizada. Recarregue a tela antes de repetir.");
+      }
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : "Não foi possível apagar a meta.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const periodoLabel = (m: Meta) => m.periodo_tipo === "anual" ? `Ano ${m.ano}` : m.periodo_tipo === "semestral" ? `${m.periodo}º sem/${m.ano}` : `${String(m.periodo).padStart(2, "0")}/${m.ano}`;
   return <section className="metas-tab finance-data-designer finance-goals-designer">
     <article className="finance-sales-panel finance-goal-panel"><header className="finance-sales-toolbar"><div><h2>Definir meta</h2><p>Crie objetivos proporcionais por período e responsável.</p></div><strong className="finance-data-total">VGV e nº de vendas</strong></header>
@@ -421,8 +481,8 @@ function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceDat
       </div>
       {msg && <p className="metas-msg">{msg}</p>}
     </article>
-    <article className="finance-sales-panel finance-goal-panel"><header className="finance-sales-toolbar"><div><h2>Metas definidas</h2><p>Acompanhamento do realizado e do objetivo.</p></div><strong className="finance-data-total">{metas.length} {metas.length === 1 ? "meta" : "metas"}</strong></header>
-      <div className="metas-list">{metas.map((m) => { const r = realized(m); const pv = m.meta_vgv > 0 ? Math.min(100, r.vgv / m.meta_vgv * 100) : 0; const pc = m.meta_vendas > 0 ? Math.min(100, r.count / m.meta_vendas * 100) : 0; return <article key={m.id}><div className="metas-list-head"><strong>{m.corretor_id === null ? "Imobiliária (global)" : brokerById.get(m.corretor_id)?.nome || "Corretor"}</strong><span>{periodoLabel(m)}</span><div className="metas-list-actions"><button type="button" className={editingId === m.id ? "metas-editing" : ""} disabled={busy} onClick={() => edit(m)}>Editar</button><button type="button" disabled={busy} onClick={() => void remove(m.id)}>Apagar</button></div></div><div className="metas-bar"><span>VGV {brl.format(r.vgv)} / {brl.format(m.meta_vgv)} · {pv.toFixed(0)}%</span><i><u style={{ width: `${pv}%` }} /></i></div><div className="metas-bar"><span>Vendas {r.count} / {m.meta_vendas} · {pc.toFixed(0)}%</span><i><u style={{ width: `${pc}%` }} /></i></div></article>; })}{metas.length === 0 && <p className="finance-empty">Nenhuma meta definida ainda.</p>}</div>
+    <article className="finance-sales-panel finance-goal-panel"><header className="finance-sales-toolbar"><div><h2>Metas definidas</h2><p>Acompanhamento do realizado e do objetivo.</p></div><strong className="finance-data-total">{metasStatus === "loading" ? "Carregando…" : metasStatus === "error" ? "Indisponível" : `${metas.length} ${metas.length === 1 ? "meta" : "metas"}`}</strong></header>
+      <div className="metas-list">{metasStatus === "loading" ? <p className="finance-empty">Carregando metas…</p> : metasStatus === "error" ? <div className="finance-error-state" role="alert"><p>{metasLoadError || "Não foi possível carregar as metas."}</p><button type="button" disabled={busy} onClick={() => { setMetasStatus("loading"); void load().catch(() => undefined); }}>Tentar novamente</button></div> : <>{metas.map((m) => { const r = realized(m); const pv = m.meta_vgv > 0 ? Math.min(100, r.vgv / m.meta_vgv * 100) : 0; const pc = m.meta_vendas > 0 ? Math.min(100, r.count / m.meta_vendas * 100) : 0; return <article key={m.id}><div className="metas-list-head"><strong>{m.corretor_id === null ? "Imobiliária (global)" : brokerById.get(m.corretor_id)?.nome || "Corretor"}</strong><span>{periodoLabel(m)}</span><div className="metas-list-actions"><button type="button" className={editingId === m.id ? "metas-editing" : ""} disabled={busy} onClick={() => edit(m)}>Editar</button><button type="button" disabled={busy} onClick={() => void remove(m.id)}>Apagar</button></div></div><div className="metas-bar"><span>VGV {brl.format(r.vgv)} / {brl.format(m.meta_vgv)} · {pv.toFixed(0)}%</span><i><u style={{ width: `${pv}%` }} /></i></div><div className="metas-bar"><span>Vendas {r.count} / {m.meta_vendas} · {pc.toFixed(0)}%</span><i><u style={{ width: `${pc}%` }} /></i></div></article>; })}{metas.length === 0 && <p className="finance-empty">Nenhuma meta definida ainda.</p>}</>}</div>
     </article>
   </section>;
 }

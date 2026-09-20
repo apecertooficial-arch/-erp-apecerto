@@ -6,7 +6,7 @@ import "../../app/styles/redesign-apecerto-produtos-financeiro.css";
 import "../../app/styles/redesign-apecerto-financeiro-abas.css";
 import { FinanceWorkspace, type FinanceData } from "../../app/features/finance/FinanceWorkspace";
 
-type Estado = "normal" | "vazio" | "erro" | "offline" | "loading";
+type Estado = "normal" | "vazio" | "erro" | "offline" | "loading" | "metaserror";
 const estado = (new URLSearchParams(window.location.search).get("state") ?? "normal") as Estado;
 const payload: FinanceData = {
   sales: [{ id: "venda-teste-1", created_at: "2026-09-02T12:00:00Z", data_venda: "2026-09-02", data_conclusao: "2026-09-05", empreendimento_id: "produto-teste-1", empreendimento_nome: "Residencial Horizonte", unidade_id: "unidade-teste-1", unidade_rotulo: "Unidade 82", cliente_nome: "Cliente sanitizado", proprietario_nome: null, vgv: 1250000, custos: 0, forma_pgto: "Financiamento", percentual_comissao: 0.05, status: "concluida", obs: null }],
@@ -48,6 +48,10 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     atualizarRegistro();
     return json({ error: "Harness visual: operação bloqueada." }, 405);
   }
+  if (url.pathname === "/api/metas") {
+    if (estado === "metaserror") return json({ error: "Não foi possível carregar as metas no momento." }, 502);
+    return json({ metas: [{ id: "meta-teste-1", corretor_id: 7, periodo_tipo: "mensal", ano: 2026, periodo: 9, meta_vgv: 1800000, meta_vendas: 2 }] });
+  }
   if (url.pathname !== "/api/finance") return json({ error: "Leitura fora do inventário." }, 404);
   if (estado === "loading") return new Promise<Response>(() => undefined);
   if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
@@ -57,5 +61,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 };
 
 createRoot(document.getElementById("root")!).render(
-  <FinanceWorkspace accessToken="harness-test-only" sessionRole="corretor" perfil="corretor" sessionUserId="usuario-corretor-teste" />,
+  estado === "metaserror"
+    ? <FinanceWorkspace accessToken="harness-test-only" sessionRole="admin" perfil="admin" sessionUserId="usuario-admin-teste" />
+    : <FinanceWorkspace accessToken="harness-test-only" sessionRole="corretor" perfil="corretor" sessionUserId="usuario-corretor-teste" />,
 );
