@@ -88,6 +88,17 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
   const carregarPerfil = useCallback(async (token: string) => {
     try {
       const resposta = await fetch("/api/session", { headers: { Authorization: `Bearer ${token}` } });
+      if (resposta.status === 401) {
+        try {
+          await getBrowserSupabaseClient().auth.signOut({ scope: "local" });
+        } catch {
+          // A limpeza visual abaixo continua fail-closed mesmo se o SDK falhar.
+        }
+        setAccessToken(null);
+        setProfile(null);
+        setEstado("auth");
+        return;
+      }
       if (!resposta.ok) throw new Error("perfil indisponivel");
       setProfile(await resposta.json() as SessionProfile);
       setEstado("live");
@@ -111,26 +122,48 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
 
     const ehRecovery = typeof window !== "undefined" && window.location.hash.includes("type=recovery");
 
-    void supabase.auth.getSession().then(async ({ data }) => {
-      if (!ativo || ehRecovery) return;
-      if (!data.session) {
-        setEstado("auth");
-        setPerfilCarregado(true);
-        return;
-      }
-      const expiraLogo = Number(data.session.expires_at || 0) * 1000 <= Date.now() + 60_000;
-      if (expiraLogo) {
-        const renovada = await supabase.auth.refreshSession();
-        if (!ativo) return;
-        if (renovada.data.session) {
-          setAccessToken(renovada.data.session.access_token);
-          await carregarPerfil(renovada.data.session.access_token);
+    const mostrarLogin = () => {
+      if (!ativo) return;
+      setAccessToken(null);
+      setProfile(null);
+      setEstado("auth");
+      setPerfilCarregado(true);
+    };
+
+    const iniciarSessao = async () => {
+      try {
+        const atual = await supabase.auth.getSession();
+        if (!ativo || ehRecovery) return;
+        if (atual.error || !atual.data.session) {
+          mostrarLogin();
           return;
         }
+
+        let sessao = atual.data.session;
+        const expiraLogo = Number(sessao.expires_at || 0) * 1000 <= Date.now() + 60_000;
+        if (expiraLogo) {
+          const renovada = await supabase.auth.refreshSession();
+          if (!ativo) return;
+          if (renovada.error || !renovada.data.session) {
+            try {
+              await supabase.auth.signOut({ scope: "local" });
+            } catch {
+              // O estado local ainda e limpo abaixo; nunca reutilizar o token vencido.
+            }
+            mostrarLogin();
+            return;
+          }
+          sessao = renovada.data.session;
+        }
+
+        setAccessToken(sessao.access_token);
+        await carregarPerfil(sessao.access_token);
+      } catch {
+        mostrarLogin();
       }
-      setAccessToken(data.session.access_token);
-      await carregarPerfil(data.session.access_token);
-    });
+    };
+
+    void iniciarSessao();
 
     const { data: listener } = supabase.auth.onAuthStateChange((evento, sessao) => {
       if (!ativo) return;
