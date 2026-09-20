@@ -19,6 +19,17 @@ function uuidValido(value: string | null): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
+function falhaConversa(error: { code?: string }, contexto: string) {
+  console.error("[funil2-conversa] falha_banco", {
+    contexto,
+    codigo: error.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: "Não foi possível carregar a conversa no momento.",
+    erro: "falha_banco",
+  }, { status: 502 });
+}
+
 export async function GET(request: Request) {
   const token = tokenDe(request);
   if (!token) return Response.json({ error: "Sessão necessária." }, { status: 401 });
@@ -38,7 +49,7 @@ export async function GET(request: Request) {
     .select("id,origem_negocio_id,corte_conversa_em,historico_completo")
     .eq("id", funilLeadId)
     .maybeSingle();
-  if (copiaError) return Response.json({ error: copiaError.message }, { status: 502 });
+  if (copiaError) return falhaConversa(copiaError, "copia");
   if (!copia) return Response.json({ error: "Lead não visível." }, { status: 404 });
 
   const origemNegocioId = Number(copia.origem_negocio_id);
@@ -48,15 +59,15 @@ export async function GET(request: Request) {
     .select("id,lead_id")
     .eq("id", origemNegocioId)
     .maybeSingle();
-  if (negocioError) return Response.json({ error: negocioError.message }, { status: 502 });
+  if (negocioError) return falhaConversa(negocioError, "negocio");
   if (!negocio?.lead_id) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
   const [{ data: contatos, error: contatosError }, { data: vinculados, error: vinculosError }] = await Promise.all([
     db.from("wa_contatos").select("id").eq("lead_id", negocio.lead_id),
     db.from("f2_historico_vinculo").select("contato_id").eq("funil_lead_id", funilLeadId),
   ]);
-  if (contatosError) return Response.json({ error: contatosError.message }, { status: 502 });
-  if (vinculosError) return Response.json({ error: vinculosError.message }, { status: 502 });
+  if (contatosError) return falhaConversa(contatosError, "contatos");
+  if (vinculosError) return falhaConversa(vinculosError, "vinculos");
   const contatoIds = [...new Set([
     ...(contatos ?? []).map((item: { id: string }) => item.id),
     ...(vinculados ?? []).map((item: { contato_id: string }) => item.contato_id),
@@ -64,7 +75,7 @@ export async function GET(request: Request) {
   if (contatoIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
   const { data: conversas, error: conversasError } = await db.from("wa_conversas").select("id,instancia_id").in("contato_id", contatoIds);
-  if (conversasError) return Response.json({ error: conversasError.message }, { status: 502 });
+  if (conversasError) return falhaConversa(conversasError, "conversas");
   const conversaIds = (conversas ?? []).map((item: { id: string }) => item.id);
   if (conversaIds.length === 0) return Response.json({ ok: true, mensagens: [], instancias: [], total: 0, corte });
 
@@ -76,7 +87,7 @@ export async function GET(request: Request) {
     .limit(500);
   if (copia.historico_completo !== true) mensagensQuery = mensagensQuery.gte("criado_em", corte);
   const { data: mensagens, error: mensagensError, count } = await mensagensQuery;
-  if (mensagensError) return Response.json({ error: mensagensError.message }, { status: 502 });
+  if (mensagensError) return falhaConversa(mensagensError, "mensagens");
 
   const idsInstancia = [...new Set([
     ...(conversas ?? []).map((item: { instancia_id: string | null }) => item.instancia_id),
@@ -85,7 +96,7 @@ export async function GET(request: Request) {
   const { data: instancias, error: instanciasError } = idsInstancia.length
     ? await db.from("wa_instancias").select("id,rotulo,telefone,status").in("id", idsInstancia)
     : { data: [], error: null };
-  if (instanciasError) return Response.json({ error: instanciasError.message }, { status: 502 });
+  if (instanciasError) return falhaConversa(instanciasError, "instancias");
 
   const ultimaComInstancia = [...(mensagens ?? [])].reverse().find((item: { instancia_id: string | null }) => Boolean(item.instancia_id));
   const instanciaAtualId = ultimaComInstancia?.instancia_id

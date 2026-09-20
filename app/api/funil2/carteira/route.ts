@@ -37,6 +37,18 @@ function telefoneMascarado(valor: unknown) {
   return digitos.length >= 4 ? `••••${digitos.slice(-4)}` : null;
 }
 
+function falhaCarteira(error: { code?: string; message?: string }, contexto: string) {
+  const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message ?? "");
+  console.error("[funil2-carteira] falha_banco", {
+    contexto,
+    codigo: error.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao ? "Acesso negado à carteira." : "Não foi possível pesquisar a carteira.",
+    erro: "falha_banco",
+  }, { status: semPermissao ? 403 : 502 });
+}
+
 export async function GET(request: Request) {
   const header = request.headers.get("authorization");
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
@@ -71,8 +83,7 @@ export async function GET(request: Request) {
       .order("nome", { ascending: true })
       .range(inicio, inicio + TAMANHO_PAGINA_FUNIL - 1);
     if (error) {
-      const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message);
-      return Response.json({ error: semPermissao ? "Acesso negado à carteira." : "Não foi possível pesquisar a carteira." }, { status: semPermissao ? 403 : 502 });
+      return falhaCarteira(error, "buscar_funil");
     }
     const leads = (data ?? []).map((lead) => ({
       id: String(lead.id), nome: String(lead.nome), telefoneMascarado: telefoneMascarado(lead.telefone),
@@ -86,6 +97,6 @@ export async function GET(request: Request) {
      RPC nova seria um diff de milhares de linhas. */
   const rpc = db as unknown as SupabaseClient;
   const { data, error } = await rpc.rpc("f2_carteira_antiga", { p_busca: busca, p_limite: 40 });
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) return falhaCarteira(error, "carteira_antiga");
   return Response.json({ leads: data ?? [], curta: false });
 }
