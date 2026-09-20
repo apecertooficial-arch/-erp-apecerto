@@ -537,7 +537,10 @@ export async function PATCH(request: Request) {
     let storageWarning: string | null = null;
     if (paths.length) {
       const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove(paths);
-      if (storageError) storageWarning = "O imóvel foi excluído, mas alguns arquivos aguardam limpeza automática.";
+      if (storageError) {
+        console.error("[product-api]", { operation: "delete_unit_storage", code: "STORAGE_CLEANUP_FAILED", unitId: unidadeId, reconciliationRequired: true });
+        storageWarning = "O imóvel foi excluído, mas alguns arquivos exigem reconciliação do Storage.";
+      }
     }
     return Response.json({
       success: true,
@@ -732,13 +735,14 @@ export async function PATCH(request: Request) {
     if (deleteError) return productTechnicalFailure("delete_media_metadata", deleteError, "Não foi possível excluir a mídia.");
     if (!deletedMedia) return Response.json({ error: "A exclusão da mídia não foi confirmada.", code: "MEDIA_DELETE_NOT_CONFIRMED" }, { status: 409 });
     const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove([media.storage_path]);
-    let storageWarning = storageError ? "A mídia foi removida da ficha, mas o arquivo aguarda limpeza automática." : null;
+    let storageWarning = storageError ? "A mídia foi removida da ficha, mas o arquivo exige reconciliação do Storage." : null;
+    if (storageError) console.error("[product-api]", { operation: "delete_media_storage", code: "STORAGE_CLEANUP_FAILED", mediaId, reconciliationRequired: true });
     if (media.is_capa && media.tipo === "foto") {
       let nextQuery = auth.supabase.from("midias").select("id").eq("empreendimento_id", id).eq("tipo", "foto");
       nextQuery = media.unidade_id ? nextQuery.eq("unidade_id", media.unidade_id) : nextQuery.is("unidade_id", null);
       const { data: nextPhoto, error: nextPhotoError } = await nextQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (nextPhotoError) {
-        storageWarning = "A mídia foi excluída, mas a próxima capa aguarda reconciliação automática.";
+        storageWarning = "A mídia foi excluída, mas a próxima capa exige reconciliação operacional.";
       } else if (nextPhoto) {
         const { data: coverData, error: coverError } = await auth.supabase.rpc("produto_midia_definir_capa", {
           p_empreendimento_id: id,
@@ -747,7 +751,7 @@ export async function PATCH(request: Request) {
         });
         const coverResult = coverData && typeof coverData === "object" && !Array.isArray(coverData) ? coverData as Record<string, unknown> : {};
         if (coverError || coverResult.ok !== true || coverResult.media_id !== nextPhoto.id) {
-          storageWarning = "A mídia foi excluída, mas a próxima capa aguarda reconciliação automática.";
+          storageWarning = "A mídia foi excluída, mas a próxima capa exige reconciliação operacional.";
         }
       }
     }
@@ -785,7 +789,10 @@ export async function PATCH(request: Request) {
     let storageWarning: string | null = null;
     if (paths.length) {
       const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove(paths);
-      if (storageError) storageWarning = "O produto foi excluído, mas alguns arquivos de mídia aguardam limpeza automática.";
+      if (storageError) {
+        console.error("[product-api]", { operation: "delete_product_storage", code: "STORAGE_CLEANUP_FAILED", productId: id, reconciliationRequired: true });
+        storageWarning = "O produto foi excluído, mas alguns arquivos exigem reconciliação do Storage.";
+      }
     }
     return Response.json({
       success: true,
