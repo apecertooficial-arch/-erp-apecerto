@@ -64,9 +64,11 @@ test("app confirma visualmente que o aparelho esta inscrito para lead novo", () 
   assert.match(AVISO_APP, /Notification\.requestPermission\(\)/);
 });
 
-test("urgente vibra e NUNCA é silencioso", () => {
+test("urgente vibra, faz som e permanece visível quando a plataforma permite", () => {
   assert.match(SW, /vibrate: urgente \? \[180, 80, 180\] : undefined/);
   assert.match(SW, /silent: urgente \? false : undefined/, "silent: false é o que garante o som padrão do aparelho");
+  assert.match(SW, /requireInteraction: urgente/);
+  assert.doesNotMatch(SW, /requireInteraction: false/);
 });
 
 test("a lista do sw.js casa com a da migração que enfileira", () => {

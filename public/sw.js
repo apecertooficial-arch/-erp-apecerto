@@ -227,7 +227,10 @@ self.addEventListener("push", (evento) => {
       badge: "/icons/icone-192-v6.png",
       tag: urgente ? `${aviso.tag}-${Date.now()}` : aviso.tag,
       renotify: urgente,
-      requireInteraction: false,
+      /* No desktop/Android compatível, urgente fica visível até a pessoa agir.
+         Plataformas que não suportam esta opção simplesmente a ignoram; som,
+         vibração, renotify e deep link continuam funcionando. */
+      requireInteraction: urgente,
       /* Barulho e parte do aviso urgente: vibracao dupla + o som padrao do
          aparelho (silent: false garante o som; o navegador nao deixa escolher
          QUAL som, e esta certo -- o toque do sistema e o que o corretor ja
