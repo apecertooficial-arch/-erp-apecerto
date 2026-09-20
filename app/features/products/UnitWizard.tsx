@@ -83,6 +83,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
           file,
           kind,
           category: kind === "video" ? "Tour" : "Sala",
+          altText: "",
           preview: URL.createObjectURL(file),
           cover: kind === "foto" && !hasCover && index === firstPhotoIndex,
         } satisfies PendingMediaItem;
@@ -114,6 +115,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
     if (!acessoTipo || !acessoInstrucoes.trim()) return "Informe o tipo e as instruções de acesso.";
     if (acessoTipo === "chave_digital" && !acessoCodigo.trim()) return "Informe o código da chave digital.";
     if (photos.filter((item) => item.kind === "foto").length < 1) return "Adicione ao menos uma foto da unidade para a aprovação.";
+    if (photos.some((item) => item.kind === "foto" && item.altText.trim().length > 0 && item.altText.trim().length < 3)) return "A descrição acessível de cada foto deve ter pelo menos 3 caracteres ou ficar vazia.";
     return "";
   }
 
@@ -188,8 +190,8 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
           });
           const { data: savedMedia, error: mediaError } = await supabase.from("midias").upsert({
             empreendimento_id: empreendimentoId, unidade_id: unitId, tipo: tipoDaMidia(file),
-            storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), is_capa: Boolean(item.cover),
-          } as never, { onConflict: "storage_path" }).select("id").maybeSingle();
+            storage_path: storagePath, nome: file.name, categoria: item.category.toLowerCase(), alt_text: item.altText.trim() || null, ordem: index, is_capa: Boolean(item.cover),
+          }, { onConflict: "storage_path" }).select("id").maybeSingle();
           if (mediaError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
           completed.add(item.id);
           enviadaComSucesso += 1;
@@ -272,7 +274,7 @@ export function UnitWizard({ accessToken, onClose, onSaved, onCreateCondominium,
               <label className="upload-button">＋ Adicionar fotos ou vídeos<input type="file" accept="image/*,video/*" multiple onChange={(event) => { addPhotos(event.target.files); event.currentTarget.value = ""; }} /></label>
               <strong className={photos.length ? "ok" : ""}>{photos.length} mídia{photos.length === 1 ? "" : "s"} selecionada{photos.length === 1 ? "" : "s"}</strong>
             </div>
-            <PendingMediaClassifier items={photos} categories={unitMediaCategories} onCategoryChange={(id, category) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, category } : item))} onRemove={removePhoto} onCoverChange={(id) => setPhotos((current) => current.map((item) => ({ ...item, cover: item.id === id })))} />
+            <PendingMediaClassifier items={photos} categories={unitMediaCategories} onCategoryChange={(id, category) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, category } : item))} onAltTextChange={(id, altText) => setPhotos((current) => current.map((item) => item.id === id ? { ...item, altText } : item))} onRemove={removePhoto} onCoverChange={(id) => setPhotos((current) => current.map((item) => ({ ...item, cover: item.id === id })))} />
           </div>
 
           {saving && photos.length > 0 && <div className="upload-progress"><span style={{ width: `${uploadProgress}%` }} /><strong>Enviando mídias · {uploadProgress}%</strong></div>}

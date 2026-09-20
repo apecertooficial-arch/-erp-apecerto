@@ -24,6 +24,7 @@ const PUBLICATION_RULE_CODES = new Set([
   "UNIT_PROMO_ABOVE_LIST",
   "UNIT_PRICE_REQUIRED",
   "UNIT_OWN_PHOTO_REQUIRED",
+  "MEDIA_ORDER_INVALID",
   "INVALID_PRODUCT",
   "INVALID_UNIT",
   "INVALID_PRICE",
@@ -56,6 +57,9 @@ const PUBLICATION_MESSAGES: Record<string, string> = {
   UNIT_OWN_PHOTO_REQUIRED: "Adicione ao menos uma foto própria da unidade antes de publicar.",
   MEDIA_COVER_FORBIDDEN: "Você não tem permissão para alterar a capa desta mídia.",
   MEDIA_COVER_NOT_FOUND: "A mídia escolhida para capa não foi encontrada.",
+  MEDIA_ORDER_FORBIDDEN: "Você não tem permissão para ordenar esta galeria.",
+  MEDIA_ORDER_INVALID: "A ordem enviada não corresponde à galeria atual.",
+  MEDIA_ORDER_NOT_FOUND: "Uma das mídias da galeria não foi encontrada.",
 };
 
 function publicationErrorResponse(error: { code?: string; message?: string }) {
@@ -100,7 +104,7 @@ const productFields = [
   "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
   "numero", "complemento", "bairro", "cidade", "uf", "cep", "acesso_tipo", "acesso_codigo",
-  "acesso_instrucoes", "tour_url",
+  "acesso_instrucoes", "tour_url", "seo_titulo", "seo_descricao",
 ] as const;
 
 function publicMediaUrl(path: string) {
@@ -130,7 +134,7 @@ export async function GET(request: Request) {
       *,
       condominios (*),
       unidades (*),
-      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id)
+      midias (id, tipo, storage_path, categoria, nome, is_capa, created_at, unidade_id, ordem, alt_text)
     `)
     .eq("id", id)
     .single();
@@ -139,7 +143,11 @@ export async function GET(request: Request) {
     if (error.code === "PGRST116") return Response.json({ error: "Produto não encontrado." }, { status: 404 });
     return productTechnicalFailure("read_product", error);
   }
-  const media = (data.midias ?? []).map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }));
+  const media = (data.midias ?? [])
+    .map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }))
+    .sort((left, right) => Number(right.is_capa) - Number(left.is_capa)
+      || left.ordem - right.ordem
+      || left.created_at.localeCompare(right.created_at));
   const buildingMedia = media.filter((item) => !item.unidade_id);
   const units = data.unidades ?? [];
   const approvedUnits = units.filter((item) => (item.aprovacao ?? "aprovado") === "aprovado");
@@ -271,7 +279,7 @@ export async function PATCH(request: Request) {
     { data: meuPerfilPatch, error: profilePatchError },
     { data: brokerContext, error: brokerContextError },
   ] = await Promise.all([
-    auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle(),
+    auth.supabase.from("empreendimentos").select("nome, descricao, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle(),
     auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
     auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle(),
   ]);
@@ -326,12 +334,14 @@ export async function PATCH(request: Request) {
       return { media, canEdit: gerenciaProdutos || souCaptador } as const;
     }
     const [{ data: unit, error: unitError }, { data: broker, error: brokerError }] = await Promise.all([
-      authenticatedSupabase.from("unidades").select("captador_corretor_id,de_terceiros").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
+      authenticatedSupabase.from("unidades").select("captador_corretor_id").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
       authenticatedSupabase.from("corretores").select("id").eq("usuario_id", authenticatedUserId).maybeSingle(),
     ]);
     const contextError = unitError ?? brokerError;
     if (contextError) return { error: productTechnicalFailure("read_media_owner_context", contextError) } as const;
-    const ownsUnit = Boolean(unit?.de_terceiros && broker?.id != null && unit.captador_corretor_id === broker.id);
+    // O vínculo do captador é a autoridade canônica. O marcador legado
+    // de_terceiros não pode retirar acesso de quem realmente captou a unidade.
+    const ownsUnit = Boolean(broker?.id != null && unit?.captador_corretor_id === broker.id);
     return { media, canEdit: gerenciaProdutos || ownsUnit } as const;
   }
 
@@ -341,7 +351,7 @@ export async function PATCH(request: Request) {
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: unit, error: unitReadError } = await auth.supabase
       .from("unidades")
-      .select("id,numero,codigo,publicado,disponivel,aprovacao")
+      .select("id,numero,codigo,publicado,disponivel,aprovacao,descricao_comercial")
       .eq("id", unidadeId)
       .eq("empreendimento_id", id)
       .maybeSingle();
@@ -351,6 +361,9 @@ export async function PATCH(request: Request) {
     if (publish && unit.aprovacao !== "aprovado") return Response.json({ error: "A unidade precisa estar aprovada antes de voltar ao site." }, { status: 422 });
     if (publish && !unit.disponivel) return Response.json({ error: "A unidade está indisponível. Marque-a como disponível antes de publicar." }, { status: 422 });
     if (publish && productContext?.aprovacao !== "aprovado") return Response.json({ error: "O cadastro do empreendimento de referência precisa estar aprovado." }, { status: 422 });
+    if (publish && (unit.descricao_comercial || productContext.descricao || "").trim().length < 80) {
+      return Response.json({ error: "Descrição comercial com pelo menos 80 caracteres.", code: "UNIT_DESCRIPTION_REQUIRED" }, { status: 422 });
+    }
     const result = await definePublication(publish, unidadeId);
     if ("response" in result) return result.response;
     return Response.json({
@@ -451,11 +464,13 @@ export async function PATCH(request: Request) {
   if (body.action === "updateUnit") {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
-    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao,publicado").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
+    const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao,publicado,descricao_comercial").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
     if (currentUnitError) return productTechnicalFailure("read_unit_update", currentUnitError);
     if (!currentUnit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
-    const ownsUnit = brokerContext?.id != null && currentUnit.captador_corretor_id === brokerContext.id;
-    if (!gerenciaProdutos && (!currentUnit.de_terceiros || !ownsUnit)) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
+    const broker = brokerContext;
+    const ownsUnit = broker?.id != null && currentUnit.captador_corretor_id === broker.id;
+    const canEditUnitOwner = gerenciaProdutos || ownsUnit;
+    if (!gerenciaProdutos && !ownsUnit) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
     const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
     const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
     const asNumber = (value: unknown) => {
@@ -473,6 +488,20 @@ export async function PATCH(request: Request) {
     const acessoTipo = asString(input.acesso_tipo);
     const acessoCodigo = asString(input.acesso_codigo);
     const acessoInstrucoes = asString(input.acesso_instrucoes);
+    const optionalText = (field: string, maxLength: number) => {
+      if (!Object.hasOwn(input, field)) return { value: undefined as string | null | undefined };
+      const raw = input[field];
+      if (raw !== null && typeof raw !== "string") return { error: `O campo ${field} é inválido.` };
+      const value = typeof raw === "string" ? raw.trim() || null : null;
+      if (value && value.length > maxLength) return { error: `O campo ${field} deve ter no máximo ${maxLength} caracteres.` };
+      return { value };
+    };
+    const tituloComercial = optionalText("titulo_comercial", 120);
+    const descricaoComercial = optionalText("descricao_comercial", 5000);
+    const seoTitulo = optionalText("seo_titulo", 70);
+    const seoDescricao = optionalText("seo_descricao", 180);
+    const editorialError = tituloComercial.error ?? descricaoComercial.error ?? seoTitulo.error ?? seoDescricao.error;
+    if (editorialError) return Response.json({ error: editorialError }, { status: 422 });
     if (!numero || !tipologia || area == null || area <= 0) return Response.json({ error: "Informe número, tipologia e área útil da unidade." }, { status: 422 });
     if (valorTabela == null) return Response.json({ error: "Informe o valor de tabela da unidade." }, { status: 422 });
     const tablePriceCheck = validateProductPrice(valorTabela, "Valor de tabela", currentPurpose);
@@ -483,9 +512,15 @@ export async function PATCH(request: Request) {
     }
     const unitCosts = [asNumber(input.condominio_valor), asNumber(input.iptu), asNumber(input.outros_custos)];
     if (unitCosts.some((value) => value != null && value < 0)) return Response.json({ error: "Condomínio, IPTU e outros custos não podem ser negativos." }, { status: 422 });
-    if (ownsUnit && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
+    if (currentUnit.de_terceiros && canEditUnitOwner && (!proprietarioNome || !proprietarioContato)) return Response.json({ error: "Informe nome e contato do proprietário." }, { status: 422 });
     if (!acessoTipo || !acessoInstrucoes) return Response.json({ error: "Informe o tipo e as instruções de acesso." }, { status: 422 });
     if (acessoTipo === "chave_digital" && !acessoCodigo) return Response.json({ error: "Informe o código da chave digital." }, { status: 422 });
+    const effectiveDescription = descricaoComercial.value === undefined
+      ? (currentUnit.descricao_comercial || productContext.descricao || "")
+      : (descricaoComercial.value || productContext.descricao || "");
+    if (gerenciaProdutos && currentUnit.publicado && effectiveDescription.trim().length < 80) {
+      return Response.json({ error: "Descrição comercial com pelo menos 80 caracteres.", code: "UNIT_DESCRIPTION_REQUIRED" }, { status: 422 });
+    }
     const patch = {
       numero, tipologia, area_m2: area, vagas: asNumber(input.vagas),
       valor_tabela: tablePriceCheck.value, valor_promo: valorPromo,
@@ -494,8 +529,12 @@ export async function PATCH(request: Request) {
       condominio_valor: asNumber(input.condominio_valor),
       iptu: asNumber(input.iptu),
       outros_custos: asNumber(input.outros_custos),
-      ...(ownsUnit ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
+      ...(canEditUnitOwner ? { proprietario_nome: proprietarioNome, proprietario_contato: proprietarioContato } : {}),
       acesso_tipo: acessoTipo, acesso_codigo: acessoCodigo, acesso_instrucoes: acessoInstrucoes,
+      ...(tituloComercial.value !== undefined ? { titulo_comercial: tituloComercial.value } : {}),
+      ...(descricaoComercial.value !== undefined ? { descricao_comercial: descricaoComercial.value } : {}),
+      ...(seoTitulo.value !== undefined ? { seo_titulo: seoTitulo.value } : {}),
+      ...(seoDescricao.value !== undefined ? { seo_descricao: seoDescricao.value } : {}),
       ...(gerenciaProdutos ? {} : { aprovacao: "pendente", publicado: false, reprovacao_motivo: null }),
     };
     const { data: updatedUnit, error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id).select("id").maybeSingle();
@@ -524,7 +563,9 @@ export async function PATCH(request: Request) {
   if (body.action === "deleteUnit") {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
-    const { data, error } = await auth.supabase.rpc("produto_unidade_excluir", {
+    // Esta RPC autoriza pelo captador e corrige o marcador legado na mesma
+    // transação antes de delegar à exclusão canônica já existente.
+    const { data, error } = await auth.supabase.rpc("produto_unidade_excluir_canonica", {
       p_empreendimento_id: id,
       p_unidade_id: unidadeId,
     });
@@ -565,7 +606,7 @@ export async function PATCH(request: Request) {
     const approve = body.approve === true;
     if (approve) {
       const [{ data: unitToApprove, error: unitReadError }, mediaCount, ownerStatus] = await Promise.all([
-        auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
+        auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes,titulo_comercial,descricao_comercial,seo_titulo,seo_descricao").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
         auth.supabase.from("midias").select("id", { count: "exact", head: true }).eq("unidade_id", unidadeId).eq("tipo", "foto"),
         auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: [unidadeId] }),
       ]);
@@ -586,6 +627,7 @@ export async function PATCH(request: Request) {
       if (!ownerComplete) blocking.push("Proprietário e contato");
       if (!unitToApprove.acesso_tipo || !unitToApprove.acesso_instrucoes || (unitToApprove.acesso_tipo === "chave_digital" && !unitToApprove.acesso_codigo)) blocking.push("Instruções de acesso");
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
+      if ((unitToApprove.descricao_comercial || productContext.descricao || "").trim().length < 80) blocking.push("Descrição comercial com pelo menos 80 caracteres");
       if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
       const result = await definePublication(true, unidadeId);
       if ("response" in result) return result.response;
@@ -716,14 +758,42 @@ export async function PATCH(request: Request) {
     return Response.json({ success: true, mediaId });
   }
 
+  if (body.action === "reorderMedia") {
+    const rawMediaIds = Array.isArray(body.mediaIds) ? body.mediaIds : [];
+    const mediaIds = rawMediaIds
+      .filter((mediaId): mediaId is string => typeof mediaId === "string" && UUID.test(mediaId));
+    if (!mediaIds.length || mediaIds.length > 500 || mediaIds.length !== rawMediaIds.length || new Set(mediaIds).size !== mediaIds.length) {
+      return Response.json({ error: "A ordem da galeria é inválida." }, { status: 400 });
+    }
+    const context = await editableMediaContext(mediaIds[0]);
+    if ("error" in context) return context.error;
+    if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode ordenar as imagens da unidade que captou." : "Você só pode ordenar as imagens do produto que captou." }, { status: 403 });
+    const { data, error } = await auth.supabase.rpc("produto_midias_reordenar", {
+      p_empreendimento_id: id,
+      p_unidade_id: context.media.unidade_id,
+      p_ids: mediaIds,
+    });
+    if (error) return publicationErrorResponse(error);
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    if (result.ok !== true || result.quantidade !== mediaIds.length) {
+      return Response.json({ error: "O banco não confirmou a nova ordem da galeria.", code: "MEDIA_ORDER_NOT_CONFIRMED" }, { status: 502 });
+    }
+    return Response.json({ success: true, quantidade: mediaIds.length });
+  }
+
   if (body.action === "updateMedia") {
     const mediaId = typeof body.mediaId === "string" ? body.mediaId : "";
     const categoria = typeof body.category === "string" ? body.category.trim() : "";
+    const hasAltText = Object.prototype.hasOwnProperty.call(body, "altText");
+    const altText = typeof body.altText === "string" ? body.altText.trim() : null;
     if (!UUID.test(mediaId) || !categoria) return Response.json({ error: "Mídia ou classificação inválida." }, { status: 400 });
+    if (altText != null && altText.length > 0 && altText.length < 3) return Response.json({ error: "A descrição acessível deve ter pelo menos 3 caracteres ou ficar vazia." }, { status: 422 });
+    if (altText != null && altText.length > 160) return Response.json({ error: "A descrição acessível deve ter no máximo 160 caracteres." }, { status: 422 });
     const context = await editableMediaContext(mediaId);
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
-    const { data: updatedMedia, error: mediaUpdateError } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id).select("id").maybeSingle();
+    const mediaPatch = { categoria, ...(hasAltText ? { alt_text: altText || null } : {}) };
+    const { data: updatedMedia, error: mediaUpdateError } = await auth.supabase.from("midias").update(mediaPatch).eq("id", mediaId).eq("empreendimento_id", id).select("id").maybeSingle();
     if (mediaUpdateError) return productTechnicalFailure("update_media", mediaUpdateError, "Não foi possível atualizar a classificação da mídia.");
     if (!updatedMedia) return Response.json({ error: "A classificação da mídia não foi confirmada.", code: "MEDIA_UPDATE_NOT_CONFIRMED" }, { status: 409 });
     return Response.json({ success: true });
@@ -824,6 +894,16 @@ export async function PATCH(request: Request) {
       : rawValue === "" ? null : rawValue;
   }
   if (!update.nome || typeof update.nome !== "string") return Response.json({ error: "Informe o nome do produto." }, { status: 400 });
+  if (update.seo_titulo != null && (typeof update.seo_titulo !== "string" || update.seo_titulo.trim().length > 70)) {
+    return Response.json({ error: "O título para busca deve ter no máximo 70 caracteres." }, { status: 422 });
+  }
+  if (update.seo_descricao != null && (typeof update.seo_descricao !== "string" || update.seo_descricao.trim().length > 180)) {
+    return Response.json({ error: "A descrição para busca deve ter no máximo 180 caracteres." }, { status: 422 });
+  }
+  const nextProductDescription = typeof update.descricao === "string" ? update.descricao.trim() : (productContext.descricao || "").trim();
+  if (gerenciaProdutos && productContext.publicado && nextProductDescription.length < 80) {
+    return Response.json({ error: "Descrição comercial com pelo menos 80 caracteres.", code: "PRODUCT_DESCRIPTION_REQUIRED" }, { status: 422 });
+  }
   if (update.preco !== null && update.preco !== undefined) {
     const priceCheck = validateProductPrice(update.preco, "Preço do imóvel", update.finalidade ?? currentPurpose);
     if (priceCheck.error) return Response.json({ error: priceCheck.error }, { status: 422 });

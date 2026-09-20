@@ -183,9 +183,7 @@ export async function GET(request: Request) {
   const { data: activeProfile, error: profileError } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
   if (profileError) return falhaCaptacao(profileError, "carregar_perfil_rascunho");
   if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
-  // A função já existe no banco publicado, mas o snapshot local dos tipos ainda
-  // não a contém. O cast fica restrito a este contrato até a próxima geração.
-  const { data, error } = await supabase.rpc("produto_cadastro_rascunho_ler" as never);
+  const { data, error } = await supabase.rpc("produto_cadastro_rascunho_ler");
   if (error) return falhaCaptacao(error, "carregar_rascunho");
   return Response.json({ draft: data ?? {} });
 }
@@ -223,11 +221,11 @@ export async function POST(request: Request) {
     if (!Number.isFinite(payload.step) || (payload.expectedVersion != null && (!Number.isSafeInteger(payload.expectedVersion) || payload.expectedVersion < 1))) {
       return Response.json({ error: "Versão ou etapa do rascunho inválida." }, { status: 422 });
     }
-    const { data, error } = await supabase.rpc("produto_cadastro_rascunho_salvar" as never, {
+    const { data, error } = await supabase.rpc("produto_cadastro_rascunho_salvar", {
       p_payload: payload.payload,
       p_etapa: Math.max(0, Math.min(6, Math.trunc(payload.step))),
       p_versao_esperada: payload.expectedVersion ?? null,
-    } as never);
+    });
     if (error) {
       const conflict = error.code === "40001" || error.message?.includes("DRAFT_CONFLICT");
       if (conflict) return Response.json({ error: "Este rascunho foi alterado em outra aba. Feche e reabra o cadastro para não perder trabalho.", code: "DRAFT_CONFLICT" }, { status: 409 });
@@ -237,7 +235,7 @@ export async function POST(request: Request) {
   }
 
   if (payload.action === "deleteDraft") {
-    const { error } = await supabase.rpc("produto_cadastro_rascunho_excluir" as never);
+    const { error } = await supabase.rpc("produto_cadastro_rascunho_excluir");
     if (error) return falhaCaptacao(error, "excluir_rascunho");
     return Response.json({ ok: true });
   }
