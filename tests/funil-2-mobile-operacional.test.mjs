@@ -9,7 +9,8 @@ const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
 const CSS_APROVADO = ler("../app/styles/app-mobile-aprovado.css");
 const NAVEGACAO = ler("../app/features/funil-2/MobileCrmNavigation.tsx");
-const CSS_FUNIL = ler("../app/styles/funil.css");
+const CSS_ESTEIRA = ler("../app/styles/redesign-apecerto-esteira.css");
+const LAYOUT = ler("../app/layout.tsx");
 const ESTEIRA = ler("../app/features/sales/SalesProcessWorkspace.tsx");
 const HARNESS_ESTEIRA = ler("./sales-mobile-visual-harness/main.tsx");
 
@@ -73,7 +74,8 @@ test("CRM móvel liga Carteira, Esteira, Visitas e Avisos às rotas canônicas",
     assert.ok(NAVEGACAO.includes(`label: "${rotulo}", href: "${rota}"`), `falta atalho ${rotulo}`);
   }
   assert.match(NAVEGACAO, /aria-current=\{areaAtual === area\.id \? "page" : undefined\}/);
-  assert.match(CSS_FUNIL, /ape-mobile-mais-areas button\.ativo/);
+  assert.match(CSS_APROVADO, /ape-mobile-mais-areas button\.ativo/);
+  assert.match(LAYOUT, /import "\.\/styles\/app-mobile-aprovado\.css"/);
 });
 
 test("vista vendas monta a Esteira canônica no celular", () => {
@@ -98,4 +100,12 @@ test("harness móvel usa a Esteira produtiva, dados sanitizados e bloqueia muta�
   assert.match(HARNESS_ESTEIRA, /method !== "GET" \|\| url\.origin !== window\.location\.origin/);
   assert.match(HARNESS_ESTEIRA, /Cliente sanitizado/);
   assert.doesNotMatch(HARNESS_ESTEIRA, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
+});
+
+test("folhas carregadas garantem alvos de toque da Esteira no celular", () => {
+  assert.match(LAYOUT, /import "\.\/styles\/redesign-apecerto-esteira\.css"/);
+  assert.match(CSS_ESTEIRA, /ape-mobile-esteira \.sales-head-actions button,[\s\S]*min-height:44px/);
+  assert.match(CSS_ESTEIRA, /ape-mobile-esteira \.sales-approval-actions button/);
+  assert.match(CSS_ESTEIRA, /ape-mobile-esteira \.sales-filter button/);
+  assert.match(CSS_ESTEIRA, /ape-mobile-esteira \.crm-stage-cog \{ width:44px; height:44px; \}/);
 });
