@@ -166,3 +166,11 @@
 .approaches-workspace .app-wa-empty { border-radius: 14px; color: #6E6760; font-size: 12px; }
 .approaches-workspace .app-wa-inputbar { background: #fff; }
 .approaches-workspace .app-wa-inputbar span { background: #FAF8F6; border-radius: 999px; color: #9A938B; }
+
+@media (max-width: 800px) {
+  .approaches-workspace .approach-edit-btn,
+  .approaches-workspace .approach-ico-btn {
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+}

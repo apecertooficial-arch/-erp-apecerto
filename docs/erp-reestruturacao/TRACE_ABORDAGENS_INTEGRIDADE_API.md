@@ -35,6 +35,9 @@ mostrava uma biblioteca vazia com botões de criação e edição.
   erro, não aceita resposta `2xx` sem confirmação e preserva sucesso se somente
   a recarga posterior falhar;
 - controles interativos críticos têm alvo mínimo de 44 px no celular.
+  A primeira validação publicada encontrou a folha de redesign sobrescrevendo
+  os botões dos cards para 34 px; a regra foi movida para a camada vencedora e
+  exige nova confirmação produtiva.
 
 ## Evidência
 

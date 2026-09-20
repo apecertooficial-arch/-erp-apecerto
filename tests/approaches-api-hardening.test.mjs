@@ -5,6 +5,7 @@ import test from "node:test";
 const route = readFileSync(new URL("../app/api/approaches/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/approaches/ApproachesWorkspace.tsx", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+const redesignCss = readFileSync(new URL("../app/styles/redesign-apecerto-abordagens.css", import.meta.url), "utf8");
 const authz = readFileSync(new URL("../app/lib/supabase/authz.ts", import.meta.url), "utf8");
 
 test("Abordagens sanitiza falhas técnicas sem payload ou mensagem SQL", () => {
@@ -65,4 +66,5 @@ test("entrada incompleta e resposta 2xx inválida não viram mutação ou sucess
   assert.match(ui, /!payload \|\| payload\.success !== true/);
   assert.match(ui, /response\.json\(\)\.catch\(\(\) => null\)/);
   assert.match(css, /@media\(max-width:800px\)[\s\S]*?\.approaches-workspace button[^}]*min-height:44px/);
+  assert.match(redesignCss, /@media \(max-width: 800px\)[\s\S]*?\.approaches-workspace \.approach-edit-btn,[\s\S]*?min-height: 44px !important/);
 });
