@@ -3,7 +3,9 @@ import {
   classifyQueueFailure,
   firstScalarString,
   normalizePayloadEntrada,
+  parseAutomationId,
   parseQueueSuccess,
+  readBoundedJson,
   stableJson,
 } from "../_shared/entrada-policy.ts";
 
@@ -37,22 +39,20 @@ Deno.serve(async (request: Request) => {
   try {
     const url = new URL(request.url);
     const rawAutomationId = url.searchParams.get("auto") ?? "";
-    if (!/^\d+$/.test(rawAutomationId)) {
+    const automationId = parseAutomationId(rawAutomationId);
+    if (automationId === null) {
       return response({
         ok: false,
         error: "AUTOMATION_ID_REQUIRED",
         message: "A entrada precisa apontar explicitamente para uma automacao",
       }, 400);
     }
-    const automationId = Number.parseInt(rawAutomationId, 10);
 
-    let rawBody: unknown;
-    try {
-      rawBody = await request.json();
-    } catch {
-      return response({ ok: false, error: "INVALID_JSON" }, 400);
+    const parsedBody = await readBoundedJson(request);
+    if (!parsedBody.ok) {
+      return response({ ok: false, error: parsedBody.error }, parsedBody.status);
     }
-    const normalized = normalizePayloadEntrada(rawBody);
+    const normalized = normalizePayloadEntrada(parsedBody.value);
     if (!normalized.ok) return response({ ok: false, error: normalized.error }, normalized.status);
     const { body, lead } = normalized;
 
