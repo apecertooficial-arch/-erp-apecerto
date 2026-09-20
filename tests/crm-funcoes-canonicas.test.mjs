@@ -92,6 +92,39 @@ test("Iniciar negociação usa apenas a solicitação pendente da Esteira", () =
   assert.doesNotMatch(salesApi.match(/if \(action === "solicitar"\)[\s\S]*?if \(action === "aprovarSolicitacao"\)/)?.[0] ?? "", /aprovar_solicitacao|from\("vendas"\)\.insert/);
 });
 
+test("Esteira preserva recusas de negócio sem expor falhas internas", () => {
+  assert.match(salesApi, /function falhaEsteira/);
+  assert.match(salesApi, /erro: semPermissao \? "sem_permissao" : "falha_banco"/);
+  assert.doesNotMatch(salesApi, /Response\.json\(\{ error: (?:error|verifErr|pe)\.message/);
+  assert.doesNotMatch(salesApi, /A Sara não conseguiu ler os documentos: \$\{detalhe\}/);
+  assert.match(salesApi, /MENSAGENS_CLASSIFICACAO/);
+  assert.match(salesApi, /ja_solicitado/);
+  assert.match(salesApi, /impacto_financeiro/);
+});
+
+test("leitura da Esteira falha se qualquer conjunto obrigatório falhar", () => {
+  const leitura = salesApi.slice(salesApi.indexOf("export async function GET"), salesApi.indexOf("export async function PATCH"));
+  for (const consulta of ["sales", "processes", "deals", "leads", "anexos", "users", "history", "condicoes", "comissao", "partes", "anexoEventos"]) {
+    assert.match(leitura, new RegExp(`\\b${consulta}\\b[\\s\\S]*?\\.find\\(\\(item\\) => item\\.error\\)`), consulta);
+  }
+  assert.match(leitura, /falhaEsteira\(error, "listar"\)/);
+});
+
+test("movimentação e blocos nunca usam contexto parcial da venda", () => {
+  const carregarContexto = salesApi.slice(salesApi.indexOf("async function contexto"), salesApi.indexOf("function blocoDocsAberto"));
+  assert.match(carregarContexto, /find\(\(item\) => item\.error\)\?\.error \?\? null/);
+  assert.match(carregarContexto, /return \{ proc, etapas, atual, dados,[\s\S]*error \}/);
+  assert.match(salesApi, /ctx\.error[\s\S]*carregar_contexto_movimentacao/);
+  assert.match(salesApi, /ctxLote\.error[\s\S]*carregar_contexto_lote/);
+  assert.match(salesApi, /ctx\.error[\s\S]*carregar_contexto_venda/);
+});
+
+test("escritas auxiliares da venda não fingem sucesso quando falham", () => {
+  assert.match(salesApi, /reabrirError[\s\S]*reabrir_negocio_recusado/);
+  assert.match(salesApi, /limparParcelasError[\s\S]*limpar_parcelas_comissao/);
+  assert.match(salesApi, /sincronizarConjuge[\s\S]*syncError[\s\S]*sincronizar_conjuge/);
+});
+
 test("os três fluxos preservam foco, teclado e alvos móveis", () => {
   for (const source of [addClient, negotiation]) {
     assert.match(source, /Escape/);

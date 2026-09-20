@@ -18,6 +18,45 @@ async function authClient(request: Request) {
 const clean = (value: unknown, max = 200) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const slugify = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
 
+function falhaEsteira(error: { code?: string; message?: string }, operacao: string) {
+  const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message ?? "");
+  console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para executar esta operação."
+      : "Não foi possível concluir a operação da venda no momento.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : 502 });
+}
+
+const MENSAGENS_CLASSIFICACAO: Record<string, { error: string; status: number }> = {
+  nao_autorizado: { error: "Você não tem permissão para classificar estes documentos.", status: 403 },
+  processo_nao_encontrado: { error: "Venda não encontrada.", status: 404 },
+  sem_chave: { error: "A classificação de documentos está temporariamente indisponível.", status: 503 },
+  "faltando processo_ref": { error: "Venda inválida.", status: 422 },
+  "faltando lote_id ou anexo_ids": { error: "Informe os documentos que devem ser classificados.", status: 422 },
+};
+
+function respostaClassificacao(reason: unknown) {
+  const motivo = typeof reason === "string" ? reason : "";
+  return MENSAGENS_CLASSIFICACAO[motivo] ?? {
+    error: "A Sara não conseguiu classificar os documentos no momento.",
+    status: 502,
+  };
+}
+
+async function falhaClassificacaoDocumentos(error: { code?: string; context?: Response }) {
+  let reason = "";
+  try {
+    const payload = error.context ? await error.context.json() as { reason?: unknown } : null;
+    reason = typeof payload?.reason === "string" ? payload.reason : "";
+  } catch { /* resposta remota inválida também falha fechada */ }
+  const resposta = respostaClassificacao(reason);
+  const codigo = Object.hasOwn(MENSAGENS_CLASSIFICACAO, reason) ? reason : "falha_integracao";
+  console.error("esteira_classificacao_falhou", { motivo: codigo, codigo: error.code ?? "desconhecido" });
+  return Response.json({ error: resposta.error, erro: codigo }, { status: resposta.status });
+}
+
 // Papéis das partes de uma negociação (comprador/vendedor e respectivos cônjuges).
 const PAPEIS_PARTE = ["comprador", "conjuge_comprador", "vendedor", "conjuge_vendedor"] as const;
 const FORMAS_PGTO = ["a_vista", "financiamento", "consorcio", "misto"] as const;
@@ -34,7 +73,7 @@ const GRUPO_BLOCO: Record<string, BlocoEsteira> = {
  * etapas configuradas, etapa atual, condições, comissão, partes, checklist e anexos.
  */
 async function contexto(auth: Auth, processId: string) {
-  const [{ data: proc }, { data: etapasRaw }, { data: cond }, { data: com }, { data: partes }, { data: modelo }, { data: anexos }, { data: me }] = await Promise.all([
+  const [procQuery, etapasQuery, condQuery, comQuery, partesQuery, modeloQuery, anexosQuery, meQuery] = await Promise.all([
     auth.supabase.from("venda_processos").select("id,etapa,negocio_id,tipo_venda,aprovacao_status").eq("id", processId).maybeSingle(),
     auth.supabase.from("esteira_etapas").select("slug,nome,ordem,libera,restrito_a,exige_docs").eq("ativo", true).order("ordem", { ascending: true }),
     auth.supabase.from("venda_condicoes").select("valor_total,forma_pagamento,comprador_tem_conjuge,vendedor_tem_conjuge").eq("processo_ref", processId).maybeSingle(),
@@ -44,6 +83,15 @@ async function contexto(auth: Auth, processId: string) {
     auth.supabase.from("esteira_anexos").select("grupo,doc_nome,status,obrigatorio").eq("processo_ref", processId),
     auth.supabase.from("usuarios").select("role,nome").eq("id", auth.user.id).maybeSingle(),
   ]);
+  const error = [procQuery, etapasQuery, condQuery, comQuery, partesQuery, modeloQuery, anexosQuery, meQuery].find((item) => item.error)?.error ?? null;
+  const proc = procQuery.data;
+  const etapasRaw = etapasQuery.data;
+  const cond = condQuery.data;
+  const com = comQuery.data;
+  const partes = partesQuery.data;
+  const modelo = modeloQuery.data;
+  const anexos = anexosQuery.data;
+  const me = meQuery.data;
   const etapas = (etapasRaw ?? []) as unknown as EtapaRegra[];
   const atual = proc ? etapas.find((e) => e.slug === (proc as { etapa: string }).etapa) ?? null : null;
   const dados: DadosCompletude = {
@@ -55,7 +103,7 @@ async function contexto(auth: Auth, processId: string) {
     temConjugeComprador: Boolean((cond as { comprador_tem_conjuge?: boolean } | null)?.comprador_tem_conjuge),
     temConjugeVendedor: Boolean((cond as { vendedor_tem_conjuge?: boolean } | null)?.vendedor_tem_conjuge),
   };
-  return { proc, etapas, atual, dados, role: (me?.role as string | undefined) ?? null };
+  return { proc, etapas, atual, dados, role: (me?.role as string | undefined) ?? null, error };
 }
 
 /** Primeiro bloco de documentos aberto na etapa atual (para arquivos de lote ainda sem grupo). */
@@ -70,6 +118,7 @@ function blocoDocsAberto(ctx: { atual: EtapaRegra | null }): BlocoEsteira | null
  */
 async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
   const ctx = await contexto(auth, processId);
+  if (ctx.error) return { deny: falhaEsteira(ctx.error, "carregar_contexto_venda"), ctx };
   if (!ctx.proc) return { deny: Response.json({ error: "Venda não encontrada." }, { status: 404 }), ctx };
   if (!blocoAberto(ctx.atual, bloco)) {
     const alvo = etapaDoBloco(ctx.etapas, bloco);
@@ -89,11 +138,13 @@ async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
  */
 async function sincronizarConjuge(auth: Auth, processId: string, papel: string) {
   const coluna = papel === "conjuge_comprador" ? "comprador_tem_conjuge" : "vendedor_tem_conjuge";
-  const { count } = await auth.supabase.from("venda_partes").select("id", { count: "exact", head: true }).eq("processo_ref", processId).eq("papel", papel);
-  await auth.supabase.from("venda_condicoes").upsert(
+  const { count, error } = await auth.supabase.from("venda_partes").select("id", { count: "exact", head: true }).eq("processo_ref", processId).eq("papel", papel);
+  if (error) return falhaEsteira(error, "consultar_conjuge");
+  const { error: syncError } = await auth.supabase.from("venda_condicoes").upsert(
     { processo_ref: processId, [coluna]: (count ?? 0) > 0, atualizado_em: new Date().toISOString() } as never,
     { onConflict: "processo_ref" },
   );
+  return syncError ? falhaEsteira(syncError, "sincronizar_conjuge") : null;
 }
 
 /** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisição principal). */
@@ -151,8 +202,8 @@ export async function GET(request: Request) {
     auth.supabase.from("venda_partes").select("id,processo_ref,papel,ordem,nome,telefone,email,cpf,observacao,atualizado_em").order("ordem", { ascending: true }),
     auth.supabase.from("esteira_anexo_eventos").select("id,anexo_id,processo_ref,lote_id,evento,detalhe,ator,ator_nome,criado_em").order("criado_em", { ascending: false }).limit(400),
   ]);
-  const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos].find((item) => item.error)?.error;
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  const error = [sales, processes, deals, leads, products, brokers, stages, etapaDocs, anexos, users, history, verificacoes, solicitacoes, docModelo, condicoes, comissao, comissaoParcelas, observacoes, pipelines, pipelineStages, partes, anexoEventos].find((item) => item.error)?.error;
+  if (error) return falhaEsteira(error, "listar");
   return Response.json({ sales: sales.data ?? [], processes: processes.data ?? [], deals: deals.data ?? [], leads: leads.data ?? [], products: products.data ?? [], brokers: brokers.data ?? [], stages: stages.data ?? [], etapaDocs: etapaDocs.data ?? [], anexos: anexos.data ?? [], users: users.data ?? [], history: history.data ?? [], verificacoes: verificacoes.data ?? [], solicitacoes: solicitacoes.data ?? [], docModelo: docModelo.data ?? [], condicoes: condicoes.data ?? [], comissao: comissao.data ?? [], comissaoParcelas: comissaoParcelas.data ?? [], observacoes: observacoes.data ?? [], pipelines: pipelines.data ?? [], pipelineStages: pipelineStages.data ?? [], partes: partes.data ?? [], anexoEventos: anexoEventos.data ?? [] });
 }
 
@@ -170,6 +221,7 @@ export async function PATCH(request: Request) {
     // Ao AVANÇAR, tudo que a etapa atual liberou para preenchimento precisa estar completo.
     // A configuração vive em esteira_etapas.libera, então o gestor muda a regra sem deploy.
     const ctx = await contexto(auth, processId);
+    if (ctx.error) return falhaEsteira(ctx.error, "carregar_contexto_movimentacao");
     if (!ctx.proc) return Response.json({ error: "Venda não encontrada." }, { status: 404 });
     if ((ctx.proc as { aprovacao_status?: string }).aprovacao_status === "pendente") {
       return Response.json({ error: "Esta venda ainda está aguardando aprovação de entrada na esteira." }, { status: 409 });
@@ -194,7 +246,7 @@ export async function PATCH(request: Request) {
       ? { etapa: stage, atualizado_em: new Date().toISOString(), prazo_em: null }
       : { etapa: stage, atualizado_em: new Date().toISOString() };
     const { error } = await auth.supabase.from("venda_processos").update(update).eq("id", processId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "mover_etapa") : Response.json({ success: true });
   }
 
   if (action === "addAnexo" || action === "removeAnexo") {
@@ -209,7 +261,7 @@ export async function PATCH(request: Request) {
         if (g.deny) return g.deny;
       }
       const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
-      if (error) return Response.json({ error: error.message }, { status: 502 });
+      if (error) return falhaEsteira(error, "remover_anexo");
       await trilha(auth, "removido", { processoRef: (antes?.processo_ref as string) ?? null, detalhe: antes ?? { id } });
       return Response.json({ success: true });
     }
@@ -236,7 +288,7 @@ export async function PATCH(request: Request) {
       enviado_por: auth.user.id,
     };
     const { data: criado, error } = await auth.supabase.from("esteira_anexos").insert(insert as never).select("id").maybeSingle();
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "adicionar_anexo");
     await trilha(auth, "upload", { anexoId: (criado?.id as string) ?? null, processoRef: processo_ref, detalhe: { arquivo: nome, grupo: insert.grupo, doc_nome: insert.doc_nome, origem: "manual" } });
     return Response.json({ success: true });
   }
@@ -249,7 +301,7 @@ export async function PATCH(request: Request) {
     if (!processId || !etapaSlug) return Response.json({ error: "Informe o processo e a etapa." }, { status: 422 });
     if (action === "unverifyStage") {
       const { error } = await auth.supabase.from("esteira_etapa_verificacoes").delete().eq("processo_ref", processId).eq("etapa_slug", etapaSlug);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "desverificar_etapa") : Response.json({ success: true });
     }
     // valida documentos obrigatórios antes de aprovar
     const { data: reqDocs } = await auth.supabase.from("esteira_etapa_docs").select("nome").eq("etapa_slug", etapaSlug).eq("obrigatorio", true).eq("ativo", true);
@@ -261,7 +313,7 @@ export async function PATCH(request: Request) {
       if (faltando.length) return Response.json({ error: `Não é possível verificar: faltam documentos obrigatórios: ${faltando.join(", ")}.` }, { status: 409 });
     }
     const { error: verifErr } = await auth.supabase.from("esteira_etapa_verificacoes").upsert({ processo_ref: processId, etapa_slug: etapaSlug, verificado_por: auth.user.id, verificado_em: new Date().toISOString() } as never, { onConflict: "processo_ref,etapa_slug" });
-    if (verifErr) return Response.json({ error: verifErr.message }, { status: 502 });
+    if (verifErr) return falhaEsteira(verifErr, "verificar_etapa");
     // avanço automático: se a etapa verificada é a atual da venda, empurra para a próxima etapa da esteira
     const { data: proc } = await auth.supabase.from("venda_processos").select("etapa,tipo_venda").eq("id", processId).maybeSingle();
     let advancedTo: string | null = null;
@@ -275,7 +327,7 @@ export async function PATCH(request: Request) {
         const isFinal = Number(next.sla_dias) === 0;
         const update = isFinal ? { etapa: next.slug, atualizado_em: new Date().toISOString(), prazo_em: null } : { etapa: next.slug, atualizado_em: new Date().toISOString() };
         const { error: mvErr } = await auth.supabase.from("venda_processos").update(update as never).eq("id", processId);
-        if (mvErr) return Response.json({ error: mvErr.message }, { status: 502 });
+        if (mvErr) return falhaEsteira(mvErr, "avancar_etapa_verificada");
         advancedTo = next.slug as string;
       }
     }
@@ -292,7 +344,7 @@ export async function PATCH(request: Request) {
       const { data: last } = await auth.supabase.from("esteira_etapa_docs").select("ordem").eq("etapa_slug", etapaSlug).order("ordem", { ascending: false }).limit(1).maybeSingle();
       const ordem = (last?.ordem ?? 0) + 1;
       const { error } = await auth.supabase.from("esteira_etapa_docs").insert({ etapa_slug: etapaSlug, nome, obrigatorio: body.obrigatorio !== false, ordem } as never);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "criar_documento_etapa") : Response.json({ success: true });
     }
     if (action === "docUpdate") {
       const id = clean(body.docId, 60);
@@ -302,14 +354,14 @@ export async function PATCH(request: Request) {
       if (typeof body.obrigatorio === "boolean") patch.obrigatorio = body.obrigatorio;
       if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
       const { error } = await auth.supabase.from("esteira_etapa_docs").update(patch as never).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "atualizar_documento_etapa") : Response.json({ success: true });
     }
     if (action === "docReorder") {
       const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((v) => clean(v, 60)).filter(Boolean) : [];
       if (!ids.length) return Response.json({ error: "Ordem inválida." }, { status: 422 });
       for (let index = 0; index < ids.length; index += 1) {
         const { error } = await auth.supabase.from("esteira_etapa_docs").update({ ordem: index + 1 } as never).eq("id", ids[index]);
-        if (error) return Response.json({ error: error.message }, { status: 502 });
+        if (error) return falhaEsteira(error, "reordenar_documentos_etapa");
       }
       return Response.json({ success: true });
     }
@@ -317,7 +369,7 @@ export async function PATCH(request: Request) {
     const id = clean(body.docId, 60);
     if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
     const { error } = await auth.supabase.from("esteira_etapa_docs").update({ ativo: false } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "remover_documento_etapa") : Response.json({ success: true });
   }
   if (action === "createStage" || action === "updateStage" || action === "reorderStages" || action === "deleteStage" || action === "bulkMoveStage") {
     const denied = await requireManager(auth);
@@ -332,7 +384,7 @@ export async function PATCH(request: Request) {
       const { data: last } = await auth.supabase.from("esteira_etapas").select("ordem").order("ordem", { ascending: false }).limit(1).maybeSingle();
       const ordem = (last?.ordem ?? 0) + 1;
       const { error } = await auth.supabase.from("esteira_etapas").insert({ slug, nome, cor: clean(body.cor, 20) || "#8d2bd1", papel: clean(body.papel, 40) || "Corretor", sla_dias: Number.isFinite(Number(body.slaDias)) ? Math.max(0, Math.trunc(Number(body.slaDias))) : 3, resale: body.resale === true, ordem } as never);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "criar_etapa") : Response.json({ success: true });
     }
     if (action === "updateStage") {
       const id = clean(body.stageId, 60);
@@ -346,14 +398,14 @@ export async function PATCH(request: Request) {
       if (typeof body.exigeDocs === "boolean") patch.exige_docs = body.exigeDocs;
       if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
       const { error } = await auth.supabase.from("esteira_etapas").update(patch as never).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "atualizar_etapa") : Response.json({ success: true });
     }
     if (action === "reorderStages") {
       const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((value) => clean(value, 60)).filter(Boolean) : [];
       if (!ids.length) return Response.json({ error: "Ordem inválida." }, { status: 422 });
       for (let index = 0; index < ids.length; index += 1) {
         const { error } = await auth.supabase.from("esteira_etapas").update({ ordem: index + 1 } as never).eq("id", ids[index]);
-        if (error) return Response.json({ error: error.message }, { status: 502 });
+        if (error) return falhaEsteira(error, "reordenar_etapas");
       }
       return Response.json({ success: true });
     }
@@ -365,7 +417,7 @@ export async function PATCH(request: Request) {
       const isFinal = slugs.get(to) === 0;
       const update = isFinal ? { etapa: to, atualizado_em: new Date().toISOString(), prazo_em: null } : { etapa: to, atualizado_em: new Date().toISOString() };
       const { error } = await auth.supabase.from("venda_processos").update(update).eq("etapa", from);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "mover_etapa_em_lote") : Response.json({ success: true });
     }
     // deleteStage
     const id = clean(body.stageId, 60);
@@ -376,13 +428,13 @@ export async function PATCH(request: Request) {
       if ((count ?? 0) > 0) return Response.json({ error: "Esta etapa tem vendas. Mova-as antes de excluir (Mover todos desta etapa)." }, { status: 409 });
     }
     const { error } = await auth.supabase.from("esteira_etapas").update({ ativo: false } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "remover_etapa") : Response.json({ success: true });
   }
   if (action === "assign") {
     const processId = String(body.processId || "");
     const userId = body.userId ? String(body.userId) : null;
     const { error } = await auth.supabase.from("venda_processos").update({ responsavel_usuario_id: userId, atualizado_em: new Date().toISOString() }).eq("id", processId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "atribuir_responsavel") : Response.json({ success: true });
   }
   if (action === "devolverFunil") {
     // Devolve uma venda da esteira de volta ao funil de atendimento (follow-up). Reabre o negócio.
@@ -414,9 +466,9 @@ export async function PATCH(request: Request) {
     if (pipelineId) upd.pipeline_id = pipelineId;
     if (stageId) { upd.stage_id = stageId; upd.estagio_desde = now; }
     const { error: e1 } = await auth.supabase.from("negocios").update(upd).eq("id", proc.negocio_id);
-    if (e1) return Response.json({ error: e1.message }, { status: 502 });
+    if (e1) return falhaEsteira(e1, "devolver_negocio_ao_funil");
     const { error: e2 } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "devolvida", aprovacao_motivo: motivo, atualizado_em: now } as never).eq("id", processId);
-    return e2 ? Response.json({ error: e2.message }, { status: 502 }) : Response.json({ success: true });
+    return e2 ? falhaEsteira(e2, "marcar_venda_devolvida") : Response.json({ success: true });
   }
   if (action === "approveSale" || action === "rejectSale") {
     const denied = await requireManager(auth);
@@ -427,13 +479,16 @@ export async function PATCH(request: Request) {
     if (!proc) return Response.json({ error: "Venda não encontrada." }, { status: 404 });
     if (action === "approveSale") {
       const { error } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "aprovada", aprovacao_motivo: null, aprovado_por: auth.user.id, aprovado_em: new Date().toISOString() } as never).eq("id", processId);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "aprovar_venda") : Response.json({ success: true });
     }
     // rejectSale — devolve o negócio ao corretor (volta ao funil) com o motivo
     const motivo = clean(body.motivo, 400) || "Entrada recusada pelo gestor.";
     const { error } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "recusada", aprovacao_motivo: motivo, aprovado_por: auth.user.id, aprovado_em: new Date().toISOString() } as never).eq("id", processId);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    if (proc.negocio_id) await auth.supabase.from("negocios").update({ status: "aberto", venda_id: null, ultima_movimentacao: new Date().toISOString() }).eq("id", proc.negocio_id);
+    if (error) return falhaEsteira(error, "recusar_venda");
+    if (proc.negocio_id) {
+      const { error: reabrirError } = await auth.supabase.from("negocios").update({ status: "aberto", venda_id: null, ultima_movimentacao: new Date().toISOString() }).eq("id", proc.negocio_id);
+      if (reabrirError) return falhaEsteira(reabrirError, "reabrir_negocio_recusado");
+    }
     return Response.json({ success: true });
   }
 
@@ -453,10 +508,12 @@ export async function PATCH(request: Request) {
     const gestor = !!me && papelNoGrupo(me.role, "esteira_config");
     const aprovacao = gestor ? "aprovada" : "pendente";
     const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: hojeOperacao(), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
-    if (saleError || !sale) return Response.json({ error: saleError?.message || "Não foi possível criar a venda." }, { status: 502 });
+    if (saleError) return falhaEsteira(saleError, "criar_venda_manual");
+    if (!sale) return Response.json({ error: "Não foi possível criar a venda.", erro: "resposta_invalida" }, { status: 502 });
     const { error: dealError } = await auth.supabase.from("negocios").update({ venda_id: sale.id, status: "ganho", ultima_movimentacao: new Date().toISOString() }).eq("id", deal.id);
     const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id, solicitado_por: auth.user.id, aprovacao_status: aprovacao, aprovado_por: gestor ? auth.user.id : null, aprovado_em: gestor ? new Date().toISOString() : null } as never);
-    if (dealError || processError) return Response.json({ error: dealError?.message || processError?.message }, { status: 502 });
+    if (dealError) return falhaEsteira(dealError, "vincular_negocio_venda");
+    if (processError) return falhaEsteira(processError, "criar_processo_venda");
     return Response.json({ success: true, saleId: sale.id, aprovacao });
   }
   if (action === "solicitar") {
@@ -465,7 +522,7 @@ export async function PATCH(request: Request) {
     const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
     if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("solicitar_venda", { p_negocio: dealId, p_produto: productId, p_vgv: vgv, p_forma: String(body.payment || "") || undefined, p_obs: String(body.notes || "") || undefined });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "solicitar_venda");
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
     if (!r.ok) return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : r.erro === "sem_permissao_neste_negocio" ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: 422 });
     return Response.json({ success: true });
@@ -474,7 +531,7 @@ export async function PATCH(request: Request) {
     const id = String(body.id || "");
     if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("aprovar_solicitacao", { p_id: id });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "aprovar_solicitacao");
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
     if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode aprovar." : r.erro === "ja_decidida" ? "Esta solicitação já foi decidida." : (r.erro || "Não foi possível aprovar.") }, { status: 422 });
     return Response.json({ success: true, saleId: (data as { venda_id?: string }).venda_id });
@@ -484,7 +541,7 @@ export async function PATCH(request: Request) {
     const motivo = String(body.motivo || "").slice(0, 300);
     if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
     const { data, error } = await auth.supabase.rpc("recusar_solicitacao", { p_id: id, p_motivo: motivo });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "recusar_solicitacao");
     const r = (data ?? {}) as { ok?: boolean; erro?: string };
     if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode recusar." : (r.erro || "Não foi possível recusar.") }, { status: 422 });
     return Response.json({ success: true });
@@ -501,7 +558,7 @@ export async function PATCH(request: Request) {
     if ((status === "recusado" || status === "correcao") && !motivo) return Response.json({ error: "Informe o motivo da recusa/correção." }, { status: 422 });
     const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,status,grupo,doc_nome,nome").eq("id", id).maybeSingle();
     const { error } = await auth.supabase.from("esteira_anexos").update({ status, status_motivo: motivo || null, revisado_por: auth.user.id, revisado_em: new Date().toISOString() } as never).eq("id", id);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "alterar_status_anexo");
     await trilha(auth, "status_alterado", { anexoId: id, processoRef: (antes?.processo_ref as string) ?? null, detalhe: { arquivo: antes?.nome ?? null, de: antes?.status ?? null, para: status, motivo: motivo || null } });
     return Response.json({ success: true });
   }
@@ -513,7 +570,7 @@ export async function PATCH(request: Request) {
     const id = clean(body.anexoId, 60);
     if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
     const { error } = await auth.supabase.from("esteira_anexos").update({ obrigatorio: body.obrigatorio === true } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "alterar_obrigatoriedade_anexo") : Response.json({ success: true });
   }
 
   if (["docModeloCreate", "docModeloUpdate", "docModeloDelete"].includes(action)) {
@@ -526,7 +583,7 @@ export async function PATCH(request: Request) {
       if (condicaoNova && !["financiamento", "consorcio", "nao_a_vista"].includes(condicaoNova)) return Response.json({ error: "Condição inválida." }, { status: 422 });
       const { data: last } = await auth.supabase.from("esteira_doc_modelo").select("ordem").eq("grupo", grupo).order("ordem", { ascending: false }).limit(1).maybeSingle();
       const { error } = await auth.supabase.from("esteira_doc_modelo").insert({ grupo, nome, obrigatorio: body.obrigatorio !== false, ordem: (last?.ordem ?? 0) + 1, condicao: condicaoNova } as never);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "criar_modelo_documento") : Response.json({ success: true });
     }
     if (action === "docModeloUpdate") {
       const id = clean(body.id, 60); if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
@@ -539,11 +596,11 @@ export async function PATCH(request: Request) {
         patch.condicao = c;
       }
       const { error } = await auth.supabase.from("esteira_doc_modelo").update(patch as never).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaEsteira(error, "atualizar_modelo_documento") : Response.json({ success: true });
     }
     const id = clean(body.id, 60); if (!id) return Response.json({ error: "Documento inválido." }, { status: 422 });
     const { error } = await auth.supabase.from("esteira_doc_modelo").update({ ativo: false } as never).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "remover_modelo_documento") : Response.json({ success: true });
   }
 
   if (action === "salvarCondicoes") {
@@ -578,7 +635,7 @@ export async function PATCH(request: Request) {
       row.forma_pagamento = null;
     }
     const { error } = await auth.supabase.from("venda_condicoes").upsert(row as never, { onConflict: "processo_ref" });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "salvar_condicoes") : Response.json({ success: true });
   }
 
   if (action === "salvarComissao") {
@@ -595,15 +652,16 @@ export async function PATCH(request: Request) {
       atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
     const { error } = await auth.supabase.from("venda_comissao").upsert(row as never, { onConflict: "processo_ref" });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "salvar_comissao");
     if (Array.isArray(body.parcelas)) {
-      await auth.supabase.from("venda_comissao_parcelas").delete().eq("processo_ref", processId);
+      const { error: limparParcelasError } = await auth.supabase.from("venda_comissao_parcelas").delete().eq("processo_ref", processId);
+      if (limparParcelasError) return falhaEsteira(limparParcelasError, "limpar_parcelas_comissao");
       const parcelas = (body.parcelas as Array<Record<string, unknown>>).map((p, i) => ({
         processo_ref: processId, valor: num(p.valor), gatilho: clean(p.gatilho, 80) || null,
         data_prevista: clean(p.data_prevista, 10) || null, data_efetiva: clean(p.data_efetiva, 10) || null,
         responsavel: clean(p.responsavel, 120) || null, status: clean(p.status, 20) || "previsto", ordem: i + 1,
       }));
-      if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return Response.json({ error: pe.message }, { status: 502 }); }
+      if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return falhaEsteira(pe, "salvar_parcelas_comissao"); }
     }
     return Response.json({ success: true });
   }
@@ -637,8 +695,11 @@ export async function PATCH(request: Request) {
       atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
     const { error } = await auth.supabase.from("venda_partes").upsert(row as never, { onConflict: "processo_ref,papel,ordem" });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    if (error) return falhaEsteira(error, "salvar_parte");
+    if (papel.startsWith("conjuge_")) {
+      const falha = await sincronizarConjuge(auth, processId, papel);
+      if (falha) return falha;
+    }
     return Response.json({ success: true, ordem });
   }
 
@@ -655,8 +716,11 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "O titular não pode ser removido — edite os dados ou devolva a venda ao atendimento." }, { status: 409 });
     }
     const { error } = await auth.supabase.from("venda_partes").delete().eq("id", id);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    if (papel.startsWith("conjuge_")) await sincronizarConjuge(auth, processId, papel);
+    if (error) return falhaEsteira(error, "remover_parte");
+    if (papel.startsWith("conjuge_")) {
+      const falha = await sincronizarConjuge(auth, processId, papel);
+      if (falha) return falha;
+    }
     return Response.json({ success: true });
   }
 
@@ -670,6 +734,7 @@ export async function PATCH(request: Request) {
     if (arquivos.length > 15) return Response.json({ error: "Envie no máximo 15 arquivos por lote." }, { status: 422 });
     // O lote entra sem grupo definido, então basta que a etapa tenha algum bloco de documentos aberto.
     const ctxLote = await contexto(auth, processo_ref);
+    if (ctxLote.error) return falhaEsteira(ctxLote.error, "carregar_contexto_lote");
     const blocoLote = blocoDocsAberto(ctxLote);
     if (!blocoLote) {
       const alvo = etapaDoBloco(ctxLote.etapas, "docs_comprador");
@@ -690,7 +755,7 @@ export async function PATCH(request: Request) {
     })).filter((l) => l.nome && l.path);
     if (!linhas.length) return Response.json({ error: "Arquivos inválidos." }, { status: 422 });
     const { data: criados, error } = await auth.supabase.from("esteira_anexos").insert(linhas as never).select("id,nome");
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "adicionar_lote_anexos");
     await trilha(auth, "upload_lote", { processoRef: processo_ref, loteId, detalhe: { quantidade: linhas.length, arquivos: linhas.map((l) => l.nome) } });
     return Response.json({ success: true, loteId, anexos: criados ?? [] });
   }
@@ -703,13 +768,13 @@ export async function PATCH(request: Request) {
     const { data, error } = await auth.supabase.functions.invoke("ia-docs-classificar", {
       body: { processo_ref: processId, lote_id: loteId, anexo_ids: anexoIds },
     });
-    if (error) {
-      let detalhe = error.message;
-      try { const ctx = await (error as { context?: Response }).context?.json(); if (ctx?.reason) detalhe = String(ctx.detalhe || ctx.reason); } catch { /* mantém a mensagem original */ }
-      return Response.json({ error: `A Sara não conseguiu ler os documentos: ${detalhe}` }, { status: 502 });
-    }
+    if (error) return falhaClassificacaoDocumentos(error as { code?: string; context?: Response });
     const r = (data ?? {}) as { ok?: boolean; reason?: string; processados?: number; classificados?: number; triagem?: number; resultados?: unknown[] };
-    if (!r.ok) return Response.json({ error: r.reason === "sem_chave" ? "A chave da IA não está configurada no ambiente." : `Não foi possível classificar: ${r.reason || "erro desconhecido"}.` }, { status: 502 });
+    if (!r.ok) {
+      const resposta = respostaClassificacao(r.reason);
+      const codigo = typeof r.reason === "string" && Object.hasOwn(MENSAGENS_CLASSIFICACAO, r.reason) ? r.reason : "falha_integracao";
+      return Response.json({ error: resposta.error, erro: codigo }, { status: resposta.status });
+    }
     return Response.json({ success: true, processados: r.processados ?? 0, classificados: r.classificados ?? 0, triagem: r.triagem ?? 0, resultados: r.resultados ?? [] });
   }
 
@@ -731,7 +796,7 @@ export async function PATCH(request: Request) {
       obrigatorio: body.obrigatorio === true,
       confirmado_por: auth.user.id, confirmado_em: new Date().toISOString(),
     } as never).eq("id", id);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "confirmar_triagem");
     await trilha(auth, corrigido ? "corrigido" : "confirmado", {
       anexoId: id, processoRef: (antes?.processo_ref as string) ?? null,
       detalhe: { arquivo: antes?.nome ?? null, sugerido: { grupo: antes?.ia_grupo ?? null, doc_nome: antes?.ia_doc_nome ?? null, confianca: antes?.ia_confianca ?? null }, aplicado: { grupo, doc_nome: docNome || null } },
@@ -749,7 +814,7 @@ export async function PATCH(request: Request) {
       p_forcar: body.forcar === true,
       p_descartar_lead: body.descartarLead === true,
     });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaEsteira(error, "excluir_venda");
     const r = (data ?? {}) as { ok?: boolean; erro?: string; bloqueios?: string[]; paths?: string[]; lead?: string; forcada?: boolean };
     if (!r.ok) {
       if (r.erro === "sem_permissao") return Response.json({ error: "Apenas administrador ou diretor pode excluir uma venda." }, { status: 403 });
@@ -779,7 +844,7 @@ export async function PATCH(request: Request) {
     if (!processId || !texto) return Response.json({ error: "Escreva a observação." }, { status: 422 });
     const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
     const { error } = await auth.supabase.from("venda_observacoes").insert({ processo_ref: processId, texto, autor: auth.user.id, autor_nome: me?.nome ?? null } as never);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaEsteira(error, "adicionar_observacao") : Response.json({ success: true });
   }
 
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });
