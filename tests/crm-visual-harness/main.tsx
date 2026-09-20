@@ -90,9 +90,9 @@ const payloadAgenda = {
 const payloadNotificacoes = {
   ok: true,
   pendentes: 148,
-  urgentes: 3,
-  nao_vistas: 5,
-  cobertura: { status: "parcial", exibidos: 6, total: 148 },
+  urgentes: 4,
+  nao_vistas: 6,
+  cobertura: { status: "parcial", exibidos: 7, total: 148 },
   itens: [
     { id: 501, tipo: "acao_vencida", prioridade: 1, titulo: "Próxima ação vencida", detalhe: "Cliente sanitizado aguarda retorno do corretor.", negocio_id: 101, deep_link: "/negocio/101", criada_em: "2026-09-19T10:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 37 },
     { id: 502, tipo: "visita_feedback_pendente", prioridade: 2, titulo: "Visita sem feedback", detalhe: "Registre o resultado para a gestão acompanhar.", negocio_id: 102, deep_link: "/negocio/102", criada_em: "2026-09-19T11:00:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
@@ -100,6 +100,7 @@ const payloadNotificacoes = {
     { id: 504, tipo: "canal_indisponivel", prioridade: 1, titulo: "Canal de atendimento indisponível", detalhe: "Corrija a conexão antes da próxima abordagem.", negocio_id: 104, deep_link: "/negocio/104", criada_em: "2026-09-19T12:10:00Z", vista_em: null, resolvida_em: null, reaberturas: 1 },
     { id: 505, tipo: "lead_em_atendimento", prioridade: 2, titulo: "Lead entrou em atendimento", detalhe: "Acompanhe a conversa e confirme o próximo passo.", negocio_id: 105, deep_link: "/negocio/105", criada_em: "2026-09-19T12:20:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
     { id: 506, tipo: "lead_quente", prioridade: 1, titulo: "Lead com alta intenção", detalhe: "Priorize este atendimento enquanto o interesse está ativo.", negocio_id: 106, deep_link: "/negocio/106", criada_em: "2026-09-19T12:30:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
+    { id: 507, tipo: "presenca_pendente", prioridade: 1, titulo: "Confirmação de presença pendente", detalhe: "Confirme que está no escritório para continuar na distribuição.", negocio_id: null, deep_link: "/meu-dia", criada_em: "2026-09-19T12:40:00Z", vista_em: null, resolvida_em: null, reaberturas: 0 },
   ],
 };
 const gravadorVisivel = parametros.get("evidence") === "1";

@@ -125,6 +125,25 @@ Nove contratos específicos passaram e o gate frontend completo ficou em
 561/561; compilação SQL e comportamento persistente continuam reservados ao
 ensaio Postgres isolado.
 
+## Revalidação da superfície acionável
+
+Uma nova leitura somente agregada, sem PII, encontrou seis tipos abertos no
+catálogo produtivo: `acao_vencida`, `canal_indisponivel`,
+`primeira_abordagem_pendente`, `presenca_pendente`, `cliente_respondeu` e as
+duas transições da Sara. O estoque Sara chegou a 798 `acao_vencida`; os 697
+alertas antigos de automações arquivadas permanecem e 696 continuam sem
+`deep_link`. Ações ainda configuradas somam 164 no novo recorte; o preflight
+128/34 continua sendo evidência do snapshot anterior e precisa ser recalculado
+transacionalmente antes da futura migration.
+
+A interface local passou a cobrir todos os tipos atualmente abertos com ação
+real: negócio abre a ficha, canal abre diretamente Conexões inclusive no celular
+do gestor, feedback abre Agenda e presença abre Meu Dia. `presenca_pendente`
+agora é urgente no service worker, com rótulo `Confirmar presença`; o componente
+global existente continua sendo a única autoridade de confirmação e valida
+sessão + IP na Edge Function. Links externos e rotas inventadas falham fechados.
+Nenhuma linha remota foi alterada.
+
 ## Gates restantes
 
 1. gerar a migration pela CLI oficial;

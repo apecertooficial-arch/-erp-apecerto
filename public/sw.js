@@ -176,6 +176,7 @@ const TAGS_URGENTES = [
   "primeira_abordagem_pendente",
   "cliente_respondeu",
   "canal_indisponivel",
+  "presenca_pendente",
   "retorno_proximo",
   "acao_vencida",
 ];

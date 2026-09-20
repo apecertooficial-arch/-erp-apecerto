@@ -378,6 +378,12 @@ frontend passou 567/567; navegador sanitizado
 passou em desktop e 390 × 844, sem overflow nem erro/aviso de console. Não houve
 deploy nem escrita no banco.
 
+A revalidação agregada do catálogo produtivo encontrou 3 avisos abertos de
+presença com destino Meu Dia. Essa lacuna também foi fechada localmente:
+`Confirmar presença` é urgente e abre a superfície onde o componente global
+valida sessão e IP. Todos os seis tipos hoje abertos têm ação específica. O gate
+subiu para 568/568; produção continuou somente leitura.
+
 Também reproduzido e corrigido localmente na fatia de entrada: a identidade
 ignorava o e-mail sempre que havia telefone, e a roleta não consultava a Agenda
 nem a Esteira canônicas para preservar o dono. O draft agora confronta telefone

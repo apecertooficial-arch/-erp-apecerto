@@ -29,11 +29,11 @@ const PUSH = ler("../supabase/functions/ncrm-web-push/index.ts");
 
 /* ---------------- o barulho ---------------- */
 
-test("lead novo, resposta e combinado vencendo/vencido são urgentes no aparelho", () => {
+test("lead novo, resposta, presença e combinado vencendo/vencido são urgentes no aparelho", () => {
   const inicio = SW.indexOf("TAGS_URGENTES");
   assert.ok(inicio > -1, "a lista de urgentes precisa existir e ter nome");
   const bloco = SW.slice(inicio, SW.indexOf("]", inicio));
-  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "retorno_proximo", "acao_vencida"]) {
+  for (const tag of ["primeira_abordagem_pendente", "cliente_respondeu", "presenca_pendente", "retorno_proximo", "acao_vencida"]) {
     assert.ok(bloco.includes(`"${tag}"`), `"${tag}" precisa estar na lista de urgentes do sw.js`);
   }
 });
@@ -54,6 +54,13 @@ test("transições da Sara mostram uma ação específica em vez de Abrir genér
 test("pendência de feedback leva o corretor diretamente à ação esperada", () => {
   assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*\{ glifo: "📝", cor: "laranja" \}/);
   assert.match(LOGICA_AVISOS, /visita_feedback_pendente:\s*"Dar feedback"/);
+});
+
+test("presença pendente é explícita, urgente e abre o Meu Dia", () => {
+  assert.match(LOGICA_AVISOS, /presenca_pendente:\s*\{ glifo: "📍", cor: "verde" \}/);
+  assert.match(LOGICA_AVISOS, /presenca_pendente:\s*"Confirmar presença"/);
+  const aviso = { id: 3, tipo: "presenca_pendente", prioridade: 1, titulo: "Teste", detalhe: null, negocio_id: null, deep_link: "/meu-dia", criada_em: "2026-09-19T12:00:00Z", vista_em: null, resolvida_em: null };
+  assert.equal(destinoAviso(aviso), "/inicio");
 });
 
 test("cada ação abre o módulo que realmente resolve a pendência", () => {

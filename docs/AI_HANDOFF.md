@@ -140,6 +140,13 @@ declarar o ERP inteiro pronto sem evidência.
   nem erros/avisos. A subfatia anterior foi registrada em commit local; o push
   permaneceu bloqueado pela política de aprovação do ambiente e não foi
   contornado.
+- catálogo remoto revalidado somente por agregados: os seis tipos abertos são
+  `acao_vencida`, `canal_indisponivel`, `primeira_abordagem_pendente`,
+  `presenca_pendente`, `cliente_respondeu` e transições Sara. O estoque Sara
+  chegou a 798; os 697 antigos de automação permanecem. Três avisos de presença
+  estavam genéricos; agora são urgentes, dizem `Confirmar presença` e abrem Meu
+  Dia, onde a confirmação global já valida sessão e IP. Gate frontend 568/568;
+  navegador móvel sem overflow ou erro. Nenhuma escrita remota.
 
 ## Arquivos alterados/relevantes
 
@@ -436,7 +443,8 @@ declarar o ERP inteiro pronto sem evidência.
 Registrar a navegação real dos Avisos sem incluir o symlink `node_modules` e,
 quando houver autorização aceita pelo ambiente, enviar os commits locais para
 a branch isolada. Em seguida, avançar para a próxima lacuna P0 da jornada
-lead → primeira abordagem → Sara, mantendo os 34 alertas sem prova abertos.
+lead → primeira abordagem → Sara. Recalcular o preflight de evidência dentro da
+mesma transação do ensaio futuro; não reaproveitar 128/34 como contagem atual.
 Quando existir Postgres isolado com CLI oficial,
 ensaiar os contratos de descarte, confirmação, visita, áudio e alertas
 mantendo os dispatchers desligados. Não usar `main` do Supabase como
