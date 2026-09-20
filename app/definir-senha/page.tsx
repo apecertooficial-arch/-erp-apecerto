@@ -57,22 +57,22 @@ export default function DefinirSenhaPage() {
   }
 
   return (
-    <div className="auth-layer">
+    <main className="auth-layer">
       <section className="auth-card auth-card-v2" aria-labelledby="ds-title">
         <div className="auth-brand"><span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
 
-        {estadoVisivel === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Abrindo seu acesso…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
+        {estadoVisivel === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="ds-title">Abrindo seu acesso…</h1><p>Um instante enquanto validamos o seu link.</p></div>}
 
         {(estadoVisivel === "invalido" || estadoVisivel === "usado" || estadoVisivel === "expirado" || estadoVisivel === "erro") && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estadoVisivel]}</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="ds-title">Link indisponível</h1><p>{MOTIVO_TEXTO[estadoVisivel]}</p></div>
             <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
 
         {estado === "valido" && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">{nome ? `Olá, ${nome}!` : "Crie sua senha"}</h2><p>Defina a senha que você vai usar para entrar no ERP da ApêCerto.</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="ds-title">{nome ? `Olá, ${nome}!` : "Crie sua senha"}</h1><p>Defina a senha que você vai usar para entrar no ERP da ApêCerto.</p></div>
             <form onSubmit={(e) => { e.preventDefault(); void salvar(); }}>
               <label>Nova senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="new-password" placeholder="Mínimo de 8 caracteres" required /><button type="button" onClick={() => setMostrar(!mostrar)}>{mostrar ? "Ocultar" : "Mostrar"}</button></div></label>
               <label>Confirmar senha<div className="auth-password"><input type={mostrar ? "text" : "password"} value={confirma} onChange={(e) => setConfirma(e.target.value)} autoComplete="new-password" placeholder="Repita a senha" required /></div></label>
@@ -85,11 +85,11 @@ export default function DefinirSenhaPage() {
 
         {estado === "pronto" && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="ds-title">Senha criada! ✅</h2><p>{nome ? `Pronto, ${nome}. ` : ""}Agora é só entrar no ERP com o seu e-mail e a senha que você acabou de criar.</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="ds-title">Senha criada! ✅</h1><p>{nome ? `Pronto, ${nome}. ` : ""}Agora é só entrar no ERP com o seu e-mail e a senha que você acabou de criar.</p></div>
             <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
       </section>
-    </div>
+    </main>
   );
 }

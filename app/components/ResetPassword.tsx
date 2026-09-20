@@ -26,10 +26,10 @@ export function ResetPassword({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="auth-layer">
+    <main className="auth-layer">
       <section className="auth-card auth-card-v2" aria-labelledby="reset-title">
         <div className="auth-brand"><span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
-        <div className="auth-welcome"><span>REDEFINIR SENHA</span><h2 id="reset-title">Criar nova senha</h2><p>Escolha uma nova senha para acessar o ERP.</p></div>
+        <div className="auth-welcome"><span>REDEFINIR SENHA</span><h1 id="reset-title">Criar nova senha</h1><p>Escolha uma nova senha para acessar o ERP.</p></div>
         {done ? (
           <>
             <div className="auth-error" role="status" style={{ background: "#e6f7ed", color: "#14854a", borderColor: "#bde7cb" }}>{message}</div>
@@ -45,6 +45,6 @@ export function ResetPassword({ onDone }: { onDone: () => void }) {
         )}
         <small>🔒 Autenticação protegida pelo Supabase.</small>
       </section>
-    </div>
+    </main>
   );
 }

@@ -37,8 +37,15 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
     setLoading(false);
   }
 
+  const Root = preview ? "div" : "main";
+
   return (
-    <div className={`login-split ${preview ? "preview" : ""}`}>
+    <Root
+      className={`login-split ${preview ? "preview" : ""}`}
+      role={preview ? "dialog" : undefined}
+      aria-modal={preview || undefined}
+      aria-labelledby={preview ? "login-title" : undefined}
+    >
       {onClose && <button className="login-close" type="button" onClick={onClose} aria-label="Fechar prévia do login">×</button>}
 
       <aside className="login-hero" aria-hidden="true">
@@ -51,7 +58,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
           </div>
           <span className="login-hero-kicker">O ERP DA APÊCERTO</span>
           <strong className="login-hero-logo">apê<span>certo</span></strong>
-          <h1>Tudo num só lugar. Efata!</h1>
+          <p className="login-hero-title">Tudo num só lugar. Efata!</p>
           <p>Seu CRM, disparos, chat ao vivo e financeiro num só lugar. Bem-vindo de volta. 🔑</p>
           <em className="login-hero-pill"><i /> Plataforma 2.0 · Moema — SP</em>
         </div>
@@ -64,7 +71,7 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
           </div>
 
           <div className="login-heading">
-            <h2 id="login-title">Bem-vindo de volta</h2>
+            <h1 id="login-title">Bem-vindo de volta</h1>
             <p>Acesse o sistema operacional da <b>apêcerto</b>.</p>
           </div>
 
@@ -110,6 +117,6 @@ export function SupabaseLogin({ onAuthenticated, preview = false, onClose }: { o
           {preview && <mark className="login-preview-tag">Prévia visual — sua sessão atual continua ativa</mark>}
         </div>
       </section>
-    </div>
+    </Root>
   );
 }

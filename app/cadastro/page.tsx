@@ -77,22 +77,22 @@ export default function CadastroPage() {
   }
 
   return (
-    <div className="auth-layer">
+    <main className="auth-layer">
       <section className="auth-card auth-card-v2" aria-labelledby="cad-title">
         <div className="auth-brand"><span><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 14 16 5l12 9v13H7V15" /><path d="m11 15 4 4 7-8" /></svg></span><strong>apê<span>certo</span></strong></div>
 
-        {estado === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="cad-title">Abrindo seu cadastro…</h2><p>Um instante enquanto validamos o seu link.</p></div>}
+        {estado === "carregando" && <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="cad-title">Abrindo seu cadastro…</h1><p>Um instante enquanto validamos o seu link.</p></div>}
 
         {(estado === "invalido" || estado === "usado" || estado === "expirado" || estado === "erro") && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="cad-title">Link indisponível</h2><p>{MOTIVO_TEXTO[estado]}</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="cad-title">Link indisponível</h1><p>{MOTIVO_TEXTO[estado]}</p></div>
             <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
 
         {estado === "valido" && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="cad-title">Crie seu acesso</h2><p>Preencha seus dados para entrar no ERP da ApêCerto.</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="cad-title">Crie seu acesso</h1><p>Preencha seus dados para entrar no ERP da ApêCerto.</p></div>
             <form onSubmit={(e) => { e.preventDefault(); void enviar(); }}>
               <label>Nome completo<div className="auth-password"><input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" placeholder="Seu nome e sobrenome" required /></div></label>
               <label>Telefone / WhatsApp<div className="auth-password"><input value={telefone} onChange={(e) => setTelefone(e.target.value)} autoComplete="tel" inputMode="tel" placeholder="(11) 90000-0000" /></div></label>
@@ -108,11 +108,11 @@ export default function CadastroPage() {
 
         {estado === "pronto" && (
           <>
-            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h2 id="cad-title">Cadastro concluído! ✅</h2><p>Pronto, {nome.trim() || "corretor"}. Agora é só entrar no ERP com o seu e-mail e a senha que você acabou de criar.</p></div>
+            <div className="auth-welcome"><span>PORTAL DO CORRETOR</span><h1 id="cad-title">Cadastro concluído! ✅</h1><p>Pronto, {nome.trim() || "corretor"}. Agora é só entrar no ERP com o seu e-mail e a senha que você acabou de criar.</p></div>
             <Link className="primary-action" href="/" style={{ textAlign: "center", textDecoration: "none" }}>Ir para o login</Link>
           </>
         )}
       </section>
-    </div>
+    </main>
   );
 }
