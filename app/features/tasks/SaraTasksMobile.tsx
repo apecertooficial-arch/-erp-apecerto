@@ -85,7 +85,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
   const visiveis = estrutura.filter((tarefa) => tarefa.faixa === faixa);
 
-  return <main className="ape-tarefas">
+  return <section className="ape-tarefas" aria-label="Tarefas da Sara">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
     <nav className="ape-filtros ape-tarefas-filtros" aria-label="Filtrar tarefas">
       {(["atrasadas", "agora", "hoje", "futuras"] as const).map((chave) => <button
@@ -115,5 +115,5 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     </section>}
 
     <p className="ape-tarefas-nota">Concluir uma tarefa não significa que o contato aconteceu — somente a sincronização oficial confirma.</p>
-  </main>;
+  </section>;
 }

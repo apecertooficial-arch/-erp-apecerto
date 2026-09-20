@@ -910,7 +910,7 @@ export function Funil2Mobile({
     onAbrir={() => setSelecionado(lead.id)}
   />;
 
-  return <main className={`ape-app modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
+  return <section className={`ape-app modo-${modo}`} aria-label={modo === "inicio" ? `Meu Dia de ${primeiroNome}` : "CRM"}>
     <header className="ape-abertura">
       {modo === "inicio" ? <>
         <span className="ape-sobrancelha">Meu Dia</span>
@@ -1054,5 +1054,5 @@ export function Funil2Mobile({
       onFechar={() => { if (!trazendoLead) { setAlvoCarteira(null); setErroCarteira(null); } }}
       onConfirmar={trazerLeadDaCarteira}
     />}
-  </main>;
+  </section>;
 }

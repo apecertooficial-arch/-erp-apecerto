@@ -151,7 +151,7 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
       {error && <div className="profile-note error">{error}</div>}
       {message && <div className="profile-note ok">{message}</div>}
       {!data && !error && <div className="profile-loading">Carregando seu perfil…</div>}
-      {data && <main>
+      {data && <div className="profile-panel-content">
         <section>
           <h3>Dados pessoais</h3>
           <div className="profile-grid">
@@ -212,7 +212,7 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
           <div className="profile-instances">{data.instancias.map((instance) => <span className={instance.conectada ? "connected" : ""} key={instance.id}><i>{instance.conectada ? "●" : "○"}</i>{instance.nome || instance.telefone || `Instância ${instance.id}`}<small>{instance.conectada ? "Conectada" : "Desconectada"}</small></span>)}</div>
           <p className="profile-hint">Para reconectar pelo QR, use Configurações → Conexões.</p>
         </section>}
-      </main>}
+      </div>}
       <footer>
         <button className="profile-logout" type="button" onClick={() => void signOut()}>⎋ Sair da conta</button>
         <div>

@@ -41,12 +41,12 @@ export function ManagementMobile() {
   const { role, permissoes, perfilCarregado, isManager } = useErpSession();
   const visiveis = itens.filter((item) =>
     existeNoApp(item.modulo) && podeVer(item.modulo, { role, permissoes, carregado: perfilCarregado, isManager }));
-  return <main className="ape-gestao">
+  return <section className="ape-gestao" aria-label="Gestão">
     <p>Área restrita a gestor e administrador. Nada disso aparece na rotina do corretor.</p>
     <section>{visiveis.map((item) => {
       const href = item.vista ? `${pathDoModulo(item.modulo)}?vista=${item.vista}` : pathDoModulo(item.modulo);
       return <Link href={href} key={item.titulo}><span aria-hidden="true"><IconeGestao nome={item.icone} /></span><span><strong>{item.titulo}</strong><small>{item.texto}</small></span><b aria-hidden="true">›</b></Link>;
     })}</section>
     <p className="ape-gestao-nota">Financeiro, Usuários, Permissões, Automações e Auditoria ficam no ERP do computador.</p>
-  </main>;
+  </section>;
 }

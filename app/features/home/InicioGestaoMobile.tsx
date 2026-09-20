@@ -127,27 +127,27 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
   }, [dados]);
 
   if (estado === "loading") {
-    return <main className="ape-inicio-gestao" aria-busy="true">
+    return <section className="ape-inicio-gestao" aria-label="Gestão do dia" aria-busy="true">
       <header><span>GESTÃO DO DIA</span><h1>Organizando as prioridades…</h1><p>Conferindo a operação por corretor.</p></header>
       <div className="ape-gestao-carregando" aria-label="Carregando indicadores"><i /><i /><i /></div>
-    </main>;
+    </section>;
   }
 
   if (estado === "error" || !dados) {
-    return <main className="ape-inicio-gestao">
+    return <section className="ape-inicio-gestao" aria-label="Gestão do dia">
       <header><span>GESTÃO DO DIA</span><h1>Não foi possível confirmar as prioridades.</h1><p>{erro}</p></header>
       <section className="ape-gestao-erro" role="alert">
         <strong>Nenhum número foi presumido.</strong>
         <span>Recarregue antes de cobrar a equipe.</span>
         <button type="button" onClick={() => void carregar()}>Tentar novamente</button>
       </section>
-    </main>;
+    </section>;
   }
 
   const resumo = dados.summary;
   const semPendencia = resumo.acoes_vencidas === 0 && resumo.clientes_criticos === 0 && resumo.visitas_sem_feedback === 0;
 
-  return <main className="ape-inicio-gestao">
+  return <section className="ape-inicio-gestao" aria-label="Gestão do dia">
     <header>
       <span>GESTÃO DO DIA</span>
       <h1>Bom dia, {primeiroNome(nome)}.</h1>
@@ -188,5 +188,5 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
         </article>;
       })}
     </section>
-  </main>;
+  </section>;
 }

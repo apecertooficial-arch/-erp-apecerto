@@ -7,6 +7,14 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../../app/styles/app-mobile.css", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../../app/layout.tsx", import.meta.url), "utf8");
+const shell = readFileSync(new URL("../../app/components/AppShell.tsx", import.meta.url), "utf8");
+const telasMoveis = [
+  "../../app/features/tasks/SaraTasksMobile.tsx",
+  "../../app/features/system/ManagementMobile.tsx",
+  "../../app/features/home/InicioGestaoMobile.tsx",
+  "../../app/features/funil-2/Funil2Mobile.tsx",
+  "../../app/components/ProfilePanel.tsx",
+].map((arquivo) => readFileSync(new URL(arquivo, import.meta.url), "utf8")).join("\n");
 const bloco = css.slice(css.indexOf("CASCA DO APLICATIVO"));
 
 test("elementos mobile ficam ocultos por padrao (desktop intacto)", () => {
@@ -75,4 +83,11 @@ test("folha móvel não carrega seletores do CRM Nova Era aposentado", () => {
 
 test("layout não carrega a folha órfã do protótipo CRM móvel", () => {
   assert.doesNotMatch(layout, /tela-crm\.css/);
+});
+
+test("aplicativo preserva um único marco principal no shell", () => {
+  assert.match(shell, /<main className="workspace">\{children\}<\/main>/);
+  assert.doesNotMatch(telasMoveis, /<\/?main\b/);
+  assert.match(telasMoveis, /aria-label="Tarefas da Sara"/);
+  assert.match(telasMoveis, /aria-label="Gestão do dia"/);
 });
