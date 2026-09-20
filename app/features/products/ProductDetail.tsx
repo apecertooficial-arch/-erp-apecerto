@@ -284,7 +284,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           await uploadProductMediaResumable({ accessToken: token, bucketName: "empreendimentos", file, objectName: path });
           const tipo = mediaType(file);
           const { data: savedMedia, error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, storage_path: path, tipo, categoria: forcedCategory ?? category, nome: file.name, is_capa: tipo === "foto" && photos.length + enviadaComSucesso === 0 }, { onConflict: "storage_path" }).select("id").maybeSingle();
-          if (insertError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
+          if (insertError) {
+            const { error: cleanupError } = await supabase.storage.from("empreendimentos").remove([path]);
+            if (cleanupError) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro e a limpeza não foram confirmados. A gestão precisa reconciliar esta mídia.");
+            throw new ProductClientError("O arquivo não foi registrado e foi removido do Storage com segurança.");
+          }
+          if (!savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado. Não repita o envio antes da reconciliação.");
           enviadaComSucesso += 1;
         } catch (reason) {
           arquivosComFalha.push(`${originalFile.name}: ${productFailureMessage(reason, "falha no envio ou registro")}`);
@@ -385,7 +390,12 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
           const tipo = mediaType(file);
           const isCover = tipo === "foto" && unitPhotoCount === 0;
           const { data: savedMedia, error: insertError } = await supabase.from("midias").upsert({ empreendimento_id: productId, unidade_id: unit.id, storage_path: path, tipo, categoria: tipo === "foto" ? unitMediaCategory : "Tour", nome: file.name, is_capa: isCover }, { onConflict: "storage_path" }).select("id").maybeSingle();
-          if (insertError || !savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado.");
+          if (insertError) {
+            const { error: cleanupError } = await supabase.storage.from("empreendimentos").remove([path]);
+            if (cleanupError) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro e a limpeza não foram confirmados. A gestão precisa reconciliar esta mídia.");
+            throw new ProductClientError("O arquivo não foi registrado e foi removido do Storage com segurança.");
+          }
+          if (!savedMedia) throw new ProductClientError("O arquivo chegou ao Storage, mas o registro da mídia não foi confirmado. Não repita o envio antes da reconciliação.");
           if (tipo === "foto") unitPhotoCount += 1;
           enviadaComSucesso += 1;
         } catch (reason) {

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice, normalizedKey, validateProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
+import type { Json } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
 
@@ -172,6 +173,23 @@ function tokenFrom(request: Request) {
   return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
 }
 
+export async function GET(request: Request) {
+  const accessToken = tokenFrom(request);
+  if (!accessToken) return Response.json({ error: "Sessão necessária." }, { status: 401 });
+  const supabase = createServerSupabaseClient(accessToken);
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError) return falhaCaptacao(authError, "autenticar_rascunho");
+  if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const { data: activeProfile, error: profileError } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
+  if (profileError) return falhaCaptacao(profileError, "carregar_perfil_rascunho");
+  if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
+  // A função já existe no banco publicado, mas o snapshot local dos tipos ainda
+  // não a contém. O cast fica restrito a este contrato até a próxima geração.
+  const { data, error } = await supabase.rpc("produto_cadastro_rascunho_ler" as never);
+  if (error) return falhaCaptacao(error, "carregar_rascunho");
+  return Response.json({ draft: data ?? {} });
+}
+
 function isNonNegative(value: number) {
   return Number.isFinite(value) && value >= 0;
 }
@@ -184,24 +202,55 @@ export async function POST(request: Request) {
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError) return falhaCaptacao(authError, "autenticar");
   if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const { data: activeProfile, error: profileError } = await supabase.from("usuarios").select("ativo").eq("id", authData.user.id).maybeSingle();
+  if (profileError) return falhaCaptacao(profileError, "carregar_perfil");
+  if (activeProfile?.ativo !== true) return Response.json({ error: "Usuário inativo ou sem perfil operacional." }, { status: 403 });
 
-  // Toda captação precisa nascer com um corretor responsável. Sem este vínculo,
-  // a unidade some de "Minhas captações" e o corretor perde a edição operacional.
-  // Resolver antes de criar condomínio/proprietário também evita registros órfãos
-  // quando um usuário ainda não foi cadastrado na tabela de corretores.
+  let payload: CapturePayload
+    | { action: "finalize"; id: string }
+    | { action: "saveDraft"; payload: Json; step: number; expectedVersion?: number | null }
+    | { action: "deleteDraft" };
+  try {
+    payload = await request.json() as typeof payload;
+  } catch {
+    return Response.json({ error: "Dados de cadastro inválidos." }, { status: 400 });
+  }
+
+  if (payload.action === "saveDraft") {
+    if (!payload.payload || typeof payload.payload !== "object" || Array.isArray(payload.payload)) {
+      return Response.json({ error: "Rascunho inválido." }, { status: 422 });
+    }
+    if (!Number.isFinite(payload.step) || (payload.expectedVersion != null && (!Number.isSafeInteger(payload.expectedVersion) || payload.expectedVersion < 1))) {
+      return Response.json({ error: "Versão ou etapa do rascunho inválida." }, { status: 422 });
+    }
+    const { data, error } = await supabase.rpc("produto_cadastro_rascunho_salvar" as never, {
+      p_payload: payload.payload,
+      p_etapa: Math.max(0, Math.min(6, Math.trunc(payload.step))),
+      p_versao_esperada: payload.expectedVersion ?? null,
+    } as never);
+    if (error) {
+      const conflict = error.code === "40001" || error.message?.includes("DRAFT_CONFLICT");
+      if (conflict) return Response.json({ error: "Este rascunho foi alterado em outra aba. Feche e reabra o cadastro para não perder trabalho.", code: "DRAFT_CONFLICT" }, { status: 409 });
+      return falhaCaptacao(error, "salvar_rascunho");
+    }
+    return Response.json(data ?? { ok: true });
+  }
+
+  if (payload.action === "deleteDraft") {
+    const { error } = await supabase.rpc("produto_cadastro_rascunho_excluir" as never);
+    if (error) return falhaCaptacao(error, "excluir_rascunho");
+    return Response.json({ ok: true });
+  }
+
+  // Toda captação finalizada precisa nascer com um corretor responsável. A
+  // consulta fica depois das ações de rascunho, que pertencem ao usuário e não
+  // dependem do vínculo operacional do corretor.
   const { data: broker, error: brokerError } = await supabase
     .from("corretores")
     .select("id")
     .eq("usuario_id", authData.user.id)
     .maybeSingle();
   if (brokerError) return falhaCaptacao(brokerError, "carregar_corretor");
-
-  let payload: CapturePayload | { action: "finalize"; id: string };
-  try {
-    payload = await request.json() as CapturePayload | { action: "finalize"; id: string };
-  } catch {
-    return Response.json({ error: "Dados de cadastro inválidos." }, { status: 400 });
-  }
 
   if (payload.action === "finalize") {
     if (!payload.id) return Response.json({ error: "Captação inválida." }, { status: 422 });

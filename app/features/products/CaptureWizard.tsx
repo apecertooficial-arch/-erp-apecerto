@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { MoneyInput } from "./MoneyInput";
 import { PendingMediaClassifier } from "./PendingMediaClassifier";
@@ -61,6 +61,9 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaUrl, setMediaUrl] = useState("");
   const [createdCapture, setCreatedCapture] = useState<CreatedCapture | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("Carregando rascunho...");
+  const draftVersion = useRef<number | null>(null);
 
   const photos = media.filter((item) => item.kind === "foto");
   const videos = media.filter((item) => item.kind === "video");
@@ -77,6 +80,78 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
       if (ownerResult.data) setOwners(ownerResult.data);
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDraft = async () => {
+      try {
+        const supabase = getBrowserSupabaseClient();
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw new Error("Sessão expirada");
+        const response = await fetch("/api/capture", { headers: { Authorization: `Bearer ${token}` } });
+        const result = await response.json() as { draft?: { payload?: Record<string, unknown>; etapa?: number; versao?: number }; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Falha ao carregar rascunho");
+        const saved = result.draft?.payload;
+        draftVersion.current = typeof result.draft?.versao === "number" ? result.draft.versao : null;
+        if (!cancelled && saved && saved.standalone === standalone) {
+          if (typeof saved.condominiumId === "string") setCondominiumId(saved.condominiumId);
+          if (saved.ownerMode === "existing" || saved.ownerMode === "new") setOwnerMode(saved.ownerMode);
+          if (typeof saved.ownerId === "string") setOwnerId(saved.ownerId);
+          if (saved.condominium && typeof saved.condominium === "object") setCondominium({ ...emptyCondominium, ...saved.condominium } as typeof emptyCondominium);
+          if (saved.owner && typeof saved.owner === "object") setOwner({ ...emptyOwner, ...saved.owner } as typeof emptyOwner);
+          if (saved.property && typeof saved.property === "object") setProperty({ ...emptyProperty, ...saved.property } as typeof emptyProperty);
+          if (["chave_fisica", "chave_digital", "proprietario", "portaria", "outro"].includes(String(saved.accessType))) setAccessType(saved.accessType as typeof accessType);
+          if (typeof saved.accessCode === "string") setAccessCode(saved.accessCode);
+          if (typeof saved.accessInstructions === "string") setAccessInstructions(saved.accessInstructions);
+          if (Array.isArray(saved.units) && saved.units.length) setUnits(saved.units as Unit[]);
+          if (typeof result.draft?.etapa === "number" && visibleStepIndexes.includes(result.draft.etapa)) setStep(result.draft.etapa);
+          setDraftStatus("Rascunho recuperado · fotos precisam ser selecionadas novamente");
+        } else if (!cancelled) {
+          setDraftStatus("Rascunho automático ativo");
+        }
+      } catch {
+        if (!cancelled) setDraftStatus("Rascunho automático indisponível");
+      } finally {
+        if (!cancelled) setDraftReady(true);
+      }
+    };
+    void loadDraft();
+    return () => { cancelled = true; };
+    // O rascunho é carregado uma vez para o tipo de fluxo aberto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady || saving) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const supabase = getBrowserSupabaseClient();
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (!token) return;
+          const response = await fetch("/api/capture", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "saveDraft",
+              step,
+              expectedVersion: draftVersion.current,
+              payload: { standalone, condominiumId, ownerMode, ownerId, condominium, owner, property, accessType, accessCode, accessInstructions, units },
+            }),
+          });
+          const saved = await response.json() as { versao?: number; error?: string };
+          if (!response.ok) throw new Error(saved.error ?? "Falha ao salvar");
+          if (typeof saved.versao === "number") draftVersion.current = saved.versao;
+          setDraftStatus(`Rascunho salvo às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
+        } catch (error) {
+          setDraftStatus(error instanceof Error ? error.message : "Não foi possível salvar o rascunho agora");
+        }
+      })();
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [accessCode, accessInstructions, accessType, condominium, condominiumId, draftReady, owner, ownerId, ownerMode, property, saving, standalone, step, units]);
 
   function selectedCondominium() {
     return condominiums.find((item) => item.id === condominiumId) ?? null;
@@ -266,7 +341,11 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
             empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
             categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
           }, { onConflict: "storage_path" });
-          if (mediaError) throw new Error("Não foi possível registrar a mídia enviada.");
+          if (mediaError) {
+            const { error: cleanupError } = await supabase.storage.from("empreendimentos").remove([storagePath]);
+            if (cleanupError) throw new Error("O arquivo foi enviado, mas o cadastro e a limpeza não foram confirmados. A gestão precisa reconciliar esta mídia.");
+            throw new Error("Não foi possível registrar a mídia enviada; o arquivo foi removido do Storage.");
+          }
           enviadaComSucesso += 1;
           setUploadProgress(Math.round(((index + 1) / media.length) * 100));
         } catch {
@@ -281,6 +360,13 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
         body: JSON.stringify({ action: "finalize", id: created.id }),
       });
       await captureResponse(finalizeResponse, "O produto ficou salvo como rascunho, mas não foi finalizado.");
+
+      const deleteDraftResponse = await fetch("/api/capture", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteDraft" }),
+      });
+      if (!deleteDraftResponse.ok) setDraftStatus("Cadastro concluído; o rascunho anterior ainda precisa ser limpo.");
 
       setMessage("Produto cadastrado e conectado ao Supabase com sucesso.");
       await new Promise((resolve) => setTimeout(resolve, 700));
@@ -300,6 +386,7 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
           <button className="icon-button" onClick={onClose} type="button" aria-label="Fechar">×</button>
         </header>
         <div className="progress-track"><span style={{ width: progress }} /></div>
+        <div className="capture-draft-status" role="status">{draftStatus}</div>
         <div className="step-list" aria-label="Etapas do cadastro">
           {visibleStepIndexes.map((index, position) => <span className={index === step ? "current" : index < step ? "done" : ""} key={steps[index]}>{index < step ? "✓" : position + 1}<small>{steps[index]}</small></span>)}
         </div>

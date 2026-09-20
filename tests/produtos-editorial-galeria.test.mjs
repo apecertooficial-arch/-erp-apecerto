@@ -32,7 +32,9 @@ test("rascunho de cadastro é privado, limitado, expira e não depende do corret
   assert.match(migration, /versao = versao \+ 1/);
   assert.match(migration, /DRAFT_CONFLICT/);
   assert.match(captureApi, /expectedVersion/);
-  assert.match(captureApi, /status: conflict \? 409 : 502/);
+  assert.match(captureApi, /code: "DRAFT_CONFLICT"/);
+  assert.match(captureApi, /status: 409/);
+  assert.match(captureApi, /falhaCaptacao\(error, "salvar_rascunho"\)/);
   const draftBlock = captureApi.match(/if \(payload\.action === "saveDraft"\)[\s\S]*?if \(payload\.action === "deleteDraft"\)/)?.[0] ?? "";
   assert.doesNotMatch(draftBlock, /from\("corretores"\)/);
   assert.match(captureWizard, /Rascunho salvo/);
@@ -54,7 +56,8 @@ test("proprietário é liberado somente ao captador ou à gestão ativa", () => 
   assert.doesNotMatch(productApi, /from\("proprietarios"\)/);
   assert.doesNotMatch(captureApi, /from\("proprietarios"\)/);
   assert.match(productApi, /isManager: gerenciaProdutosGet/);
-  assert.match(productApi, /profile\?\.ativo !== true/);
+  assert.match(productApi, /resolveEffectiveAccess/);
+  assert.match(productApi, /denyIfCannot/);
   assert.match(captureApi, /Usuário inativo ou sem perfil operacional/);
   assert.match(migration, /is_product_manager\(\)/);
   assert.match(migration, /us\.ativo/);
@@ -109,6 +112,7 @@ test("auditoria de preços é somente da gestão e nunca altera dados automatica
 });
 
 test("falha após upload limpa o objeto e não deixa mídia órfã", () => {
-  assert.match(detail, /if \(insertError\) \{ await supabase\.storage\.from\("empreendimentos"\)\.remove\(\[path\]\); throw insertError; \}/);
+  assert.match(detail, /if \(insertError\) \{[\s\S]*?remove\(\[path\]\)[\s\S]*?reconciliar esta mídia/);
   assert.match(captureWizard, /await supabase\.storage\.from\("empreendimentos"\)\.remove\(\[storagePath\]\)/);
+  assert.match(captureWizard, /reconciliar esta mídia/);
 });
