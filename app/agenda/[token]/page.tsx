@@ -32,7 +32,10 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
     const de = iso(new Date(ano, mes, 1 - new Date(ano, mes, 1).getDay()));
     const ate = iso(new Date(ano, mes + 1, 6));
     try {
-      const res = await fetch(`/api/agenda-publica?token=${encodeURIComponent(token)}&de=${de}&ate=${ate}`);
+      const res = await fetch(`/api/agenda-publica?de=${de}&ate=${ate}`, {
+        headers: { "X-Apecerto-Public-Token": token },
+        cache: "no-store",
+      });
       const data = await res.json() as Agenda & { error?: string };
       if (!res.ok) { setErro(data.error || "Não foi possível abrir a agenda."); return; }
       setAgenda(data); setErro("");
