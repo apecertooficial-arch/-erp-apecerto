@@ -111,6 +111,13 @@ declarar o ERP inteiro pronto sem evidência.
 
 ## Em andamento
 
+- candidato mínimo de publicação criado sobre `origin/main`, sem drafts de
+  banco ou Edge Functions: branch `codex/deploy-alertas-avisos`, commit
+  `a7417407`. A fatia possui 12 arquivos, 424/424 testes, typecheck, lint sem
+  erros, build e navegador 1440 × 900 / 390 × 844 aprovados; ações validadas
+  para Conexões, Início e Agenda. O formulário de PR está preparado no GitHub,
+  com mergeabilidade confirmada, aguardando apenas confirmação no clique final;
+  produção permanece no build `e478030e...`;
 - conceitos visuais ainda estão isolados do CRM canônico;
 - Gate 0 confirmou a paridade commit publicado × worktree, mas encontrou deriva
   banco/Edge: 53 funções remotas e migrations aplicadas até 2026-09-18;
