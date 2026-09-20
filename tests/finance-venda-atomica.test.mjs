@@ -62,6 +62,7 @@ test("createSale chama UMA rpc venda_criar com o payload traduzido", async () =>
   assert.equal(payload.empreendimento_nome, "Residencial Teste");
   assert.deepEqual(payload.comissoes[1], { papel: "apecerto", beneficiario_id: null, valor: 12762.675, ratear: false });
   assert.deepEqual(payload.recebimentos, [{ numero_parcela: 1, valor: 19144.01, data_prevista: "2026-10-01" }]);
+  assert.equal(payload.repasses[0].status, "previsto");
   assert.equal(payload.repasses[0].data_pagamento, null);
   assert.deepEqual(payload.corretores, []);
 
@@ -80,6 +81,21 @@ test("payload não conserta valor inválido em silêncio: o banco decide", () =>
   assert.equal(payload.corretores[0].fracao, null, "antes virava 1");
   assert.equal(payload.comissoes[0].papel, "diretor", "antes era gravado sem validar");
   assert.equal(payload.comissoes[0].valor, -10);
+});
+
+test("venda nova nunca nasce com repasse pago sem lançamento de caixa", () => {
+  const payload = montarPayloadVenda({
+    payouts: [{ beneficiarioId: "u-1", papel: "corretor", valor: 1000, status: "pago", dataPagamento: "2026-09-20" }],
+  });
+  assert.deepEqual(payload.repasses, [{
+    beneficiario_id: "u-1",
+    papel: "corretor",
+    valor: 1000,
+    ordem: null,
+    data_prevista: null,
+    status: "previsto",
+    data_pagamento: null,
+  }]);
 });
 
 test("erro de negócio da RPC chega em português, sem o código interno na mensagem", async () => {
@@ -180,4 +196,107 @@ test("a ficha manda requestId estável no lançamento", () => {
   const ficha = readFileSync(new URL("../app/features/finance/VendaModal.tsx", import.meta.url), "utf8");
   assert.match(ficha, /const \[requestId\] = useState\(/);
   assert.match(ficha, /action: "createSale",\s*requestId,/);
+});
+
+test("GET do financeiro falha fechado se qualquer conjunto obrigatório falhar", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const gate = /const firstError = \[([^\]]+)\]/.exec(rota)?.[1] ?? "";
+  const conjuntos = [
+    "sales", "details", "commissions", "receipts", "cash", "users", "brokers", "goals",
+    "leads", "deals", "empreendimentos", "categorias", "rankingVgv", "payouts", "extratos", "extratoLinhas",
+  ];
+  for (const conjunto of conjuntos) assert.match(gate, new RegExp(`\\b${conjunto}\\b`), `${conjunto} ficou fora do gate`);
+  assert.match(rota, /const \{ data: me, error: meError \} = await auth\.supabase\.from\("usuarios"\)/);
+  assert.match(rota, /if \(meError\) return falhaFinanceiro\(meError, "carregar_perfil"\)/);
+});
+
+test("rota financeira não devolve detalhes internos nem os grava no log", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const linhasComRespostaCrua = rota.split("\n").filter((linha) => linha.includes("Response.json") && linha.includes(".message"));
+  const linhasComLogCru = rota.split("\n").filter((linha) => linha.includes("console.error") && linha.includes(".message"));
+  assert.deepEqual(linhasComRespostaCrua, []);
+  assert.deepEqual(linhasComLogCru, []);
+  assert.match(rota, /function falhaFinanceiro\(/);
+  assert.match(rota, /erro: semPermissao \? "sem_permissao" : opcoes\.erro \?\? \(parcial \? "reconciliacao_necessaria" : "falha_banco"\)/);
+  assert.match(rota, /status: semPermissao \? 403 : opcoes\.status \?\? 502/);
+});
+
+test("corretor recebe somente o próprio escopo financeiro", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  assert.match(rota, /const hasFullFinanceAccess = papelNoGrupo\(me\?\.role, "financeiro"\)/);
+  assert.match(rota, /const isBroker = !hasFullFinanceAccess/);
+  assert.match(rota, /commission\.beneficiario_id === auth\.user\.id/);
+  assert.match(rota, /payout\.beneficiario_id === auth\.user\.id/);
+  assert.match(rota, /broker\.usuario_id === auth\.user\.id/);
+  assert.match(rota, /goal\.corretor_id !== null && brokerIds\.has\(goal\.corretor_id\)/);
+  assert.doesNotMatch(rota, /scopedGoals[\s\S]{0,160}brokerNames\.has/);
+  assert.match(rota, /const scopedReceipts = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedCash = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedLeads = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedEmpreendimentos = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedCategorias = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedExtratos = isBroker \? \[\] :/);
+  assert.match(rota, /const scopedExtratoLinhas = isBroker \? \[\] :/);
+  assert.match(rota, /brokerSaleIds\.has\(sale\.id\)/);
+});
+
+test("repasse só vira pago pelo comando que também movimenta o caixa", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "savePayout")');
+  const fim = rota.indexOf('if (action === "settlePayout")', inicio);
+  const savePayout = rota.slice(inicio, fim);
+  assert.match(savePayout, /status: "previsto"/);
+  assert.match(savePayout, /data_pagamento: null/);
+  assert.match(savePayout, /\.neq\("status", "pago"\)/);
+  assert.match(savePayout, /repasse_ja_pago/);
+  assert.doesNotMatch(savePayout, /body\.status/);
+});
+
+test("painel do corretor separa comissão a receber de repasse já pago", () => {
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /const brokerReceived = brokerPayouts\.filter\(\(item\) => item\.status === "pago"\)/);
+  assert.match(workspace, /const brokerToReceive = Math\.max\(0, paidCommission - brokerReceived\)/);
+  assert.match(workspace, /<span>Já recebido<\/span><strong>\{compact\.format\(brokerReceived\)\}/);
+  assert.match(workspace, /"Minha comissão a receber"/);
+  assert.match(workspace, /sessionRole === "corretor" \? brokerToReceive/);
+  assert.doesNotMatch(workspace, /sessionRole === "corretor" \? paidCommission/);
+});
+
+test("falha da primeira carga sai do loading e oferece nova tentativa", () => {
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /const \[initialLoadSettled, setInitialLoadSettled\] = useState\(false\)/);
+  assert.match(workspace, /\.finally\(\(\) => setInitialLoadSettled\(true\)\)/);
+  assert.match(workspace, /if \(!data && !initialLoadSettled\) return <div className="crm-loading"/);
+  assert.match(workspace, /if \(!data\) return <section className="finance-load-error" role="alert">/);
+  assert.match(workspace, /<button type="button" onClick=\{carregarInicial\}>Tentar novamente<\/button>/);
+  assert.match(workspace, /const reload = \(\) => \{ void load\(\)\.catch/);
+});
+
+test("harness financeiro usa o componente produtivo e bloqueia mutações e rede externa", () => {
+  const harness = readFileSync(new URL("./finance-visual-harness/main.tsx", import.meta.url), "utf8");
+  const vite = readFileSync(new URL("./finance-visual-harness/vite.config.mjs", import.meta.url), "utf8");
+  assert.match(harness, /import \{ FinanceWorkspace, type FinanceData \}/);
+  assert.match(harness, /<FinanceWorkspace accessToken="harness-test-only" sessionRole="corretor"/);
+  assert.match(harness, /method !== "GET" \|\| url\.origin !== window\.location\.origin/);
+  assert.match(harness, /url\.pathname !== "\/api\/finance"/);
+  assert.match(harness, /Cliente sanitizado/);
+  assert.doesNotMatch(harness, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
+  assert.match(vite, /mock-supabase\.ts/);
+});
+
+test("gravações do financeiro não ignoram a resposta do banco", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
+  assert.deepEqual(gravacoesIgnoradas, []);
+  for (const operacao of [
+    "baixar_parcela_apos_lancamento",
+    "auditar_edicao_lancamento",
+    "reabrir_parcela_apos_exclusao",
+    "baixar_parcelas_apos_venda",
+    "baixar_repasse",
+    "gravar_linhas_extrato",
+    "marcar_linha_extrato",
+  ]) {
+    assert.match(rota, new RegExp(`falhaFinanceiro\\([^\\n]+"${operacao}"[^\\n]+parcial`), `${operacao} não sinaliza estado parcial`);
+  }
 });

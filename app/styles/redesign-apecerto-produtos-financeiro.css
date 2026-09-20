@@ -216,6 +216,11 @@
 
 /* ===== Financeiro, ficha da venda e Importar extrato ===== */
 .finance-workspace { background:#FAF8F6; }
+.finance-load-error { min-height:calc(100vh - 80px); display:grid; place-content:center; justify-items:center; gap:10px; padding:32px 20px; text-align:center; background:#FAF8F6; }
+.finance-load-error>span { color:#D85C00; font-size:11px; font-weight:800; letter-spacing:.12em; }
+.finance-load-error>h1 { margin:0; color:#1F1C1A; font-size:24px; }
+.finance-load-error>p { max-width:520px; margin:0; color:#6E6760; line-height:1.55; }
+.finance-load-error>button { min-height:44px; margin-top:6px; border:0; border-radius:999px; padding:0 20px; background:#FF7000; color:#fff; font-weight:800; box-shadow:0 8px 20px rgba(255,112,0,.22); }
 .finance-workspace>header { padding:26px 28px 6px !important; background:transparent !important; border-bottom:0 !important; align-items:flex-start; }
 .finance-workspace>header span { font-size:11px !important; font-weight:700; letter-spacing:.12em; color:#FF7000 !important; }
 .finance-workspace>header h1 { font-size:26px !important; font-weight:700 !important; color:#1F1C1A; margin:6px 0 3px !important; }

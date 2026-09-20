@@ -72,8 +72,10 @@ export function montarPayloadVenda(body: Record<string, unknown>): Record<string
       valor: numeroOuNulo(row.valor),
       ordem: numeroOuNulo(row.ordem),
       data_prevista: texto(row.dataPrevista, 10) || null,
-      status: texto(row.status, 20) || "previsto",
-      data_pagamento: texto(row.dataPagamento, 10) || null,
+      // Venda nova agenda o repasse; a baixa ocorre somente pelo comando que
+      // também cria o lançamento de caixa. Isso impede marcar "pago" sem caixa.
+      status: "previsto",
+      data_pagamento: null,
     })),
   };
 }

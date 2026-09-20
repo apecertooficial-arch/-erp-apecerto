@@ -47,6 +47,33 @@ const semTipos = (cliente: unknown) => cliente as SupabaseClient;
 
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
+type ErroFinanceiro = { code?: string; message?: string } | null | undefined;
+type OpcoesFalhaFinanceiro = {
+  parcial?: boolean;
+  mensagem?: string;
+  erro?: string;
+  status?: number;
+};
+
+function falhaFinanceiro(error: ErroFinanceiro, operacao: string, opcoes: OpcoesFalhaFinanceiro = {}) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  const parcial = opcoes.parcial === true;
+  console.error("financeiro_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+    parcial,
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para concluir esta operação."
+      : opcoes.mensagem ?? (parcial
+        ? "A operação não foi concluída por inteiro. Não repita a ação; atualize a tela e solicite conferência financeira."
+        : "Não foi possível concluir a operação financeira no momento."),
+    erro: semPermissao ? "sem_permissao" : opcoes.erro ?? (parcial ? "reconciliacao_necessaria" : "falha_banco"),
+    ...(parcial ? { parcial: true } : {}),
+  }, { status: semPermissao ? 403 : opcoes.status ?? 502 });
+}
+
 export async function GET(request: Request) {
   const auth = await authClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
@@ -58,7 +85,7 @@ export async function GET(request: Request) {
     auth.supabase.from("lancamentos_caixa").select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,beneficiario_id,comissao_id,natureza,created_at").order("data", { ascending: false }).limit(2000),
     auth.supabase.from("usuarios").select("id,nome,role,ativo"),
     auth.supabase.from("corretores").select("id,nome,usuario_id,online,ativo").eq("ativo", true),
-    auth.supabase.from("metas_corretor").select("nome,meta_vgv,atualizado_em"),
+    auth.supabase.from("metas_corretor").select("corretor_id,nome,meta_vgv,atualizado_em"),
     auth.supabase.from("leads").select("id,nome,origem,criado_em,corretor_id"),
     auth.supabase.from("negocios").select("id,lead_id,corretor_id,venda_id,status,valor,criado_em"),
     auth.supabase.from("empreendimentos").select("id,nome,bairro,cidade").order("nome", { ascending: true }),
@@ -69,20 +96,58 @@ export async function GET(request: Request) {
     semTipos(auth.supabase).from("extrato_importacao").select("*").order("criado_em", { ascending: false }).limit(12),
     semTipos(auth.supabase).from("extrato_linha").select("*").order("data", { ascending: false }).limit(600),
   ]);
-  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias].find((result) => result.error)?.error;
-  if (firstError) return Response.json({ error: firstError.message }, { status: 502 });
+  const firstError = [sales, details, commissions, receipts, cash, users, brokers, goals, leads, deals, empreendimentos, categorias, rankingVgv, payouts, extratos, extratoLinhas].find((result) => result.error)?.error;
+  if (firstError) return falhaFinanceiro(firstError, "carregar_painel");
   // Segurança: o corretor NUNCA pode ver valores totais/brutos de comissão — apenas a comissão que é dele (comissoes já é filtrada por RLS).
   // Removemos os campos brutos da resposta para que o navegador do corretor nem receba esses números.
-  const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const isBroker = !me || me.role === "corretor";
+  const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+  if (meError) return falhaFinanceiro(meError, "carregar_perfil");
+  const hasFullFinanceAccess = papelNoGrupo(me?.role, "financeiro");
+  const isBroker = !hasFullFinanceAccess;
+
+  /* Defesa em profundidade: RLS continua obrigatória, mas a API não repassa o
+     painel da imobiliária para um corretor mesmo se uma policy remota estiver
+     permissiva. O corretor recebe somente as próprias vendas/comissões/repasses;
+     caixa, recebimentos da empresa, extratos e cadastros administrativos não
+     atravessam a fronteira HTTP. */
+  const brokerRows = isBroker ? (brokers.data ?? []).filter((broker) => broker.usuario_id === auth.user.id) : (brokers.data ?? []);
+  const brokerIds = new Set(brokerRows.map((broker) => broker.id));
+  const brokerNames = new Set(brokerRows.map((broker) => broker.nome.trim().toLocaleLowerCase("pt-BR")));
+  const scopedCommissions = isBroker ? (commissions.data ?? []).filter((commission) => commission.beneficiario_id === auth.user.id) : (commissions.data ?? []);
+  const scopedPayouts = isBroker ? (payouts.data ?? []).filter((payout) => payout.beneficiario_id === auth.user.id) : (payouts.data ?? []);
+  const scopedDeals = isBroker
+    ? (deals.data ?? []).filter((deal) => deal.corretor_id !== null && brokerIds.has(deal.corretor_id))
+    : (deals.data ?? []);
+  const brokerSaleIds = new Set<string>([
+    ...scopedCommissions.map((commission) => commission.venda_id),
+    ...scopedPayouts.map((payout) => payout.venda_id),
+    ...scopedDeals.map((deal) => deal.venda_id).filter((id): id is string => typeof id === "string"),
+  ]);
+  const scopedSales = isBroker ? (sales.data ?? []).filter((sale) => brokerSaleIds.has(sale.id)) : (sales.data ?? []);
+  const scopedDetails = isBroker ? (details.data ?? []).filter((detail) => typeof detail.id === "string" && brokerSaleIds.has(detail.id)) : (details.data ?? []);
+  const scopedReceipts = isBroker ? [] : (receipts.data ?? []);
+  const scopedCash = isBroker ? [] : (cash.data ?? []);
+  const scopedUsers = isBroker ? (users.data ?? []).filter((user) => user.id === auth.user.id) : (users.data ?? []);
+  const scopedGoals = isBroker ? (goals.data ?? []).filter((goal) => goal.corretor_id !== null && brokerIds.has(goal.corretor_id)) : (goals.data ?? []);
+  const scopedLeads = isBroker ? [] : (leads.data ?? []);
+  const scopedEmpreendimentos = isBroker ? [] : (empreendimentos.data ?? []);
+  const scopedCategorias = isBroker ? [] : (categorias.data ?? []);
+  const scopedRanking = isBroker ? (rankingVgv.data ?? []).filter((row) => {
+    const id = String(row.corretor_id ?? "");
+    const nome = String(row.corretor ?? "").trim().toLocaleLowerCase("pt-BR");
+    return id === auth.user.id || brokerIds.has(Number(id)) || brokerNames.has(nome);
+  }) : (rankingVgv.data ?? []);
+  const scopedExtratos = isBroker ? [] : (extratos.data ?? []);
+  const scopedExtratoLinhas = isBroker ? [] : (extratoLinhas.data ?? []);
+
   const safeSales = isBroker
-    ? (sales.data ?? []).map((sale) => ({ ...sale, percentual_comissao: null }))
-    : (sales.data ?? []);
+    ? scopedSales.map((sale) => ({ ...sale, percentual_comissao: null }))
+    : scopedSales;
   const safeDetails = isBroker
-    ? (details.data ?? []).map((detail) => ({ ...detail, percentual_comissao: null, comissao_bruta: null, comissao_corretores: null, comissao_executivo: null, comissao_apecerto: null, indicacao: null }))
-    : (details.data ?? []);
+    ? scopedDetails.map((detail) => ({ ...detail, percentual_comissao: null, comissao_bruta: null, comissao_corretores: null, comissao_executivo: null, comissao_apecerto: null, indicacao: null }))
+    : scopedDetails;
   const saleById = new Map(safeSales.map((sale) => [sale.id, sale]));
-  const reconciledReceipts = (receipts.data ?? []).map((receipt) => {
+  const reconciledReceipts = scopedReceipts.map((receipt) => {
     const sale = saleById.get(receipt.venda_id);
     if (sale?.status !== "pago") return receipt;
     return {
@@ -91,7 +156,7 @@ export async function GET(request: Request) {
       data_recebimento: receipt.data_recebimento || sale.data_venda,
     };
   });
-  return Response.json({ sales: safeSales, details: safeDetails, commissions: commissions.data ?? [], receipts: reconciledReceipts, cash: cash.data ?? [], users: users.data ?? [], brokers: brokers.data ?? [], goals: goals.data ?? [], leads: leads.data ?? [], deals: deals.data ?? [], empreendimentos: empreendimentos.data ?? [], categorias: categorias.data ?? [], rankingVgv: rankingVgv.data ?? [], payouts: payouts.data ?? [], extratos: extratos.data ?? [], extratoLinhas: extratoLinhas.data ?? [] });
+  return Response.json({ sales: safeSales, details: safeDetails, commissions: scopedCommissions, receipts: reconciledReceipts, cash: scopedCash, users: scopedUsers, brokers: brokerRows, goals: scopedGoals, leads: scopedLeads, deals: scopedDeals, empreendimentos: scopedEmpreendimentos, categorias: scopedCategorias, rankingVgv: scopedRanking, payouts: scopedPayouts, extratos: scopedExtratos, extratoLinhas: scopedExtratoLinhas });
 }
 
 export async function PATCH(request: Request) {
@@ -107,7 +172,8 @@ export async function PATCH(request: Request) {
   const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
 
   if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (meError) return falhaFinanceiro(meError, "autorizar_categoria");
     if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
     const validNatureza = (value: string) => ["normal", "comissao_recebida", "comissao_paga"].includes(value) ? value : "normal";
     if (action === "createCategory") {
@@ -115,7 +181,8 @@ export async function PATCH(request: Request) {
       const tipo = clean(body.tipo, 10);
       if (!nome || !["entrada", "saida", "ambos"].includes(tipo)) return Response.json({ error: "Informe o nome e o tipo da categoria." }, { status: 422 });
       const { error } = await auth.supabase.from("categorias_caixa").insert({ nome, tipo: tipo as "entrada" | "saida", natureza: validNatureza(clean(body.natureza, 30)), cor: clean(body.cor, 20) || null, ordem: 99 } as never);
-      return error ? Response.json({ error: /duplicate|unique/i.test(error.message) ? "Já existe uma categoria com esse nome." : error.message }, { status: 502 }) : Response.json({ success: true });
+      if (error && /duplicate|unique/i.test(error.message)) return falhaFinanceiro(error, "criar_categoria", { mensagem: "Já existe uma categoria com esse nome.", erro: "categoria_duplicada", status: 409 });
+      return error ? falhaFinanceiro(error, "criar_categoria") : Response.json({ success: true });
     }
     if (action === "renameCategory") {
       const id = clean(body.categoryId, 60);
@@ -126,12 +193,12 @@ export async function PATCH(request: Request) {
       if (typeof body.cor === "string") patch.cor = clean(body.cor, 20) || null;
       if (!id || Object.keys(patch).length === 0) return Response.json({ error: "Informe a categoria e o que alterar." }, { status: 422 });
       const { error } = await auth.supabase.from("categorias_caixa").update(patch as never).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaFinanceiro(error, "renomear_categoria") : Response.json({ success: true });
     }
     const id = clean(body.categoryId, 60);
     if (!id) return Response.json({ error: "Categoria inválida." }, { status: 422 });
     const { error } = await auth.supabase.from("categorias_caixa").update({ ativo: false }).eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "remover_categoria") : Response.json({ success: true });
   }
 
   if (action === "createSale") {
@@ -155,7 +222,7 @@ export async function PATCH(request: Request) {
 
        Detalhes em app/api/finance/venda-rpc.ts. */
     const resultado = await criarVendaAtomica(semTipos(auth.supabase), body);
-    if (resultado.erroInterno && resultado.status >= 500) console.error("venda_criar falhou:", resultado.erroInterno.code, resultado.erroInterno.message);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_venda_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
     return Response.json(resultado.body, { status: resultado.status });
   }
 
@@ -177,10 +244,10 @@ export async function PATCH(request: Request) {
     const natureza = ["normal", "comissao_recebida", "comissao_paga"].includes(naturezaRaw) ? naturezaRaw : "normal";
     const insert: Record<string, unknown> = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: saleId, recebimento_id: receiptId, comissao_id: commissionId, beneficiario_id: beneficiarioId, papel, natureza };
     const { error } = await auth.supabase.from("lancamentos_caixa").insert(insert as never);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaFinanceiro(error, "criar_lancamento");
     if (receiptId && body.settleReceipt === true) {
       const { error: settleError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: date }).eq("id", receiptId).neq("status", "recebido");
-      if (settleError) return Response.json({ error: `Lançamento salvo, mas a baixa da parcela falhou: ${settleError.message}` }, { status: 502 });
+      if (settleError) return falhaFinanceiro(settleError, "baixar_parcela_apos_lancamento", { parcial: true });
     }
     return Response.json({ success: true });
   }
@@ -205,19 +272,21 @@ export async function PATCH(request: Request) {
     const { data: antes, error: readError } = await auth.supabase.from("lancamentos_caixa")
       .select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,beneficiario_id,comissao_id,natureza,created_at")
       .eq("id", cashId).maybeSingle();
-    if (readError) return Response.json({ error: readError.message }, { status: 502 });
+    if (readError) return falhaFinanceiro(readError, "consultar_lancamento");
     if (!antes) return Response.json({ error: "Lançamento não encontrado. Ele pode já ter sido excluído." }, { status: 404 });
 
     /* Nome de quem fez, para a auditoria significar alguma coisa na leitura. */
-    const { data: autor } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    const { data: autor, error: autorError } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
+    if (autorError) return falhaFinanceiro(autorError, "consultar_autor_auditoria");
     const autorNome = autor?.nome || auth.user.email || "desconhecido";
     const registrar = async (acao: string, depois: Record<string, unknown> | null) => {
-      await auth.supabase.from("erp_auditoria").insert({
+      const { error: auditError } = await auth.supabase.from("erp_auditoria").insert({
         modulo: "Financeiro", acao, entidade: "lancamentos_caixa", entidade_id: cashId,
         usuario_id: auth.user.id, usuario_nome: autorNome,
         detalhe: `${antes.tipo === "entrada" ? "Entrada" : "Saída"} de ${antes.valor} em ${antes.data} · ${antes.categoria}`,
         antes: antes as never, depois: depois as never,
       } as never);
+      return auditError;
     };
 
     if (action === "updateCash") {
@@ -228,8 +297,9 @@ export async function PATCH(request: Request) {
       if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
       const patch = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null };
       const { error } = await auth.supabase.from("lancamentos_caixa").update(patch as never).eq("id", cashId);
-      if (error) return Response.json({ error: error.message }, { status: 502 });
-      await registrar("Editar lançamento", patch);
+      if (error) return falhaFinanceiro(error, "editar_lancamento");
+      const auditError = await registrar("Editar lançamento", patch);
+      if (auditError) return falhaFinanceiro(auditError, "auditar_edicao_lancamento", { parcial: true });
       return Response.json({ success: true });
     }
 
@@ -237,14 +307,16 @@ export async function PATCH(request: Request) {
        parcela tem que voltar a aparecer em "A receber", senão o financeiro passa a
        contar duas histórias diferentes sobre o mesmo dinheiro. */
     const { error } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", cashId);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    await registrar("Excluir lançamento", null);
+    if (error) return falhaFinanceiro(error, "excluir_lancamento");
+    const auditError = await registrar("Excluir lançamento", null);
     if (antes.recebimento_id) {
       const { error: reopenError } = await auth.supabase.from("recebimentos")
         .update({ status: "pendente", data_recebimento: null }).eq("id", antes.recebimento_id);
-      if (reopenError) return Response.json({ error: `Lançamento excluído, mas a parcela vinculada não voltou para pendente: ${reopenError.message}` }, { status: 502 });
+      if (reopenError) return falhaFinanceiro(reopenError, "reabrir_parcela_apos_exclusao", { parcial: true });
+      if (auditError) return falhaFinanceiro(auditError, "auditar_exclusao_lancamento", { parcial: true });
       return Response.json({ success: true, reopened: true });
     }
+    if (auditError) return falhaFinanceiro(auditError, "auditar_exclusao_lancamento", { parcial: true });
     return Response.json({ success: true });
   }
 
@@ -254,7 +326,7 @@ export async function PATCH(request: Request) {
     const denied = guard([["financeiro", "criar"], ["fluxo_caixa", "criar"]], "Você não tem permissão para lançar recebimentos.");
     if (denied) return denied;
     const { error } = await auth.supabase.from("recebimentos").insert({ venda_id: saleId, numero_parcela: installment, valor_total: value, data_prevista: due, status: "pendente" });
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "criar_recebimento") : Response.json({ success: true });
   }
 
   if (action === "settleReceipt") {
@@ -263,7 +335,7 @@ export async function PATCH(request: Request) {
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Você não tem permissão para dar baixa em recebimentos.");
     if (denied) return denied;
     const { error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? hojeOperacao() : null }).eq("id", receiptId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "baixar_recebimento") : Response.json({ success: true });
   }
 
   if (action === "updateSale") {
@@ -303,14 +375,15 @@ export async function PATCH(request: Request) {
       }).filter((doc) => doc.path).slice(0, 30);
     }
     if (status === "concluido" || status === "pago") {
-      const { data: atual } = await auth.supabase.from("vendas").select("data_venda,data_conclusao").eq("id", saleId).maybeSingle();
+      const { data: atual, error: atualError } = await auth.supabase.from("vendas").select("data_venda,data_conclusao").eq("id", saleId).maybeSingle();
+      if (atualError) return falhaFinanceiro(atualError, "consultar_venda_para_atualizacao");
       if (atual && !atual.data_conclusao) patchVenda.data_conclusao = atual.data_venda;
     }
     const { error } = await auth.supabase.from("vendas").update(patchVenda as never).eq("id", saleId);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaFinanceiro(error, "atualizar_venda");
     if (status === "pago") {
       const { error: receiptError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: hojeOperacao() }).eq("venda_id", saleId).neq("status", "recebido");
-      if (receiptError) return Response.json({ error: `Venda atualizada, mas a baixa das parcelas falhou: ${receiptError.message}` }, { status: 502 });
+      if (receiptError) return falhaFinanceiro(receiptError, "baixar_parcelas_apos_venda", { parcial: true });
     }
     return Response.json({ success: true });
   }
@@ -334,8 +407,6 @@ export async function PATCH(request: Request) {
     const saleId = clean(body.saleId, 50);
     const valor = Number(body.valor);
     const ordemRaw = Number(body.ordem);
-    const status = clean(body.status, 20) === "pago" ? "pago" : "previsto";
-    const dataPagamento = clean(body.dataPagamento, 10) || null;
     const dataPrevista = clean(body.dataPrevista, 10) || null;
     const beneficiarioId = clean(body.beneficiarioId, 60);
     const papel = clean(body.papel, 40);
@@ -343,7 +414,6 @@ export async function PATCH(request: Request) {
     if (!saleId || !Number.isFinite(valor) || valor <= 0) return Response.json({ error: "Informe a venda e um valor de repasse maior que zero." }, { status: 422 });
     if (!beneficiarioId) return Response.json({ error: "Escolha quem vai receber o repasse." }, { status: 422 });
     if (!papeisValidos.includes(papel)) return Response.json({ error: "Papel invalido para o repasse." }, { status: 422 });
-    if (status === "pago" && !dataPagamento) return Response.json({ error: "Repasse marcado como pago precisa da data do pagamento." }, { status: 422 });
     const linha: Record<string, unknown> = {
       venda_id: saleId,
       comissao_id: clean(body.comissaoId, 60) || null,
@@ -352,16 +422,18 @@ export async function PATCH(request: Request) {
       valor,
       ordem: Number.isSafeInteger(ordemRaw) && ordemRaw > 0 ? ordemRaw : 1,
       data_prevista: dataPrevista,
-      status,
-      data_pagamento: status === "pago" ? dataPagamento : null,
+      status: "previsto",
+      data_pagamento: null,
       observacao: clean(body.observacao, 500) || null,
     };
     if (payoutId) {
-      const { error } = await auth.supabase.from("pagamentos_comissao").update(linha as never).eq("id", payoutId);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      const { data: atualizado, error } = await auth.supabase.from("pagamentos_comissao").update(linha as never).eq("id", payoutId).neq("status", "pago").select("id").maybeSingle();
+      if (error) return falhaFinanceiro(error, "atualizar_repasse");
+      if (!atualizado) return Response.json({ error: "Repasse pago só pode ser alterado depois de desfazer a baixa.", erro: "repasse_ja_pago" }, { status: 409 });
+      return Response.json({ success: true });
     }
     const { data: criado, error } = await auth.supabase.from("pagamentos_comissao").insert(linha as never).select("id").single();
-    return error || !criado ? Response.json({ error: error?.message || "Nao foi possivel lancar o repasse." }, { status: 502 }) : Response.json({ success: true, payoutId: criado.id });
+    return error || !criado ? falhaFinanceiro(error, "criar_repasse") : Response.json({ success: true, payoutId: criado.id });
   }
 
   if (action === "settlePayout") {
@@ -372,23 +444,28 @@ export async function PATCH(request: Request) {
     const dataPagamento = clean(body.dataPagamento, 10) || hojeOperacao();
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
     const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
-    if (readError || !lido) return Response.json({ error: readError?.message || "Repasse nao encontrado." }, { status: 404 });
+    if (readError) return falhaFinanceiro(readError, "consultar_repasse");
+    if (!lido) return Response.json({ error: "Repasse nao encontrado." }, { status: 404 });
     const atual = lido as typeof lido & RepasseColunasNovas;
 
     if (!pago) {
       // Desfazer a baixa: some o lancamento derivado, some a data.
+      let removeuLancamento = false;
       if (atual.lancamento_id) {
         const { error: delError } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
-        if (delError) return Response.json({ error: `Nao foi possivel remover o lancamento de caixa: ${delError.message}` }, { status: 502 });
+        if (delError) return falhaFinanceiro(delError, "remover_caixa_do_repasse");
+        removeuLancamento = true;
       }
       const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "previsto", data_pagamento: null, lancamento_id: null } as never).eq("id", payoutId);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaFinanceiro(error, "reabrir_repasse", { parcial: removeuLancamento }) : Response.json({ success: true });
     }
 
     // Dar baixa: gera o lancamento de caixa e amarra os dois.
-    const { data: categoria } = await auth.supabase.from("categorias_caixa").select("nome").eq("natureza", "comissao_paga").eq("ativo", true).order("ordem", { ascending: true }).limit(1).maybeSingle();
+    const { data: categoria, error: categoriaError } = await auth.supabase.from("categorias_caixa").select("nome").eq("natureza", "comissao_paga").eq("ativo", true).order("ordem", { ascending: true }).limit(1).maybeSingle();
+    if (categoriaError) return falhaFinanceiro(categoriaError, "consultar_categoria_repasse");
     if (!categoria?.nome) return Response.json({ error: "Nao existe categoria de caixa com natureza 'comissao paga'. Crie a categoria antes de dar baixa." }, { status: 422 });
     let lancamentoId = atual.lancamento_id as string | null;
+    let alterouLancamento = false;
     if (!lancamentoId) {
       const { data: lancamento, error: cashError } = await auth.supabase.from("lancamentos_caixa").insert({
         tipo: "saida",
@@ -403,13 +480,16 @@ export async function PATCH(request: Request) {
         papel: atual.papel,
         natureza: "comissao_paga",
       } as never).select("id").single();
-      if (cashError || !lancamento) return Response.json({ error: `Nao foi possivel gerar o lancamento de caixa: ${cashError?.message ?? ""}` }, { status: 502 });
+      if (cashError || !lancamento) return falhaFinanceiro(cashError, "criar_caixa_do_repasse");
       lancamentoId = lancamento.id as string;
+      alterouLancamento = true;
     } else {
-      await auth.supabase.from("lancamentos_caixa").update({ data: dataPagamento, valor: atual.valor } as never).eq("id", lancamentoId);
+      const { error: cashUpdateError } = await auth.supabase.from("lancamentos_caixa").update({ data: dataPagamento, valor: atual.valor } as never).eq("id", lancamentoId);
+      if (cashUpdateError) return falhaFinanceiro(cashUpdateError, "atualizar_caixa_do_repasse");
+      alterouLancamento = true;
     }
     const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "pago", data_pagamento: dataPagamento, lancamento_id: lancamentoId } as never).eq("id", payoutId);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return falhaFinanceiro(error, "baixar_repasse", { parcial: alterouLancamento });
     return Response.json({ success: true });
   }
 
@@ -418,11 +498,18 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const payoutId = clean(body.payoutId, 50);
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
-    const { data: lido } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
+    if (readError) return falhaFinanceiro(readError, "consultar_repasse_para_exclusao");
+    if (!lido) return Response.json({ error: "Repasse nao encontrado." }, { status: 404 });
     const atual = lido ? lido as typeof lido & RepasseColunasNovas : null;
-    if (atual?.lancamento_id) await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
+    let removeuLancamento = false;
+    if (atual?.lancamento_id) {
+      const { error: cashDeleteError } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
+      if (cashDeleteError) return falhaFinanceiro(cashDeleteError, "remover_caixa_antes_repasse");
+      removeuLancamento = true;
+    }
     const { error } = await auth.supabase.from("pagamentos_comissao").delete().eq("id", payoutId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "excluir_repasse", { parcial: removeuLancamento }) : Response.json({ success: true });
   }
 
   if (action === "saveReceipt") {
@@ -440,13 +527,13 @@ export async function PATCH(request: Request) {
     };
     if (receiptId) {
       const { error } = await auth.supabase.from("recebimentos").update(linha as never).eq("id", receiptId);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaFinanceiro(error, "atualizar_recebimento") : Response.json({ success: true });
     }
     if (!saleId) return Response.json({ error: "Venda invalida." }, { status: 422 });
     linha.venda_id = saleId;
     linha.status = "pendente";
     const { error } = await auth.supabase.from("recebimentos").insert(linha as never);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "criar_recebimento_venda") : Response.json({ success: true });
   }
 
   if (action === "deleteReceipt") {
@@ -455,7 +542,7 @@ export async function PATCH(request: Request) {
     const receiptId = clean(body.receiptId, 50);
     if (!receiptId) return Response.json({ error: "Recebimento invalido." }, { status: 422 });
     const { error } = await auth.supabase.from("recebimentos").delete().eq("id", receiptId);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "excluir_recebimento") : Response.json({ success: true });
   }
 
   /* IMPORTACAO DE EXTRATO BANCARIO (ago/2026).
@@ -491,19 +578,23 @@ export async function PATCH(request: Request) {
       arquivo_nome: clean(body.arquivoNome, 200) || null,
       linhas_total: brutas.length,
     } as never).select("id").single();
-    if (impError || !importacao) return Response.json({ error: impError?.message || "Nao foi possivel registrar a importacao." }, { status: 502 });
+    if (impError || !importacao) return falhaFinanceiro(impError, "registrar_importacao_extrato");
     const importacaoId = importacao.id as string;
 
     // Contexto para as sugestoes: caixa recente, categorias e palavras-chave.
     const datas = brutas.map((l) => clean(l.data, 10)).filter(Boolean).sort();
     const de = datas[0] || null;
     const ate = datas[datas.length - 1] || null;
-    const [{ data: caixaProximo }, { data: chaves }] = await Promise.all([
+    const [caixaContexto, chavesContexto] = await Promise.all([
       auth.supabase.from("lancamentos_caixa").select("id,data,valor,tipo,categoria,descricao")
         .gte("data", de ? (somarDias(de, -5) || "1900-01-01") : "1900-01-01")
         .lte("data", ate ? (somarDias(ate, 5) || "2999-12-31") : "2999-12-31"),
       auth.supabase.from("caixa_keywords").select("categoria,keyword,prioridade").order("prioridade", { ascending: true }),
     ]);
+    const contextoError = caixaContexto.error ?? chavesContexto.error;
+    if (contextoError) return falhaFinanceiro(contextoError, "carregar_contexto_extrato", { parcial: true });
+    const caixaProximo = caixaContexto.data;
+    const chaves = chavesContexto.data;
 
     const semAcento = (texto: string) => texto.normalize("NFD").replace(new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g"), "").toLowerCase();
     const titularNormalizado = semAcento(titular).replace(/\b(ltda|me|epp|eireli|s\.?a\.?)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -550,7 +641,7 @@ export async function PATCH(request: Request) {
 
     // upsert por impressao: reimportar o mesmo periodo nao duplica nada.
     const { error: linhaError } = await semTipos(auth.supabase).from("extrato_linha").upsert(linhas as never, { onConflict: "impressao", ignoreDuplicates: true });
-    if (linhaError) return Response.json({ error: `Importacao registrada, mas as linhas falharam: ${linhaError.message}` }, { status: 502 });
+    if (linhaError) return falhaFinanceiro(linhaError, "gravar_linhas_extrato", { parcial: true });
     return Response.json({ success: true, importacaoId, linhas: linhas.length });
   }
 
@@ -563,17 +654,20 @@ export async function PATCH(request: Request) {
     if (emLote) {
       const importacaoId = clean(body.importacaoId, 50);
       const consulta = semTipos(auth.supabase).from("extrato_linha").select("*").eq("situacao", "pendente");
-      const { data } = importacaoId ? await consulta.eq("importacao_id", importacaoId) : await consulta;
+      const { data, error } = importacaoId ? await consulta.eq("importacao_id", importacaoId) : await consulta;
+      if (error) return falhaFinanceiro(error, "consultar_lote_extrato");
       alvos = (data ?? []) as Array<Record<string, unknown>>;
     } else {
       const linhaId = clean(body.linhaId, 50);
       if (!linhaId) return Response.json({ error: "Linha invalida." }, { status: 422 });
-      const { data } = await semTipos(auth.supabase).from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
+      const { data, error } = await semTipos(auth.supabase).from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
+      if (error) return falhaFinanceiro(error, "consultar_linha_extrato");
       if (!data) return Response.json({ error: "Linha nao encontrada." }, { status: 404 });
       alvos = [data as Record<string, unknown>];
     }
 
     let lancadas = 0, vinculadas = 0, ignoradas = 0, pulou = 0;
+    const houveMudanca = () => lancadas + vinculadas + ignoradas > 0;
     for (const linha of alvos) {
       const decisaoPedida = clean(body.decisao, 20);
       const decisao = emLote
@@ -581,12 +675,14 @@ export async function PATCH(request: Request) {
         : (["lancar", "vincular", "ignorar"].includes(decisaoPedida) ? decisaoPedida : "lancar");
 
       if (decisao === "ignorar") {
-        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        const { error: ignoreError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        if (ignoreError) return falhaFinanceiro(ignoreError, "ignorar_linha_extrato", { parcial: houveMudanca() });
         ignoradas++;
         continue;
       }
       if (decisao === "vincular" && linha.sugestao_lancamento_id) {
-        await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        const { error: vinculoError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+        if (vinculoError) return falhaFinanceiro(vinculoError, "vincular_linha_extrato", { parcial: houveMudanca() });
         vinculadas++;
         continue;
       }
@@ -599,7 +695,8 @@ export async function PATCH(request: Request) {
          venda (e sem a parte, quando e comissao paga) o dinheiro entra no caixa
          solto e nao aparece no repasse da venda. No lote, linha assim fica
          PENDENTE em vez de virar lancamento incompleto. */
-      const { data: catInfo } = await auth.supabase.from("categorias_caixa").select("natureza").eq("nome", categoria).maybeSingle();
+      const { data: catInfo, error: categoriaError } = await auth.supabase.from("categorias_caixa").select("natureza").eq("nome", categoria).maybeSingle();
+      if (categoriaError) return falhaFinanceiro(categoriaError, "consultar_categoria_extrato", { parcial: houveMudanca() });
       const natureza = String(catInfo?.natureza || "normal");
       const ehComissao = natureza === "comissao_paga" || natureza === "comissao_recebida";
       const vendaId = emLote ? "" : clean(body.saleId, 60);
@@ -611,12 +708,14 @@ export async function PATCH(request: Request) {
       let beneficiarioId: string | null = null;
       let papel: string | null = null;
       if (comissaoId) {
-        const { data: comissao } = await auth.supabase.from("comissoes").select("beneficiario_id,papel").eq("id", comissaoId).maybeSingle();
+        const { data: comissao, error: comissaoError } = await auth.supabase.from("comissoes").select("beneficiario_id,papel").eq("id", comissaoId).maybeSingle();
+        if (comissaoError) return falhaFinanceiro(comissaoError, "consultar_comissao_extrato", { parcial: houveMudanca() });
         beneficiarioId = (comissao?.beneficiario_id as string) ?? null;
         papel = (comissao?.papel as string) ?? null;
       }
       if (natureza === "comissao_paga" && vendaId && !comissaoId) {
-        const { count } = await auth.supabase.from("comissoes").select("id", { count: "exact", head: true }).eq("venda_id", vendaId);
+        const { count, error: countError } = await auth.supabase.from("comissoes").select("id", { count: "exact", head: true }).eq("venda_id", vendaId);
+        if (countError) return falhaFinanceiro(countError, "contar_comissoes_extrato", { parcial: houveMudanca() });
         if ((count ?? 0) > 0) return Response.json({ error: "Escolha qual comissao / corretor esta sendo pago." }, { status: 422 });
       }
 
@@ -633,8 +732,9 @@ export async function PATCH(request: Request) {
         beneficiario_id: beneficiarioId,
         papel,
       } as never).select("id").single();
-      if (caixaError || !criado) return Response.json({ error: `Nao foi possivel lancar no caixa: ${caixaError?.message ?? ""}` }, { status: 502 });
-      await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+      if (caixaError || !criado) return falhaFinanceiro(caixaError, "lancar_caixa_extrato", { parcial: houveMudanca() });
+      const { error: linhaUpdateError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
+      if (linhaUpdateError) return falhaFinanceiro(linhaUpdateError, "marcar_linha_extrato", { parcial: true });
       lancadas++;
     }
     return Response.json({ success: true, lancadas, vinculadas, ignoradas, pulou });
@@ -643,17 +743,19 @@ export async function PATCH(request: Request) {
   if (action === "deleteSale") {
     const saleId = clean(body.saleId, 50);
     if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (meError) return falhaFinanceiro(meError, "autorizar_exclusao_venda");
     if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem apagar vendas." }, { status: 403 });
     // Transação única no banco (venda_excluir): apaga repasses, comissões,
     // parcelas e corretores, solta o negócio do CRM e os lançamentos de caixa, e
     // grava o retrato completo em erp_auditoria. Falhou qualquer passo, nada muda.
     const resultado = await excluirVendaAtomica(semTipos(auth.supabase), saleId);
-    if (resultado.erroInterno && resultado.status >= 500) console.error("venda_excluir falhou:", resultado.erroInterno.code, resultado.erroInterno.message);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_venda_rpc_falhou", { operacao: "excluir", codigo: resultado.erroInterno.code ?? "desconhecido" });
     return Response.json(resultado.body, { status: resultado.status });
   }
   if (action === "addCommission" || action === "updateCommission" || action === "deleteCommission") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
+    if (meError) return falhaFinanceiro(meError, "autorizar_comissao");
     if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem editar comissões." }, { status: 403 });
 
     if (action === "addCommission") {
@@ -661,20 +763,20 @@ export async function PATCH(request: Request) {
       const papeis: Enums<"papel_comissao">[] = ["corretor", "executivo", "indicacao", "apecerto", "gerente"];
       const papel = papeis.find((item) => item === papelBruto);
       const beneficiarioId = clean(body.beneficiarioId, 60) || null;
-      if (!vendaId || !papel || !Number.isFinite(valor)) return Response.json({ error: "Informe a venda, o papel e o valor." }, { status: 422 });
+      if (!vendaId || !papel || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Informe a venda, o papel e um valor não negativo." }, { status: 422 });
       const { error } = await auth.supabase.from("comissoes").insert({ venda_id: vendaId, papel, valor_final: valor, valor_calculado: valor, beneficiario_id: beneficiarioId });
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaFinanceiro(error, "adicionar_comissao") : Response.json({ success: true });
     }
     if (action === "updateCommission") {
       const id = clean(body.commissionId, 60); const valor = Number(body.valor);
-      if (!id || !Number.isFinite(valor)) return Response.json({ error: "Comissão inválida." }, { status: 422 });
+      if (!id || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Comissão inválida." }, { status: 422 });
       const { error } = await auth.supabase.from("comissoes").update({ valor_final: valor }).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+      return error ? falhaFinanceiro(error, "atualizar_comissao") : Response.json({ success: true });
     }
     const id = clean(body.commissionId, 60);
     if (!id) return Response.json({ error: "Comissão inválida." }, { status: 422 });
     const { error } = await auth.supabase.from("comissoes").delete().eq("id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    return error ? falhaFinanceiro(error, "excluir_comissao") : Response.json({ success: true });
   }
 
   return Response.json({ error: "Ação financeira desconhecida." }, { status: 400 });
