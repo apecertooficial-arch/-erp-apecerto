@@ -62,7 +62,12 @@ test("uma automacao recebe mensagens de entrada e saida pelo mesmo contrato", ()
   assert.match(migration, /conversation\.message_sent/);
   assert.match(migration, /lead\.next_action_due/);
   assert.match(migration, /lead\.cadence_due/);
-  assert.match(builderRuntime, /sara-ciclo-event-trigger/);
+  // O gatilho agregado pertence ao mapa interno da automacao 49. O editor
+  // oferece os dois eventos publicos, mas nao permite publicar outra copia da
+  // autoridade interna da Sara.
+  assert.doesNotMatch(builderRuntime, /sara-ciclo-event-trigger/);
+  assert.match(builderRuntime, /lead-mensagem-recebida-trigger/);
+  assert.match(builderRuntime, /lead-mensagem-enviada-trigger/);
   assert.match(migration, /'Inteligencia de Conversa'/);
   assert.match(migration, /'\{options,agenteId\}',to_jsonb\(16\)/);
   for (const campo of [
