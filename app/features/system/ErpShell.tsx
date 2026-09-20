@@ -32,6 +32,7 @@ function IconeBarra({ modulo }: { modulo: ModuleName | "Mais" }) {
   if (modulo === "Notificações") return <svg {...c}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4" /></svg>;
   if (modulo === "Minha Equipe") return <svg {...c}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M3 21v-2a5 5 0 0 1 10 0v2M14 21v-1.5a4 4 0 0 1 7-2.6" /></svg>;
   if (modulo === "Produtos") return <svg {...c}><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 21h18M10 7h.01M14 7h.01M10 11h.01M14 11h.01M10 15h.01M14 15h.01" /></svg>;
+  if (modulo === "apêcerto Studio") return <svg {...c}><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 15h8M8 11h5M16.5 6.5v3M15 8h3"/></svg>;
   if (modulo === "Configurações") return <svg {...c}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
   if (modulo === "Projetos e Tarefas") return <svg {...c}><path d="M9 6h11M9 12h11M9 18h11" /><path d="m3 6 2 2 2-3M3 12l2 2 2-3M3 18l2 2 2-3" /></svg>;
   if (modulo === "Abordagens") return <svg {...c}><path d="M21 12a8 8 0 0 1-11.4 7.2L3 21l1.8-6.6A8 8 0 1 1 21 12Z" /></svg>;
