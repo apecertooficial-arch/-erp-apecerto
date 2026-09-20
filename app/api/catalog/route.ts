@@ -6,6 +6,22 @@ import { resolveCommercialOrigin, summarizeInventory } from "../../features/prod
 
 export const dynamic = "force-dynamic";
 
+type ErroCatalogo = { code?: string; message?: string } | null | undefined;
+
+function falhaCatalogo(error: ErroCatalogo, operacao: string) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  console.error("catalogo_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para consultar este catálogo."
+      : "Não foi possível carregar o catálogo no momento.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : 502 });
+}
+
 type UnitRow = {
   id: string;
   numero: string | null;
@@ -63,9 +79,11 @@ export async function GET(request: Request) {
 
   const supabase = createServerSupabaseClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  if (authError) return falhaCatalogo(authError, "autenticar");
+  if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const { data: me } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+  const { data: me, error: profileError } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+  if (profileError) return falhaCatalogo(profileError, "carregar_perfil");
   const role = (me as { role?: string } | null)?.role ?? "corretor";
   const canApprove = isProductManagerRole(role);
 
@@ -84,22 +102,25 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false })
     .limit(500);
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 502 });
-  }
-  const { data: favorites } = await supabase.from("produto_favoritos").select("empreendimento_id").eq("usuario_id", authData.user.id);
+  if (error) return falhaCatalogo(error, "listar_produtos");
+  const { data: favorites, error: favoritesError } = await supabase.from("produto_favoritos").select("empreendimento_id").eq("usuario_id", authData.user.id);
+  if (favoritesError) return falhaCatalogo(favoritesError, "carregar_favoritos");
   const favoriteIds = new Set((favorites ?? []).map((item) => item.empreendimento_id));
-  const { data: corretoresList } = await supabase.from("corretores").select("id,nome");
+  const { data: corretoresList, error: corretoresError } = await supabase.from("corretores").select("id,nome");
+  if (corretoresError) return falhaCatalogo(corretoresError, "carregar_corretores");
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
-  const { data: currentBroker } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
+  const { data: currentBroker, error: currentBrokerError } = await supabase.from("corretores").select("id").eq("usuario_id", authData.user.id).maybeSingle();
+  if (currentBrokerError) return falhaCatalogo(currentBrokerError, "carregar_corretor_atual");
   const currentBrokerId = currentBroker?.id ?? null;
   const { data: condominiumRows, error: condominiumError } = await supabase
     .from("condominios")
     .select("id,nome,cep,endereco,numero,bairro,cidade,uf")
     .order("nome");
-  if (condominiumError) return Response.json({ error: condominiumError.message }, { status: 502 });
-  const { data: qualityRows } = await supabase.rpc("produto_qualidade_fila");
-  const { data: originRows } = await supabase.rpc("produto_unidades_origens");
+  if (condominiumError) return falhaCatalogo(condominiumError, "carregar_condominios");
+  const { data: qualityRows, error: qualityError } = await supabase.rpc("produto_qualidade_fila");
+  if (qualityError) return falhaCatalogo(qualityError, "carregar_fila_qualidade");
+  const { data: originRows, error: originError } = await supabase.rpc("produto_unidades_origens");
+  if (originError) return falhaCatalogo(originError, "carregar_origens_unidades");
   const originByUnit = new Map((originRows ?? []).map((row) => [row.unidade_id, row.origem_comercial]));
   const rawUnits = (data ?? []).flatMap((product) => (product.unidades ?? []) as UnitRow[]);
   const rawUnitById = new Map(rawUnits.map((unit) => [unit.id, unit]));
@@ -114,9 +135,10 @@ export async function GET(request: Request) {
     capturedBy: corretorNameById.get(rawUnitById.get(row.unidade_id)?.captador_corretor_id ?? -1) ?? null,
   }));
   const catalogIds = (data ?? []).map((item) => item.id);
-  const { data: leadLinks } = catalogIds.length
+  const { data: leadLinks, error: leadLinksError } = catalogIds.length
     ? await supabase.from("lead_produtos").select("empreendimento_id").in("empreendimento_id", catalogIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (leadLinksError) return falhaCatalogo(leadLinksError, "carregar_vinculos_leads");
   const leadCountByProduct = new Map<string, number>();
   for (const link of leadLinks ?? []) leadCountByProduct.set(link.empreendimento_id, (leadCountByProduct.get(link.empreendimento_id) ?? 0) + 1);
 
@@ -268,15 +290,17 @@ export async function GET(request: Request) {
   type PendingUnit = { id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; photoCount: number; approval: string; rejectionReason: string | null; codigo: string | null };
   let pendingUnits: PendingUnit[] = [];
   if (canApprove) {
-    const { data: pu } = await supabase
+    const { data: pu, error: pendingUnitsError } = await supabase
       .from("unidades")
       .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, empreendimentos(nome)")
       .eq("de_terceiros", true).eq("aprovacao", "pendente");
+    if (pendingUnitsError) return falhaCatalogo(pendingUnitsError, "carregar_unidades_pendentes");
     const unitIds = (pu ?? []).map((u) => u.id);
     const coverByUnit = new Map<string, string | null>();
     const photoCountByUnit = new Map<string, number>();
     if (unitIds.length) {
-      const { data: um } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      const { data: um, error: pendingMediaError } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", unitIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      if (pendingMediaError) return falhaCatalogo(pendingMediaError, "carregar_midias_pendentes");
       for (const m of (um ?? [])) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid) { photoCountByUnit.set(uid, (photoCountByUnit.get(uid) ?? 0) + 1); if (!coverByUnit.has(uid)) coverByUnit.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); } }
     }
     pendingUnits = (pu ?? []).map((u) => ({
@@ -296,22 +320,25 @@ export async function GET(request: Request) {
 
   let myUnits: PendingUnit[] = [];
   if (currentBrokerId != null) {
-    const { data: mineRows } = await supabase
+    const { data: mineRows, error: mineRowsError } = await supabase
       .from("unidades")
       .select("id, numero, tipologia, valor_tabela, valor_promo, empreendimento_id, captador_corretor_id, aprovacao, reprovacao_motivo, codigo, publicado, disponivel, empreendimentos(nome)")
       .eq("captador_corretor_id", currentBrokerId)
       .order("codigo", { ascending: false });
+    if (mineRowsError) return falhaCatalogo(mineRowsError, "carregar_captacoes_proprias");
     const mineIds = (mineRows ?? []).map((u) => u.id);
     const coverByMine = new Map<string, string | null>();
     const photoCountByMine = new Map<string, number>();
     if (mineIds.length) {
-      const { data: mineMedia } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      const { data: mineMedia, error: mineMediaError } = await supabase.from("midias").select("unidade_id, storage_path, is_capa, created_at").in("unidade_id", mineIds).eq("tipo", "foto").order("is_capa", { ascending: false }).order("created_at", { ascending: true });
+      if (mineMediaError) return falhaCatalogo(mineMediaError, "carregar_midias_proprias");
       for (const m of mineMedia ?? []) { const uid = (m as { unidade_id?: string }).unidade_id; if (uid) { photoCountByMine.set(uid, (photoCountByMine.get(uid) ?? 0) + 1); if (!coverByMine.has(uid)) coverByMine.set(uid, publicMediaUrl((m as { storage_path: string }).storage_path)); } }
     }
     const mineProductIds = [...new Set((mineRows ?? []).map((u) => u.empreendimento_id))];
-    const { data: privateOwners } = mineProductIds.length
+    const { data: privateOwners, error: privateOwnersError } = mineProductIds.length
       ? await supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: mineProductIds })
-      : { data: [] };
+      : { data: [], error: null };
+    if (privateOwnersError) return falhaCatalogo(privateOwnersError, "carregar_proprietarios_proprios");
     const privateOwnerByUnit = new Map((privateOwners ?? []).map((owner) => [owner.unidade_id, owner]));
     myUnits = (mineRows ?? []).map((u) => ({
       id: u.id, numero: u.numero, tipologia: u.tipologia,
