@@ -1,8 +1,23 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 
 type SupabaseLike = ReturnType<typeof createServerSupabaseClient>;
+type ErroPresenca = { code?: string; message?: string } | null | undefined;
 
 export const dynamic = "force-dynamic";
+
+function falhaPresenca(error: ErroPresenca, operacao: string) {
+  const semPermissao = error?.code === "42501" || /permission|policy|acesso negado/i.test(error?.message ?? "");
+  console.error("presenca_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Você não tem permissão para concluir esta operação."
+      : "Não foi possível verificar a presença no momento. Tente novamente.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : 502 });
+}
 
 async function auth(request: Request) {
   const header = request.headers.get("authorization");
@@ -26,11 +41,11 @@ function ipDaRequisicao(request: Request): string {
   return (bruto ?? "").trim();
 }
 
-async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike): Promise<boolean> {
+async function naRedeDoEscritorio(request: Request, supabase: SupabaseLike) {
   const ip = ipDaRequisicao(request);
-  if (!ip) return false;
+  if (!ip) return { noEscritorio: false, error: null };
   const { data, error } = await supabase.rpc("presenca_ip_confere", { p_ip: ip });
-  return !error && data === true;
+  return { noEscritorio: data === true, error };
 }
 
 export async function GET(request: Request) {
@@ -38,19 +53,21 @@ export async function GET(request: Request) {
   if (!a) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const url = new URL(request.url);
   if (url.searchParams.get("config")) {
-    const [{ data, error }, { data: brokers }] = await Promise.all([
+    const [config, corretores] = await Promise.all([
       a.supabase.rpc("presenca_config_ler"),
       a.supabase.from("corretores").select("id,nome").eq("ativo", true).order("nome"),
     ]);
-    if (error) return Response.json({ error: error.message }, { status: 403 });
-    return Response.json({ config: data, corretores: brokers ?? [] });
+    const firstError = config.error ?? corretores.error;
+    if (firstError) return falhaPresenca(firstError, config.error ? "carregar_configuracao" : "carregar_corretores");
+    return Response.json({ config: config.data, corretores: corretores.data ?? [] });
   }
-  const noEscritorio = await naRedeDoEscritorio(request, a.supabase);
+  const rede = await naRedeDoEscritorio(request, a.supabase);
+  if (rede.error) return falhaPresenca(rede.error, "conferir_rede_escritorio");
   const { data, error } = await a.supabase.rpc("presenca_status");
-  if (error) return Response.json({ error: error.message }, { status: 502 });
+  if (error) return falhaPresenca(error, "carregar_status");
 
   const status = data && typeof data === "object" && !Array.isArray(data) ? data : { ativa: false, prompt: false };
-  return Response.json({ ...status, no_escritorio_ip: noEscritorio });
+  return Response.json({ ...status, no_escritorio_ip: rede.noEscritorio });
 }
 
 export async function POST(request: Request) {
@@ -66,8 +83,11 @@ export async function POST(request: Request) {
   }
   if (action === "drop") {
     const { data, error } = await a.supabase.rpc("presenca_derrubar");
-    if (error) return Response.json({ error: error.message }, { status: 502 });
-    return Response.json(data ?? { ok: true });
+    if (error) return falhaPresenca(error, "sair_distribuicao");
+    if (!data || typeof data !== "object" || Array.isArray(data) || (data as { ok?: boolean }).ok !== true) {
+      return Response.json({ error: "Não foi possível confirmar a saída da distribuição.", erro: "presenca_nao_alterada" }, { status: 409 });
+    }
+    return Response.json(data);
   }
   if (action === "saveConfig") {
     const ativa = typeof body.ativa === "boolean" ? body.ativa : null;
@@ -84,7 +104,7 @@ export async function POST(request: Request) {
       p_ativa: ativa, p_dias_semana: diasSemana, p_inicio: horaInicio, p_fim: horaFim,
       p_intervalo: intervalo, p_prazo: prazo, p_corretores: corretores,
     });
-    if (error) return Response.json({ error: error.message }, { status: 403 });
+    if (error) return falhaPresenca(error, "salvar_configuracao");
     return Response.json({ config: data });
   }
   return Response.json({ error: "Ação inválida." }, { status: 400 });

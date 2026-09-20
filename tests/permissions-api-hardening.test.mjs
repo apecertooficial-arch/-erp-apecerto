@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const rota = readFileSync(new URL("../app/api/permissions/route.ts", import.meta.url), "utf8");
+const estilos = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 test("permissões não devolve nem registra a mensagem bruta do banco", () => {
   assert.doesNotMatch(rota, /Response\.json\(\{ error: [^}\n]*\.message/);
@@ -35,4 +36,11 @@ test("mantém autenticação 401 e autorização pelo grupo canônico acesso_tot
   assert.match(rota, /Sessão inválida ou expirada\./);
   assert.match(rota, /papelNoGrupo\(role, "acesso_total"\)/);
   assert.doesNotMatch(rota, /role\s*===\s*["']admin["']/);
+});
+
+test("permissões empilha navegação e conteúdo no aplicativo", () => {
+  assert.match(estilos, /\/\* Permissões mobile: navegação e conteúdo em uma coluna \*\//);
+  assert.match(estilos, /\.perms-body\{grid-template-columns:minmax\(0,1fr\);gap:14px;\}/);
+  assert.match(estilos, /\.perms-side\{position:static;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(estilos, /\.perm-seg\{grid-column:1\/-1;display:flex;flex-wrap:wrap;width:100%;\}/);
 });

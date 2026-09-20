@@ -1,7 +1,7 @@
 # Trace — permissões, falha fechada e auditoria
 
 Atualizado em: 2026-09-20
-Estado: pacote de aplicação revalidado para promoção; atomicidade banco + auditoria pendente
+Estado: API publicada; correção responsiva incorporada ao pacote seguinte; atomicidade banco + auditoria pendente
 
 ## Falhas reproduzidas
 
@@ -38,6 +38,14 @@ Estado: pacote de aplicação revalidado para promoção; atomicidade banco + au
 - lint focado sem erros;
 - build completo com a rota `/api/permissions` incluída.
 
+O código de aplicação foi publicado em produção no commit
+`9bea0a83d437dc2289f3d8e7aa245fd5206ccac5`, confirmado por `/api/build`.
+A validação autenticada desktop não encontrou erros de console. No celular, o
+mesmo gate revelou que a coluna de escopos mantinha o layout desktop e
+comprimia o conteúdo principal. A correção passou a empilhar navegação e
+conteúdo abaixo de 900 px, preservou controles legíveis e ganhou um contrato de
+regressão na suíte cumulativa.
+
 Os testes são locais e sanitizados. Nenhuma permissão real foi modificada,
 nenhuma chamada foi enviada ao banco produtivo e nenhum dado pessoal foi lido.
 
@@ -50,4 +58,4 @@ se a auditoria falhar. Para fechar o P0, cada comando deve migrar para uma RPC
 transação, e ser ensaiado em Postgres isolado antes de qualquer migration de
 produção.
 
-Neste ponto, a branch de promoção ainda não alterou produção.
+Nenhuma permissão, migration ou dado produtivo foi alterado durante a validação.

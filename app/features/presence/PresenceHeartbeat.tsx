@@ -90,6 +90,7 @@ export function PresenceHeartbeat({ accessToken, initialOnline }: { accessToken:
       try {
         const res = await fetch("/api/presenca", { headers: { Authorization: `Bearer ${accessToken}` } });
         const data = await res.json() as { prompt?: boolean; prazo_seg?: number; no_escritorio_ip?: boolean };
+        if (!res.ok || typeof data.no_escritorio_ip !== "boolean") throw new Error("presence_status_unavailable");
         if (stopped) return;
         const estaNaRede = data.no_escritorio_ip === true;
         setNaRedeDoEscritorio(estaNaRede);

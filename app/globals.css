@@ -1252,6 +1252,24 @@ button { cursor:pointer; }
 .perms-actions button{border:1px solid #e2dbd3;background:#fff;border-radius:10px;padding:10px 18px;font-weight:600;color:#6b6560;cursor:pointer;}
 .perms-actions button:disabled{opacity:.55;cursor:default;}
 .perms-primary{background:#ea6a1e !important;border-color:#ea6a1e !important;color:#fff !important;}
+/* Permissões mobile: navegação e conteúdo em uma coluna */
+@media(max-width:900px){
+  .perms-workspace{padding:22px 16px 96px;}
+  .perms-head{display:block;}
+  .perms-tabs{width:max-content;max-width:100%;margin-top:18px;overflow-x:auto;}
+  .perms-note{line-height:1.45;}
+  .perms-body{grid-template-columns:minmax(0,1fr);gap:14px;}
+  .perms-side{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:330px;overflow-y:auto;padding-right:4px;}
+  .perms-side-label{grid-column:1/-1;}
+  .perms-side-item{min-width:0;}
+  .perms-main{width:100%;}
+  .perm-row-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;}
+  .perm-row-name{min-width:0;}
+  .perm-seg{grid-column:1/-1;display:flex;flex-wrap:wrap;width:100%;}
+  .perm-seg .plvl{flex:1 1 calc(50% - 2px);min-width:100px;}
+  .perm-personalizar{margin-left:0;}
+}
+@media(max-width:360px){.perms-side{grid-template-columns:minmax(0,1fr);}}
 /* Copiloto Sara embutido no CRM */
 
 
