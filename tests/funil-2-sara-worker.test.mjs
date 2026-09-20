@@ -5,6 +5,8 @@ import test from "node:test";
 const edge = readFileSync(new URL("../supabase/functions/f2-sara-reclassificar/index.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260811020000_funil_2_sara_reclassificacao.sql", import.meta.url), "utf8");
 const route = readFileSync(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
+const workspace = readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8");
+const model = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 const historico = readFileSync(new URL("../supabase/migrations/20260811034000_funil_2_historico_completo.sql", import.meta.url), "utf8");
 const visitas = readFileSync(new URL("../supabase/migrations/20260811035000_funil_2_visitas_com_feedback.sql", import.meta.url), "utf8");
 const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
@@ -47,10 +49,15 @@ test("persistência é service-role-only, idempotente e isolada no f2", () => {
   assert.doesNotMatch(migration, /DELETE FROM public\.(?:negocios|leads|visitas|vendas|ncrm_estado)/);
 });
 
-test("API e tela passam a refletir o estado real do worker", () => {
+test("API e tela usam só a configuração canônica sem inventar saúde do worker", () => {
   assert.match(route, /from\("f2_sara_config"\)/);
   assert.match(route, /from\("f2_sara_analise"\)/);
   assert.match(route, /reavaliacaoAutomaticaFunil2: saraF2Config\?\.enabled === true/);
+  assert.match(route, /modo: saraF2Config\?\.enabled === true/);
+  assert.doesNotMatch(route, /ncrm_sara_(?:modo|runner)_status/);
+  assert.doesNotMatch(`${route}\n${workspace}\n${model}`, /runnerAtivo|o runner está/);
+  assert.match(workspace, /configuração canônica do Funil 2\.0/);
+  assert.match(workspace, /não deduz a saúde do processamento por sistemas antigos/);
 });
 
 test("carteira migrada lê histórico completo e pesca mantém corte", () => {

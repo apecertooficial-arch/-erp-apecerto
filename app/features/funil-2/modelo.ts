@@ -150,7 +150,6 @@ export type CandidatoAquarioFunil2 = {
 
 export type SaraStatusFunil2 = {
   modo: string | null;
-  runnerAtivo: boolean;
   analisesNoLaboratorio: number;
   reavaliacaoAutomaticaFunil2: boolean;
   loteFunil2?: number | null;
