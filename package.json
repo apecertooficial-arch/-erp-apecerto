@@ -22,7 +22,7 @@
     "test:product-hardening": "node --test tests/product-api-hardening.test.mjs",
     "test:product-mutations-hardening": "node --test tests/product-mutations-hardening.test.mjs",
     "test:product-client-hardening": "node --test tests/product-client-hardening.test.mjs",
-    "pretest:frontend": "node --test tests/financiamento-api-hardening.test.mjs tests/agentes-api-hardening.test.mjs tests/catalog-api-hardening.test.mjs tests/capture-api-hardening.test.mjs tests/product-api-hardening.test.mjs tests/product-mutations-hardening.test.mjs tests/product-client-hardening.test.mjs",
+    "pretest:frontend": "node --test tests/approaches-api-hardening.test.mjs tests/financiamento-api-hardening.test.mjs tests/agentes-api-hardening.test.mjs tests/catalog-api-hardening.test.mjs tests/capture-api-hardening.test.mjs tests/product-api-hardening.test.mjs tests/product-mutations-hardening.test.mjs tests/product-client-hardening.test.mjs",
     "smoke:products-auth": "node scripts/smoke-products-auth.mjs",
     "test:products-contract": "node --test tests/produtos-integridade.test.mjs tests/produtos-privacy-contract.test.mjs tests/produtos-auth-smoke.test.mjs",
     "lint:edge": "deno lint supabase/functions && deno check supabase/functions/*/*.ts",
