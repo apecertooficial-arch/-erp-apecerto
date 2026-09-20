@@ -112,6 +112,23 @@ function statusErroBanco(error: { code?: string; message?: string } | null | und
   return 502;
 }
 
+function respostaFalhaBanco(
+  error: { code?: string; message?: string } | null | undefined,
+  contexto: string,
+) {
+  const status = statusErroBanco(error);
+  console.error("[funil2] falha_banco", {
+    contexto,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: status === 403
+      ? "Você não tem permissão para concluir esta ação."
+      : "Não foi possível concluir a ação no momento. Tente novamente.",
+    erro: "falha_banco",
+  }, { status });
+}
+
 export async function GET(request: Request) {
   const auth = await clienteAutenticado(request);
   if (auth.erro) return auth.erro;
@@ -152,10 +169,7 @@ export async function GET(request: Request) {
   ]);
   if (e1 || e2 || e4 || e5 || e7 || e9) {
     const primeiroErro = e1 ?? e2 ?? e4 ?? e5 ?? e7 ?? e9;
-    return Response.json(
-      { error: primeiroErro?.message || "Falha ao carregar o Funil 2.0." },
-      { status: statusErroBanco(primeiroErro) },
-    );
+    return respostaFalhaBanco(primeiroErro, "GET:carga_inicial");
   }
   const negociacoes: Array<Record<string, unknown>> = [];
   const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
@@ -586,12 +600,12 @@ export async function POST(request: Request) {
         ? "gerente_ocupado"
         : /corretor_ocupado/i.test(error.message ?? "") ? "corretor_ocupado" : null;
     if (chaveConflito) return Response.json({ error: RECUSAS[chaveConflito], erro: chaveConflito }, { status: 409 });
-    return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+    return respostaFalhaBanco(error, `POST:${action}:${rpc}`);
   }
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
+    return Response.json({ error: RECUSAS[chave] || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   return Response.json({ ok: true, resultado });
 }
@@ -652,7 +666,7 @@ export async function PATCH(request: Request) {
       .select("momento_codigo")
       .eq("id", id)
       .maybeSingle();
-    if (leadAntesErro) return Response.json({ error: leadAntesErro.message }, { status: statusErroBanco(leadAntesErro) });
+    if (leadAntesErro) return respostaFalhaBanco(leadAntesErro, "PATCH:atualizarMomento:leitura");
     momentoAnterior = (leadAntes as { momento_codigo?: string } | null)?.momento_codigo ?? null;
     const prazo = body.prazoCombinado ? new Date(String(body.prazoCombinado)) : null;
     if (prazo && Number.isNaN(prazo.getTime())) return Response.json({ error: "Prazo combinado inválido." }, { status: 422 });
@@ -688,7 +702,7 @@ export async function PATCH(request: Request) {
   }
 
   const { data, error } = await db.rpc(rpc, args);
-  if (error) return Response.json({ error: error.message }, { status: statusErroBanco(error) });
+  if (error) return respostaFalhaBanco(error, `PATCH:${action}:${rpc}`);
   const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
 
   if (resultado.ok === false) {
@@ -703,7 +717,7 @@ export async function PATCH(request: Request) {
         atual: atual ?? null,
       }, { status: 409 });
     }
-    return Response.json({ error: RECUSAS[chave] || resultado.erro || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
+    return Response.json({ error: RECUSAS[chave] || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
   }
   let rastreamentoMeta: unknown = null;
   if (action === "atualizarMomento" && momentoAnterior) {
