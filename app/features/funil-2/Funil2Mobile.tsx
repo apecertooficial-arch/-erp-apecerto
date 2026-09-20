@@ -26,6 +26,8 @@ import {
   acaoVisivel,
   erroAgendamentoVisita,
   esperandoPrimeiraChamada,
+  eventoSaraVisivel,
+  leituraSaraVisivel,
   rotuloTemperatura,
   situacaoPrazo,
   venceHoje,
@@ -673,6 +675,7 @@ function FichaLead({
   const prazo = situacaoPrazo(lead.proxima_acao_em);
   const temperatura = lead.temperatura ?? null;
   const temperaturaRotulo = rotuloTemperatura(temperatura) ?? "Aguardando leitura";
+  const leituraSara = leituraSaraVisivel(lead);
   useEffect(() => {
     const fechar = (evento: KeyboardEvent) => {
       if (evento.key !== "Escape") return;
@@ -724,11 +727,11 @@ function FichaLead({
 
       <nav className="ape-ficha-abas" role="tablist" aria-label="Áreas do atendimento">{([ ["atendimento", "Atendimento"], ["notas", "Notas"], ["historico", "Histórico"] ] as const).map(([chave, rotulo]) => <button key={chave} type="button" role="tab" aria-selected={aba === chave} className={aba === chave ? "ativa" : ""} onClick={() => setAba(chave)}>{rotulo}</button>)}</nav>
 
-      {aba === "atendimento" && <div className="ape-ficha-painel"><section className="f2m-sara-resumo f2m-sara-aprovado"><span>LEITURA DA SARA</span><strong className="f2m-sara-frase">{lead.ultima_reavaliacao_resumo ?? "Ainda não existe uma leitura resumida."}</strong>{lead.qualidade_atendimento_resumo && <details><summary>Ver avaliação do atendimento</summary><small>{lead.qualidade_atendimento_resumo}</small></details>}</section><details className="f2m-detalhes-atendimento"><summary>Detalhes do atendimento</summary><div><span><b>Última ação confirmada</b><strong>{lead.ultima_acao_confirmada_em ? new Date(lead.ultima_acao_confirmada_em).toLocaleString("pt-BR") : "Ainda não confirmada"}</strong></span><span><b>Sara reavaliou</b><strong>{lead.ultima_reavaliacao_sara_em ? new Date(lead.ultima_reavaliacao_sara_em).toLocaleString("pt-BR") : "Ainda não reavaliou"}</strong></span><span><b>Nota do atendimento</b><strong>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</strong></span><span><b>Telefone</b><strong>{lead.telefone || "Não informado"}</strong></span><span><b>Canal</b><strong>{lead.instancia_rotulo || "Não identificado"}</strong></span></div><ContextoDoLead lead={lead} completo /><p>A temperatura vem da conversa e é classificada pela Sara. A conclusão da tarefa vem do D-API.</p></details><AtualizarMomentoMobile lead={lead} momento={momento} momentos={momentos} etapas={etapas} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial /></div>}
+      {aba === "atendimento" && <div className="ape-ficha-painel"><section className={`f2m-sara-resumo ${leituraSara.comprovada ? "f2m-sara-aprovado" : "f2m-sara-pendente"}`}><span>LEITURA DA SARA · {leituraSara.comprovada ? "COMPROVADA" : "PENDENTE"}</span><strong className="f2m-sara-frase">{leituraSara.resumo}</strong>{leituraSara.comprovada && lead.qualidade_atendimento_resumo && <details><summary>Ver avaliação do atendimento</summary><small>{lead.qualidade_atendimento_resumo}</small></details>}</section><details className="f2m-detalhes-atendimento"><summary>Detalhes do atendimento</summary><div><span><b>Última ação confirmada</b><strong>{lead.ultima_acao_confirmada_em ? new Date(lead.ultima_acao_confirmada_em).toLocaleString("pt-BR") : "Ainda não confirmada"}</strong></span><span><b>Estado da leitura</b><strong>{leituraSara.comprovada && leituraSara.data ? new Date(leituraSara.data).toLocaleString("pt-BR") : "Aguardando comprovação"}</strong></span><span><b>Nota do atendimento</b><strong>{lead.qualidade_atendimento_nota == null ? "Ainda não avaliado" : `${Number(lead.qualidade_atendimento_nota).toFixed(1)}/10`}</strong></span><span><b>Telefone</b><strong>{lead.telefone || "Não informado"}</strong></span><span><b>Canal</b><strong>{lead.instancia_rotulo || "Não identificado"}</strong></span></div><ContextoDoLead lead={lead} completo /><p>A temperatura vem da conversa e é classificada pela Sara. A conclusão da tarefa vem do D-API.</p></details><AtualizarMomentoMobile lead={lead} momento={momento} momentos={momentos} etapas={etapas} accessToken={accessToken} onSalvo={onRecarregar} abertoInicial /></div>}
 
       {aba === "notas" && <div className="ape-ficha-painel"><NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} /></div>}
 
-      {aba === "historico" && <div className="ape-ficha-painel"><section className="f2m-historico"><h3>Últimas atualizações</h3>{eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((evento) => <article key={evento.id}><i /><div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div></article>)}</section></div>}
+      {aba === "historico" && <div className="ape-ficha-painel"><section className="f2m-historico"><h3>Últimas atualizações</h3>{eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((eventoOriginal) => { const evento = eventoSaraVisivel(eventoOriginal); return <article key={evento.id}><i /><div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div></article>; })}</section></div>}
 
       <div className="ape-ficha-rodape-aprovado"><BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto /><button type="button" onClick={() => setChatAberto(true)} aria-label="Ver conversa">Chat</button></div>
 

@@ -655,10 +655,14 @@ export async function PATCH(request: Request) {
     rpc = "f2_atualizar_temperatura";
     args = { p_id: id, p_versao: versao, p_temperatura: temperatura };
   } else if (action === "confirmarAcao") {
-    const fonte = body.fonte === "dapi" ? "dapi" : body.fonte === "registro_operacional" ? "registro_operacional" : "";
-    if (!fonte) return Response.json({ error: "Fonte de confirmação inválida." }, { status: 422 });
-    rpc = "f2_confirmar_acao";
-    args = { p_id: id, p_versao: versao, p_fonte: fonte, p_observacao: String(body.observacao ?? "").slice(0, 500) || null };
+    /* O contrato produtivo legado também carimba "Sara reavaliou" sem executar
+       uma nova análise. Até a migration auditável entrar, o navegador não pode
+       chamar essa RPC nem alegar origem D-API. O webhook oficial continua fora
+       desta rota e é a única autoridade para confirmar mensagens. */
+    return Response.json({
+      error: "A confirmação manual está temporariamente bloqueada até a nova leitura da Sara ter comprovação auditável.",
+      erro: "confirmacao_temporariamente_bloqueada",
+    }, { status: 409 });
   } else if (action === "descartar") {
     /* Nenhum lead sai do funil sozinho, por silencio ou por tempo. Sempre tem
        alguem clicando e escolhendo o motivo -- regra do Romulo, 05/08/2026. */

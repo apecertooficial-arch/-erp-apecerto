@@ -28,6 +28,24 @@ const tela = parametros.get("screen") ?? "desktop-crm";
 const gravadorVisivel = parametros.get("evidence") === "1";
 const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const qualidadeExemplo = parametros.get("quality") === "sample";
+const saraPendente = parametros.get("sara") === "pendente";
+const payloadSaraPendente = {
+  ...payloadNormal,
+  leads: payloadNormal.leads.map((lead, indice) => indice === 0 ? {
+    ...lead,
+    ultima_reavaliacao_sara_em: "2026-09-20T12:00:00Z",
+    ultima_reavaliacao_resumo: "A ação foi confirmada; a Sara revisou o laboratório e manteve a conduta atual.",
+  } : lead),
+  eventos: [{
+    id: 99,
+    funil_lead_id: payloadNormal.leads[0]?.id,
+    tipo: "sara_reavaliou",
+    titulo: "Sara reavaliou a cópia",
+    detalhe: "A conduta foi mantida após a ação de demonstração.",
+    payload: {},
+    criado_em: "2026-09-20T12:00:00Z",
+  }, ...payloadNormal.eventos],
+};
 const pendenciasAgenda = [
   { id: "10000000-0000-4000-8000-000000000001", data: "2026-08-17", hora: "10:00", tipo: "visita", cliente: "Cliente sanitizado 1", local: "Local sanitizado", produto: "Produto Alfa", negocio_id: 101, status: "realizada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -47_000, com_gerente: true, gerente_id: 1 },
   { id: "10000000-0000-4000-8000-000000000002", data: "2026-08-23", hora: "14:30", tipo: "visita", cliente: "Cliente sanitizado 2", local: "Local sanitizado", produto: "Produto Beta", negocio_id: 102, status: "agendada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -38_000, com_gerente: false, gerente_id: null },
@@ -116,8 +134,8 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "loading") return new Promise<Response>(() => undefined);
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
-    if (url.searchParams.has("historicoLeadId")) return json({ eventos: payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(estado === "vazio" ? payloadVazio : payloadNormal);
+    if (url.searchParams.has("historicoLeadId")) return json({ eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
+    return json(estado === "vazio" ? payloadVazio : saraPendente ? payloadSaraPendente : payloadNormal);
   }
   if (url.pathname === "/api/funil2/conversa") return json({ mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/carteira") return json({ leads: leads.slice(0, 8).map((lead) => ({ id: lead.id, nome: lead.nome, telefoneMascarado: "••••0000", negocioId: lead.origem_negocio_id, corretorNome: lead.corretor_nome })), pagina: 1, curta: false, temMais: false });

@@ -267,6 +267,52 @@ export type EventoFunil2 = {
   criado_em: string;
 };
 
+/* A RPC produtiva antiga de confirmação de ação gravava estes textos e um
+   evento "sara_reavaliou" sem criar uma análise em f2_sara_analise. Enquanto
+   a correção de banco não for autorizada, a interface precisa tratar esse
+   registro como pendente em vez de transformar carimbo em evidência. */
+const RESUMOS_LEGADOS_SEM_ANALISE = new Set([
+  "a mensagem foi confirmada; a sara manteve a cadência e programou o próximo dia oficial.",
+  "a cadência de sete dias foi concluída; o lead precisa de uma nova avaliação.",
+  "a ação foi confirmada; a sara revisou o laboratório e manteve a conduta atual.",
+]);
+
+const DETALHES_LEGADOS_SEM_ANALISE = new Set([
+  "próximo dia da cadência programado.",
+  "cadência concluída; revisão necessária.",
+  "a conduta foi mantida após a ação de demonstração.",
+]);
+
+function textoNormalizado(valor: string | null | undefined) {
+  return (valor ?? "").trim().toLocaleLowerCase("pt-BR");
+}
+
+export function leituraSaraVisivel(lead: Pick<LeadFunil2, "ultima_reavaliacao_sara_em" | "ultima_reavaliacao_resumo">) {
+  const resumo = lead.ultima_reavaliacao_resumo?.trim() || null;
+  if (resumo && RESUMOS_LEGADOS_SEM_ANALISE.has(textoNormalizado(resumo))) {
+    return {
+      comprovada: false,
+      data: null,
+      resumo: "Nova leitura da Sara ainda não comprovada. A ação foi registrada, mas a análise precisa aparecer na trilha auditável.",
+    };
+  }
+  if (!resumo || !lead.ultima_reavaliacao_sara_em) {
+    return { comprovada: false, data: null, resumo: "Ainda não existe uma leitura comprovada da Sara." };
+  }
+  return { comprovada: true, data: lead.ultima_reavaliacao_sara_em, resumo };
+}
+
+export function eventoSaraVisivel(evento: EventoFunil2): EventoFunil2 {
+  const legado = textoNormalizado(evento.titulo) === "sara reavaliou a cópia"
+    && DETALHES_LEGADOS_SEM_ANALISE.has(textoNormalizado(evento.detalhe));
+  if (!legado) return evento;
+  return {
+    ...evento,
+    titulo: "Reavaliação pendente de comprovação",
+    detalhe: "Registro legado criado junto da confirmação da ação; ele não comprova uma nova análise da Sara.",
+  };
+}
+
 /* A cadencia nao conta data, conta TENTATIVA. Sao 6, e o que escorrega no fim
    de semana e o dia -- nunca a tentativa. Os numeros abaixo sao os dias uteis
    de folga entre uma tentativa e a anterior; a tentativa 5 tem 2 dias porque e
