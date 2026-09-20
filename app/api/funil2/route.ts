@@ -356,7 +356,8 @@ export async function GET(request: Request) {
     operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
-      modo: saraF2Config?.enabled === true
+      estado: erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+      modo: erroSaraConfig ? null : saraF2Config?.enabled === true
         ? saraF2Config.modo_execucao === "completo" ? "completo" : "canary"
         : "desligada",
       analisesNoLaboratorio: saraF2Analises.count ?? (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,

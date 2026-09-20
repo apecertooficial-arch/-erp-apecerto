@@ -149,6 +149,7 @@ export type CandidatoAquarioFunil2 = {
 };
 
 export type SaraStatusFunil2 = {
+  estado: "ok" | "erro";
   modo: string | null;
   analisesNoLaboratorio: number;
   reavaliacaoAutomaticaFunil2: boolean;

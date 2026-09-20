@@ -136,7 +136,7 @@ export const payloadNormal = {
   aquario,
   podePescar: true,
   operacao: null,
-  sara: { modo: "completo", analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: true },
+  sara: { estado: "ok", modo: "completo", analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: true },
 };
 
 export const payloadVazio = { ...payloadNormal, leads: [], eventos: [], notas: [], visitas: [], atividades: [], negociacoes: [], negociosVinculados: [], imoveisVinculados: [], arquivosVinculados: [], aquario: [] };

@@ -53,11 +53,14 @@ test("API e tela usam só a configuração canônica sem inventar saúde do work
   assert.match(route, /from\("f2_sara_config"\)/);
   assert.match(route, /from\("f2_sara_analise"\)/);
   assert.match(route, /reavaliacaoAutomaticaFunil2: saraF2Config\?\.enabled === true/);
-  assert.match(route, /modo: saraF2Config\?\.enabled === true/);
+  assert.match(route, /estado: erroSaraConfig \|\| saraF2Analises\.error \? "erro" : "ok"/);
+  assert.match(route, /modo: erroSaraConfig \? null : saraF2Config\?\.enabled === true/);
   assert.doesNotMatch(route, /ncrm_sara_(?:modo|runner)_status/);
   assert.doesNotMatch(`${route}\n${workspace}\n${model}`, /runnerAtivo|o runner está/);
   assert.match(workspace, /configuração canônica do Funil 2\.0/);
   assert.match(workspace, /não deduz a saúde do processamento por sistemas antigos/);
+  assert.match(workspace, /Não foi possível confirmar a configuração da Sara/);
+  assert.match(workspace, /sara\.estado === "erro" \? "Indisponível"/);
 });
 
 test("carteira migrada lê histórico completo e pesca mantém corte", () => {
