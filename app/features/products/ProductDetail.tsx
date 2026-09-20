@@ -10,6 +10,7 @@ import { applyOfficialWatermark } from "./watermark";
 import { sitePropertyUrl } from "./products";
 import { retryProductMediaImage as retryMediaImage } from "./media-image";
 import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
+import { captureFailureMessage, captureResponse } from "./capture-client";
 
 type Media = { id: string; tipo: "foto" | "video" | "pdf" | "apresentacao"; storage_path: string; categoria: string | null; nome: string | null; is_capa: boolean; url: string | null; unidade_id?: string | null };
 type Unit = { id: string; codigo?: string | null; numero: string | null; tipologia: string | null; area_m2: number | null; vagas: number | null; valor_tabela: number | null; valor_promo: number | null; condominio_valor?: number | null; iptu?: number | null; outros_custos?: number | null; compre_ja_alugado?: boolean; disponivel: boolean; publicado?: boolean; de_terceiros?: boolean; captador_nome?: string | null; proprietario_nome?: string | null; proprietario_contato?: string | null; acesso_tipo?: string | null; acesso_codigo?: string | null; acesso_instrucoes?: string | null; aprovacao?: string | null; reprovacao_motivo?: string | null; mine?: boolean; pode_editar?: boolean; pode_ver_proprietario?: boolean; owner_complete?: boolean };
@@ -390,10 +391,9 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/capture", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: approve ? "approve" : "reject", motivo }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? "Não foi possível concluir a revisão.");
+      await captureResponse(response, "Não foi possível concluir a revisão.");
       await load(); onChanged(); setMessage(approve ? "Imóvel aprovado e liberado para o site." : "Imóvel devolvido ao corretor com o motivo informado.");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Erro ao revisar o produto."); } finally { setBusy(false); }
+    } catch (error) { setMessage(captureFailureMessage(error, "Erro ao revisar o produto.")); } finally { setBusy(false); }
   }
 
   const completionLabels: Record<string, string> = { basics: "Dados básicos", location: "Endereço", owner: "Proprietário", costs: "Custos", access: "Acesso", media: "Fotos, vídeo e capa", units: "Unidades" };

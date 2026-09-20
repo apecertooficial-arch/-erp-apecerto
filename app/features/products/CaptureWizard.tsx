@@ -8,6 +8,7 @@ import { PendingMediaClassifier } from "./PendingMediaClassifier";
 import { applyOfficialWatermark } from "./watermark";
 import { validateProductPrice } from "./quality";
 import { buildProductMediaPath, uploadProductMediaResumable } from "./resumable-upload";
+import { CaptureClientError, captureFailureMessage, captureResponse } from "./capture-client";
 
 const steps = ["Tipo", "Localização", "Proprietário", "Imóvel", "Acesso", "Mídia", "Revisão"];
 const condominiumStepIndexes = [0, 1, 3, 4, 5, 6];
@@ -237,8 +238,8 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
             units: propertyType === "construtora" ? units.map((unit) => ({ number: unit.number, type: unit.type, area: numberValue(unit.area), parking: numberValue(unit.parking), price: numberValue(unit.price), promotionalPrice: unit.promotionalPrice ? numberValue(unit.promotionalPrice) : null })) : [],
           }),
         });
-        const result = await createResponse.json() as { id?: string; unidadeId?: string | null; userId?: string; resumed?: boolean; error?: string };
-        if (!createResponse.ok || !result.id || !result.userId) throw new Error(result.error ?? "Não foi possível criar o rascunho.");
+        const result = await captureResponse(createResponse, "Não foi possível criar o rascunho.") as { id?: string; unidadeId?: string | null; userId?: string; resumed?: boolean };
+        if (!result.id || !result.userId) throw new CaptureClientError("O servidor não confirmou a criação do rascunho.");
         created = { id: result.id, unidadeId: result.unidadeId ?? null, userId: result.userId, resumed: result.resumed };
         setCreatedCapture(created);
         if (created.resumed) setMessage("Cadastro incompleto encontrado. Retomando o envio sem duplicar o imóvel.");
@@ -265,11 +266,11 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
             empreendimento_id: created.id, unidade_id: standalone ? created.unidadeId : null, tipo: item.kind, storage_path: storagePath, nome: item.file.name,
             categoria: item.category.toLowerCase(), is_capa: item.id === coverPhotoId,
           }, { onConflict: "storage_path" });
-          if (mediaError) throw new Error(`Falha ao registrar: ${mediaError.message}`);
+          if (mediaError) throw new Error("Não foi possível registrar a mídia enviada.");
           enviadaComSucesso += 1;
           setUploadProgress(Math.round(((index + 1) / media.length) * 100));
-        } catch (reason) {
-          arquivosComFalha.push(`${item.file.name}: ${reason instanceof Error ? reason.message : "falha desconhecida"}`);
+        } catch {
+          arquivosComFalha.push(`${item.file.name}: envio não confirmado`);
         }
       }
       if (arquivosComFalha.length) throw new Error(`${enviadaComSucesso} arquivo(s) enviado(s). Não chegaram: ${arquivosComFalha.join("; ")}. Toque em Salvar novamente para retomar.`);
@@ -279,14 +280,13 @@ export function CaptureWizard({ onClose, onSaved, initialStandalone = false }: C
         headers: { Authorization: `Bearer ${sessionData.session.access_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ action: "finalize", id: created.id }),
       });
-      const finalized = await finalizeResponse.json() as { error?: string };
-      if (!finalizeResponse.ok) throw new Error(finalized.error ?? "O produto ficou salvo como rascunho, mas não foi finalizado.");
+      await captureResponse(finalizeResponse, "O produto ficou salvo como rascunho, mas não foi finalizado.");
 
       setMessage("Produto cadastrado e conectado ao Supabase com sucesso.");
       await new Promise((resolve) => setTimeout(resolve, 700));
       onSaved();
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Não foi possível salvar o produto.");
+      setMessage(captureFailureMessage(reason, "Não foi possível salvar o produto. Se algum arquivo já foi enviado, abra o rascunho antes de tentar novamente."));
       setSaving(false);
     }
   }

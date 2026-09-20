@@ -190,7 +190,8 @@ test("publicação do ERP é transacional e só confirma o que ficou visível no
   assert.match(productApi, /PRODUCT_NOT_READY/);
   assert.match(productApi, /UNIT_NOT_READY/);
   assert.match(captureApi, /result\.site_visivel !== true/);
-  assert.match(captureApi, /publication: result/);
+  assert.match(captureApi, /site_visivel: result\.site_visivel/);
+  assert.doesNotMatch(captureApi, /publication: result/);
 });
 
 test("ERP abre e compartilha a URL limpa da unidade publicada", () => {
