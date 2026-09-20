@@ -26,8 +26,10 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
   const [diaSel, setDiaSel] = useState(iso(hoje));
   const [agenda, setAgenda] = useState<Agenda | null>(null);
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(true);
 
   const load = useCallback(async () => {
+    setCarregando(true);
     // carrega o mês visível inteiro (incluindo pontas da grade)
     const de = iso(new Date(ano, mes, 1 - new Date(ano, mes, 1).getDay()));
     const ate = iso(new Date(ano, mes + 1, 6));
@@ -37,9 +39,10 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
         cache: "no-store",
       });
       const data = await res.json() as Agenda & { error?: string };
-      if (!res.ok) { setErro(data.error || "Não foi possível abrir a agenda."); return; }
+      if (!res.ok) { setAgenda(null); setErro(data.error || "Não foi possível abrir a agenda."); return; }
       setAgenda(data); setErro("");
-    } catch { setErro("Sem conexão — tente de novo."); }
+    } catch { setAgenda(null); setErro("Sem conexão — tente de novo."); }
+    finally { setCarregando(false); }
   }, [token, ano, mes]);
 
   useEffect(() => {
@@ -89,6 +92,20 @@ export default function AgendaPublica({ params }: { params: Promise<{ token: str
   const [ys, ms, ds] = diaSel.split("-").map(Number);
   const rotuloSel = `${DIAS_PT[new Date(ys, ms - 1, ds).getDay()]}, ${ds} de ${MESES[ms - 1]}`;
   const hojeIso = agenda?.hoje ?? iso(hoje);
+
+  if (!agenda) return <main className="agm-estado" aria-live="polite">
+    <div className="agm-estado-logo" aria-label="ApêCerto">apê<span>certo</span></div>
+    <h1>{carregando ? "Carregando agenda…" : "Agenda indisponível"}</h1>
+    {!carregando && <p>{erro || "Não foi possível confirmar este link."}</p>}
+    <style>{`
+      html, body { margin:0; padding:0; background:#fffaf6; }
+      .agm-estado { box-sizing:border-box; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:28px; font-family:'Nunito', -apple-system, 'Segoe UI', sans-serif; color:#20140e; text-align:center; }
+      .agm-estado-logo { font-size:25px; font-weight:900; letter-spacing:-.05em; }
+      .agm-estado-logo span { color:#ff6500; }
+      .agm-estado h1 { margin:8px 0 0; font-size:22px; }
+      .agm-estado p { max-width:420px; margin:0; color:#8a4035; font-weight:700; }
+    `}</style>
+  </main>;
 
   return <div className="agm">
     <header className="agm-topo">

@@ -17,6 +17,8 @@ test("token público deixa a URL da API e respostas nunca entram em cache", () =
   assert.doesNotMatch(fichaPage, /JSON\.stringify\(\{\s*token,/);
   assert.match(helper, /no-store, no-cache, must-revalidate/);
   assert.match(helper, /"Referrer-Policy": "no-referrer"/);
+  assert.match(agendaPage, /if \(!agenda\) return <main className="agm-estado"/);
+  assert.match(agendaPage, /setAgenda\(null\); setErro/);
 });
 
 test("APIs públicas não devolvem nem registram erro bruto ou segredo", () => {
