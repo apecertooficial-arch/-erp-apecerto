@@ -22,26 +22,59 @@ const PUBLICATION_RULE_CODES = new Set([
   "UNIT_PRICE_INVALID",
   "UNIT_PROMO_PRICE_INVALID",
   "UNIT_PROMO_ABOVE_LIST",
+  "UNIT_PRICE_REQUIRED",
+  "UNIT_OWN_PHOTO_REQUIRED",
   "INVALID_PRODUCT",
   "INVALID_UNIT",
   "INVALID_PRICE",
 ]);
+const PUBLICATION_MESSAGES: Record<string, string> = {
+  PRODUCT_NOT_READY: "Este imóvel ainda não atingiu o padrão para publicação.",
+  UNIT_NOT_READY: "Esta unidade ainda não atingiu o padrão para publicação.",
+  PRODUCT_PUBLICATION_INVALID: "O estado de publicação do imóvel é inválido.",
+  UNIT_PRICE_INVALID: "O preço da unidade é inválido.",
+  UNIT_PROMO_PRICE_INVALID: "O preço promocional da unidade é inválido.",
+  UNIT_PROMO_ABOVE_LIST: "O preço promocional não pode superar o preço de tabela.",
+  INVALID_PRODUCT: "Produto inválido.",
+  INVALID_UNIT: "Unidade inválida.",
+  INVALID_PRICE: "Preço inválido.",
+  PRODUCT_HAS_LINKS: "O produto possui vínculos comerciais e não pode ser excluído.",
+  UNIT_HAS_LINKS: "A unidade possui vínculos comerciais e não pode ser excluída.",
+  PRODUCT_DELETE_RACE: "O produto mudou durante a exclusão. Atualize a ficha e tente novamente.",
+  UNIT_DELETE_RACE: "A unidade mudou durante a exclusão. Atualize a ficha e tente novamente.",
+  PRODUCT_NOT_FOUND: "Produto não encontrado.",
+  PRODUCT_PARENT_NOT_FOUND: "O empreendimento de referência não foi encontrado.",
+  UNIT_NOT_FOUND: "Unidade não encontrada.",
+  MEDIA_NOT_FOUND: "Mídia não encontrada.",
+  PRODUCT_FORBIDDEN: "Você não tem permissão para alterar este produto.",
+  PRODUCT_PUBLICATION_FORBIDDEN: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site.",
+  PRODUCT_DELETE_FORBIDDEN: "Apenas a gestão de Produtos pode excluir imóveis.",
+  UNIT_FORBIDDEN: "Você não tem permissão para alterar esta unidade.",
+  UNIT_AVAILABILITY_FORBIDDEN: "Você não tem permissão para alterar a disponibilidade desta unidade.",
+  UNIT_DELETE_FORBIDDEN: "Você não tem permissão para excluir esta unidade.",
+  UNIT_PRICE_REQUIRED: "Informe o valor total da unidade.",
+  UNIT_OWN_PHOTO_REQUIRED: "Adicione ao menos uma foto própria da unidade antes de publicar.",
+  MEDIA_COVER_FORBIDDEN: "Você não tem permissão para alterar a capa desta mídia.",
+  MEDIA_COVER_NOT_FOUND: "A mídia escolhida para capa não foi encontrada.",
+};
 
 function publicationErrorResponse(error: { code?: string; message?: string }) {
-  const raw = error.message?.trim() || "Não foi possível atualizar a publicação do imóvel.";
-  const match = raw.match(/^([A-Z][A-Z0-9_]+):\s*([\s\S]+)$/);
+  const raw = error.message?.trim() ?? "";
+  const match = raw.match(/^([A-Z][A-Z0-9_]+):/);
   const businessCode = match?.[1] ?? (error.code === "P0001" ? "PUBLICATION_RULE" : "PUBLICATION_FAILED");
-  const message = match?.[2] ?? raw;
   const normalized = raw.toLowerCase();
   const status = businessCode.endsWith("FORBIDDEN") || error.code === "42501" || normalized.includes("sem permissão") || normalized.includes("nao autorizado")
     ? 403
     : businessCode.endsWith("NOT_FOUND") || normalized.includes("não encontrado") || normalized.includes("nao encontrado")
       ? 404
       : businessCode === "PRODUCT_HAS_LINKS" || businessCode === "UNIT_HAS_LINKS"
+        || businessCode === "PRODUCT_DELETE_RACE" || businessCode === "UNIT_DELETE_RACE"
         ? 409
       : PUBLICATION_RULE_CODES.has(businessCode) || error.code === "P0001"
         ? 422
         : 502;
+  const message = PUBLICATION_MESSAGES[businessCode];
+  if (!message) return productTechnicalFailure("publication_command", error, "Não foi possível concluir a operação do imóvel.");
   return Response.json({ error: message, code: businessCode }, { status });
 }
 
@@ -52,7 +85,16 @@ function productTechnicalFailure(
 ) {
   const code = error?.code ?? "UNKNOWN";
   console.error("[product-api]", { operation, code });
-  return Response.json({ error: message, code: "PRODUCT_READ_FAILED" }, { status: 502 });
+  return Response.json({ error: message, code: operation.startsWith("read_") ? "PRODUCT_READ_FAILED" : "PRODUCT_OPERATION_FAILED" }, { status: 502 });
+}
+
+function reconciliationRequired(operation: string, error?: { code?: string | null }) {
+  console.error("[product-api]", { operation, code: error?.code ?? "UNKNOWN", reconciliationRequired: true });
+  return Response.json({
+    error: "A operação foi iniciada, mas uma etapa complementar não foi confirmada. Atualize a ficha antes de tentar novamente.",
+    code: "RECONCILIATION_REQUIRED",
+    retryable: false,
+  }, { status: 409 });
 }
 const productFields = [
   "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
@@ -210,16 +252,30 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const body = await request.json() as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "O corpo da solicitação é inválido.", code: "INVALID_JSON" }, { status: 400 });
+  }
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
   const authenticatedSupabase = auth.supabase;
   const authenticatedUserId = auth.user.id;
-  const { data: productContext } = await auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle();
+  const [
+    { data: productContext, error: productContextError },
+    { data: meuPerfilPatch, error: profilePatchError },
+    { data: brokerContext, error: brokerContextError },
+  ] = await Promise.all([
+    auth.supabase.from("empreendimentos").select("nome, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle(),
+    auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
+    auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle(),
+  ]);
+  const mutationContextError = productContextError ?? profilePatchError ?? brokerContextError;
+  if (mutationContextError) return productTechnicalFailure("read_mutation_context", mutationContextError);
+  if (!productContext) return Response.json({ error: "Produto não encontrado." }, { status: 404 });
   const currentPurpose = productContext?.finalidade ?? "venda";
-  const { data: meuPerfilPatch } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
-  const { data: brokerContext } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
   const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id
     || (brokerContext?.id != null && productContext?.captador_corretor_id === brokerContext.id);
   const negadoPorCaptacao = !gerenciaProdutos && !souCaptador ? Response.json({ error: "Você só pode editar imóveis captados por você." }, { status: 403 }) : null;
@@ -260,23 +316,23 @@ export async function PATCH(request: Request) {
       .eq("id", mediaId)
       .eq("empreendimento_id", id)
       .maybeSingle();
-    if (error) return { error: Response.json({ error: error.message }, { status: 502 }) } as const;
+    if (error) return { error: productTechnicalFailure("read_media_context", error) } as const;
     if (!media) return { error: Response.json({ error: "Mídia não encontrada." }, { status: 404 }) } as const;
     if (!media.unidade_id) {
       return { media, canEdit: gerenciaProdutos || souCaptador } as const;
     }
-    const [{ data: unit }, { data: broker }] = await Promise.all([
+    const [{ data: unit, error: unitError }, { data: broker, error: brokerError }] = await Promise.all([
       authenticatedSupabase.from("unidades").select("captador_corretor_id,de_terceiros").eq("id", media.unidade_id).eq("empreendimento_id", id).maybeSingle(),
       authenticatedSupabase.from("corretores").select("id").eq("usuario_id", authenticatedUserId).maybeSingle(),
     ]);
+    const contextError = unitError ?? brokerError;
+    if (contextError) return { error: productTechnicalFailure("read_media_owner_context", contextError) } as const;
     const ownsUnit = Boolean(unit?.de_terceiros && broker?.id != null && unit.captador_corretor_id === broker.id);
     return { media, canEdit: gerenciaProdutos || ownsUnit } as const;
   }
 
   if (body.action === "publishUnit" || body.action === "unpublishUnit") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const role = (me as { role?: string } | null)?.role ?? "corretor";
-    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site." }, { status: 403 });
+    if (!gerenciaProdutos) return Response.json({ error: "Apenas a gestão de Produtos pode publicar ou retirar imóveis do site." }, { status: 403 });
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const { data: unit, error: unitReadError } = await auth.supabase
@@ -285,7 +341,7 @@ export async function PATCH(request: Request) {
       .eq("id", unidadeId)
       .eq("empreendimento_id", id)
       .maybeSingle();
-    if (unitReadError) return Response.json({ error: unitReadError.message }, { status: 502 });
+    if (unitReadError) return productTechnicalFailure("read_unit_publication", unitReadError);
     if (!unit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
     const publish = body.action === "publishUnit";
     if (publish && unit.aprovacao !== "aprovado") return Response.json({ error: "A unidade precisa estar aprovada antes de voltar ao site." }, { status: 422 });
@@ -338,8 +394,7 @@ export async function PATCH(request: Request) {
     const unitCosts = [asNumber(input.condominio_valor), asNumber(input.iptu), asNumber(input.outros_custos)];
     if (unitCosts.some((value) => value != null && value < 0)) return Response.json({ error: "Condomínio, IPTU e outros custos não podem ser negativos." }, { status: 422 });
 
-    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-    if (!broker?.id && !gerenciaProdutos) return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor ativo." }, { status: 422 });
+    if (!brokerContext?.id && !gerenciaProdutos) return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor ativo." }, { status: 422 });
     // RESUMABLE_UNIT_LOOKUP: se a conexão caiu depois de criar a unidade, uma
     // nova tentativa do mesmo captador continua o cadastro existente.
     const { data: sameBuildingUnits, error: lookupError } = await auth.supabase
@@ -348,11 +403,11 @@ export async function PATCH(request: Request) {
       .eq("empreendimento_id", id)
       .eq("de_terceiros", true)
       .limit(500);
-    if (lookupError) return Response.json({ error: lookupError.message }, { status: 502 });
+    if (lookupError) return productTechnicalFailure("read_resumable_unit", lookupError);
     const existingUnit = (sameBuildingUnits ?? []).find((unit) => unit.numero?.trim().toLocaleLowerCase("pt-BR") === numero.toLocaleLowerCase("pt-BR"));
     if (existingUnit) {
-      const sameOwner = broker?.id != null
-        ? existingUnit.captador_corretor_id === broker.id
+      const sameOwner = brokerContext?.id != null
+        ? existingUnit.captador_corretor_id === brokerContext.id
         : gerenciaProdutos && existingUnit.captador_corretor_id == null;
       if (sameOwner && existingUnit.aprovacao !== "aprovado" && existingUnit.publicado !== true) {
         return Response.json({ unidadeId: existingUnit.id, userId: auth.user.id, resumed: true });
@@ -361,7 +416,7 @@ export async function PATCH(request: Request) {
     }
     const unitRow = {
       empreendimento_id: id, de_terceiros: true, aprovacao: "pendente", disponivel: true,
-      captador_corretor_id: broker?.id ?? null,
+      captador_corretor_id: brokerContext?.id ?? null,
       numero,
       tipologia,
       area_m2: area,
@@ -380,11 +435,11 @@ export async function PATCH(request: Request) {
     };
     const { data: novaUnidade, error } = await auth.supabase.from("unidades").insert(unitRow as never).select("id").single();
     if (error) {
-      const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
-      if (error.code === "23505" || text.includes("unique") || text.includes("uq_unidade_indicacao_por_predio")) {
+      const databaseMessage = error.message?.toLowerCase() ?? "";
+      if (error.code === "23505" || databaseMessage.includes("unique") || databaseMessage.includes("uq_unidade_indicacao_por_predio")) {
         return Response.json({ error: "Esta unidade já foi cadastrada neste prédio." }, { status: 409 });
       }
-      return Response.json({ error: error.message }, { status: 502 });
+      return productTechnicalFailure("create_unit", error, "Não foi possível cadastrar a unidade.");
     }
     return Response.json({ unidadeId: novaUnidade.id, userId: auth.user.id });
   }
@@ -392,11 +447,10 @@ export async function PATCH(request: Request) {
   if (body.action === "updateUnit") {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
-    const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
     const { data: currentUnit, error: currentUnitError } = await auth.supabase.from("unidades").select("id,captador_corretor_id,de_terceiros,aprovacao,publicado").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle();
-    if (currentUnitError) return Response.json({ error: currentUnitError.message }, { status: 502 });
+    if (currentUnitError) return productTechnicalFailure("read_unit_update", currentUnitError);
     if (!currentUnit) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
-    const ownsUnit = broker?.id != null && currentUnit.captador_corretor_id === broker.id;
+    const ownsUnit = brokerContext?.id != null && currentUnit.captador_corretor_id === brokerContext.id;
     if (!gerenciaProdutos && (!currentUnit.de_terceiros || !ownsUnit)) return Response.json({ error: "Você só pode editar a unidade que captou." }, { status: 403 });
     const input = (body.unidade && typeof body.unidade === "object" ? body.unidade : {}) as Record<string, unknown>;
     const asString = (value: unknown) => (typeof value === "string" ? value.trim() || null : null);
@@ -441,7 +495,7 @@ export async function PATCH(request: Request) {
       ...(gerenciaProdutos ? {} : { aprovacao: "pendente", publicado: false, reprovacao_motivo: null }),
     };
     const { data: updatedUnit, error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id).select("id").maybeSingle();
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return productTechnicalFailure("update_unit", error, "Não foi possível atualizar a unidade.");
     if (!updatedUnit) return Response.json({ error: "A unidade não foi alterada. Atualize a tela e tente novamente.", code: "UNIT_UPDATE_NOT_CONFIRMED" }, { status: 409 });
     return Response.json({ success: true, approval: gerenciaProdutos ? currentUnit.aprovacao : "pendente" });
   }
@@ -497,9 +551,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.action === "decideUnit") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const role = (me as { role?: string } | null)?.role ?? "corretor";
-    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar unidades." }, { status: 403 });
+    if (!gerenciaProdutos) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar unidades." }, { status: 403 });
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const approve = body.approve === true;
@@ -509,7 +561,9 @@ export async function PATCH(request: Request) {
         auth.supabase.from("midias").select("id", { count: "exact", head: true }).eq("unidade_id", unidadeId).eq("tipo", "foto"),
         auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: [unidadeId] }),
       ]);
-      if (unitReadError || !unitToApprove) return Response.json({ error: unitReadError?.message ?? "Unidade não encontrada." }, { status: 404 });
+      const unitApprovalContextError = unitReadError ?? mediaCount.error ?? ownerStatus.error;
+      if (unitApprovalContextError) return productTechnicalFailure("read_unit_approval_context", unitApprovalContextError);
+      if (!unitToApprove) return Response.json({ error: "Unidade não encontrada." }, { status: 404 });
       const blocking: string[] = [];
       if (!unitToApprove.numero || !unitToApprove.tipologia || !unitToApprove.area_m2 || unitToApprove.area_m2 <= 0) blocking.push("Número, tipologia e área útil");
       if (!isPlausibleProductPrice(unitToApprove.valor_promo ?? unitToApprove.valor_tabela, currentPurpose)) blocking.push("Preço válido");
@@ -530,17 +584,26 @@ export async function PATCH(request: Request) {
       return Response.json({ success: true, aprovacao: "aprovado", publicado: true, publication: result.publication });
     }
     const patch = { aprovacao: "reprovado", publicado: false, reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
-    const { error } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const { data: rejectedUnit, error: rejectError } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id).select("id").maybeSingle();
+    if (rejectError) return productTechnicalFailure("reject_unit", rejectError, "Não foi possível reprovar a unidade.");
+    if (!rejectedUnit) return Response.json({ error: "A unidade não foi alterada. Atualize a tela e tente novamente.", code: "UNIT_DECISION_NOT_CONFIRMED" }, { status: 409 });
     return Response.json({ success: true, aprovacao: patch.aprovacao });
   }
 
   if (body.action === "toggleFavorite") {
     const favorite = body.favorite === true;
-    const result = favorite
-      ? await auth.supabase.from("produto_favoritos").insert({ empreendimento_id: id, usuario_id: auth.user.id })
-      : await auth.supabase.from("produto_favoritos").delete().eq("empreendimento_id", id).eq("usuario_id", auth.user.id);
-    return result.error ? Response.json({ error: result.error.message }, { status: 502 }) : Response.json({ success: true, favorite });
+    if (favorite) {
+      const { data: changedFavorite, error: favoriteError } = await auth.supabase.from("produto_favoritos").upsert(
+        { empreendimento_id: id, usuario_id: auth.user.id },
+        { onConflict: "empreendimento_id,usuario_id" },
+      ).select("empreendimento_id").maybeSingle();
+      if (favoriteError) return productTechnicalFailure("set_favorite", favoriteError, "Não foi possível atualizar o favorito.");
+      if (!changedFavorite) return Response.json({ error: "O favorito não foi confirmado.", code: "FAVORITE_CHANGE_NOT_CONFIRMED" }, { status: 409 });
+    } else {
+      const { error: favoriteError } = await auth.supabase.from("produto_favoritos").delete().eq("empreendimento_id", id).eq("usuario_id", auth.user.id).select("empreendimento_id");
+      if (favoriteError) return productTechnicalFailure("unset_favorite", favoriteError, "Não foi possível atualizar o favorito.");
+    }
+    return Response.json({ success: true, favorite });
   }
 
   if (body.action === "linkLead" || body.action === "unlinkLead") {
@@ -548,26 +611,32 @@ export async function PATCH(request: Request) {
     if (!Number.isSafeInteger(leadId) || leadId <= 0) return Response.json({ error: "Lead inválido." }, { status: 400 });
     const denied = guard([["produtos", "editar"], ["leads", "editar"]], "Você não tem permissão para vincular leads a produtos.");
     if (denied) return denied;
-    const result = body.action === "linkLead"
-      ? await auth.supabase.from("lead_produtos").insert({ lead_id: leadId, empreendimento_id: id, vinculado_por: auth.user.id })
-      : await auth.supabase.from("lead_produtos").delete().eq("lead_id", leadId).eq("empreendimento_id", id);
-    return result.error ? Response.json({ error: result.error.message }, { status: 502 }) : Response.json({ success: true });
+    if (body.action === "linkLead") {
+      const { data: changedLink, error: linkError } = await auth.supabase.from("lead_produtos").upsert(
+        { lead_id: leadId, empreendimento_id: id, vinculado_por: auth.user.id },
+        { onConflict: "lead_id,empreendimento_id" },
+      ).select("lead_id").maybeSingle();
+      if (linkError) return productTechnicalFailure("link_lead", linkError, "Não foi possível atualizar o vínculo com o lead.");
+      if (!changedLink) return Response.json({ error: "O vínculo com o lead não foi confirmado.", code: "LEAD_LINK_CHANGE_NOT_CONFIRMED" }, { status: 409 });
+    } else {
+      const { error: unlinkError } = await auth.supabase.from("lead_produtos").delete().eq("lead_id", leadId).eq("empreendimento_id", id).select("lead_id");
+      if (unlinkError) return productTechnicalFailure("unlink_lead", unlinkError, "Não foi possível atualizar o vínculo com o lead.");
+    }
+    return Response.json({ success: true, linked: body.action === "linkLead" });
   }
 
   if (body.action === "publish" || body.action === "unpublish" || body.action === "solicitar") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const role = (me as { role?: string } | null)?.role ?? "corretor";
-    const isApprover = isProductManagerRole(role);
+    const isApprover = gerenciaProdutos;
 
     // Corretor (dono) envia solicitação: vira pendente, NÃO vai pro ar. Passa pela alçada de aprovação.
     if (body.action === "solicitar") {
-      const { data: prod } = await auth.supabase.from("empreendimentos").select("captado_por_usuario, captador_corretor_id").eq("id", id).maybeSingle();
-      const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
-      const owns = (prod?.captado_por_usuario != null && prod.captado_por_usuario === auth.user.id)
-        || (broker?.id != null && prod?.captador_corretor_id === broker.id);
+      const owns = (productContext.captado_por_usuario != null && productContext.captado_por_usuario === auth.user.id)
+        || (brokerContext?.id != null && productContext.captador_corretor_id === brokerContext.id);
       if (!owns && !isApprover) return Response.json({ error: "Você só pode enviar solicitação de um produto que você captou." }, { status: 403 });
-      const { error } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "pendente", reprovacao_motivo: null }).eq("id", id);
-      return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true, aprovacao: "pendente" });
+      const { data: requestedProduct, error: requestError } = await auth.supabase.from("empreendimentos").update({ rascunho: false, aprovacao: "pendente", reprovacao_motivo: null }).eq("id", id).select("id").maybeSingle();
+      if (requestError) return productTechnicalFailure("request_product_approval", requestError, "Não foi possível enviar o imóvel para aprovação.");
+      if (!requestedProduct) return Response.json({ error: "O envio para aprovação não foi confirmado.", code: "PRODUCT_REQUEST_NOT_CONFIRMED" }, { status: 409 });
+      return Response.json({ success: true, aprovacao: "pendente" });
     }
 
     // Publicar / retirar do ar: só aprovadores (admin, gestor, executivo).
@@ -584,7 +653,8 @@ export async function PATCH(request: Request) {
       .select("nome,titulo,slogan,descricao,finalidade,status,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel,aprovacao),midias(tipo,categoria,is_capa,unidade_id)")
       .eq("id", id)
       .single();
-    if (readError || !productToPublish) return Response.json({ error: readError?.message ?? "Produto não encontrado." }, { status: 502 });
+    if (readError) return productTechnicalFailure("read_product_publication", readError);
+    if (!productToPublish) return Response.json({ error: "Produto não encontrado." }, { status: 404 });
     const publishUnits = (productToPublish.unidades ?? []).filter((unit) => (unit.aprovacao ?? "aprovado") === "aprovado");
     const publishAvailable = publishUnits.filter((unit) => unit.disponivel);
     const publishPrices = publishAvailable.map((unit) => unit.valor_promo ?? unit.valor_tabela).filter((value): value is number => typeof value === "number" && value > 0);
@@ -625,12 +695,17 @@ export async function PATCH(request: Request) {
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
     if (context.media.tipo !== "foto") return Response.json({ error: "A capa precisa ser uma foto." }, { status: 422 });
-    let clearQuery = auth.supabase.from("midias").update({ is_capa: false }).eq("empreendimento_id", id).eq("tipo", "foto");
-    clearQuery = context.media.unidade_id ? clearQuery.eq("unidade_id", context.media.unidade_id) : clearQuery.is("unidade_id", null);
-    const { error: clearError } = await clearQuery;
-    if (clearError) return Response.json({ error: clearError.message }, { status: 502 });
-    const { error } = await auth.supabase.from("midias").update({ is_capa: true }).eq("id", mediaId).eq("empreendimento_id", id).eq("tipo", "foto");
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data, error } = await auth.supabase.rpc("produto_midia_definir_capa", {
+      p_empreendimento_id: id,
+      p_unidade_id: context.media.unidade_id,
+      p_media_id: mediaId,
+    });
+    if (error) return publicationErrorResponse(error);
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+    if (result.ok !== true || result.media_id !== mediaId) {
+      return Response.json({ error: "O banco não confirmou a nova capa.", code: "MEDIA_COVER_NOT_CONFIRMED" }, { status: 502 });
+    }
+    return Response.json({ success: true, mediaId });
   }
 
   if (body.action === "updateMedia") {
@@ -640,8 +715,10 @@ export async function PATCH(request: Request) {
     const context = await editableMediaContext(mediaId);
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode editar as imagens da unidade que captou." : "Você só pode editar as imagens do produto que captou." }, { status: 403 });
-    const { error } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id);
-    return error ? Response.json({ error: error.message }, { status: 502 }) : Response.json({ success: true });
+    const { data: updatedMedia, error: mediaUpdateError } = await auth.supabase.from("midias").update({ categoria }).eq("id", mediaId).eq("empreendimento_id", id).select("id").maybeSingle();
+    if (mediaUpdateError) return productTechnicalFailure("update_media", mediaUpdateError, "Não foi possível atualizar a classificação da mídia.");
+    if (!updatedMedia) return Response.json({ error: "A classificação da mídia não foi confirmada.", code: "MEDIA_UPDATE_NOT_CONFIRMED" }, { status: 409 });
+    return Response.json({ success: true });
   }
 
   if (body.action === "deleteMedia") {
@@ -651,23 +728,39 @@ export async function PATCH(request: Request) {
     if ("error" in context) return context.error;
     if (!context.canEdit) return Response.json({ error: context.media.unidade_id ? "Você só pode excluir imagens da unidade que captou." : "Você só pode excluir imagens do produto que captou." }, { status: 403 });
     const { media } = context;
+    const { data: deletedMedia, error: deleteError } = await auth.supabase.from("midias").delete().eq("id", mediaId).eq("empreendimento_id", id).select("id").maybeSingle();
+    if (deleteError) return productTechnicalFailure("delete_media_metadata", deleteError, "Não foi possível excluir a mídia.");
+    if (!deletedMedia) return Response.json({ error: "A exclusão da mídia não foi confirmada.", code: "MEDIA_DELETE_NOT_CONFIRMED" }, { status: 409 });
     const { error: storageError } = await auth.supabase.storage.from("empreendimentos").remove([media.storage_path]);
-    if (storageError) return Response.json({ error: `Não foi possível excluir o arquivo: ${storageError.message}` }, { status: 502 });
-    const { error: deleteError } = await auth.supabase.from("midias").delete().eq("id", mediaId).eq("empreendimento_id", id);
-    if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
+    let storageWarning = storageError ? "A mídia foi removida da ficha, mas o arquivo aguarda limpeza automática." : null;
     if (media.is_capa && media.tipo === "foto") {
       let nextQuery = auth.supabase.from("midias").select("id").eq("empreendimento_id", id).eq("tipo", "foto");
       nextQuery = media.unidade_id ? nextQuery.eq("unidade_id", media.unidade_id) : nextQuery.is("unidade_id", null);
-      const { data: nextPhoto } = await nextQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
-      if (nextPhoto) await auth.supabase.from("midias").update({ is_capa: true }).eq("id", nextPhoto.id);
+      const { data: nextPhoto, error: nextPhotoError } = await nextQuery.order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (nextPhotoError) {
+        storageWarning = "A mídia foi excluída, mas a próxima capa aguarda reconciliação automática.";
+      } else if (nextPhoto) {
+        const { data: coverData, error: coverError } = await auth.supabase.rpc("produto_midia_definir_capa", {
+          p_empreendimento_id: id,
+          p_unidade_id: media.unidade_id,
+          p_media_id: nextPhoto.id,
+        });
+        const coverResult = coverData && typeof coverData === "object" && !Array.isArray(coverData) ? coverData as Record<string, unknown> : {};
+        if (coverError || coverResult.ok !== true || coverResult.media_id !== nextPhoto.id) {
+          storageWarning = "A mídia foi excluída, mas a próxima capa aguarda reconciliação automática.";
+        }
+      }
     }
-    return Response.json({ success: true });
+    return Response.json({
+      success: true,
+      storageCleanupPending: Boolean(storageWarning),
+      warning: storageWarning,
+      code: storageWarning ? "RECONCILIATION_REQUIRED" : undefined,
+    });
   }
 
   if (body.action === "deleteProduct") {
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const role = (me as { role?: string } | null)?.role ?? "corretor";
-    if (!isProductManagerRole(role)) return Response.json({ error: "Apenas a gestão de Produtos pode excluir produtos." }, { status: 403 });
+    if (!gerenciaProdutos) return Response.json({ error: "Apenas a gestão de Produtos pode excluir produtos." }, { status: 403 });
     const deniedDelete = guard([["produtos", "excluir"]], "Você não tem permissão para excluir produtos.");
     if (deniedDelete) return deniedDelete;
 
@@ -735,7 +828,7 @@ export async function PATCH(request: Request) {
   let constructorUnitIdsToRemove: string[] = [];
   if (Array.isArray(body.units)) {
     const { data: existingUnits, error: unitsReadError } = await auth.supabase.from("unidades").select("id,de_terceiros").eq("empreendimento_id", id);
-    if (unitsReadError) return Response.json({ error: unitsReadError.message }, { status: 502 });
+    if (unitsReadError) return productTechnicalFailure("read_constructor_units", unitsReadError);
     const constructorIds = new Set((existingUnits ?? []).filter((item) => !item.de_terceiros).map((item) => item.id));
     const indicationIds = new Set((existingUnits ?? []).filter((item) => item.de_terceiros).map((item) => item.id));
     const incomingUnits = body.units as Array<Record<string, unknown>>;
@@ -764,9 +857,7 @@ export async function PATCH(request: Request) {
     constructorUnitIdsToRemove = [...constructorIds].filter((unitId) => !keptIds.has(unitId));
   }
 
-  const { error } = await auth.supabase.from("empreendimentos").update(update).eq("id", id);
-  if (error) return Response.json({ error: error.message }, { status: 502 });
-
+  let preparedOwner: { nome: string; email: string; telefone: string } | null = null;
   if (body.owner && typeof body.owner === "object") {
     const ownerInput = body.owner as Record<string, unknown>;
     const nome = typeof ownerInput.nome === "string" ? ownerInput.nome.trim() : "";
@@ -774,48 +865,70 @@ export async function PATCH(request: Request) {
     const telefone = typeof ownerInput.telefone === "string" ? ownerInput.telefone.trim() : "";
     if (nome || email || telefone) {
       if (!nome || !email || !telefone) return Response.json({ error: "Preencha nome, e-mail e telefone do proprietário." }, { status: 422 });
-      const { error: ownerError } = await auth.supabase.rpc("produto_proprietario_salvar", {
-        p_empreendimento_id: id,
-        p_nome: nome,
-        p_email: email,
-        p_telefone: telefone,
-      });
-      if (ownerError) return Response.json({ error: ownerError.message }, { status: ownerError.code === "42501" ? 403 : 502 });
+      preparedOwner = { nome, email, telefone };
     }
   }
 
+  type PreparedCondominium = {
+    id: string | null;
+    row: { nome: string; endereco: string; cidade: string; created_by: string; numero: string | null; bairro: string | null; uf: string; cep: string | null } | null;
+  };
+  let preparedCondominium: PreparedCondominium | null = null;
   if (body.condominium && typeof body.condominium === "object") {
     const input = body.condominium as Record<string, unknown>;
-    let condominiumId = typeof input.id === "string" && UUID.test(input.id) ? input.id : null;
-    if (!condominiumId) {
+    const condominiumId = typeof input.id === "string" && UUID.test(input.id) ? input.id : null;
+    if (condominiumId) {
+      preparedCondominium = { id: condominiumId, row: null };
+    } else {
       const nome = typeof input.nome === "string" ? input.nome.trim() : "";
       const endereco = typeof input.endereco === "string" ? input.endereco.trim() : "";
       const cidade = typeof input.cidade === "string" ? input.cidade.trim() : "";
       if (!nome || !endereco || !cidade) return Response.json({ error: "Preencha nome, endereço e cidade do condomínio." }, { status: 422 });
-      const { data: created, error: condominiumError } = await auth.supabase.from("condominios").insert({
+      preparedCondominium = { id: null, row: {
         nome, endereco, cidade, created_by: auth.user.id,
         numero: typeof input.numero === "string" ? input.numero.trim() || null : null,
         bairro: typeof input.bairro === "string" ? input.bairro.trim() || null : null,
         uf: typeof input.uf === "string" ? input.uf.trim().toUpperCase() || "SP" : "SP",
         cep: typeof input.cep === "string" ? input.cep.trim() || null : null,
-      }).select("id").single();
-      if (condominiumError) return Response.json({ error: condominiumError.message }, { status: 502 });
+      } };
+    }
+  }
+
+  const { data: updatedProduct, error: productUpdateError } = await auth.supabase.from("empreendimentos").update(update).eq("id", id).select("id").maybeSingle();
+  if (productUpdateError) return productTechnicalFailure("update_product", productUpdateError, "Não foi possível atualizar o imóvel.");
+  if (!updatedProduct) return Response.json({ error: "A atualização do imóvel não foi confirmada.", code: "PRODUCT_UPDATE_NOT_CONFIRMED" }, { status: 409 });
+
+  if (preparedOwner) {
+    const { error: ownerError } = await auth.supabase.rpc("produto_proprietario_salvar", {
+      p_empreendimento_id: id,
+      p_nome: preparedOwner.nome,
+      p_email: preparedOwner.email,
+      p_telefone: preparedOwner.telefone,
+    });
+    if (ownerError) return reconciliationRequired("save_product_owner", ownerError);
+  }
+
+  if (preparedCondominium) {
+    let condominiumId = preparedCondominium.id;
+    if (!condominiumId && preparedCondominium.row) {
+      const { data: created, error: condominiumError } = await auth.supabase.from("condominios").insert(preparedCondominium.row).select("id").maybeSingle();
+      if (condominiumError || !created) return reconciliationRequired("create_product_condominium", condominiumError ?? undefined);
       condominiumId = created.id;
     }
-    const { error: linkError } = await auth.supabase.from("empreendimentos").update({ condominio_id: condominiumId }).eq("id", id);
-    if (linkError) return Response.json({ error: linkError.message }, { status: 502 });
+    const { data: linkedProduct, error: linkError } = await auth.supabase.from("empreendimentos").update({ condominio_id: condominiumId }).eq("id", id).select("id").maybeSingle();
+    if (linkError || !linkedProduct) return reconciliationRequired("link_product_condominium", linkError ?? undefined);
   }
 
   if (preparedUnits) {
     if (constructorUnitIdsToRemove.length) {
-      const { error: deleteError } = await auth.supabase.from("unidades").delete().eq("empreendimento_id", id).eq("de_terceiros", false).in("id", constructorUnitIdsToRemove);
-      if (deleteError) return Response.json({ error: deleteError.message }, { status: 502 });
+      const { data: deletedUnits, error: deleteError } = await auth.supabase.from("unidades").delete().eq("empreendimento_id", id).eq("de_terceiros", false).in("id", constructorUnitIdsToRemove).select("id");
+      if (deleteError || (deletedUnits?.length ?? 0) !== constructorUnitIdsToRemove.length) return reconciliationRequired("delete_constructor_units", deleteError ?? undefined);
     }
     for (const item of preparedUnits) {
       const unitResult = item.unitId
-        ? await auth.supabase.from("unidades").update(item.row as never).eq("id", item.unitId).eq("empreendimento_id", id).eq("de_terceiros", false)
-        : await auth.supabase.from("unidades").insert({ ...item.row, empreendimento_id: id, de_terceiros: false, aprovacao: "aprovado" } as never);
-      if (unitResult.error) return Response.json({ error: unitResult.error.message }, { status: 502 });
+        ? await auth.supabase.from("unidades").update(item.row as never).eq("id", item.unitId).eq("empreendimento_id", id).eq("de_terceiros", false).select("id").maybeSingle()
+        : await auth.supabase.from("unidades").insert({ ...item.row, empreendimento_id: id, de_terceiros: false, aprovacao: "aprovado" } as never).select("id").maybeSingle();
+      if (unitResult.error || !unitResult.data) return reconciliationRequired("save_constructor_unit", unitResult.error ?? undefined);
     }
   }
   return Response.json({ success: true });

@@ -12199,6 +12199,14 @@ export type Database = {
         }
         Returns: Json
       }
+      produto_midia_definir_capa: {
+        Args: {
+          p_empreendimento_id: string
+          p_media_id: string
+          p_unidade_id: string | null
+        }
+        Returns: Json
+      }
       produto_excluir: {
         Args: { p_empreendimento_id: string }
         Returns: Json
