@@ -34,7 +34,7 @@ const itens: Array<{ modulo: ModuleName; icone: string; titulo: string; texto: s
   { modulo: "Minha Equipe", icone: "equipe", titulo: "Quem está trabalhando", texto: "Presença, carteira e resposta no prazo" },
   { modulo: "Calendário", icone: "agenda", titulo: "Agenda da equipe", texto: "Visitas e compromissos do dia" },
   { modulo: "Notificações", icone: "avisos", titulo: "Avisos", texto: "O que está pedindo ação agora" },
-  { modulo: "CRM", icone: "esteira", titulo: "Esteira de vendas", texto: "Atendimentos e oportunidades" },
+  { modulo: "CRM", icone: "esteira", titulo: "Esteira de vendas", texto: "Atendimentos e oportunidades", vista: "vendas" },
 ];
 
 export function ManagementMobile() {

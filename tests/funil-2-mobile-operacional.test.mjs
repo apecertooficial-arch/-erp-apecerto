@@ -8,6 +8,10 @@ const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/fun
 const INICIO = ler("../app/features/home/InicioApp.tsx");
 const CSS = ler("../app/styles/app-mobile.css");
 const CSS_APROVADO = ler("../app/styles/app-mobile-aprovado.css");
+const NAVEGACAO = ler("../app/features/funil-2/MobileCrmNavigation.tsx");
+const CSS_FUNIL = ler("../app/styles/funil.css");
+const ESTEIRA = ler("../app/features/sales/SalesProcessWorkspace.tsx");
+const HARNESS_ESTEIRA = ler("./sales-mobile-visual-harness/main.tsx");
 
 test("Inicio e CRM do celular usam o Funil 2.0, nunca as filas antigas", () => {
   assert.match(MOBILE, /fetch\("\/api\/funil2"/);
@@ -61,4 +65,37 @@ test("CRM mobile oferece as etapas do Funil como filtro nos dois modos", () => {
 
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
+});
+
+test("CRM móvel liga Carteira, Esteira, Visitas e Avisos às rotas canônicas", () => {
+  assert.match(MOBILE, /MobileCrmNavigation areaAtual="carteira"/);
+  for (const [rotulo, rota] of [["Carteira", "/crm"], ["Esteira", "/crm?vista=vendas"], ["Visitas", "/agenda"], ["Avisos", "/notificacoes"]]) {
+    assert.ok(NAVEGACAO.includes(`label: "${rotulo}", href: "${rota}"`), `falta atalho ${rotulo}`);
+  }
+  assert.match(NAVEGACAO, /aria-current=\{areaAtual === area\.id \? "page" : undefined\}/);
+  assert.match(CSS_FUNIL, /ape-mobile-mais-areas button\.ativo/);
+});
+
+test("vista vendas monta a Esteira canônica no celular", () => {
+  assert.match(ENTRADA, /useSearchParams/);
+  assert.match(ENTRADA, /searchParams\.get\("vista"\)/);
+  assert.match(ENTRADA, /vistaMobile === "vendas"/);
+  assert.match(ENTRADA, /ape-mobile-esteira[\s\S]*SalesProcessView/);
+  assert.match(ENTRADA, /SalesProcessView accessToken=\{accessToken\} sessionRole=\{role\}/);
+});
+
+test("falha inicial da Esteira não deixa o aplicativo preso no carregamento", () => {
+  assert.match(ESTEIRA, /const \[initialLoadSettled, setInitialLoadSettled\] = useState\(false\)/);
+  assert.match(ESTEIRA, /\.finally\(\(\) => setInitialLoadSettled\(true\)\)/);
+  assert.match(ESTEIRA, /if \(!data && !initialLoadSettled\) return <div className="crm-loading"/);
+  assert.match(ESTEIRA, /if \(!data\) return <section className="sales-load-error" role="alert">/);
+  assert.match(ESTEIRA, /onClick=\{carregarInicial\}>Tentar novamente/);
+});
+
+test("harness móvel usa a Esteira produtiva, dados sanitizados e bloqueia mutações", () => {
+  assert.match(HARNESS_ESTEIRA, /import \{ SalesProcessView \}/);
+  assert.match(HARNESS_ESTEIRA, /<SalesProcessView accessToken="harness-test-only" sessionRole="admin"/);
+  assert.match(HARNESS_ESTEIRA, /method !== "GET" \|\| url\.origin !== window\.location\.origin/);
+  assert.match(HARNESS_ESTEIRA, /Cliente sanitizado/);
+  assert.doesNotMatch(HARNESS_ESTEIRA, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
 });

@@ -110,15 +110,23 @@ const saleStages = [
    cabecalho, a barra de visoes e os filtros do CRM antigo. */
 export function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
   const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
+  const [initialLoadSettled, setInitialLoadSettled] = useState(false);
   const canManageStages = sessionRole !== "corretor";
   const [renderedAt] = useState(() => Date.now());
   const load = useCallback(async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); }, [accessToken]);
   const decideSolic = async (id: string, aprovar: boolean, motivo?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(aprovar ? { action: "aprovarSolicitacao", id } : { action: "recusarSolicitacao", id, motivo: motivo || "" }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível decidir a solicitação."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Erro ao decidir a solicitação."); } finally { setBusy(false); } };
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => { void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Erro ao carregar vendas.")); }, 0);
-    return () => window.clearTimeout(timer);
+  const carregarInicial = useCallback(() => {
+    setInitialLoadSettled(false);
+    setError(null);
+    void load()
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível carregar as vendas."))
+      .finally(() => setInitialLoadSettled(true));
   }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(carregarInicial, 0);
+    return () => window.clearTimeout(timer);
+  }, [carregarInicial]);
   const stageList = (data?.stages && data.stages.length) ? data.stages.slice().sort((a, b) => a.ordem - b.ordem).map((s) => ({ id: s.slug, dbId: s.id, name: s.nome, color: s.cor, role: s.papel, days: s.sla_dias, resale: s.resale, ordem: s.ordem, libera: s.libera ?? [], restritoA: s.restrito_a ?? null })) : saleStages.map((s, i) => ({ ...s, dbId: null as string | null, resale: (s as { resale?: boolean }).resale ?? false, ordem: i + 1, libera: [] as string[], restritoA: null as string[] | null }));
   const saleById = new Map((data?.sales ?? []).map((sale) => [sale.id, sale])); const dealBySale = new Map((data?.deals ?? []).filter((deal) => deal.venda_id).map((deal) => [deal.venda_id!, deal])); const leadById = new Map((data?.leads ?? []).map((lead) => [lead.id, lead])); const brokerById = new Map((data?.brokers ?? []).map((broker) => [broker.id, broker]));
   const finalSlugs = new Set(stageList.filter((s) => s.days === 0).map((s) => s.id));
@@ -126,7 +134,8 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
   const move = async (processId: string, stage: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "move", processId, stage }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível mover a venda."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível mover a venda."); } finally { setBusy(false); } };
   const mutateStages = async (payload: Record<string, unknown>, success?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível salvar a etapa."); await load(); if (success) setError(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível salvar a etapa."); } finally { setBusy(false); } };
   const reorderStage = (index: number, direction: number) => { const ordered = stageList.filter((s) => s.dbId); const target = index + direction; if (target < 0 || target >= ordered.length) return; const ids = ordered.map((s) => s.dbId as string); [ids[index], ids[target]] = [ids[target], ids[index]]; void mutateStages({ action: "reorderStages", ids }); };
-  if (!data) return <div className="crm-loading"><span /><strong>Conectando a esteira de vendas…</strong></div>;
+  if (!data && !initialLoadSettled) return <div className="crm-loading"><span /><strong>Conectando a esteira de vendas…</strong></div>;
+  if (!data) return <section className="sales-load-error" role="alert"><strong>Não foi possível abrir a Esteira</strong><p>{error || "A consulta não foi concluída."}</p><button type="button" onClick={carregarInicial}>Tentar novamente</button></section>;
   return <section className="sales-process">
     <header><div><span>PÓS-FECHAMENTO</span><h2>Esteira de contrato & documentação</h2><p>Todas as vendas reais ligadas ao negócio, produto, cliente e responsável.</p></div><div className="sales-head-actions">{canManageStages && <button className="crm-secondary" type="button" onClick={() => { setAddingStage(true); setNewStageName(""); }}>＋ Nova etapa</button>}<button className="crm-primary" type="button" onClick={() => setCreating(true)}>＋ Nova venda</button></div></header>
     {canManageStages && (data?.solicitacoes ?? []).length > 0 && <div className="sales-approvals">

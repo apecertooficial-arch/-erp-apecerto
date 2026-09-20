@@ -33,3 +33,8 @@ test("alerta de canal abre Conexões no celular do gestor sem remover o hub de g
   assert.match(configuracoes, /forcarConexoes \? <SettingsWorkspace/);
   assert.match(configuracoes, /ehCelular && isManager \? <ManagementMobile/);
 });
+
+test("Esteira da Gestão abre a vista real de vendas no aplicativo", () => {
+  assert.match(gestao, /titulo: "Esteira de vendas"[\s\S]*vista: "vendas"/);
+  assert.match(gestao, /\?vista=\$\{item\.vista\}/);
+});

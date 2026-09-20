@@ -21,6 +21,7 @@ import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { HorariosVisita } from "./HorariosVisita";
+import { MobileCrmNavigation } from "./MobileCrmNavigation";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
@@ -940,6 +941,8 @@ export function Funil2Mobile({
       <article><b>{contagens.novos}</b><span>leads novos</span></article>
       <article><b>{contagens.hoje}</b><span>para hoje</span></article>
     </section>}
+
+    {modo === "crm" && <MobileCrmNavigation areaAtual="carteira" onIr={onIr} />}
 
     {modo === "crm" && <label className="ape-busca">
       <IconeBusca />

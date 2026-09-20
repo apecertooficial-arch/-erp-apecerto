@@ -1,8 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Funil2Mobile } from "./Funil2Mobile";
 import { Funil2Workspace } from "./Funil2Workspace";
+import { MobileCrmNavigation } from "./MobileCrmNavigation";
+import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { GuardaModulo } from "../system/GuardaModulo";
 import { useErpSession } from "../system/ErpSession";
 import { useEhCelular } from "../system/useFormato";
@@ -12,12 +14,26 @@ export function FunilEntry() {
   const { profile, role } = useErpSession();
   const ehCelular = useEhCelular();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const vistaMobile = searchParams.get("vista");
 
   return (
     <GuardaModulo modulo="CRM">
       {(accessToken) => {
         if (ehCelular === null) return null;
         if (ehCelular) {
+          if (vistaMobile === "vendas") {
+            return <main className="funil-oficial ape-app modo-crm" aria-label="Esteira de vendas">
+              <header className="ape-abertura">
+                <span className="ape-sobrancelha">CRM</span>
+                <h1 className="ape-manchete">Esteira de vendas</h1>
+              </header>
+              <MobileCrmNavigation areaAtual="vendas" onIr={(destino) => router.push(destino)} />
+              <section className="ape-mobile-esteira">
+                <SalesProcessView accessToken={accessToken} sessionRole={role} />
+              </section>
+            </main>;
+          }
           return (
             <Funil2Mobile
               accessToken={accessToken}
