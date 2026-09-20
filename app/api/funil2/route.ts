@@ -447,21 +447,34 @@ export async function POST(request: Request) {
   if (action === "decidirSugestao") {
     const analiseId = Number(body.analiseId);
     const decisao = body.decisao === "aceita" ? "aceita" : body.decisao === "recusada" ? "recusada" : "";
+    const motivo = String(body.motivo ?? "").trim().slice(0, 500);
     if (!Number.isInteger(analiseId) || analiseId < 1 || !decisao) return Response.json({ error: "Decisão inválida." }, { status: 422 });
+    if (decisao === "recusada" && motivo.length < 3) {
+      return Response.json({ error: "Explique por que a sugestão deve ser recusada." }, { status: 422 });
+    }
+    /* Revisão humana não é execução da próxima ação pelo corretor. Somente a
+       gestão pode aprovar ou recusar uma exceção da Sara; o banco precisa
+       repetir essa barreira antes de a RPC ser considerada definitivamente
+       protegida contra chamadas diretas. */
+    const { data: podeGerenciar, error: erroGestao } = await auth.db.rpc("f2_admin");
+    if (erroGestao) return Response.json({ error: "Não foi possível confirmar a permissão da gestão." }, { status: statusErroBanco(erroGestao) });
+    if (podeGerenciar !== true) return Response.json({ error: "Somente a gestão pode decidir revisões da Sara." }, { status: 403 });
     const { data, error } = await auth.db.rpc("f2_decidir_sugestao", {
       p_analise_id: analiseId,
       p_decisao: decisao,
-      p_motivo: String(body.motivo ?? "").trim().slice(0, 500) || null,
+      p_motivo: motivo || null,
     });
     if (error) return Response.json({ error: "Não foi possível registrar sua decisão." }, { status: statusErroBanco(error) });
     const resultado = (data ?? {}) as { ok?: boolean; erro?: string };
     if (resultado.ok !== true) {
       const conflito = ["versao_conflito", "decisao_ja_registrada"].includes(resultado.erro ?? "");
       const proibido = resultado.erro === "sem_permissao";
+      const motivoInvalido = resultado.erro === "motivo_obrigatorio";
       return Response.json({ error: conflito
         ? "A sugestão mudou desde que foi exibida. Atualize e tente de novo."
-        : proibido ? "Você não pode decidir por este atendimento." : "Sugestão não encontrada." },
-      { status: conflito ? 409 : proibido ? 403 : 404 });
+        : proibido ? "Você não pode decidir por este atendimento."
+          : motivoInvalido ? "Explique por que a sugestão deve ser recusada." : "Sugestão não encontrada." },
+      { status: conflito ? 409 : proibido ? 403 : motivoInvalido ? 422 : 404 });
     }
     return Response.json({ ok: true, decisao });
   }

@@ -80,6 +80,26 @@ export function CentralOperationsPanel({ accessToken, view = "overview" }: { acc
     finally { setProcessando(null); }
   }, [executar]);
 
+  const decidirSara = useCallback(async (analiseId: number, decisao: "aceita" | "recusada") => {
+    const motivo = decisao === "recusada"
+      ? window.prompt("Explique por que a sugestão da Sara deve ser recusada.", "")
+      : "";
+    if (decisao === "recusada" && (motivo === null || motivo.trim().length < 3)) return;
+    setProcessando(analiseId); setErro(null);
+    try {
+      const response = await fetch("/api/funil2", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decidirSugestao", analiseId, decisao, motivo }),
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível decidir a revisão da Sara.");
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível decidir a revisão da Sara.");
+    } finally { setProcessando(null); }
+  }, [accessToken, carregar]);
+
   const alternarAbordagem = useCallback(async () => {
     if (!saude) return;
     const liberar = !saude.abordagem_automatica;
@@ -119,7 +139,7 @@ export function CentralOperationsPanel({ accessToken, view = "overview" }: { acc
 
     {view === "exceptions" ? <div className="central-exception-columns">
       <section className="central-ops-secao"><header><div><span className="central-ops-eyebrow">QUARENTENA</span><h3>Falhou sem continuar</h3></div><small>{numero(saude?.fila?.quarentena)} item(ns)</small></header>{(saude?.quarentena ?? []).length ? <div className="central-lista">{(saude?.quarentena ?? []).map((item) => { const incompatibilidade = item.erro.includes("AUTOMATION_RUNTIME_CONTRACT_INVALID"); return <article key={item.id}><div><b>#{item.id} · {item.automacao}</b><span>Bloco {item.bloco_id} · {data(item.criado_em)} · {item.tentativas} tentativa(s)</span><p>{item.erro}</p></div><button type="button" onClick={() => void reprocessar(item.id, incompatibilidade)} disabled={processando === item.id}>{processando === item.id ? "Verificando…" : incompatibilidade ? "Migrar versão e reprocessar" : "Reprocessar com segurança"}</button></article>; })}</div> : <p className="central-vazio">Nenhuma falha aguardando decisão.</p>}</section>
-      <section className="central-ops-secao"><header><div><span className="central-ops-eyebrow">SARA</span><h3>Revisão humana</h3></div><small>{numero(saude?.sara?.qualidade_pendente)} sem nota</small></header>{(saude?.revisoes ?? []).length ? <div className="central-lista central-revisoes">{(saude?.revisoes ?? []).map((item) => <article key={item.analise_id}><div><b>{item.nome || "Lead"} · {item.momento_codigo}</b><span>{data(item.analisado_em)} · confiança {item.confianca == null ? "—" : `${Math.round(Number(item.confianca) * 100)}%`}</span><p>{item.resumo || "A Sara pediu revisão sem inventar uma conclusão."}</p></div></article>)}</div> : <p className="central-vazio">Nenhuma análise aguardando revisão humana.</p>}</section>
+      <section className="central-ops-secao"><header><div><span className="central-ops-eyebrow">SARA</span><h3>Revisão humana</h3></div><small>{numero(saude?.sara?.qualidade_pendente)} sem nota</small></header>{(saude?.revisoes ?? []).length ? <div className="central-lista central-revisoes">{(saude?.revisoes ?? []).map((item) => <article key={item.analise_id}><div><b>{item.nome || "Lead"} · {item.momento_codigo}</b><span>{data(item.analisado_em)} · confiança {item.confianca == null ? "—" : `${Math.round(Number(item.confianca) * 100)}%`}</span><p>{item.resumo || "A Sara pediu revisão sem inventar uma conclusão."}</p></div><div className="central-revisao-acoes"><button type="button" disabled={processando === item.analise_id} onClick={() => void decidirSara(item.analise_id, "aceita")}>Aprovar</button><button type="button" disabled={processando === item.analise_id} onClick={() => void decidirSara(item.analise_id, "recusada")}>Recusar</button></div></article>)}</div> : <p className="central-vazio">Nenhuma análise aguardando revisão humana.</p>}</section>
     </div> : null}
   </section>;
 }

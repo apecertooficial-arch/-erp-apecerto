@@ -6,7 +6,7 @@ const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const tela = ler("../app/features/tasks/SaraTasksMobile.tsx");
 const pagina = ler("../app/(erp)/tarefas/page.tsx");
 const api = ler("../app/api/funil2/route.ts");
-const migration = ler("../supabase/migrations/20260816221702_tarefas_sara_decisoes.sql");
+const central = ler("../app/features/automations/CentralOperationsPanel.tsx");
 
 test("celular usa Tarefas da Sara e desktop preserva Projetos", () => {
   assert.match(pagina, /ehCelular \? <SaraTasksMobile/);
@@ -19,12 +19,21 @@ test("tarefas usam somente dados reais do Funil 2", () => {
   assert.doesNotMatch(tela, /const\s+(tasks|tarefas)\s*=\s*\[/i);
 });
 
-test("sugestão aceita ou recusada é auditável e não envia mensagem", () => {
-  assert.match(tela, /decidirSugestao/);
-  assert.match(api, /rpc\("f2_decidir_sugestao"/);
-  assert.match(migration, /decisao in \('aceita','recusada'\)/);
-  assert.match(migration, /A decisão e a eventual mudança de momento são uma única transação/);
-  assert.match(migration, /security invoker/i);
+test("corretor executa a próxima ação e não decide revisão humana da Sara", () => {
+  assert.match(tela, /acaoVisivel\(lead\)/);
+  assert.match(tela, /BotaoWhatsApp/);
+  assert.doesNotMatch(tela, /decidirSugestao|Aceitar sugestão|Recusar|analisesSara|decisoesSara|Concluídas/);
+});
+
+test("revisão humana fica acionável somente na Central de gestão", () => {
+  const bloco = api.match(/if \(action === "decidirSugestao"\) \{[\s\S]*?return Response\.json\(\{ ok: true, decisao \}\);\n  \}/)?.[0] ?? "";
+  assert.match(bloco, /rpc\("f2_admin"\)/);
+  assert.match(bloco, /podeGerenciar !== true/);
+  assert.ok(bloco.indexOf('rpc("f2_admin")') < bloco.indexOf('rpc("f2_decidir_sugestao"'));
+  assert.match(bloco, /decisao === "recusada" && motivo\.length < 3/);
+  assert.match(central, /action: "decidirSugestao"/);
+  assert.match(central, /decidirSara\(item\.analise_id, "aceita"\)/);
+  assert.match(central, /decidirSara\(item\.analise_id, "recusada"\)/);
   assert.doesNotMatch(api, /send-text-message|enviarMensagem/);
 });
 

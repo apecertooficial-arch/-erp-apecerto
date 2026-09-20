@@ -2342,6 +2342,12 @@ body.automation-builder-focus .app-shell > .sidebar {
   gap: 3px;
 }
 
+.central-lista article > .central-revisao-acoes {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 6px;
+}
+
 .central-lista b { color: var(--fg-1); font-size: 11px; }
 .central-lista span { color: var(--fg-muted); font-size: 11px; }
 .central-lista p { margin: 3px 0 0; color: var(--fg-2); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
@@ -2625,4 +2631,5 @@ body.automation-builder-focus .app-shell > .sidebar {
   .automation-kpis,
   .central-ops-grid { grid-template-columns: 1fr 1fr; }
   .automation-filters { max-width: 100%; overflow-x: auto; }
+  .central-lista article { flex-direction: column; }
 }
