@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesInsert } from "../../lib/supabase/database.types";
+import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
+import { planejarSlotsCampanha, type DiasCampanha } from "../../lib/campaign-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,7 @@ function falhaCampanha(error: ErroCampanha, operacao: string, status = 502) {
 
 // Passo de disparo já normalizado (uma linha em mensagens_agendadas).
 type DispatchStep = { tipo: string; texto?: string | null; url?: string | null; file_name?: string | null; mimetype?: string | null; delayMs?: number };
+const MAX_CAMPAIGN_ROWS = 5_000;
 
 // Converte a estrutura d-api de uma abordagem (vídeo/delay/texto/imagem/documento/áudio)
 // numa lista de passos. '__delay' vira intervalo entre os passos seguintes.
@@ -62,6 +65,10 @@ async function authenticatedClient(request: Request) {
 export async function GET(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  if (!access.resolved) return falhaCampanha(null, "validar_permissao_leitura");
+  const denied = denyIfCannot(access, [["disparos", "ver"]]);
+  if (denied) return denied;
   const [leads, deals, stages, approaches, products, recent, instances, brokers, instanceLinks] = await Promise.all([
     auth.supabase.from("leads").select("id,nome,telefone,tags,status,origem,corretor_id,disparo_optout").order("atualizado_em", { ascending: false }).limit(1500),
     auth.supabase.from("negocios").select("id,lead_id,stage_id,empreendimento_id,status"),
@@ -81,16 +88,24 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  const body = await request.json() as Record<string, unknown>;
-  const leadIds = Array.isArray(body.leadIds) ? body.leadIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0).slice(0, 500) : [];
+  const access = await resolveEffectiveAccess(auth.supabase, auth.user.id);
+  if (!access.resolved) return falhaCampanha(null, "validar_permissao_envio");
+  const denied = denyIfCannot(access, [["disparos", "enviar"]]);
+  if (denied) return denied;
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) return Response.json({ error: "Envie uma configuração de campanha válida." }, { status: 422 });
+  const leadIds = Array.isArray(body.leadIds) ? [...new Set(body.leadIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))].slice(0, 500) : [];
   const message = typeof body.message === "string" ? body.message.trim().slice(0, 4000) : "";
   const messages = Array.isArray(body.messages) ? body.messages.map((m: unknown) => String(m ?? "").trim().slice(0, 4000)).filter(Boolean).slice(0, 20) : [];
   const approachIds = Array.isArray(body.approachIds) ? body.approachIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0).slice(0, 20) : [];
   const pool = messages.length ? messages : (message ? [message] : []);
-  const rate = Math.max(1, Math.min(60, Number(body.rate) || 20));
+  const rate = Number(body.rate);
   const sourceStageId = Number(body.sourceStageId);
   const destinationStageId = Number(body.destinationStageId);
-  const start = typeof body.start === "string" && !Number.isNaN(Date.parse(body.start)) ? new Date(body.start) : new Date(Date.now() + 60_000);
+  const start = typeof body.start === "string" ? body.start : "";
+  const endTime = typeof body.endTime === "string" ? body.endTime : "";
+  const periodDays = Number(body.periodDays);
+  const days = typeof body.days === "string" ? body.days as DiasCampanha : "" as DiasCampanha;
   if (!leadIds.length || (!pool.length && !approachIds.length) || !Number.isSafeInteger(sourceStageId) || !Number.isSafeInteger(destinationStageId) || sourceStageId === destinationStageId) {
     return Response.json({ error: "Escolha a etapa de saída, a etapa de destino e ao menos uma mensagem/abordagem." }, { status: 422 });
   }
@@ -108,8 +123,8 @@ export async function POST(request: Request) {
   if (!valid.length) return Response.json({ error: "Nenhum lead elegível possui telefone e autorização para disparo." }, { status: 422 });
   // CORRETORES escolhidos → o sistema deriva as instâncias ativas deles (link + dono direto).
   // Compatível com o formato antigo (instanceIds) caso ainda venha.
-  const brokerIds = Array.isArray(body.brokerIds) ? body.brokerIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : [];
-  const rawInstanceIds = Array.isArray(body.instanceIds) ? body.instanceIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0) : [];
+  const brokerIds = Array.isArray(body.brokerIds) ? [...new Set(body.brokerIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))] : [];
+  const rawInstanceIds = Array.isArray(body.instanceIds) ? [...new Set(body.instanceIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))] : [];
   let instanceIds: number[] = [];
   if (brokerIds.length) {
     const [{ data: ownRows, error: ownErr }, { data: linkRows, error: linkErr }] = await Promise.all([
@@ -159,14 +174,26 @@ export async function POST(request: Request) {
   if (approachIds.length) {
     const { data: aps, error: approachesError } = await auth.supabase.from("abordagens").select("id, mensagens, ativo").in("id", approachIds).eq("ativo", true);
     if (approachesError) return falhaCampanha(approachesError, "carregar_abordagens");
+    if ((aps ?? []).length !== approachIds.length) return Response.json({ error: "Uma abordagem mudou ou deixou de estar ativa. Recarregue antes de agendar.", erro: "configuracao_alterada" }, { status: 409 });
     for (const id of approachIds) { const ap = (aps ?? []).find((x) => x.id === id); if (!ap) continue; const steps = normalizeSteps(ap.mensagens); if (steps.some((s) => s.tipo !== "__delay")) variants.push(steps); }
   }
   for (const txt of pool) variants.push([{ tipo: "text", texto: txt }]);
   if (!variants.length) return Response.json({ error: "As abordagens selecionadas não têm conteúdo para envio." }, { status: 422 });
 
+  const variantTailMs = Math.max(...variants.map((steps) => {
+    let offset = 0;
+    let lastMessageOffset = 0;
+    for (const step of steps) {
+      if (step.tipo === "__delay") offset += step.delayMs ?? 0;
+      else { lastMessageOffset = offset; offset += 1500; }
+    }
+    return lastMessageOffset;
+  }));
+
   // ritmo POR INSTÂNCIA: cada instância envia na velocidade escolhida (vazão total = rate * nº de instâncias)
-  const gapMs = Math.ceil(3_600_000 / rate);
   const instanceCount = instanceIds.length;
+  const schedule = planejarSlotsCampanha({ start, endTime, periodDays, days, rate, instanceCount, recipientCount: valid.length, tailMs: variantTailMs });
+  if (!schedule.ok) return Response.json({ error: schedule.error }, { status: 422 });
   const campaignId = crypto.randomUUID();
   const rows: Array<TablesInsert<"mensagens_agendadas">> = [];
   valid.forEach((lead, index) => {
@@ -175,7 +202,7 @@ export async function POST(request: Request) {
     const primeiroLead = (lead.nome ?? "cliente").split(/\s+/)[0] || "cliente";
     const primeiroCorr = (corr ?? "").split(/\s+/)[0] || "";
     const sub = (t: string) => t.replaceAll("{primeiro_nome}", primeiroLead).replaceAll("{corretor_primeiro_nome}", primeiroCorr).replaceAll("{corretor_nome}", corr ?? "").replaceAll("{primeiro_nome_corretor}", primeiroCorr);
-    const baseWhen = start.getTime() + Math.floor(index / instanceCount) * gapMs;
+    const baseWhen = new Date(schedule.slots[Math.floor(index / instanceCount)]).getTime();
     const steps = variants[index % variants.length];
     let offset = 0;
     for (const st of steps) {
@@ -191,6 +218,7 @@ export async function POST(request: Request) {
       offset += 1500; // 1,5s entre passos sem delay explícito — mantém a ordem (mídia antes do texto)
     }
   });
+  if (rows.length > MAX_CAMPAIGN_ROWS) return Response.json({ error: "A campanha excede o limite seguro de 5.000 mensagens. Divida os leads em lotes menores." }, { status: 422 });
   const { data: inserted, error } = await auth.supabase.from("mensagens_agendadas").insert(rows).select("id");
   if (error) return falhaCampanha(error, "agendar_campanha");
   if (inserted?.length !== rows.length) {

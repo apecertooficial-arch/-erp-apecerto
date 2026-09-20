@@ -1,7 +1,7 @@
 # Trace — integridade de Campanhas e Disparos
 
 Atualizado em: 2026-09-20
-Estado: P0 de fronteira corrigido localmente; idempotência transacional ainda pendente
+Estado: P0 de fronteira corrigido e pronto para publicação; idempotência transacional ainda pendente
 
 ## Falhas reproduzidas
 
@@ -11,18 +11,32 @@ abordagens eram ignoradas, permitindo montar um agendamento com contexto
 parcial. A inserção também confirmava sucesso sem comprovar quantas linhas de
 `mensagens_agendadas` tinham sido retornadas.
 
+A interface exibia período, dias e horário final, mas esses campos não
+atravessavam o contrato. O servidor agendava apenas pela data inicial e
+velocidade, usando o fuso do processo. Isso fazia a configuração visível não
+ter consequência real e podia colocar os passos finais de uma abordagem depois
+do horário prometido.
+
 Na interface, erro de rede durante a leitura podia deixar o estado de loading
 preso. Depois de um agendamento confirmado, falha apenas na recarga do painel
 podia substituir o sucesso por uma impressão de fracasso e induzir repetição
 de uma campanha já persistida.
 
-## Correção local
+## Correção
 
 - falhas técnicas são sanitizadas; o log contém somente operação fixa e código,
   sem telefone, conteúdo, lista de leads ou payload;
+- leitura e envio exigem autorização efetiva no servidor;
 - todas as consultas necessárias interrompem o comando quando falham;
+- data, janela diária, dias, período e velocidade são validados em horário de
+  São Paulo e determinam o agendamento real;
+- o horário final inclui todos os passos e pausas da abordagem, não somente a
+  primeira mensagem;
+- a vazão é calculada por instância ativa e a capacidade insuficiente bloqueia
+  o lote antes de qualquer escrita;
+- lotes acima de 5.000 mensagens são rejeitados e precisam ser divididos;
 - instâncias são novamente conferidas como ativas e as abordagens precisam ser
-  carregadas antes de gerar as linhas;
+  carregadas e permanecer ativas antes de gerar as linhas;
 - a inserção devolve os IDs persistidos e só confirma sucesso quando a contagem
   corresponde integralmente ao lote preparado;
 - divergência de contagem responde `reconciliacao_necessaria` e orienta recarga
@@ -33,17 +47,15 @@ de uma campanha já persistida.
 
 ## Evidência
 
-- 4/4 contratos específicos de Campanhas;
-- 25/25 no recorte Campanhas + harness visual;
-- 667/667 no gate frontend completo;
-- 424/424 ao reproduzir a fatia isolada diretamente sobre a base publicada;
+- 14/14 contratos específicos de Campanhas, incluindo horário de São Paulo,
+  capacidade, autorização, reconciliação e harness visual;
+- 507/507 no gate frontend canônico do projeto;
 - typecheck, lint focado e build completo aprovados;
-- navegador real sanitizado em 1280 × 800 e 390 × 844: erro explícito, retry
-  disponível, zero formulário/agendamento liberado, somente GET local, zero
-  console e nenhum overflow horizontal.
+- navegador real sanitizado em 1280 × 800 e 390 × 844, nos estados carregado e
+  erro: controles reais, erro explícito, retry disponível, alvos móveis de 44
+  px, somente GET local, zero console e nenhum overflow horizontal.
 
-Nenhum disparo, agendamento real, mutation remota, migration, push ou deploy
-foi executado.
+Nenhum disparo, agendamento real, mutation remota ou migration foi executado.
 
 ## Limites ainda abertos
 

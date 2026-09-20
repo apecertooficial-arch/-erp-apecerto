@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { hojeOperacao } from "../../lib/timezone";
+import { paraDatetimeLocal } from "../../lib/timezone";
 
 type Lead = { id: number; nome: string | null; telefone: string | null; tags: string[] | null; status: string | null; origem: string | null; disparo_optout: boolean };
 type Deal = { id: number; lead_id: number; stage_id: number | null; empreendimento_id: string | null; status: string };
@@ -93,9 +93,9 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
   const [selectedBrokers, setSelectedBrokers] = useState<number[]>([]);
   const [message, setMessage] = useState("");
   const [rate, setRate] = useState("20");
-  const [startDate, setStartDate] = useState(() => hojeOperacao());
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("18:00");
+  const [startDate, setStartDate] = useState(() => paraDatetimeLocal(new Date(Date.now() + 5 * 60_000)).slice(0, 10));
+  const [startTime, setStartTime] = useState(() => paraDatetimeLocal(new Date(Date.now() + 5 * 60_000)).slice(11, 16));
+  const [endTime, setEndTime] = useState("23:59");
   const [period, setPeriod] = useState("7");
   const [days, setDays] = useState("weekdays");
   const [csvLeads, setCsvLeads] = useState<Lead[]>([]);
@@ -193,10 +193,14 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
     try {
       // Envia as ABORDAGENS por id (o backend expande mídia + texto) e, à parte, só a
       // mensagem digitada como variação de texto. Evita duplicar a abordagem como texto puro.
-      const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), approachIds: selectedApproaches, message: message.trim(), rate: Number(rate), start: `${startDate}T${startTime}:00`, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
+      const response = await fetch("/api/campaigns", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: valid.filter((lead) => lead.id < 10_000_000).map((lead) => lead.id), approachIds: selectedApproaches, message: message.trim(), rate: Number(rate), start: `${startDate}T${startTime}:00`, endTime, periodDays: Number(period), days, sourceStageId: Number(stage), destinationStageId: Number(destinationStage), brokerIds: selectedBrokers }) });
       const body = await response.json().catch(() => ({})) as { error?: string; scheduled?: number };
       if (!response.ok) { setNotice(body.error ?? "Não foi possível agendar."); return; }
-      const successMessage = `${body.scheduled ?? 0} mensagens agendadas.`;
+      if (!Number.isSafeInteger(body.scheduled) || Number(body.scheduled) < 1) {
+        setNotice("O servidor respondeu sem confirmar a quantidade agendada. Recarregue antes de repetir.");
+        return;
+      }
+      const successMessage = `${body.scheduled} mensagens agendadas.`;
       try {
         await load(true);
         setNotice(successMessage);
