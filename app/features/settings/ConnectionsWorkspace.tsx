@@ -28,7 +28,12 @@ type Painel = {
   modo: string | null;
   gerado_em: string;
 };
-type QrResult = { status?: string; qrCodeImage?: string | null; conectada?: boolean; error?: string };
+type QrResult = {
+  status?: string;
+  qrCodeImage?: string | null;
+  conectada?: boolean;
+  confirmacaoAutomaticaComprovada?: boolean;
+};
 type ConnectionsApiResponse = { painel?: Painel | null; result?: QrResult | null; error?: string };
 
 async function connectionsApi(
@@ -55,7 +60,13 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
   const [painel, setPainel] = useState<Painel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [qr, setQr] = useState<{ id: number; nome: string; status: string; image: string | null } | null>(null);
+  const [qr, setQr] = useState<{
+    id: number;
+    nome: string;
+    status: string;
+    image: string | null;
+    confirmacaoAutomaticaComprovada: boolean;
+  } | null>(null);
   const [qrBusy, setQrBusy] = useState(false);
 
   /* UMA fórmula. A soma fecha com o total e o alerta usa exatamente os mesmos
@@ -99,11 +110,23 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
   const openQr = useCallback(async (inst: Sessao, restart = false) => {
     const legado = inst.legado_instancia_id;
     if (!legado) { setError("Esta sessão ainda não tem vínculo local; recarregue em alguns minutos."); return; }
-    setQr({ id: legado, nome: inst.nome ?? inst.provider_session_id, status: "carregando", image: null }); setQrBusy(true);
+    setQr({
+      id: legado,
+      nome: inst.nome ?? inst.provider_session_id,
+      status: "carregando",
+      image: null,
+      confirmacaoAutomaticaComprovada: false,
+    }); setQrBusy(true);
     try {
       const payload = await connectionsApi(accessToken, { action: restart ? "restart" : "qr", instanciaId: legado });
       const result = payload.result ?? {};
-      setQr({ id: legado, nome: inst.nome ?? inst.provider_session_id, status: result.error || result.status || "desconhecido", image: result.qrCodeImage ?? null });
+      setQr({
+        id: legado,
+        nome: inst.nome ?? inst.provider_session_id,
+        status: result.status || "desconhecido",
+        image: result.qrCodeImage ?? null,
+        confirmacaoAutomaticaComprovada: result.confirmacaoAutomaticaComprovada === true,
+      });
       if (result.conectada) await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível gerar o QR desta instância.");
@@ -129,9 +152,9 @@ export function ConnectionsWorkspace({ accessToken }: { accessToken: string }) {
     {desatualizado && <div className="connections-warn">⚠ Última sincronização com o D-API está atrasada. Os estados abaixo são o último snapshot completo válido — nada foi desconectado por causa disso.</div>}
     {desconectadas > 0 && <div className="connections-warn">⚠ {desconectadas} sessão{desconectadas === 1 ? "" : "es"} desconectada{desconectadas === 1 ? "" : "s"} no provedor — reconecte para não perder atendimentos.</div>}
     {loading ? <div className="connections-loading">Carregando conexões…</div> : <>
-      <div className="connections-grid">{sessoes.map((inst) => { const conectada = inst.estado === "connected"; const unstable = inst.estado === "connecting"; return <article className={`conn-card ${conectada ? "connected" : unstable ? "unstable" : "off"}`} key={inst.sessao_id}><div className="conn-card-top"><span className="conn-status"><i />{conectada ? "CONECTADA" : inst.estado.toUpperCase()}</span><span className="conn-card-actions"><span className="conn-device" aria-hidden>▢</span></span></div><strong>{inst.nome ?? inst.provider_session_id}</strong>{inst.corretor_nome ? <small className="conn-num">👤 {inst.corretor_nome}</small> : <small className="conn-num">👤 sem vínculo operacional</small>}<small className="conn-sync">{inst.sincronizacao_fresca ? "Sincronizada agora" : "Estado conhecido · sincronização degradada"}</small><button type="button" onClick={() => void openQr(inst)}>{conectada ? "↻ Reconectar" : "▣ Conectar (QR)"}</button></article>; })}{!sessoes.length && <p className="connections-empty">Nenhuma sessão associada a você no inventário do provedor.</p>}</div>
+      <div className="connections-grid">{sessoes.map((inst) => { const conectada = inst.estado === "connected"; const unstable = inst.estado === "connecting"; return <article className={`conn-card ${conectada ? "connected" : unstable ? "unstable" : "off"}`} key={inst.sessao_id}><div className="conn-card-top"><span className="conn-status"><i />{conectada ? "CONECTADA AO WHATSAPP" : inst.estado.toUpperCase()}</span><span className="conn-card-actions"><span className="conn-device" aria-hidden>▢</span></span></div><strong>{inst.nome ?? inst.provider_session_id}</strong>{inst.corretor_nome ? <small className="conn-num">👤 {inst.corretor_nome}</small> : <small className="conn-num">👤 sem vínculo operacional</small>}<small className="conn-sync">{inst.sincronizacao_fresca ? "Sincronizada agora" : "Estado conhecido · sincronização degradada"}</small>{conectada && <small className="conn-confirmation-pending">Confirmação automática ainda não comprovada</small>}<button type="button" onClick={() => void openQr(inst)}>{conectada ? "↻ Verificar ou reconectar" : "▣ Conectar (QR)"}</button></article>; })}{!sessoes.length && <p className="connections-empty">Nenhuma sessão associada a você no inventário do provedor.</p>}</div>
       {isAdmin && arquivadas.length > 0 && <div className="connections-legacy"><h2>Registros legados arquivados ({arquivadas.length})</h2><p>Saíram do inventário do provedor. Não contam como conexão, não recebem envio e o histórico foi preservado.</p><ul>{arquivadas.map((a) => <li key={a.provider_session_id}><strong>{a.provider_session_id}</strong> — {a.motivo}</li>)}</ul></div>}
     </>}
-    {qr && <div className="qr-modal-scrim" onClick={() => setQr(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()}><header><strong>Conectar · {qr.nome}</strong><button type="button" onClick={() => setQr(null)}>×</button></header>{qr.status === "connected" ? <div className="qr-connected">✓ Conectada com sucesso!</div> : qr.image ? <><img src={qr.image} alt="QR Code da instância" /><p>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e escaneie. Atualiza sozinho.</p></> : <p className="qr-status">{qr.status === "carregando" ? "Gerando QR…" : qr.status === "erro" ? "Não foi possível gerar o QR. Verifique a apikey da instância." : `Status: ${qr.status}. Aguardando QR…`}</p>}<footer><button type="button" disabled={qrBusy} onClick={() => { const inst = sessoes.find((item) => item.legado_instancia_id === qr.id); if (inst) void openQr(inst, true); }}>Gerar novo QR</button><button type="button" onClick={() => setQr(null)}>Fechar</button></footer></div></div>}
+    {qr && <div className="qr-modal-scrim" onClick={() => setQr(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()}><header><strong>Conectar · {qr.nome}</strong><button type="button" onClick={() => setQr(null)}>×</button></header>{qr.status === "connected" ? qr.confirmacaoAutomaticaComprovada ? <div className="qr-connected">✓ WhatsApp e confirmação automática prontos</div> : <div className="qr-connected qr-connected-partial"><strong>WhatsApp conectado</strong><p>Confirmação automática dos envios ainda não comprovada. O atendimento pode funcionar, mas o sistema não deve considerar a próxima ação concluída sem a evidência do provedor.</p></div> : qr.image ? <><img src={qr.image} alt="QR Code da instância" /><p>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e escaneie. Atualiza sozinho.</p></> : <p className="qr-status">{qr.status === "carregando" ? "Gerando QR…" : qr.status === "erro" ? "Não foi possível gerar o QR. Verifique a apikey da instância." : `Status: ${qr.status}. Aguardando QR…`}</p>}<footer><button type="button" disabled={qrBusy} onClick={() => { const inst = sessoes.find((item) => item.legado_instancia_id === qr.id); if (inst) void openQr(inst, true); }}>Gerar novo QR</button><button type="button" onClick={() => setQr(null)}>Fechar</button></footer></div></div>}
   </div>;
 }

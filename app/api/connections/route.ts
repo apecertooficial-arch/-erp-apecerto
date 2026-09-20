@@ -18,6 +18,25 @@ function positiveInteger(value: unknown) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function normalizarResultadoQr(value: unknown) {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const statusRaw = typeof raw.status === "string" ? raw.status.trim().slice(0, 40) : "desconhecido";
+  const status = /^[a-z0-9._ -]+$/i.test(statusRaw) ? statusRaw : "desconhecido";
+  const imagemRaw = typeof raw.qrCodeImage === "string" && raw.qrCodeImage.length <= 2_000_000
+    ? raw.qrCodeImage
+    : null;
+  const qrCodeImage = imagemRaw && /^data:image\/(?:png|jpeg|webp);base64,/i.test(imagemRaw) ? imagemRaw : null;
+
+  return {
+    status,
+    qrCodeImage,
+    conectada: status === "connected" && raw.conectada !== false,
+    // Falha fechada: só uma versão do Edge que comprovar a configuração por
+    // evento pode liberar este selo. Ausência, texto ou valor truthy não bastam.
+    confirmacaoAutomaticaComprovada: raw.confirmationReady === true,
+  };
+}
+
 /**
  * A tela de conexões usa a API do próprio ERP em vez de abrir um segundo
  * fluxo de autenticação Supabase no navegador. O JWT continua sendo o do
@@ -52,5 +71,5 @@ export async function POST(request: Request) {
     body: { action, instanciaId },
   });
   if (error) return Response.json({ error: "Não foi possível gerar o QR desta instância." }, { status: 502 });
-  return Response.json({ result: data }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ result: normalizarResultadoQr(data) }, { headers: { "Cache-Control": "no-store" } });
 }

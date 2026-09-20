@@ -713,6 +713,9 @@ button { cursor:pointer; }
 .qr-modal p { margin:12px 0 0; color:#6d6560; font-size:11px; line-height:1.4; text-align:center; }
 .qr-status { padding:24px 0; text-align:center; color:#8a817b; font-size:11px; }
 .qr-connected { padding:30px 0; text-align:center; color:#16834c; font-size:14px; font-weight:700; }
+.qr-connected-partial { margin:8px 0; padding:18px; border:1px solid #f0d39d; border-radius:12px; background:#fff8ea; color:#9a6200; }
+.qr-connected-partial strong { display:block; font-size:14px; }
+.qr-connected-partial p { color:#7b6543; font-weight:500; }
 .qr-modal>footer { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
 .qr-modal>footer button { border:1px solid #ddd6d1; border-radius:8px; padding:8px 12px; background:#fff; font-size:11px; cursor:pointer; }
 /* #1b — comissões editáveis (fechar distribuição) */
@@ -2137,6 +2140,7 @@ body { overflow:hidden; background:#eee8e2; }
 .conn-card.off { border-color:#f2cdc9; }
 .conn-device { width:26px; height:26px; display:grid; place-items:center; border-radius:8px; background:#f4f1ee; color:#9a908a; font-size:12px; }
 .conn-sync { color:#9a908a; font-size:11px; margin-top:-3px; }
+.conn-confirmation-pending { padding:8px 9px; border-radius:8px; background:#fff8ea; color:#946000; font-size:10px; font-weight:700; line-height:1.35; }
 .conn-num { color:#2f6b3a; font-size:12px; font-weight:600; margin-top:1px; letter-spacing:.2px; }
 .sales-approvals { border:1px solid #f0d28a; background:#fff8e8; border-radius:12px; padding:12px 14px; margin:10px 0 14px; }
 .sales-approvals-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#8a6d1a; font-size:13px; }
