@@ -38,33 +38,13 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   const [instanceQuery, setInstanceQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [qr, setQr] = useState<{ id: number; nome: string; status: string; image: string | null } | null>(null);
-  const [qrBusy, setQrBusy] = useState(false);
   const [superior, setSuperior] = useState("");
   const [view, setView] = useState<"lista" | "hierarquia">("lista");
   const [addOpen, setAddOpen] = useState(false);
   const [newUser, setNewUser] = useState({ nome: "", email: "", telefone: "", role: "corretor", superiorId: "", criarCorretor: true });
-  const [invite, setInvite] = useState<{ nome: string; link: string; copied: boolean; tipo?: "senha" | "cadastro" } | null>(null);
+  const [invite, setInvite] = useState<{ nome: string; link: string; copied: boolean } | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [linkBusy, setLinkBusy] = useState(false);
-
-  /* Convite por link (autocadastro): gera um token, grava em cadastro_convites (RLS: só gestão)
-     e mostra o link /cadastro?t=<token> — o corretor preenche os próprios dados por lá. */
-  async function gerarLinkCadastro() {
-    setLinkBusy(true); setToast("");
-    try {
-      const sb = getBrowserSupabaseClient();
-      const token = (crypto.randomUUID() + crypto.randomUUID()).replaceAll("-", "");
-      const { data: sess } = await sb.auth.getUser();
-      const criadoPor = sess?.user?.id ?? null;
-      const criadoPorNome = (sess?.user?.user_metadata?.nome as string | undefined) ?? sess?.user?.email ?? null;
-      const { error: insError } = await sb.from("cadastro_convites").insert({ token, role: "corretor", criado_por: criadoPor, criado_por_nome: criadoPorNome } as never);
-      if (insError) { setToast(/permission|policy|denied/i.test(insError.message) ? "Apenas a gestão pode gerar convites por link." : insError.message); }
-      else setInvite({ nome: "Autocadastro de corretor", link: `${window.location.origin}/cadastro?t=${token}`, copied: false, tipo: "cadastro" });
-    } catch { setToast("Não foi possível gerar o link agora. Tente novamente."); }
-    setLinkBusy(false);
-  }
 
   async function createUser() {
     setCreateError("");
@@ -75,10 +55,10 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
       const { data: result, error: fnError } = await getBrowserSupabaseClient().functions.invoke("admin-usuarios", {
         body: { action: "criar", nome: newUser.nome.trim(), email: newUser.email.trim(), telefone: newUser.telefone.trim() || null, role: newUser.role, superiorId: newUser.superiorId || null, criarCorretor: newUser.criarCorretor, permissoes: null },
       });
-      const r = (result ?? {}) as { ok?: boolean; motivo?: string; detalhe?: string; token?: string | null; aviso?: string };
+      const r = (result ?? {}) as { ok?: boolean; motivo?: string; token?: string | null; aviso?: string };
       if (fnError || !r.ok) {
         const motivos: Record<string, string> = { email_ja_cadastrado: "Este e-mail já está cadastrado.", email_invalido: "E-mail inválido.", nome_invalido: "Nome inválido.", cargo_invalido: "Cargo inválido.", acesso_negado: "Apenas administradores podem criar usuários." };
-        setCreateError(motivos[r.motivo ?? ""] ?? r.detalhe ?? fnError?.message ?? "Não foi possível criar o usuário.");
+        setCreateError(motivos[r.motivo ?? ""] ?? "Não foi possível criar o usuário agora.");
         setCreating(false); return;
       }
       const link = r.token ? `${window.location.origin}/definir-senha?t=${r.token}` : "";
@@ -95,28 +75,13 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     setSaving(true); setToast("");
     try {
       const { data: result, error: fnError } = await getBrowserSupabaseClient().functions.invoke("admin-usuarios", { body: { action: "reenviarConvite", usuarioId } });
-      const r = (result ?? {}) as { ok?: boolean; token?: string; detalhe?: string };
-      if (fnError || !r.ok || !r.token) { setToast(r.detalhe ?? fnError?.message ?? "Não foi possível gerar o convite."); setSaving(false); return; }
+      const r = (result ?? {}) as { ok?: boolean; token?: string };
+      if (fnError || !r.ok || !r.token) { setToast("Não foi possível gerar o convite agora."); setSaving(false); return; }
       setInvite({ nome, link: `${window.location.origin}/definir-senha?t=${r.token}`, copied: false });
     } catch { setToast("Falha de comunicação ao gerar o convite."); }
     setSaving(false);
   }
 
-  async function openQr(inst: { id: number; nome: string }, restart = false) {
-    setQr({ id: inst.id, nome: inst.nome, status: "carregando", image: null }); setQrBusy(true);
-    try {
-      const { data: result } = await getBrowserSupabaseClient().functions.invoke("dapi-qr", { body: { action: restart ? "restart" : "qr", instanciaId: inst.id } });
-      const r = (result ?? {}) as { status?: string; qrCodeImage?: string | null; conectada?: boolean; error?: string };
-      setQr({ id: inst.id, nome: inst.nome, status: r.error || r.status || "desconhecido", image: r.qrCodeImage ?? null });
-      if (r.conectada) { setToast("Instância conectada!"); await load(); }
-    } catch { setQr((current) => current ? { ...current, status: "erro" } : current); }
-    finally { setQrBusy(false); }
-  }
-  useEffect(() => {
-    if (!qr || qr.status === "connected" || qr.status === "erro") return;
-    const timer = window.setTimeout(() => { const inst = data.instances.find((i) => i.id === qr.id); if (inst) void openQr({ id: inst.id, nome: inst.nome }); }, 4500);
-    return () => window.clearTimeout(timer);
-  }, [qr, data.instances]);
   const rgInput = useRef<HTMLInputElement>(null);
   const contractInput = useRef<HTMLInputElement>(null);
 
@@ -169,10 +134,12 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     if (!selected || !file) return;
     setSaving(true); setToast("Enviando documento...");
     const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+    // Executado somente após o usuário escolher um arquivo, nunca durante o render.
+    // eslint-disable-next-line react-hooks/purity
     const path = `corretor/${selected.id}/${type}_${Date.now()}.${extension}`;
     const supabase = getBrowserSupabaseClient();
     const { error: uploadError } = await supabase.storage.from("corretor-docs").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
-    if (uploadError) { setToast(uploadError.message); setSaving(false); return; }
+    if (uploadError) { setToast("Não foi possível enviar o documento agora."); setSaving(false); return; }
     const response = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveDocument", brokerId: selected.id, type, path, name: file.name }) });
     const body = await response.json() as { error?: string };
     if (!response.ok) setToast(body.error ?? "Arquivo enviado, mas não foi vinculado."); else { setToast("Documento salvo."); await load(); }
@@ -182,12 +149,12 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
   async function viewDocument(path: string | null) {
     if (!path) return;
     const { data: signed, error: signedError } = await getBrowserSupabaseClient().storage.from("corretor-docs").createSignedUrl(path, 3600);
-    if (signedError || !signed?.signedUrl) { setToast(signedError?.message ?? "Não foi possível abrir o arquivo."); return; }
+    if (signedError || !signed?.signedUrl) { setToast("Não foi possível abrir o documento agora."); return; }
     window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   return <div className="team-workspace">
-    <header className="workspace-top"><div><h1>Usuários</h1><p>{data.brokers.length} usuários · gestão de acessos da equipe</p></div><div style={{ display: "flex", gap: 12, alignItems: "center" }}><button type="button" className="save-team" disabled={linkBusy} onClick={() => void gerarLinkCadastro()} title="Gera um link para o corretor fazer o próprio cadastro">{linkBusy ? "Gerando…" : "🔗 Convite por link"}</button><button type="button" className="save-team" onClick={() => { setAddOpen(true); setCreateError(""); }}>＋ Adicionar usuário</button><label className="workspace-search">⌕ <input value={query} onChange={(event) => { setQuery(event.target.value); setView("lista"); }} placeholder="Buscar usuário..." /></label></div></header>
+    <header className="workspace-top"><div><h1>Usuários</h1><p>{data.brokers.length} usuários · gestão de acessos da equipe</p></div><div style={{ display: "flex", gap: 12, alignItems: "center" }}><a className="save-team" href="/configuracoes?visao=conexoes">Gerenciar conexões</a><button type="button" className="save-team" disabled={loading || Boolean(error)} onClick={() => { setAddOpen(true); setCreateError(""); }}>＋ Adicionar usuário</button><label className="workspace-search">⌕ <input value={query} onChange={(event) => { setQuery(event.target.value); setView("lista"); }} placeholder="Buscar usuário..." /></label></div></header>
     <main className="team-main">
       <div className="team-filters"><span>▽</span>{["Todos os perfis", "Admin", "Diretor", "Gerente", "Executivo", "Corretor"].map((item) => <button className={profile === item ? "active" : ""} onClick={() => setProfile(item)} type="button" key={item}>{item}</button>)}<i />{["Todos", "Ativos", "Online", "Inativos"].map((item) => <button className={status === item ? "active" : ""} onClick={() => setStatus(item)} type="button" key={item}>{item}</button>)}<i />{([["lista", "☰ Lista"], ["hierarquia", "⌥ Hierarquia"]] as const).map(([key, label]) => <button className={view === key ? "active" : ""} onClick={() => setView(key)} type="button" key={key}>{label}</button>)}</div>
       {loading ? <div className="workspace-loading">Carregando equipe...</div> : error ? <div className="workspace-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div> : view === "hierarquia" ? <section className="team-table" style={{ padding: 16 }}>
@@ -223,11 +190,11 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
           <h3>Perfil e permissões <mark className="audited-badge">✓ Auditado</mark></h3>
           <label className="team-role-row">Papel no sistema<select value={role} onChange={(event) => setRole(event.target.value)}><option value="admin">Admin — acesso total</option><option value="diretor">Diretor</option><option value="gerente">Gerente</option><option value="executivo">Executivo/Gestor</option><option value="corretor">Corretor</option></select></label>
           <label className="team-role-row">Responde a (hierarquia)<select value={superior} onChange={(event) => setSuperior(event.target.value)}><option value="">— Ninguém (topo) —</option>{data.users.filter((user) => SUPERIOR_ROLES.includes(user.role) && user.id !== selected.usuario_id && user.ativo).map((user) => <option value={user.id} key={user.id}>{user.nome} · {roleLabel(user.role)}</option>)}</select></label>
-          <button className="access-toggle" type="button" disabled={saving} onClick={() => void resendInvite(selected.usuario_id as string, selected.nome)}>↻ Gerar novo link de acesso (definir senha)</button>
+          <button className="access-toggle" type="button" disabled={loading || Boolean(error) || saving} onClick={() => void resendInvite(selected.usuario_id as string, selected.nome)}>↻ Gerar novo link de acesso (definir senha)</button>
           <p className="team-hint">As permissões deste usuário seguem o papel acima. Ajustes finos ficam em <strong>Perfis e Permissões</strong> (aba &quot;Por usuário&quot;).</p>
         </>}
         <h3>Instâncias de WhatsApp</h3>
-        <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "Conectada" : "Offline"}</i><button type="button" className="instance-qr-btn" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void openQr({ id: instance.id, nome: instance.nome }); }}>{instance.conectada ? "Reconectar" : "QR"}</button></label>)}</div></details>
+        <details className="instance-picker"><summary>Selecionar instâncias <b>{selectedInstances.length || ""}</b></summary><div><input value={instanceQuery} onChange={(event) => setInstanceQuery(event.target.value)} placeholder="Pesquisar instância..." />{data.instances.filter((instance) => instance.nome.toLowerCase().includes(instanceQuery.toLowerCase())).map((instance) => <label key={instance.id}><input type="checkbox" checked={selectedInstances.includes(instance.id)} onChange={() => setSelectedInstances((current) => current.includes(instance.id) ? current.filter((id) => id !== instance.id) : [...current, instance.id])} /><span><strong>{instance.nome}</strong><small>{instance.telefone ?? instance.status_dapi ?? "Sem telefone"}</small></span><i className={instance.conectada ? "connected" : ""}>{instance.conectada ? "WhatsApp conectado" : "Offline"}</i></label>)}</div></details>
         <div className="selected-instance-chips">{selectedInstances.map((id) => { const instance = data.instances.find((item) => item.id === id); return instance ? <button type="button" onClick={() => setSelectedInstances((current) => current.filter((item) => item !== id))} key={id}>✓ {instance.nome} ×</button> : null; })}</div>
         <p className="team-hint">O corretor vê apenas conversas das instâncias selecionadas.</p>
         <h3>Documentos</h3>
@@ -255,16 +222,13 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
       <footer><button type="button" className="save-team" disabled={creating} onClick={() => void createUser()}>{creating ? "Criando..." : "✓ Criar e gerar convite"}</button><button type="button" onClick={() => setAddOpen(false)}>Cancelar</button></footer>
     </div></div>}
     {invite && <div className="qr-modal-scrim" onClick={() => setInvite(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 480, width: "94%" }}>
-      <header><strong>{invite.tipo === "cadastro" ? "Convite por link · Autocadastro" : `Convite de acesso · ${invite.nome}`}</strong><button type="button" onClick={() => setInvite(null)}>×</button></header>
+      <header><strong>Convite de acesso · {invite.nome}</strong><button type="button" onClick={() => setInvite(null)}>×</button></header>
       {invite.link ? <div style={{ padding: "14px 2px", display: "grid", gap: 10 }}>
-        {invite.tipo === "cadastro"
-          ? <p>Envie este link para o corretor: ele preenche <strong>nome, telefone, e-mail e senha</strong> e já sai com o acesso criado. Válido por 7 dias e para <strong>um único cadastro</strong> — gere um link para cada corretor.</p>
-          : <p>Envie este link para <strong>{invite.nome}</strong> definir a senha (válido por 7 dias):</p>}
+        <p>Envie este link para <strong>{invite.nome}</strong> definir a senha (válido por 7 dias):</p>
         <code style={{ wordBreak: "break-all", padding: 10, borderRadius: 8, background: "rgba(120,120,160,.12)", fontSize: 12 }}>{invite.link}</code>
         <button type="button" className="save-team" onClick={() => { void navigator.clipboard.writeText(invite.link).then(() => setInvite({ ...invite, copied: true })); }}>{invite.copied ? "✓ Copiado!" : "Copiar link"}</button>
       </div> : <p style={{ padding: 14 }}>Usuário criado, mas o convite falhou. Abra a ficha e use &quot;reenviar convite&quot;.</p>}
       <footer><button type="button" onClick={() => setInvite(null)}>Fechar</button></footer>
     </div></div>}
-    {qr && <div className="qr-modal-scrim" onClick={() => setQr(null)}><div className="qr-modal" onClick={(event) => event.stopPropagation()}><header><strong>Conectar · {qr.nome}</strong><button type="button" onClick={() => setQr(null)}>×</button></header>{qr.status === "connected" ? <div className="qr-connected">✓ Conectada com sucesso!</div> : qr.image ? <><img src={qr.image} alt="QR Code da instância" /><p>Abra o WhatsApp → Aparelhos conectados → Conectar aparelho e escaneie. Atualiza sozinho.</p></> : <p className="qr-status">{qr.status === "carregando" ? "Gerando QR…" : qr.status === "erro" ? "Não foi possível gerar o QR. Verifique a apikey da instância." : `Status: ${qr.status}. Aguardando QR…`}</p>}<footer><button type="button" disabled={qrBusy} onClick={() => { const inst = data.instances.find((i) => i.id === qr.id); if (inst) void openQr({ id: inst.id, nome: inst.nome }, true); }}>Gerar novo QR</button><button type="button" onClick={() => setQr(null)}>Fechar</button></footer></div></div>}
   </div>;
 }
