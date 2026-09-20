@@ -44,6 +44,16 @@ function publicationErrorResponse(error: { code?: string; message?: string }) {
         : 502;
   return Response.json({ error: message, code: businessCode }, { status });
 }
+
+function productTechnicalFailure(
+  operation: string,
+  error?: { code?: string | null },
+  message = "Não foi possível carregar a ficha do imóvel. Tente novamente.",
+) {
+  const code = error?.code ?? "UNKNOWN";
+  console.error("[product-api]", { operation, code });
+  return Response.json({ error: message, code: "PRODUCT_READ_FAILED" }, { status: 502 });
+}
 const productFields = [
   "nome", "titulo", "slogan", "finalidade", "lazer", "diferenciais", "incorporadora", "descricao", "status", "preco", "condominio_valor", "iptu",
   "outros_custos", "area_util", "dormitorios", "suites", "vagas", "banheiros", "endereco",
@@ -83,7 +93,10 @@ export async function GET(request: Request) {
     .eq("id", id)
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 502 });
+  if (error) {
+    if (error.code === "PGRST116") return Response.json({ error: "Produto não encontrado." }, { status: 404 });
+    return productTechnicalFailure("read_product", error);
+  }
   const media = (data.midias ?? []).map((item) => ({ ...item, url: publicMediaUrl(item.storage_path) }));
   const buildingMedia = media.filter((item) => !item.unidade_id);
   const units = data.unidades ?? [];
@@ -107,52 +120,72 @@ export async function GET(request: Request) {
     unitsWithValidPrice: unitPrices.filter((value) => isPlausibleProductPrice(value, data.finalidade)).length,
     amenities: data.lazer, differentiators: data.diferenciais,
   });
-  const { data: broker } = await auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle();
+  const [
+    { data: broker, error: brokerError },
+    { data: meuPerfilGet, error: profileError },
+  ] = await Promise.all([
+    auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle(),
+    auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
+  ]);
+  const contextReadError = brokerError ?? profileError;
+  if (contextReadError) return productTechnicalFailure("read_product_context", contextReadError);
+  const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
+  if (!gerenciaProdutosGet && !broker?.id) {
+    return Response.json({ error: "Seu usuário ainda não está vinculado a uma carteira ativa." }, { status: 403 });
+  }
   let leadsQuery = auth.supabase.from("leads").select("id,nome,telefone,corretor_id").order("atualizado_em", { ascending: false }).limit(100);
   if (broker?.id) leadsQuery = leadsQuery.eq("corretor_id", broker.id);
-  const [{ data: favorite }, { data: links }, { data: leadOptions }] = await Promise.all([
+  const unitIds = (data.unidades ?? []).map((unit) => unit.id);
+  const ownerStatusesPromise = unitIds.length
+    ? auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: unitIds })
+    : Promise.resolve({ data: [], error: null });
+  const [
+    { data: favorite, error: favoriteError },
+    { data: links, error: linksError },
+    { data: leadOptions, error: leadOptionsError },
+    { data: corretoresList, error: corretoresError },
+    { data: privateOwners, error: privateOwnersError },
+    { data: ownerStatuses, error: ownerStatusesError },
+    { data: productOwners, error: productOwnersError },
+  ] = await Promise.all([
     auth.supabase.from("produto_favoritos").select("empreendimento_id").eq("empreendimento_id", id).eq("usuario_id", auth.user.id).maybeSingle(),
     auth.supabase.from("lead_produtos").select("lead_id").eq("empreendimento_id", id),
     leadsQuery,
+    auth.supabase.from("corretores").select("id,nome"),
+    auth.supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: [id] }),
+    ownerStatusesPromise,
+    auth.supabase.rpc("produto_proprietario_ler", { p_empreendimento_id: id }),
   ]);
+  const relatedReadError = favoriteError ?? linksError ?? leadOptionsError ?? corretoresError
+    ?? privateOwnersError ?? ownerStatusesError ?? productOwnersError;
+  if (relatedReadError) return productTechnicalFailure("read_product_relations", relatedReadError);
   const linkedIds = new Set((links ?? []).map((item) => item.lead_id));
-  const { data: corretoresList } = await auth.supabase.from("corretores").select("id,nome");
   const corretorNameById = new Map((corretoresList ?? []).map((c) => [c.id, c.nome]));
   const captadorCorretorId = (data as { captador_corretor_id?: number | null }).captador_corretor_id ?? null;
   const capturedByName: string | null = captadorCorretorId ? (corretorNameById.get(captadorCorretorId) ?? null) : null;
-  const unitIds = (data.unidades ?? []).map((unit) => unit.id);
-  const [{ data: privateOwners }, { data: ownerStatuses }] = await Promise.all([
-    auth.supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: [id] }),
-    unitIds.length
-      ? auth.supabase.rpc("produto_unidades_proprietario_status", { p_unidade_ids: unitIds })
-      : Promise.resolve({ data: [] }),
-  ]);
   const privateOwnerByUnit = new Map((privateOwners ?? []).map((owner) => [owner.unidade_id, owner]));
   const ownerCompleteByUnit = new Map((ownerStatuses ?? []).map((owner) => [owner.unidade_id, owner.completo]));
   const unidadesEnriched = (data.unidades ?? []).map((u) => ({ ...u, captador_nome: corretorNameById.get((u as { captador_corretor_id?: number | null }).captador_corretor_id ?? -1) ?? null }));
   const mine = (data as { captado_por_usuario?: string | null }).captado_por_usuario === auth.user.id
     || (broker?.id != null && captadorCorretorId === broker.id);
-  const { data: meuPerfilGet } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-  const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
   const podeEditar = gerenciaProdutosGet || mine;
-  const { data: productOwners } = await auth.supabase.rpc("produto_proprietario_ler", { p_empreendimento_id: id });
   const productOwner = productOwners?.[0] ?? null;
   // Todos os corretores autenticados podem consultar a ficha operacional completa.
-  // Somente o captador da unidade recebe nome e contato do proprietário.
+  // Somente a gestão ou o captador da unidade recebe nome e contato do proprietário.
   const unidadesVisiveis = unidadesEnriched.map((u) => {
     const unidadeMinha = canViewUnitOwner({
       viewerBrokerId: broker?.id,
       captorBrokerId: (u as { captador_corretor_id?: number | null }).captador_corretor_id,
     });
     const podeEditarUnidade = gerenciaProdutosGet || unidadeMinha;
+    const podeVerProprietarioUnidade = gerenciaProdutosGet || unidadeMinha;
     const privateOwner = privateOwnerByUnit.get(u.id);
     const ownerComplete = ownerCompleteByUnit.get(u.id) ?? Boolean(u.proprietario_nome && u.proprietario_contato);
-    return unidadeMinha
-      ? { ...u, proprietario_nome: privateOwner?.proprietario_nome ?? u.proprietario_nome, proprietario_contato: privateOwner?.proprietario_contato ?? u.proprietario_contato, mine: true, pode_editar: podeEditarUnidade, pode_ver_proprietario: true, owner_complete: ownerComplete }
+    return podeVerProprietarioUnidade
+      ? { ...u, proprietario_nome: privateOwner?.proprietario_nome ?? u.proprietario_nome, proprietario_contato: privateOwner?.proprietario_contato ?? u.proprietario_contato, mine: unidadeMinha, pode_editar: podeEditarUnidade, pode_ver_proprietario: podeVerProprietarioUnidade, owner_complete: ownerComplete }
       : { ...u, mine: false, pode_editar: podeEditarUnidade, pode_ver_proprietario: false, owner_complete: ownerComplete, proprietario_nome: null, proprietario_contato: null };
   });
-  const produtoDeTerceiro = data.origem === "terceiros";
-  const podeVerProprietarioProduto = !produtoDeTerceiro || mine;
+  const podeVerProprietarioProduto = gerenciaProdutosGet || mine;
   const checks: Record<string, boolean> = {
     basics: Boolean(data.nome && (data.preco || unitPrices.length) && (data.area_util || unitAreas.length)),
     location: Boolean(data.endereco && data.bairro && data.cidade),
@@ -171,7 +204,7 @@ export async function GET(request: Request) {
     status: data.status,
     availableApprovedUnits: publishedAvailableUnits.length,
   });
-  return Response.json({ product: { ...data, proprietarios: podeVerProprietarioProduto ? productOwner : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
+  return Response.json({ product: { ...data, proprietario_id: podeVerProprietarioProduto ? data.proprietario_id : null, proprietarios: podeVerProprietarioProduto ? productOwner : null, proprietario_nome: null, proprietario_tel: null, proprietario_email: null, site_published: sitePublished, midias: media, unidades: unidadesVisiveis, captado_por_nome: capturedByName, mine, pode_editar: podeEditar, pode_ver_proprietario: podeVerProprietarioProduto, summary_price: summaryPrice, summary_area: summaryArea, is_favorite: Boolean(favorite), leads: (leadOptions ?? []).map((lead) => ({ ...lead, linked: linkedIds.has(lead.id) })), quality, completion: { checks, completed: Object.values(checks).filter(Boolean).length, total: Object.keys(checks).length } } });
 }
 
 export async function PATCH(request: Request) {
