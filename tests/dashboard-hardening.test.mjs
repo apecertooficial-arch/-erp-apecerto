@@ -49,3 +49,10 @@ test("o início não transforma falha de metas ou payload financeiro incerto em 
   assert.match(home, /Dados parciais · meta não confirmada/);
   assert.doesNotMatch(home, /response\.ok \? response\.json\(\) : \{ metas: \[\] \}/);
 });
+
+test("o início usa o calendário operacional de São Paulo", () => {
+  assert.match(home, /import \{ hojeOperacao \} from "\.\.\/\.\.\/lib\/timezone"/);
+  assert.match(home, /const dataOperacionalAtual = \(\) => new Date\(`\$\{hojeOperacao\(\)\}T12:00:00`\)/);
+  assert.equal((home.match(/const now = dataOperacionalAtual\(\)/g) ?? []).length, 2);
+  assert.match(home, /function sameMonth\(value: string, hoje: string = hojeOperacao\(\)\)/);
+});

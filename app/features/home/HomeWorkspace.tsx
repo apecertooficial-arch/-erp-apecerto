@@ -8,6 +8,7 @@ import { NaMesaCards } from "./NaMesaCards";
 import { InicioApp } from "./InicioApp";
 import { useEhCelular } from "../system/useFormato";
 import { isRecord } from "./dashboard-client";
+import { hojeOperacao } from "../../lib/timezone";
 
 type Sale = { id: string; empreendimento_id?: string | null; empreendimento_nome?: string | null; vgv: number; percentual_comissao?: number | null; data_venda: string; data_conclusao?: string | null; status?: string | null };
 type Cash = { tipo: string; valor: number };
@@ -22,11 +23,10 @@ const isFinanceData = (value: unknown): value is FinanceData => isRecord(value)
   && Array.isArray(value.receipts);
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const dataOperacionalAtual = () => new Date(`${hojeOperacao()}T12:00:00`);
 
-function sameMonth(value: string) {
-  const now = new Date();
-  const date = new Date(`${value}T12:00:00`);
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+function sameMonth(value: string, hoje: string = hojeOperacao()) {
+  return value.slice(0, 7) === hoje.slice(0, 7);
 }
 
 export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr }: { accessToken: string; sessionName?: string; onNavigate?: (module: string) => void; onIr?: (destino: string) => void }) {
@@ -39,7 +39,7 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
 
   useEffect(() => {
     const controller = new AbortController();
-    const now = new Date();
+    const now = dataOperacionalAtual();
     void fetch("/api/metas", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const json = await response.json().catch(() => null) as unknown;
@@ -112,13 +112,13 @@ export function HomeWorkspace({ accessToken, sessionName = "", onNavigate, onIr 
   const maxProd = Math.max(1, ...saleProducts.map((p) => p.count));
   const effectiveGoal = metaMesGlobal ?? metrics.goal;
   const goalPercent = effectiveGoal > 0 ? Math.min(100, metrics.monthVgv / effectiveGoal * 100) : 0;
-  const nowRef = new Date();
-  const daysInMonth = new Date(nowRef.getFullYear(), nowRef.getMonth() + 1, 0).getDate();
-  const daysLeft = Math.max(1, daysInMonth - nowRef.getDate() + 1);
+  const now = dataOperacionalAtual();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
   const missing = Math.max(0, effectiveGoal - metrics.monthVgv);
   const pacePerDay = missing / daysLeft;
-  const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(nowRef);
-  const dateStr = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(nowRef).replace("-feira", "");
+  const monthName = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(now);
+  const dateStr = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(now).replace("-feira", "");
   const firstName = sessionName ? sessionName.split(/\s+/)[0] : "";
   const initial = (sessionName || "R").trim().slice(0, 1).toUpperCase();
 
