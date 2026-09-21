@@ -48,6 +48,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     if (resposta.status === 401) throw new Error("sessao_expirada");
     const json = await resposta.json().catch(() => ({})) as Payload;
     if (!resposta.ok) throw new Error(json.error || "Não foi possível carregar suas tarefas.");
+    if (!Array.isArray(json.leads)) throw new Error("Não foi possível confirmar as tarefas recebidas.");
     setDados(json); setErro(""); setSessaoExpirada(false); setAtualizadoEm(new Date());
   }, [accessToken]);
 

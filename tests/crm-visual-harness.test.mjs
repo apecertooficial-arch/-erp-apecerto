@@ -56,7 +56,7 @@ test("fixtures são sanitizadas, tipadas e exercitam limite incremental", () => 
 
 test("roles e estados visuais são parametrizados somente no runner", () => {
   assert.match(harness, /type Papel = "admin" \| "gestor" \| "corretor"/);
-  assert.match(harness, /type Estado = "normal" \| "loading" \| "vazio" \| "erro" \| "offline" \| "negado"/);
+  assert.match(harness, /type Estado = "normal" \| "loading" \| "vazio" \| "erro" \| "invalido" \| "offline" \| "negado"/);
   assert.match(harness, /dataset\.crmHarness = "visual-sintetico"/);
   assert.doesNotMatch(`${workspace}\n${mobile}`, /crmHarness|harness-test-only|visual-sintetico/);
 });

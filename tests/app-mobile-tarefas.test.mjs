@@ -19,6 +19,8 @@ test("tarefas usam somente dados reais do Funil 2", () => {
   assert.match(tela, /fetch\("\/api\/funil2"/);
   assert.match(tela, /dados\?\.leads/);
   assert.doesNotMatch(tela, /const\s+(tasks|tarefas)\s*=\s*\[/i);
+  assert.match(tela, /if \(!Array\.isArray\(json\.leads\)\) throw new Error/);
+  assert.match(harness, /"invalido"/);
 });
 
 test("tarefas não recolocam histórico ou atualização manual na fila operacional", () => {
