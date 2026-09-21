@@ -86,6 +86,10 @@ test("CRM e Meu Dia recuperam sessão expirada pelo estado compartilhado do app"
   assert.match(MOBILE, /if \(sessaoExpirada\) return <AppMobileSessaoExpirada \/>/);
 });
 
+test("CRM móvel rejeita resposta 200 incompleta em vez de fingir carteira vazia", () => {
+  assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });

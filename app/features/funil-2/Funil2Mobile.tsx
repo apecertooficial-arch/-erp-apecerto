@@ -186,6 +186,7 @@ function useFunil2Mobile(accessToken: string) {
       const json = await resposta.json().catch(() => ({})) as PayloadMobile;
       if (resposta.status === 401) throw new Error("sessao_expirada");
       if (!resposta.ok) throw new Error(json.error || "Não foi possível abrir o CRM.");
+      if (!Array.isArray(json.leads)) throw new Error("Não foi possível abrir o CRM.");
       if (vivo) { setDados(json); setErro(null); setSessaoExpirada(false); }
     }).catch((falha: unknown) => {
       if (vivo && !(falha instanceof DOMException && falha.name === "AbortError")) {
