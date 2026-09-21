@@ -69,6 +69,13 @@ export { somarDias };
 
 export const hojeISO = (agora: Date = new Date()) => hojeOperacao(agora);
 
+export function contarVisitasFuturas(
+  visitas: Array<{ data: string; status: string }>,
+  hoje: string = hojeISO(),
+) {
+  return visitas.filter((visita) => visita.data >= hoje && ["agendada", "confirmada"].includes(visita.status)).length;
+}
+
 /** A API histórica devolve tanto HH:mm quanto HH:mm:ss. Na interface do
  * corretor, segundos são ruído e fazem 10:30 parecer um dado técnico. */
 export function horaCurta(hora: string): string {

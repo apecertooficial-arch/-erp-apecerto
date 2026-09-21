@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
 import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
-import { filtrarPendenciasPorCorretor } from "./telaAgenda.logica";
+import { contarVisitasFuturas, filtrarPendenciasPorCorretor } from "./telaAgenda.logica";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -86,6 +86,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
   const weekStart = startOfWeek(anchor);
   const weekDates = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const todayItems = byDate.get(todayIso) ?? [];
+  const visitasFuturas = contarVisitasFuturas(data.visits);
 
   function navigate(delta: number) {
     if (view === "month") { const next = new Date(year, month + delta, 1); setAnchor(next); }
@@ -183,7 +184,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
   return <div className="calendar-workspace" onMouseUp={() => finishDrag()} onMouseLeave={() => setDrag(null)}>
     <header className="workspace-top"><div><h1>Calendário</h1><p>Visitas, tarefas e compromissos da equipe</p></div><button className="calendar-primary" type="button" onClick={() => openCreate(view === "month" ? todayIso : iso(anchor))}>＋ Nova visita</button></header>
     {loading ? <div className="workspace-loading">Carregando agenda...</div> : error ? <div className="workspace-error">{error}<button type="button" onClick={() => void load()}>Tentar novamente</button></div> : <section className="calendar-main" aria-label="Agenda">
-      <section className="today-summary"><span>▣</span><div><small>RESUMO DE HOJE</small><strong>{todayItems.length ? `${todayItems.length} compromisso(s) na agenda de hoje` : "Nenhum compromisso agendado para hoje"}</strong></div><i>{data.visits.filter((visit) => visit.status === "agendada").length} visitas futuras</i><i>{data.tasks.filter((task) => !task.concluida).length} tarefas pendentes</i></section>
+      <section className="today-summary"><span>▣</span><div><small>RESUMO DE HOJE</small><strong>{todayItems.length ? `${todayItems.length} compromisso(s) na agenda de hoje` : "Nenhum compromisso agendado para hoje"}</strong></div><i>{visitasFuturas} visitas futuras</i><i>{data.tasks.filter((task) => !task.concluida).length} tarefas pendentes</i></section>
       {data.pendencias_resultado_erro && <section className="calendar-resultados-pendentes erro" role="alert">
         <header><div><small>VERIFICAÇÃO INCOMPLETA</small><h2>Não foi possível verificar os resultados pendentes</h2><p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p></div><button type="button" onClick={() => void load()}>Tentar novamente</button></header>
       </section>}

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { erroAgendamentoVisita } from "../app/features/funil-2/modelo.ts";
+import { contarVisitasFuturas } from "../app/features/calendar/telaAgenda.logica.ts";
 
 const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
@@ -29,6 +30,17 @@ test("Agenda do app fica visível no breakpoint mobile", () => {
   assert.ok(inicioMobile >= 0 && agendaVisivel > inicioMobile);
   assert.match(appMobileCss.slice(agendaVisivel, agendaVisivel + 120), /display:\s*block/);
   assert.doesNotMatch(appMobileCss.slice(agendaVisivel + 120), /\.ape-agenda\s*\{\s*display:\s*none/);
+});
+
+test("resumo da Agenda não chama visita passada de futura", () => {
+  const visitas = [
+    { data: "2026-09-20", status: "agendada" },
+    { data: "2026-09-21", status: "agendada" },
+    { data: "2026-09-22", status: "confirmada" },
+    { data: "2026-09-23", status: "realizada" },
+  ];
+  assert.equal(contarVisitasFuturas(visitas, "2026-09-21"), 2);
+  assert.match(desktop, /const visitasFuturas = contarVisitasFuturas\(data\.visits\)/);
 });
 
 test("Agenda administra e cria visitas pela mesma API canônica", () => {
