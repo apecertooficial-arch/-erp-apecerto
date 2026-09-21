@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   diaPorExtenso, gradeDoMes, hojeISO, horaCurta, jaPassou, proximo, quandoComeca,
-  resumoDoDia, somarDias,
+  filtrarPendenciasPorCorretor, resumoDoDia, somarDias,
   type Compromisso,
 } from "./telaAgenda.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
@@ -64,9 +64,10 @@ const podeEditarVisita = (c: Compromisso) => {
   return ehVisita(c) && c.meu && status !== "cancelada" && status !== "realizada";
 };
 
-export function TelaAgendaMobile({ accessToken, role }: {
+export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }: {
   accessToken: string;
   role: "admin" | "gestor" | "corretor";
+  corretorIdInicial?: string | null;
 }) {
   const [dia, setDia] = useState<string>(() => hojeISO());
   const [periodo, setPeriodo] = useState<PeriodoAgenda>("mes");
@@ -86,6 +87,7 @@ export function TelaAgendaMobile({ accessToken, role }: {
   const [aviso, setAviso] = useState("");
   const [resultadoPendente, setResultadoPendente] = useState<Compromisso | null>(null);
   const [pendenciasResultado, setPendenciasResultado] = useState<Compromisso[]>([]);
+  const [corretorEmFoco, setCorretorEmFoco] = useState<string | null>(() => role === "corretor" ? null : corretorIdInicial);
   const [resumoResultados, setResumoResultados] = useState<{ pendentes?: number; justificadas?: number }>({});
   const [erroPendenciasResultado, setErroPendenciasResultado] = useState("");
   const [performanceFeedback, setPerformanceFeedback] = useState<PerformanceFeedback>({});
@@ -180,7 +182,12 @@ export function TelaAgendaMobile({ accessToken, role }: {
 
   const lista = useMemo(() => itens ?? [], [itens]);
   const prox = useMemo(() => proximo(lista), [lista]);
-  const gerenciandoPendencias = pendenciasResultado.length > 0 && pendenciasResultado.every((item) => !item.meu);
+  const pendenciasResultadoVisiveis = useMemo(
+    () => filtrarPendenciasPorCorretor(pendenciasResultado, corretorEmFoco),
+    [corretorEmFoco, pendenciasResultado],
+  );
+  const gerenciandoPendencias = pendenciasResultadoVisiveis.length > 0 && pendenciasResultadoVisiveis.every((item) => !item.meu);
+  const nomeCorretorEmFoco = pendenciasResultadoVisiveis[0]?.corretor?.trim() || "corretor selecionado";
 
   /* No mes a lista de baixo e SOMENTE do dia tocado. */
   const paraListar = useMemo(
@@ -225,10 +232,13 @@ export function TelaAgendaMobile({ accessToken, role }: {
         <p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p>
         <button type="button" onClick={recarregar}>Tentar novamente</button>
       </section>}
-      {!erroPendenciasResultado && pendenciasResultado.length > 0 && <section className="ape-agenda-resultados">
-        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultado.length} visitas {gerenciandoPendencias ? "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+      {!erroPendenciasResultado && (pendenciasResultadoVisiveis.length > 0 || corretorEmFoco) && <section className="ape-agenda-resultados">
+        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultadoVisiveis.length} visitas {gerenciandoPendencias ? corretorEmFoco ? "aguardam o corretor" : "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+        {corretorEmFoco && <div className="ape-agenda-filtro-corretor" role="status"><span>Mostrando a cobrança de <strong>{nomeCorretorEmFoco}</strong></span><button type="button" onClick={() => setCorretorEmFoco(null)}>Ver todos os corretores</button></div>}
         <p>{gerenciandoPendencias ? "Cobre o responsável. A pendência sai da fila quando o corretor registra um desfecho válido." : "Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa."}</p>
-        <div>{pendenciasResultado.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>
+        {pendenciasResultadoVisiveis.length === 0
+          ? <p className="ape-agenda-filtro-vazio">Nenhuma visita pendente foi confirmada para este corretor agora.</p>
+          : <div>{pendenciasResultadoVisiveis.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>}
       </section>}
       {(role === "admin" || role === "gestor") && <section className="ape-agenda-feedback-performance" aria-label="Qualidade dos feedbacks de visita">
         <header><div><small>QUALIDADE DOS FEEDBACKS</small><h2>Série 0–10</h2></div>{performanceFeedback.status === "ok" && <strong>{performanceFeedback.estruturados_total ?? 0} avaliados</strong>}</header>

@@ -18,11 +18,20 @@ export type Compromisso = {
   negocio_id: number | null;
   status: string | null;
   corretor: string;        // quem atende
+  corretor_id?: number | string | null;
   meu: boolean;            // é do corretor logado
   faltam_min: number;      // negativo = já passou
   com_gerente?: boolean;   // agenda histórica é enriquecida pela API
   gerente_id?: number | null;
 };
+
+/** Mantém a cobrança gerencial no corretor escolhido sem alterar o escopo da
+ * API. IDs são comparados como texto porque o Postgres pode chegar serializado
+ * como número ou string conforme a RPC/proxy. */
+export function filtrarPendenciasPorCorretor(itens: Compromisso[], corretorId: string | null): Compromisso[] {
+  if (!corretorId) return itens;
+  return itens.filter((item) => item.corretor_id != null && String(item.corretor_id) === corretorId);
+}
 
 /**
  * O próximo compromisso é o primeiro que AINDA NÃO começou.

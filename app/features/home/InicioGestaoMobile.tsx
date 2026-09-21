@@ -193,7 +193,7 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
             <span><i style={{ width: `${Math.min(100, corretor.pct_carteira_trabalhada ?? 0)}%` }} /></span>
             <small>{inteiro(corretor.carteira_trabalhada)} de {inteiro(corretor.carteira_ativa)} acompanhados em 7 dias</small>
           </div>
-          <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? "/agenda" : "/equipe")}>
+          <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? `/agenda?corretor=${encodeURIComponent(String(corretor.corretor_id))}` : "/equipe")}>
             {corretor.visitas_sem_feedback > 0 ? "Cobrar feedback" : urgente ? "Cobrar corretor" : "Ver desempenho"}
           </button>
         </article>;
