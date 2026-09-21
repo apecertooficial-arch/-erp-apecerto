@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `0a7b7f927094fb3da25893f4184899abee571650`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: Minha Equipe não desmonta mais ao receber HTTP 200 sem as cinco listas obrigatórias.
-- Decisão: validar `users`, `brokers`, `instances`, `links` e `audits` antes de substituir o estado; resposta incompleta ou falha de rede mantém ações bloqueadas e oferece retry.
-- Arquivos: `app/features/team/TeamWorkspace.tsx`, `tests/team-api-hardening.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu tela desmontada e `TypeError` com `{}`; o teste falhou primeiro; 61 testes direcionados e lint passaram; após a correção, o harness manteve o shell, mostrou erro recuperável e preservou o estado vazio legítimo sem erros de console.
-- Produção: `0a7b7f92` publicado e confirmado; “+ Visita” carregou clientes e empreendimentos reais em 390 px, sem erros de console.
-- Risco: baixo; equipe legitimamente vazia continua válida quando as cinco propriedades existem como arrays vazios.
+- Base: `origin/main` em `cb8b345e39c3206f4134a3c1bfa235bc41d14618`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: Perfis e Permissões não transforma mais HTTP 200 incompleto em editor aparentemente zerado com gravação disponível.
+- Decisão: exigir `perfis` e `usuarios` como arrays, manter o erro até uma recarga válida e desabilitar as duas ações de gravação enquanto a autoridade estiver indisponível.
+- Arquivos: `app/features/permissions/PermissionsWorkspace.tsx`, `tests/permissions-api-hardening.test.mjs`, `tests/crm-visual-harness/main.tsx`.
+- Verificações: o harness reproduziu `{}` como todos os módulos em “Sem acesso” com `Salvar perfil` ativo; o teste falhou primeiro; 68 testes direcionados e lint passaram; após a correção, há erro recuperável, atributo `disabled` na gravação e vazio legítimo preservado, sem erros de console.
+- Produção: `cb8b345e` publicado e confirmado; `/usuarios` carregou 9 usuários e vínculos reais sem erros de console; `/equipe` permaneceu íntegra.
+- Risco: baixo; respostas legitimamente vazias continuam válidas quando contêm os dois arrays.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.

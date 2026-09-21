@@ -39,11 +39,13 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     const res = await fetch("/api/permissions", { headers: { Authorization: `Bearer ${accessToken}` } });
     const json = (await res.json()) as { perfis?: Perfil[]; usuarios?: Usuario[]; error?: string };
     if (!res.ok) throw new Error(json.error || "Não foi possível carregar as permissões.");
-    setPerfis(json.perfis ?? []);
-    setUsuarios(json.usuarios ?? []);
+    if (!Array.isArray(json.perfis) || !Array.isArray(json.usuarios)) throw new Error("payload_invalido");
+    setPerfis(json.perfis);
+    setUsuarios(json.usuarios);
+    setError(null);
   }, [accessToken]);
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load().catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar.")); }, 0);
+    const timer = window.setTimeout(() => { void load().catch(() => setError("Não foi possível carregar as permissões.")); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
 
@@ -127,7 +129,7 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
 
       <div className="perms-note">🔒 <strong>Deny by default:</strong> o que não estiver marcado fica bloqueado. Dados financeiros e de outros corretores já são bloqueados no banco, independentemente destas marcações.</div>
       {message && <button className="perms-msg ok" type="button" onClick={() => setMessage(null)}>{message} ×</button>}
-      {error && <button className="perms-msg err" type="button" onClick={() => setError(null)}>{error} ×</button>}
+      {error && <button className="perms-msg err" type="button" onClick={() => void load().catch(() => setError("Não foi possível carregar as permissões."))}>{error} Tentar novamente</button>}
 
       <div className="perms-body">
         <aside className="perms-side">
@@ -216,12 +218,12 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
               <footer className="perms-actions">
                 {tab === "perfis" ? (
                   <>
-                    <button className="perms-primary" type="button" disabled={busy} onClick={saveProfile}>{busy ? "Salvando…" : "Salvar perfil"}</button>
+                    <button className="perms-primary" type="button" disabled={busy || Boolean(error)} onClick={saveProfile}>{busy ? "Salvando…" : "Salvar perfil"}</button>
                     <button type="button" disabled={busy} onClick={() => setDraft(structuredClone(perfilById.get(selPerfil)?.permissoes ?? {}))}>Descartar alterações</button>
                   </>
                 ) : (
                   <>
-                    <button className="perms-primary" type="button" disabled={busy} onClick={() => saveUser(false)}>{busy ? "Salvando…" : "Salvar permissões deste usuário"}</button>
+                    <button className="perms-primary" type="button" disabled={busy || Boolean(error)} onClick={() => saveUser(false)}>{busy ? "Salvando…" : "Salvar permissões deste usuário"}</button>
                     {selUserObj?.permissoes && Object.keys(selUserObj.permissoes).length ? <button type="button" disabled={busy} onClick={() => saveUser(true)}>Remover override (voltar ao perfil)</button> : null}
                   </>
                 )}

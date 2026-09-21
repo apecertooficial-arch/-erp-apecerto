@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const rota = readFileSync(new URL("../app/api/permissions/route.ts", import.meta.url), "utf8");
+const interfacePermissoes = readFileSync(new URL("../app/features/permissions/PermissionsWorkspace.tsx", import.meta.url), "utf8");
 const estilos = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 test("permissões não devolve nem registra a mensagem bruta do banco", () => {
@@ -43,4 +44,9 @@ test("permissões empilha navegação e conteúdo no aplicativo", () => {
   assert.match(estilos, /\.perms-body\{grid-template-columns:minmax\(0,1fr\);gap:14px;\}/);
   assert.match(estilos, /\.perms-side\{position:static;display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(estilos, /\.perm-seg\{grid-column:1\/-1;display:flex;flex-wrap:wrap;width:100%;\}/);
+});
+
+test("interface falha fechada quando a autoridade devolve resposta incompleta", () => {
+  assert.match(interfacePermissoes, /if \(!Array\.isArray\(json\.perfis\) \|\| !Array\.isArray\(json\.usuarios\)\) throw new Error\("payload_invalido"\)/);
+  assert.ok((interfacePermissoes.match(/disabled=\{busy \|\| Boolean\(error\)/g) ?? []).length >= 2);
 });

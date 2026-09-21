@@ -17,6 +17,7 @@ import { TelaAgendaMobile } from "../../app/features/calendar/TelaAgendaMobile";
 import { SaraTasksMobile } from "../../app/features/tasks/SaraTasksMobile";
 import { NotificationsWorkspace } from "../../app/features/notifications/NotificationsWorkspace";
 import { TeamWorkspace } from "../../app/features/team/TeamWorkspace";
+import { PermissionsWorkspace } from "../../app/features/permissions/PermissionsWorkspace";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -159,6 +160,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
   if (url.pathname === "/api/team") return json(estado === "invalido" ? {} : { users: [], brokers: [], instances: [], links: [], audits: [] });
+  if (url.pathname === "/api/permissions") return json(estado === "invalido" ? {} : { perfis: [], usuarios: [] });
   if (url.pathname === "/api/funil2/conversa") return json({ mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/carteira") return json({ leads: leads.slice(0, 8).map((lead) => ({ id: lead.id, nome: lead.nome, telefoneMascarado: "••••0000", negocioId: lead.origem_negocio_id, corretorNome: lead.corretor_nome })), pagina: 1, curta: false, temMais: false });
   if (url.pathname === "/api/crm/sales") return json(vendasVazias);
@@ -212,5 +214,7 @@ const app = tela === "agenda-mobile"
     ? <ErpShell><CalendarWorkspace accessToken="harness-test-only" corretorIdInicial={corretorEmFoco} /></ErpShell>
   : tela === "team"
     ? <ErpShell><TeamWorkspace accessToken="harness-test-only" /></ErpShell>
+  : tela === "permissions"
+    ? <ErpShell><PermissionsWorkspace accessToken="harness-test-only" /></ErpShell>
     : <ErpShell><PaginaCrm /></ErpShell>;
 createRoot(document.getElementById("root")!).render(<ErpSessionCtx.Provider value={contexto}>{app}</ErpSessionCtx.Provider>);
