@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
 import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
-import { contarVisitasFuturas, filtrarPendenciasPorCorretor, rotuloTotalResultados } from "./telaAgenda.logica";
+import { contarVisitasFuturas, filtrarPendenciasPorCorretor, hojeISO, rotuloTotalResultados } from "./telaAgenda.logica";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -33,10 +33,10 @@ const startOfWeek = (date: Date) => addDays(date, -date.getDay());
 
 export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { accessToken: string; corretorIdInicial?: string | null }) {
   const now = new Date();
-  const todayIso = iso(now);
+  const todayIso = hojeISO(now);
   const [data, setData] = useState<CrmData>({ brokers: [], leads: [], deals: [], products: [], visits: [], tasks: [] });
   const [view, setView] = useState<ViewMode>("month");
-  const [anchor, setAnchor] = useState(() => new Date());
+  const [anchor, setAnchor] = useState(() => new Date(`${hojeISO()}T12:00:00`));
   const [broker, setBroker] = useState(""); const [type, setType] = useState(""); const [manager, setManager] = useState(""); const [product, setProduct] = useState(""); const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<CalendarItem | null>(null); const [creating, setCreating] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

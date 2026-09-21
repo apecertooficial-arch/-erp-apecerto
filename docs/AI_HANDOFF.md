@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `52d794cdd192def37bb53efa9da45d5cb719b990`; branch `codex/app-hoje-sao-paulo`.
-- Concluído nesta fatia: “para hoje” e os grupos do Meu Dia usam a data operacional de São Paulo, independentemente do fuso do aparelho.
-- Decisão: reutilizar `dataOperacao` em `venceHoje` e remover o fim do dia calculado no fuso local do celular.
-- Arquivos: `app/features/funil-2/modelo.ts`, `app/features/funil-2/Funil2Mobile.tsx`, `tests/timezone-sao-paulo.test.mjs`, `tests/funil-2-mobile-operacional.test.mjs`.
-- Verificações: teste sob `TZ=UTC` reproduziu tarefa de amanhã classificada como hoje; 77 testes direcionados e lint passaram; build Vinext passou; harness desktop/mobile 390×844 carregou cartões sem erro de console.
-- Produção: `52d794cd` publicado e confirmado; CRM móvel mostrou histórico somente nos filtros explícitos, não nos cartões Ativos.
-- Risco: datas inválidas continuam excluídas; a mudança só unifica o calendário com `America/Sao_Paulo`.
+- Base: `origin/main` em `90de9cabfede6ce1fe8ffd05346d592da9c72164`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o destaque de hoje e o mês inicial da Agenda usam a data operacional de São Paulo, independentemente do fuso do aparelho.
+- Decisão: reutilizar `hojeISO` tanto no comparativo diário quanto na âncora inicial do calendário, fixando meio-dia para evitar deslocamento na conversão local.
+- Arquivos: `app/features/calendar/CalendarWorkspace.tsx`, `tests/agenda-canonica.test.mjs`.
+- Verificações: teste estático reproduziu primeiro a integração ausente; 40 testes direcionados e lint passaram; build Vinext passou; harness desktop e mobile 390×844 exibiu a Agenda sem erro de console.
+- Produção: `90de9cab` publicado e confirmado; CRM desktop/mobile carregou sem erro de console.
+- Risco: a mudança se limita à inicialização e ao contexto de data da Agenda; navegação posterior permanece inalterada.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.
