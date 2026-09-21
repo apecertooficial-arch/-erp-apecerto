@@ -817,7 +817,8 @@ export function Funil2Mobile({
       }).then(async (resposta) => {
         const json = await resposta.json().catch(() => ({})) as { leads?: LeadCarteiraAntigaMobile[]; error?: string };
         if (!resposta.ok) throw new Error(json.error || "Não foi possível pesquisar a carteira antiga.");
-        setCarteiraAntiga(json.leads ?? []);
+        if (!Array.isArray(json.leads)) throw new Error("Não foi possível pesquisar a carteira antiga.");
+        setCarteiraAntiga(json.leads);
       }).catch((falha: unknown) => {
         if (falha instanceof DOMException && falha.name === "AbortError") return;
         setCarteiraAntiga([]);
@@ -1013,7 +1014,7 @@ export function Funil2Mobile({
       <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
     </div>}
 
-    {dados && !erro && modo === "crm" && visiveis.length === 0 && carteiraAntiga.length === 0 && !buscandoCarteira && <div className="ape-estado" role="status" aria-live="polite">
+    {dados && !erro && !erroCarteira && modo === "crm" && visiveis.length === 0 && carteiraAntiga.length === 0 && !buscandoCarteira && <div className="ape-estado" role="status" aria-live="polite">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Nenhum cliente neste filtro</strong>
       <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
@@ -1030,7 +1031,7 @@ export function Funil2Mobile({
       : <>
           <section className="ape-lista" aria-label="Atendimentos">{visiveis.slice(0, 60).map(cartao)}</section>
           {busca.trim().length >= 3 && <section className="ape-carteira-antiga" aria-label="Clientes fora do funil">
-            <header><div><span>CARTEIRA ANTIGA</span><h2>Fora do funil</h2></div><b>{buscandoCarteira ? "Buscando…" : `${carteiraAntiga.length} encontrado(s)`}</b></header>
+            <header><div><span>CARTEIRA ANTIGA</span><h2>Fora do funil</h2></div><b>{buscandoCarteira ? "Buscando…" : erroCarteira ? "Indisponível" : `${carteiraAntiga.length} encontrado(s)`}</b></header>
             <p>Clientes que você já atendeu e ainda não têm card. Escolha um para retomar o trabalho.</p>
             {erroCarteira && <em role="alert">{erroCarteira}</em>}
             <div>

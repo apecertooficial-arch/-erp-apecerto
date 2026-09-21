@@ -96,6 +96,12 @@ test("ficha móvel não transforma histórico incompleto em atualização vazia"
   assert.match(MOBILE, /onRecarregarHistorico=\{\(\) => setHistoricoTentativa\(\(atual\) => atual \+ 1\)\}/);
 });
 
+test("busca móvel não transforma carteira antiga incompleta em zero resultados", () => {
+  assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível pesquisar a carteira antiga\."\)/);
+  assert.match(MOBILE, /dados && !erro && !erroCarteira && modo === "crm"/);
+  assert.match(MOBILE, /erroCarteira \? "Indisponível" : `\$\{carteiraAntiga\.length\} encontrado\(s\)`/);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });
