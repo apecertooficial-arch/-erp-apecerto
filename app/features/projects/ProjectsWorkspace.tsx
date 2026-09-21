@@ -7,7 +7,9 @@ import { hojeOperacao } from "../../lib/timezone";
 
 // Fetch autenticado resiliente (mesmo padrão do CRM): token fresco + 1 retry após refresh.
 async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const supa = getBrowserSupabaseClient();
+  let supa: ReturnType<typeof getBrowserSupabaseClient>;
+  try { supa = getBrowserSupabaseClient(); }
+  catch { return fetch(input, init); }
   const withTok = (t: string): RequestInit => ({ ...init, headers: { ...(init.headers as Record<string, string> | undefined), Authorization: `Bearer ${t}` } });
   let fresh: string | null = null;
   try { const { data } = await supa.auth.getSession(); fresh = data.session?.access_token ?? null; } catch { /* usa o header original */ }
@@ -27,6 +29,17 @@ type Atividade = { id: number; projeto_id: string | null; tarefa_id: string | nu
 type Usuario = { id: string; nome: string; role: string; ativo: boolean };
 type Anexo = { id: string; tarefa_id: string; nome: string; path: string; mime: string | null; tamanho: number | null; criado_em: string };
 type ApiData = { projetos: Projeto[]; participantes: Participante[]; colunas: Coluna[]; tarefas: Tarefa[]; comentarios: Comentario[]; atividades: Atividade[]; usuarios: Usuario[]; leads: Array<{ id: number; nome: string | null; telefone: string | null }>; produtos: Array<{ id: string; nome: string }>; vendas: Array<{ id: string; empreendimento_nome: string | null; cliente_nome: string | null }>; anexos: Anexo[]; me: string; error?: string };
+type ProjectApiResult = { error?: string; erro?: string; success?: boolean; projectId?: string; criadas?: string[]; coluna?: string };
+
+async function projectsResponse<T extends object>(response: Response, fallback: string): Promise<T> {
+  let payload: unknown;
+  try { payload = await response.json() as unknown; }
+  catch { throw new Error(fallback); }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error(fallback);
+  const result = payload as T & { error?: unknown };
+  if (!response.ok) throw new Error(typeof result.error === "string" && result.error ? result.error : fallback);
+  return result;
+}
 
 const PRIO: Record<string, { label: string; cor: string }> = {
   baixa: { label: "Baixa", cor: "#8d99ae" }, media: { label: "Média", cor: "#2f6fed" },
@@ -55,9 +68,9 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
 
   const load = async () => {
     const response = await authedFetch("/api/projects", { headers: { Authorization: `Bearer ${accessToken}` } });
-    const result = await response.json() as ApiData;
-    if (!response.ok) throw new Error(result.error || "Não foi possível carregar os projetos.");
+    const result = await projectsResponse<ApiData>(response, "Não foi possível carregar os projetos.");
     setData(result);
+    setError(null);
   };
   useEffect(() => {
     const timer = window.setTimeout(() => { void load().catch((r) => setError(r instanceof Error ? r.message : "Erro ao carregar.")); }, 0);
@@ -68,9 +81,11 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
     setBusy(true); setError(null);
     try {
       const response = await authedFetch("/api/projects", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const result = await response.json() as { error?: string; projectId?: string };
-      if (!response.ok) throw new Error(result.error || "Não foi possível salvar.");
-      await load();
+      const result = await projectsResponse<ProjectApiResult>(response, "Não foi possível salvar.");
+      try { await load(); }
+      catch {
+        setError("A alteração foi salva, mas a atualização da tela falhou. Não repita a ação; tente recarregar os projetos.");
+      }
       return result;
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Erro ao salvar."); throw reason; }
     finally { setBusy(false); }
@@ -80,7 +95,7 @@ export function ProjectsWorkspace({ accessToken }: { accessToken: string }) {
   const isManager = useMemo(() => { const me = data ? userById.get(data.me) : null; return me ? ["admin", "executivo"].includes(me.role) : false; }, [data, userById]);
   const partByProject = useMemo(() => { const m = new Map<string, string[]>(); (data?.participantes ?? []).forEach((p) => { const arr = m.get(p.projeto_id) ?? []; arr.push(p.usuario_id); m.set(p.projeto_id, arr); }); return m; }, [data]);
 
-  if (error && !data) return <div className="module-error">{error}</div>;
+  if (error && !data) return <div className="module-error"><strong>Não foi possível carregar os projetos.</strong><span>{error}</span><button type="button" onClick={() => { setError(null); void load().catch((reason) => setError(reason instanceof Error ? reason.message : "Não foi possível carregar os projetos.")); }}>Tentar novamente</button></div>;
   if (!data) return <div className="connections-loading">Carregando projetos…</div>;
 
   const project = openProject ? data.projetos.find((p) => p.id === openProject) ?? null : null;
