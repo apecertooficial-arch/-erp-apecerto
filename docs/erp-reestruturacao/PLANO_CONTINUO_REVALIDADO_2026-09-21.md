@@ -16,7 +16,7 @@ O intervalo de duas horas, quando usado, é somente um checkpoint de comunicaç�
 - repositório canônico: `https://github.com/apecertooficial-arch/-erp-apecerto.git`;
 - produção: `https://apecerto-erp.onrender.com`;
 - branch publicada: `main`;
-- commit publicado em 2026-09-21: `2e05089c5a3684d00a94402cfaf351d92d727928`;
+- commit publicado em 2026-09-21: `27b8f960ab22f6fa682ec866c0f540ebba746ed1`;
 - projeto Supabase canônico: `diaegvfveqezispcthwk`;
 - reconstrução em branch isolada: `codex/crm-sara-determinismo-20260921`;
 - candidato funcional iniciado em `c669141151e0868805cdec72ac755e8f7339aa6a`; o `HEAD` da branch isolada é a autoridade do pacote em validação;

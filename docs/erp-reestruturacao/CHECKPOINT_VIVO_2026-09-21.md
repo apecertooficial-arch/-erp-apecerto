@@ -31,6 +31,8 @@ com desktop/mobile, autorização server-side e evidência.
 ## Concluído localmente
 
 - confirmação explícita de ação operacional no CRM, desktop e celular;
+- cobrança gerencial focada: o atalho de cada corretor abre somente suas
+  visitas pendentes na Agenda e permite retornar à fila completa;
 - draft fail-closed para evento `lead.action_confirmed` e fila idempotente;
 - drafts reversíveis para ownership/qualidade/cobrança de visita e áudio;
 - quatro fontes já aplicadas da Sara recuperadas do histórico remoto;
@@ -40,13 +42,16 @@ com desktop/mobile, autorização server-side e evidência.
 
 ## Verificações
 
-- regressão sem o HTML compilado: 1004/1004;
+- regressão sem o HTML compilado: 1006/1006;
 - recorte gestão móvel/Agenda: 39/39, typecheck e lint;
 - gestão móvel validada em navegador real 390×844: sem overflow, alvos de
   44 px, deep link `/agenda`, estado de erro fail-closed e console limpo;
 - produção validada autenticada no build `27b8f960`: 59 pendências no snapshot
   consultado, soma por corretor consistente, seis cobranças acionáveis, sem
   overflow nem console de erro; nenhum dado foi alterado;
+- novo deep link validado em harness real 390×844: 2 itens no corretor focado,
+  3 ao remover o filtro, uma única leitura GET, 44 px, sem overflow/console e
+  falha da fonte sem falso zero;
 - Sara/dispatcher/janela: 48/48;
 - entrada/distribuição/ownership: 66/66;
 - CRM validado em navegador sanitizado desktop e 390×844;
