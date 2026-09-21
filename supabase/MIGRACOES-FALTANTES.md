@@ -6,9 +6,9 @@ Atualizado em **20/09/2026** durante a reconstrução do ERP. Regenerável com
 | | |
 |---|---|
 | Migrações em produção a partir do baseline `20260727000000` | **608** |
-| Com arquivo neste repositório, comparando por nome | **268** |
-| **Sem arquivo — existem só no banco** | **340 (56%)** |
-| Sem arquivo desde `20260824000000` | **41** |
+| Com arquivo neste repositório, comparando por nome | **272** |
+| **Sem arquivo — existem só no banco** | **336 (55%)** |
+| Sem arquivo desde `20260824000000` | **37** |
 
 Nesta atualização, duas migrations remotas que não tinham fonte local foram
 recuperadas sem reaplicação no banco:
@@ -18,6 +18,24 @@ recuperadas sem reaplicação no banco:
 - `20260918174605_fix_f2_config_audit_tipo_carteira_antiga.sql`: conteúdo SQL
   reconciliado pelo MD5 remoto `21eba3ebd9a09e5b1e40e7a243b73263` (desconsiderando
   apenas a quebra de linha final do arquivo POSIX).
+
+Na fatia de determinismo da Sara, outras quatro fontes aplicadas foram
+recuperadas diretamente do histórico `supabase_migrations`, também sem executar
+SQL remoto:
+
+- `20260829042905_sara_tempo_real_eficiente.sql`: MD5
+  `4cb009e86766025254472b47310ebb5e`;
+- `20260829043401_sara_orcamento_a_partir_da_ativacao.sql`: MD5
+  `9ec0fab8eb8fc3fc6acaae460054cf5b`;
+- `20260901183229_sara_checkpoint_preservado_sem_evidencia_nova.sql`: MD5
+  `3fd8113ac2545c489276a70a5bdad14c` antes da quebra de linha POSIX;
+- `20260901183732_sara_checkpoint_preservado_etapa_protegida.sql`: MD5
+  `38cb2431533cd64093261cfb399112f6` antes da quebra de linha POSIX.
+
+Essas fontes comprovam a janela de silêncio configurável, o teto de espera do
+lote, o orçamento auditável e as guardas que renovam checkpoint sem fabricar
+evidência. A recuperação reduz o desvio, mas as 336 migrations restantes ainda
+impedem reconstruir o banco apenas pelo Git.
 
 A primeira restaura no repositório a autoridade de continuidade do dono que já
 opera em produção: identidade por IDs, telefone e e-mail; visita/negociação
