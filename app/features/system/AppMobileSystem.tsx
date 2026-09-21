@@ -32,6 +32,6 @@ export function AppMobileSessaoExpirada() {
     <div className="ape-estado-icone" aria-hidden="true">!</div>
     <strong>Sua sessão terminou</strong>
     <p>Entre novamente para continuar. Nenhuma tarefa foi perdida.</p>
-    <a href="/login">Entrar novamente</a>
+    <a href="/inicio">Entrar novamente</a>
   </section>;
 }

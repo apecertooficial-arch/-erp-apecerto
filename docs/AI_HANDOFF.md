@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `2430b5dc91c952b06f7f1e80ada2e15cc192743f`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: Avisos deixa de traduzir deep links legados `/gestao/*` para a Central de Comando exclusiva do desktop.
-- Decisão: levar alertas gerenciais legados ao resumo operacional móvel em `/inicio`, preservando os destinos específicos de CRM, Agenda e Configurações.
-- Arquivos: `app/features/notifications/telaAvisos.logica.ts`, `tests/push-e-avisos.test.mjs`.
-- Verificações: o teste falhou primeiro ao receber `/inteligencia`; 53 testes direcionados e lint passaram; build Vinext passou.
-- Produção: `2430b5dc` publicado e confirmado; Ajuda mostra três destinos válidos e zero desktop-only em 390 px, e todos os seis em 1280 px, sem erros de console.
-- Risco: o segmento específico do deep link gerencial continua sem página própria no app, mas agora o toque abre o painel móvel real em vez de uma interface desktop.
+- Base: `origin/main` em `4ad0024c7b3f524c91a32b3d072461153d816098`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o estado compartilhado de sessão expirada não envia mais quatro módulos móveis para `/login`, rota inexistente.
+- Decisão: `Entrar novamente` volta para `/inicio`, onde o `ErpSessionProvider` monta a autenticação real quando não há sessão.
+- Arquivos: `app/features/system/AppMobileSystem.tsx`, `tests/app-mobile-system.test.mjs`.
+- Verificações: o teste falhou primeiro ao encontrar `/login`; 44 testes direcionados e lint passaram; build Vinext passou.
+- Produção: `4ad0024c` publicado e confirmado; Avisos abre normalmente em 390 px, não expõe `/inteligencia` no DOM atual e não gera erros de console.
+- Risco: a validação não encerrou a sessão real do navegador para evitar impacto no usuário; a rota e o estado de autenticação estão cobertos por teste e pelo shell existente.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.
