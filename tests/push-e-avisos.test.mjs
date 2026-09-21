@@ -102,6 +102,10 @@ test("a tela de Avisos tem servidor: a rota chama a RPC do banco", () => {
   assert.match(ROTA, /rpc\("ncrm_notificacao_vista"/, "marcar como vista também existe");
 });
 
+test("Avisos rejeita resposta 200 incompleta em vez de confirmar fila vazia", () => {
+  assert.match(TELA_AVISOS, /if \(!Array\.isArray\(lista\)\) throw new Error\("payload_invalido"\)/);
+});
+
 test("a rota traduz o shape da RPC para o contrato da tela", () => {
   /* A RPC fala `desde`/`vista`; o tipo Aviso fala `criada_em`/`vista_em`.
      Sem esta tradução a tela mostra tudo como não lido e sem tempo. */

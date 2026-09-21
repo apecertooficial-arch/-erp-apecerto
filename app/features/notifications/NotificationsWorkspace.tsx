@@ -45,7 +45,9 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    return (j.notificacoes ?? j.itens ?? []) as Aviso[];
+    const lista = j.notificacoes ?? j.itens;
+    if (!Array.isArray(lista)) throw new Error("payload_invalido");
+    return lista as Aviso[];
   }, [accessToken]);
 
   useEffect(() => {

@@ -15,6 +15,7 @@ import PaginaCrm from "../../app/(erp)/crm/page";
 import { CalendarWorkspace } from "../../app/features/calendar/CalendarWorkspace";
 import { TelaAgendaMobile } from "../../app/features/calendar/TelaAgendaMobile";
 import { SaraTasksMobile } from "../../app/features/tasks/SaraTasksMobile";
+import { NotificationsWorkspace } from "../../app/features/notifications/NotificationsWorkspace";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -155,6 +156,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.searchParams.has("historicoLeadId")) return json({ eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
+  if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
   if (url.pathname === "/api/funil2/conversa") return json({ mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/carteira") return json({ leads: leads.slice(0, 8).map((lead) => ({ id: lead.id, nome: lead.nome, telefoneMascarado: "••••0000", negocioId: lead.origem_negocio_id, corretorNome: lead.corretor_nome })), pagina: 1, curta: false, temMais: false });
   if (url.pathname === "/api/crm/sales") return json(vendasVazias);
@@ -200,6 +202,8 @@ document.body.append(transferenciaEvidencia);
 
 const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
+  : tela === "avisos-mobile"
+    ? <NotificationsWorkspace accessToken="harness-test-only" />
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"
