@@ -11,6 +11,7 @@ import {
   instanteSaoPaulo,
   normalizarInstanteSaoPaulo,
 } from "../app/lib/timezone.ts";
+import { venceHoje } from "../app/features/funil-2/modelo.ts";
 
 test("09:00 de São Paulo é persistido como o instante UTC correto", () => {
   const instante = instanteSaoPaulo("2026-08-22", "09:00:00");
@@ -43,6 +44,19 @@ test("virada de mês e de ano no fuso da operação", () => {
   assert.equal(dataOperacao(new Date("2027-01-01T02:30:00.000Z")), "2026-12-31");
   assert.equal(dataOperacao(new Date("2027-01-01T03:00:00.000Z")), "2027-01-01");
   assert.equal(hojeOperacao(new Date("2026-03-01T01:00:00.000Z")), "2026-02-28");
+});
+
+test("Meu Dia usa a data de São Paulo mesmo quando o aparelho está em UTC", () => {
+  const fusoAnterior = process.env.TZ;
+  process.env.TZ = "UTC";
+  try {
+    const agora = Date.parse("2026-09-22T01:00:00.000Z"); // 21/09 22:00 em São Paulo
+    assert.equal(venceHoje({ proxima_acao_em: "2026-09-22T02:30:00.000Z" }, agora), true);
+    assert.equal(venceHoje({ proxima_acao_em: "2026-09-22T12:00:00.000Z" }, agora), false);
+  } finally {
+    if (fusoAnterior === undefined) delete process.env.TZ;
+    else process.env.TZ = fusoAnterior;
+  }
 });
 
 test("somarDias opera só no calendário, inclusive em virada de mês, ano e bissexto", () => {

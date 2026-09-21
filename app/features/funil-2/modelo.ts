@@ -1,3 +1,5 @@
+import { dataOperacao } from "../../lib/timezone.ts";
+
 /* Espelho em código das etapas que vivem em f2_etapa_config. Hoje nada lê esta
    constante — a tela usa sempre a configuração do banco. Fica aqui como
    documentação do funil; se um dia deixar de refletir o banco, apague em vez de
@@ -425,9 +427,9 @@ export function esperandoPrimeiraChamada(
 
 export function venceHoje(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Date.now()) {
   if (semPrazo(lead.proxima_acao_em)) return false;
-  const limite = new Date(agora);
-  limite.setHours(23, 59, 59, 999);
-  return new Date(lead.proxima_acao_em).getTime() <= limite.getTime();
+  const prazo = new Date(lead.proxima_acao_em);
+  if (Number.isNaN(prazo.getTime())) return false;
+  return dataOperacao(prazo) <= dataOperacao(new Date(agora));
 }
 
 export function situacaoPrazo(data: string, agora = Date.now()) {

@@ -49,6 +49,7 @@ test("contadores móveis usam a mesma fila operacional exibida", () => {
   assert.match(MOBILE, /hoje: leadsOperacionais\.filter/);
   assert.match(MOBILE, /novos: leadsOperacionais\.filter/);
   assert.match(MOBILE, /etapa === "ativos" \? leadOperacionalNoMeuDia\(lead\)/);
+  assert.doesNotMatch(MOBILE, /setHours\(23, 59, 59, 999\)/);
 });
 
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {

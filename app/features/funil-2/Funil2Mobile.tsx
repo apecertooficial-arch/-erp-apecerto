@@ -842,7 +842,6 @@ export function Funil2Mobile({
     }
   }
 
-  const fimHoje = useMemo(() => { const data = new Date(agora); data.setHours(23, 59, 59, 999); return +data; }, [agora]);
   const leadsOperacionais = useMemo(() => leads.filter(leadOperacionalNoMeuDia), [leads]);
   const contagens = useMemo(() => ({
     agora: leadsOperacionais.filter((lead) => +new Date(lead.proxima_acao_em) <= agora).length,
@@ -856,13 +855,13 @@ export function Funil2Mobile({
       const prazo = +new Date(lead.proxima_acao_em);
       const cabeNoDia = filtroDia === "todos"
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
-          : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
+          : filtroDia === "agora" ? prazo <= agora : venceHoje(lead, agora));
       const cabeNaEtapa = etapa === "ativos" ? leadOperacionalNoMeuDia(lead) : lead.etapa === etapa;
       const cabeNaTemperatura = temperatura === "todas" || temperaturaMobile(lead) === temperatura;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaTemperatura && cabeNaBusca;
     });
-  }, [agora, busca, etapa, filtroDia, fimHoje, leads, temperatura]);
+  }, [agora, busca, etapa, filtroDia, leads, temperatura]);
 
   /* OS TRES GRUPOS DO MEU DIA, na ordem em que o corretor age.
      "Acabou de chegar" vem primeiro mesmo com prazo mais folgado: lead novo tem
@@ -872,13 +871,13 @@ export function Funil2Mobile({
   const gruposDoDia = useMemo(() => {
     const chegou = visiveis.filter((lead) => esperandoPrimeiraChamada(lead));
     const idsChegou = new Set(chegou.map((lead) => lead.id));
-    const resto = visiveis.filter((lead) => !idsChegou.has(lead.id) && +new Date(lead.proxima_acao_em) <= fimHoje);
+    const resto = visiveis.filter((lead) => !idsChegou.has(lead.id) && venceHoje(lead, agora));
     return [
       { chave: "chegou", titulo: "Acabou de chegar", leads: chegou },
       { chave: "agora", titulo: "Chamar agora", leads: resto.filter((lead) => +new Date(lead.proxima_acao_em) <= agora) },
       { chave: "depois", titulo: "Daqui a pouco", leads: resto.filter((lead) => +new Date(lead.proxima_acao_em) > agora) },
     ].filter((grupo) => grupo.leads.length > 0);
-  }, [agora, fimHoje, visiveis]);
+  }, [agora, visiveis]);
 
   /* A manchete conta quem esta esperando AGORA (chegou + vencido), nao a lista
      inteira: "esperam voce agora" tem que casar com o que os dois primeiros
