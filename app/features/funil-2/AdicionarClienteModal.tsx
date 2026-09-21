@@ -7,6 +7,10 @@ type Duplicado = { id: number; nome: string; telefone: string | null; email: str
 
 const esperar = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
+function idFunilValido(valor: unknown): valor is string {
+  return typeof valor === "string" && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(valor);
+}
+
 export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
   accessToken: string;
   onClose: () => void;
@@ -94,7 +98,10 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       const response = await fetch(`/api/funil2/clientes?modo=reconciliar&leadId=${leadId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       const result = await response.json().catch(() => ({})) as { error?: string; conciliado?: boolean; funilLeadId?: string | null };
       if (!response.ok) throw new Error(result.error || "Não foi possível confirmar a entrada no Funil.");
-      if (result.conciliado && result.funilLeadId) { setLeadPendenteId(null); onCreated(result.funilLeadId); return; }
+      if (result.conciliado) {
+        if (!idFunilValido(result.funilLeadId)) throw new Error("O servidor não confirmou a identidade criada.");
+        setLeadPendenteId(null); onCreated(result.funilLeadId); return;
+      }
     }
     throw new Error("Cliente salvo. A entrada no Funil ainda está sendo conciliada; use “Verificar entrada” para confirmar antes de cadastrar novamente.");
   }
@@ -116,8 +123,8 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       const result = await response.json().catch(() => ({})) as { error?: string; leadId?: number; funilLeadId?: string | null; duplicado?: Omit<Duplicado, "funilLeadId"> };
       if (response.status === 409 && result.duplicado) { setDuplicado({ ...result.duplicado, funilLeadId: result.funilLeadId }); return; }
       if (!response.ok && response.status !== 202) throw new Error(result.error || "Não foi possível adicionar o cliente.");
-      if (result.funilLeadId) { onCreated(result.funilLeadId); return; }
-      if (!result.leadId) throw new Error("O servidor não confirmou a identidade criada.");
+      if (idFunilValido(result.funilLeadId)) { onCreated(result.funilLeadId); return; }
+      if (result.funilLeadId || !Number.isSafeInteger(result.leadId) || result.leadId <= 0) throw new Error("O servidor não confirmou a identidade criada.");
       await aguardarCard(result.leadId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível adicionar o cliente.");

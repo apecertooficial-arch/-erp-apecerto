@@ -59,6 +59,7 @@ const resultadoAtualizacaoInvalido = parametros.get("patchResult") === "invalido
 const payloadMobileInvalido = parametros.get("mobilePayload") === "invalido";
 const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") === "invalido";
 const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
+const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -158,6 +159,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         cpf_cnpj: corpo.cpfCnpj || null, endereco: corpo.endereco || null, atualizado_em: "2026-09-21T18:00:00Z",
       } });
     }
+    if (method === "POST" && url.pathname === "/api/funil2/clientes" && corpo.action === "criar") return json(criacaoClienteInvalida
+      ? { funilLeadId: "identidade-invalida" }
+      : { funilLeadId: "40000000-0000-4000-8000-000000000001" });
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "salvarNota" && resultadoAcaoInvalido) return json({});
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "associarTag") return json(resultadoTagInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });

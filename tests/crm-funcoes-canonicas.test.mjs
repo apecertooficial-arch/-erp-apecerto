@@ -70,6 +70,12 @@ test("Adicionar cliente não libera criação após verificação de duplicidade
   assert.match(addClient, /if \(typeof result\.duplicado !== "boolean" \|\| \(result\.duplicado && !result\.lead\)\) throw new Error\("Não foi possível verificar duplicidade\."\)/);
 });
 
+test("Adicionar cliente não fecha com identidade malformada", () => {
+  assert.match(addClient, /function idFunilValido\(valor: unknown\): valor is string/);
+  assert.match(addClient, /if \(idFunilValido\(result\.funilLeadId\)\) \{ onCreated\(result\.funilLeadId\); return; \}/);
+  assert.match(addClient, /if \(result\.funilLeadId \|\| !Number\.isSafeInteger\(result\.leadId\) \|\| result\.leadId <= 0\) throw new Error\("O servidor não confirmou a identidade criada\."\)/);
+});
+
 test("negócio novo do Funil 2 cria o card visível na mesma transação", () => {
   assert.match(cardAtomicoMigration, /after insert or update of pipeline_id, stage_id, status, corretor_id/i);
   assert.match(cardAtomicoMigration, /new\.pipeline_id = public\.f2_pipeline_id\(\)/i);
