@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
 import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
+import { filtrarPendenciasPorCorretor } from "./telaAgenda.logica";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -30,7 +31,7 @@ const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1)
 const addDays = (date: Date, days: number) => { const next = new Date(date); next.setDate(next.getDate() + days); return next; };
 const startOfWeek = (date: Date) => addDays(date, -date.getDay());
 
-export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
+export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { accessToken: string; corretorIdInicial?: string | null }) {
   const now = new Date();
   const todayIso = iso(now);
   const [data, setData] = useState<CrmData>({ brokers: [], leads: [], deals: [], products: [], visits: [], tasks: [] });
@@ -49,15 +50,20 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
   const [resultadoPendente, setResultadoPendente] = useState<ResultadoPendente | null>(null);
   const [salvandoResultado, setSalvandoResultado] = useState(false);
   const [erroResultado, setErroResultado] = useState("");
+  const [corretorEmFoco, setCorretorEmFoco] = useState(corretorIdInicial);
   const isAdmin = data.role === "admin" || data.role === "gestor";
+  const pendenciasVisiveis = useMemo(
+    () => filtrarPendenciasPorCorretor(data.pendencias_resultado ?? [], isAdmin ? corretorEmFoco : null),
+    [corretorEmFoco, data.pendencias_resultado, isAdmin],
+  );
   const pendenciasPorCorretor = useMemo(() => {
     if (!isAdmin) return [] as Array<{ corretor: string; itens: ResultadoPendente[] }>;
     const grupos = new Map<string, ResultadoPendente[]>();
-    for (const item of data.pendencias_resultado ?? []) {
+    for (const item of pendenciasVisiveis) {
       grupos.set(item.corretor, [...(grupos.get(item.corretor) ?? []), item]);
     }
     return [...grupos].map(([corretor, itens]) => ({ corretor, itens }));
-  }, [data.pendencias_resultado, isAdmin]);
+  }, [isAdmin, pendenciasVisiveis]);
   const gerenteNomeGeral = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.nome ?? null, [data.gerentes]);
   const geralGerenteId = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.id ?? null, [data.gerentes]);
 
@@ -184,6 +190,8 @@ export function CalendarWorkspace({ accessToken }: { accessToken: string }) {
       {!data.pendencias_resultado_erro && (data.resumo_resultados?.pendentes ?? 0) > 0 && <section className="calendar-resultados-pendentes">
         <header><div><small>PRESTAÇÃO DE CONTAS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>{isAdmin ? "Cobre o corretor responsável. A pendência sai da fila quando ele registra um desfecho válido." : "Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos."}</p></div><strong>{data.resumo_resultados?.justificadas ?? 0}/{(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas</strong></header>
         <div className="calendar-resultados-kpis"><span><b>{data.resumo_resultados?.passadas_sem_desfecho ?? 0}</b> sem desfecho</span><span><b>{data.resumo_resultados?.realizadas_sem_feedback ?? 0}</b> realizadas sem feedback</span><span><b>{data.resumo_resultados?.canceladas_sem_motivo ?? 0}</b> canceladas sem motivo</span></div>
+        {isAdmin && corretorEmFoco && <div className="calendar-resultados-filtro" role="status"><span>Mostrando somente o corretor selecionado</span><button type="button" onClick={() => setCorretorEmFoco(null)}>Ver todos os corretores</button></div>}
+        {isAdmin && corretorEmFoco && pendenciasVisiveis.length === 0 && <p>Nenhuma visita pendente foi confirmada para este corretor agora.</p>}
         <div className="calendar-resultados-lista">{(isAdmin ? pendenciasPorCorretor : [{ corretor: "", itens: data.pendencias_resultado ?? [] }]).map((grupo) => <section key={grupo.corretor || "minhas-pendencias"} className="calendar-resultados-grupo">{isAdmin && <header><strong>{grupo.corretor}</strong><span>{grupo.itens.length} pendência{grupo.itens.length === 1 ? "" : "s"}</span></header>}{grupo.itens.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroResultado(""); setResultadoPendente(item); }}>{conteudoCobranca(item, "Informar resultado")}</button> : <div className="calendar-resultado-cobranca" key={item.id}>{conteudoCobranca(item, "Aguardando corretor")}</div>)}</section>)}</div>
       </section>}
       {isAdmin && <section className="calendar-feedback-performance" aria-label="Qualidade dos feedbacks de visita">

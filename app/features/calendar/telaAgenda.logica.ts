@@ -28,7 +28,7 @@ export type Compromisso = {
 /** Mantém a cobrança gerencial no corretor escolhido sem alterar o escopo da
  * API. IDs são comparados como texto porque o Postgres pode chegar serializado
  * como número ou string conforme a RPC/proxy. */
-export function filtrarPendenciasPorCorretor(itens: Compromisso[], corretorId: string | null): Compromisso[] {
+export function filtrarPendenciasPorCorretor<T extends { corretor_id?: number | string | null }>(itens: T[], corretorId: string | null): T[] {
   if (!corretorId) return itens;
   return itens.filter((item) => item.corretor_id != null && String(item.corretor_id) === corretorId);
 }

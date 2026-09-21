@@ -188,6 +188,6 @@ document.body.append(transferenciaEvidencia);
 const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
   : tela === "agenda-manager"
-    ? <ErpShell><CalendarWorkspace accessToken="harness-test-only" /></ErpShell>
+    ? <ErpShell><CalendarWorkspace accessToken="harness-test-only" corretorIdInicial={corretorEmFoco} /></ErpShell>
     : <ErpShell><PaginaCrm /></ErpShell>;
 createRoot(document.getElementById("root")!).render(<ErpSessionCtx.Provider value={contexto}>{app}</ErpSessionCtx.Provider>);

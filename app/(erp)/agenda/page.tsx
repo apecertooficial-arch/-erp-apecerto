@@ -23,7 +23,7 @@ export default function Pagina() {
         if (ehCelular === null) return null;
         return ehCelular
           ? <TelaAgendaMobile accessToken={t} role={role} corretorIdInicial={corretorIdInicial} />
-          : <CalendarWorkspace accessToken={t} />;
+          : <CalendarWorkspace accessToken={t} corretorIdInicial={corretorIdInicial} />;
       }}
     </GuardaModulo>
   );

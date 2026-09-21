@@ -18,15 +18,19 @@ test("cobrança gerencial mostra somente as visitas do corretor escolhido", () =
 });
 
 test("filtro vem de deep link validado e pode voltar à visão completa", async () => {
-  const [pagina, agenda] = await Promise.all([
+  const [pagina, agenda, desktop] = await Promise.all([
     readFile(new URL("../app/(erp)/agenda/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/features/calendar/TelaAgendaMobile.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8"),
   ]);
   assert.ok(pagina.includes('/^\\d+$/.test(corretorSolicitado)'));
-  assert.match(pagina, /corretorIdInicial=\{corretorIdInicial\}/);
+  assert.equal(pagina.match(/corretorIdInicial=\{corretorIdInicial\}/g)?.length, 2);
   assert.match(agenda, /filtrarPendenciasPorCorretor\(pendenciasResultado, corretorEmFoco\)/);
+  assert.match(desktop, /filtrarPendenciasPorCorretor\(data\.pendencias_resultado \?\? \[\], isAdmin \? corretorEmFoco : null\)/);
   assert.match(agenda, /Ver todos os corretores/);
+  assert.match(desktop, /Ver todos os corretores/);
   assert.match(agenda, /Nenhuma visita pendente foi confirmada para este corretor agora/);
+  assert.match(desktop, /Nenhuma visita pendente foi confirmada para este corretor agora/);
   const harness = await readFile(new URL("../tests/crm-visual-harness/main.tsx", import.meta.url), "utf8");
   assert.match(harness, /corretorIdInicial=\{corretorEmFoco\}/);
 });
