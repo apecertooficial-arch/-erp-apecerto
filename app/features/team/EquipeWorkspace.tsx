@@ -20,6 +20,29 @@ type Membro = {
   is_self: boolean;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isMember(value: unknown): value is Membro {
+  if (!isRecord(value)) return false;
+  return Number.isSafeInteger(value.corretor_id) && Number(value.corretor_id) > 0
+    && typeof value.nome === "string" && value.nome.trim().length > 0
+    && isFiniteNumber(value.score)
+    && isFiniteNumber(value.vgv_mes)
+    && isFiniteNumber(value.vendas_mes)
+    && isFiniteNumber(value.meta_vgv)
+    && typeof value.is_self === "boolean";
+}
+
+function isTeamResponse(value: unknown): value is { team: Membro[] } {
+  return isRecord(value) && Array.isArray(value.team) && value.team.every(isMember);
+}
+
 const brl = (value: number) =>
   (value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -32,16 +55,26 @@ export function EquipeWorkspace({ accessToken }: { accessToken: string }) {
 
   useEffect(() => {
     let alive = true;
-    const timer = window.setTimeout(() => fetch("/api/equipe", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((r) => r.json())
-      .then((json: { team?: Membro[]; error?: string }) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void (async () => {
+      try {
+        const response = await fetch("/api/equipe", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok || !isTeamResponse(body)) throw new Error("equipe indisponível");
         if (!alive) return;
-        if (json.error) { setError(json.error); return; }
-        setTeam(json.team ?? []);
-      })
-      .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Erro ao carregar."); })
-      .finally(() => { if (alive) setLoading(false); }), 0);
-    return () => { alive = false; window.clearTimeout(timer); };
+        setTeam(body.team);
+        setError("");
+      } catch {
+        if (alive && !controller.signal.aborted) setError("Não foi possível carregar sua equipe agora.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })(), 0);
+    return () => { alive = false; window.clearTimeout(timer); controller.abort(); };
   }, [accessToken, tentativa]);
 
   const visiveis = useMemo(() => (filtro === "total" ? team : team.filter((m) => m.corretor_id === filtro)), [team, filtro]);

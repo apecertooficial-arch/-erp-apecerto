@@ -10,6 +10,23 @@ type CondominiumWizardProps = {
 
 const initialForm = { name: "", zipCode: "", address: "", number: "", complement: "", neighborhood: "", city: "São Paulo", state: "SP" };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSavedCondominium(value: unknown) {
+  return isRecord(value) && value.ok === true && isRecord(value.condominium)
+    && typeof value.condominium.id === "string" && value.condominium.id.length > 0;
+}
+
+function failureMessage(status: number) {
+  if (status === 401) return "Sua sessão expirou. Entre novamente para cadastrar o condomínio.";
+  if (status === 403) return "Seu perfil não tem permissão para cadastrar condomínios.";
+  if (status === 409) return "Este condomínio já existe. Atualize a lista e use a referência cadastrada.";
+  if (status === 422) return "Revise nome, endereço, cidade e UF antes de continuar.";
+  return "Não foi possível cadastrar o condomínio agora. Tente novamente.";
+}
+
 export function CondominiumWizard({ accessToken, onClose, onSaved }: CondominiumWizardProps) {
   const [form, setForm] = useState(initialForm);
   const [busy, setBusy] = useState(false);
@@ -29,11 +46,14 @@ export function CondominiumWizard({ accessToken, onClose, onSaved }: Condominium
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const result = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(result.error || "Não foi possível cadastrar o condomínio.");
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !isSavedCondominium(result)) {
+        setMessage(failureMessage(response.status));
+        return;
+      }
       onSaved();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível cadastrar o condomínio.");
+    } catch {
+      setMessage("Não foi possível cadastrar o condomínio agora. Tente novamente.");
     } finally {
       setBusy(false);
     }

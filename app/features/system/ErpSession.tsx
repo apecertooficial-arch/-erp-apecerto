@@ -34,6 +34,30 @@ export type SessionProfile = {
   permissoes?: Record<string, string[]> | null;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isPermissionMap(value: unknown) {
+  if (value === undefined || value === null) return true;
+  return isRecord(value) && Object.values(value).every(
+    (items) => Array.isArray(items) && items.every((item) => typeof item === "string"),
+  );
+}
+
+function isSessionProfile(value: unknown): value is SessionProfile {
+  if (!isRecord(value)) return false;
+  return typeof value.userId === "string" && value.userId.length > 0
+    && typeof value.email === "string"
+    && typeof value.name === "string"
+    && (value.role === "admin" || value.role === "gestor" || value.role === "corretor")
+    && (value.perfil === undefined || value.perfil === null || typeof value.perfil === "string")
+    && typeof value.active === "boolean"
+    && (value.brokerId === null || typeof value.brokerId === "number")
+    && typeof value.online === "boolean"
+    && isPermissionMap(value.permissoes);
+}
+
 /* isManager = grupo `acesso_total` (admin, executivo) de app/lib/papeis.ts.
    E o mesmo conjunto que valia antes (os demais nomes da lista antiga nao eram
    papeis reais). Gerente e diretor continuam entrando como gestao pela classe
@@ -99,8 +123,9 @@ export function ErpSessionProvider({ children }: { children: ReactNode }) {
         setEstado("auth");
         return;
       }
-      if (!resposta.ok) throw new Error("perfil indisponivel");
-      setProfile(await resposta.json() as SessionProfile);
+      const body = await resposta.json().catch(() => null);
+      if (!resposta.ok || !isSessionProfile(body)) throw new Error("perfil indisponivel");
+      setProfile(body);
       setEstado("live");
     } catch {
       // Perfil indisponivel nao derruba a sessao, mas TAMBEM nao libera menu:

@@ -1,6 +1,23 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { isInvalidSessionError } from "../../lib/supabase/auth-errors";
 
 export const dynamic = "force-dynamic";
+
+type CondominiumError = { code?: string } | null | undefined;
+
+function falhaCondominio(error: CondominiumError, operacao: string) {
+  const semPermissao = error?.code === "42501";
+  console.error("condominio_operacao_falhou", {
+    operacao,
+    codigo: error?.code ?? "desconhecido",
+  });
+  return Response.json({
+    error: semPermissao
+      ? "Seu perfil não tem permissão para cadastrar condomínios."
+      : "Não foi possível concluir o cadastro do condomínio agora.",
+    erro: semPermissao ? "sem_permissao" : "falha_banco",
+  }, { status: semPermissao ? 403 : 502 });
+}
 
 type CondominiumInput = {
   name?: string;
@@ -28,7 +45,9 @@ export async function POST(request: Request) {
 
   const supabase = createServerSupabaseClient(accessToken);
   const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  if (authError && isInvalidSessionError(authError)) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
+  if (authError) return falhaCondominio(authError, "autenticar");
+  if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   let body: CondominiumInput;
   try { body = await request.json() as CondominiumInput; }
@@ -49,9 +68,9 @@ export async function POST(request: Request) {
     .ilike("cidade", city)
     .limit(1)
     .maybeSingle();
-  if (duplicateError) return Response.json({ error: duplicateError.message }, { status: 502 });
+  if (duplicateError) return falhaCondominio(duplicateError, "buscar_duplicidade");
   if (duplicate) {
-    return Response.json({ error: "Este condomínio já está cadastrado. Use a referência existente ao cadastrar a unidade.", condominium: duplicate }, { status: 409 });
+    return Response.json({ error: "Este condomínio já está cadastrado. Use a referência existente ao cadastrar a unidade.", erro: "duplicado", condominium: duplicate }, { status: 409 });
   }
 
   const { data, error } = await supabase.from("condominios").insert({
@@ -66,9 +85,8 @@ export async function POST(request: Request) {
     created_by: authData.user.id,
   }).select("id,nome,endereco,numero,bairro,cidade,uf,cep").single();
 
-  if (error) {
-    const forbidden = error.code === "42501";
-    return Response.json({ error: forbidden ? "Seu perfil não tem permissão para cadastrar condomínios." : error.message }, { status: forbidden ? 403 : 502 });
-  }
+  if (error?.code === "23505") return Response.json({ error: "Este condomínio já está cadastrado. Atualize a lista e use a referência existente.", erro: "duplicado" }, { status: 409 });
+  if (error) return falhaCondominio(error, "cadastrar_condominio");
+  if (!data) return falhaCondominio(null, "confirmar_cadastro");
   return Response.json({ ok: true, condominium: data }, { status: 201 });
 }
