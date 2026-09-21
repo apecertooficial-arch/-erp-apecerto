@@ -121,8 +121,9 @@ test("as APIs autorizam somente o corretor dono da carteira", async () => {
   });
 });
 
-test("sucesso só é devolvido depois de reler o resultado persistido", async () => {
-  const db = (data, error = null) => ({
+test("sucesso só é devolvido depois de reler o resultado persistido e a fila encerrada", async () => {
+  const db = (data, error = null, pendencias = []) => ({
+    rpc: async () => ({ data: { ok: true, itens: pendencias }, error: null }),
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data, error }) }) }) }),
   });
   const esperado = {
@@ -130,9 +131,11 @@ test("sucesso só é devolvido depois de reler o resultado persistido", async ()
     resultado_codigo: "interessado",
     resultado_justificativa: "FEEDBACK_VISITA_V1 | Próxima ação: retornar amanhã",
     resultado_em: "2026-09-21T12:00:00Z",
+    inicio_em: "2026-09-21T11:00:00Z",
   };
   const args = ["10000000-0000-4000-8000-000000000001", esperado.status, esperado.resultado_codigo, esperado.resultado_justificativa];
   assert.equal(await confirmarResultadoVisitaPersistido(db(esperado), ...args), true);
+  assert.equal(await confirmarResultadoVisitaPersistido(db(esperado, null, [{ id: args[0] }]), ...args), false);
   assert.equal(await confirmarResultadoVisitaPersistido(db({ ...esperado, resultado_em: null }), ...args), false);
   assert.equal(await confirmarResultadoVisitaPersistido(db({ ...esperado, resultado_codigo: "nao_gostou" }), ...args), false);
   assert.equal(await confirmarResultadoVisitaPersistido(db(null, { message: "falha" }), ...args), false);

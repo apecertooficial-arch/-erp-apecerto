@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dataOperacao } from "../timezone.ts";
 
 export type AutorizacaoResultadoVisita =
   | { permitido: true }
@@ -52,12 +53,21 @@ export async function confirmarResultadoVisitaPersistido(
   justificativa: string,
 ): Promise<boolean> {
   const { data, error } = await db.from("f2_visita")
-    .select("status,resultado_codigo,resultado_justificativa,resultado_em")
+    .select("status,resultado_codigo,resultado_justificativa,resultado_em,inicio_em")
     .eq("id", visitaId)
     .maybeSingle();
-  return !error
-    && data?.status === status
-    && data.resultado_codigo === resultadoCodigo
-    && data.resultado_justificativa === justificativa
-    && typeof data.resultado_em === "string";
+  if (error
+    || data?.status !== status
+    || data.resultado_codigo !== resultadoCodigo
+    || data.resultado_justificativa !== justificativa
+    || typeof data.resultado_em !== "string"
+    || typeof data.inicio_em !== "string") return false;
+
+  const dia = dataOperacao(new Date(data.inicio_em));
+  if (!dia) return false;
+  const pendencias = await db.rpc("f2_visitas_resultado_pendente", { p_inicio: dia, p_fim: dia });
+  if (pendencias.error || pendencias.data?.ok !== true || !Array.isArray(pendencias.data.itens)) return false;
+  return !pendencias.data.itens.some((item: unknown) => (
+    typeof item === "object" && item !== null && "id" in item && item.id === visitaId
+  ));
 }

@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
-- Objetivo: fechar a jornada gerente → corretor → visita → feedback persistido → pendência encerrada; sucesso só pode ser anunciado após releitura do registro gravado.
-- Base: `origin/main` em `166ddecabce96336a9fdd4a8d4b2e9087fb32826`; branch `codex/feedback-persistencia-confirmada`.
-- Concluído nesta fatia: as APIs Agenda e Funil 2.0 agora conferem `status`, `resultado_codigo`, `resultado_justificativa` e `resultado_em` após a RPC; divergência ou falha de leitura retorna 502 e mantém a pendência aberta.
-- Decisão: reutilizar uma função compartilhada em `app/lib/supabase/autorizarResultadoVisita.ts`; nenhum schema, migration ou dado de produção foi alterado.
-- Arquivos: `app/api/agenda/route.ts`, `app/api/funil2/route.ts`, `app/lib/supabase/autorizarResultadoVisita.ts`, `tests/agenda-resultados-visita.test.mjs`.
-- Verificações: teste vermelho reproduziu export/contrato ausente; 37 testes direcionados passaram; lint dos arquivos tocados passou; build Vinext passou; harness real desktop/mobile mostrou fila filtrada, pendências e console vazio.
-- Produção: ainda em `166ddeca`; esta fatia ainda não foi publicada.
-- Risco: a confirmação acrescenta uma leitura após a RPC e falha fechada se RLS ou conectividade impedirem comprovar a escrita.
-- Próximo passo: publicar a fatia após revisão final, acompanhar `/api/build`, validar produção somente leitura e então buscar a próxima falha P0/P1 comprovada sem inventário amplo.
+- Objetivo: fechar a jornada gerente → corretor → visita → feedback persistido → pendência encerrada; sucesso só pode ser anunciado após releitura do registro e confirmação de saída da fila.
+- Base: `origin/main` em `83ff73f949f461cfcad4da9d166963be053e617a`; branch `codex/feedback-fila-confirmada`.
+- Concluído nesta fatia: a confirmação compartilhada agora consulta `f2_visitas_resultado_pendente` no dia operacional da visita e falha fechada se o item continuar na fila ou a resposta não for comprovável.
+- Decisão: estender a função compartilhada existente, sem alterar APIs, schema, migration ou dados de produção.
+- Arquivos: `app/lib/supabase/autorizarResultadoVisita.ts`, `tests/agenda-resultados-visita.test.mjs`.
+- Verificações: teste vermelho reproduziu o falso sucesso; 41 testes direcionados passaram; lint dos arquivos tocados passou; build Vinext passou; harness real mostrou Visitas no desktop e Resultados pendentes em 390×844, ambos sem erro de console.
+- Produção: `83ff73f9` publicado e confirmado por `/api/build`; Agenda desktop/mobile carregou a fila filtrada com console limpo.
+- Risco: a confirmação acrescenta uma consulta à fila após a releitura e, por segurança, devolve 502 se RLS, conectividade ou o contrato da fila impedirem comprovar o encerramento.
+- Próximo passo: publicar esta fatia, confirmar `/api/build` e validar produção somente leitura; depois buscar a próxima falha P0/P1 comprovada no CRM/Meu Dia/Agenda.
