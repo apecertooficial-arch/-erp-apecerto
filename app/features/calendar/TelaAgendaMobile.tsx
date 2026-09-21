@@ -176,7 +176,8 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
       .then(async (r) => {
         if (!r.ok) throw new Error(String(r.status));
         const j = await r.json() as { leads?: LeadAgenda[]; deals?: NegocioAgenda[]; cards?: CardAgenda[]; products?: ProdutoAgenda[] };
-        setCatalogo({ leads: j.leads ?? [], deals: j.deals ?? [], cards: j.cards ?? [], products: j.products ?? [] });
+        if (![j.leads, j.deals, j.cards, j.products].every(Array.isArray)) throw new Error("payload_invalido");
+        setCatalogo({ leads: j.leads, deals: j.deals, cards: j.cards, products: j.products } as Catalogo);
       })
       .catch(() => setErroEscrita("Não foi possível carregar seus clientes agora."));
   }, [accessToken, catalogo]);

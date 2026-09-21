@@ -32,6 +32,10 @@ test("Agenda desktop rejeita resposta 200 incompleta em vez de quebrar a tela", 
   assert.match(desktop, /if \(!\[body\.brokers, body\.leads, body\.deals, body\.products, body\.visits, body\.tasks\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
 });
 
+test("nova visita no app rejeita catálogo incompleto em vez de fingir que não há clientes", () => {
+  assert.match(mobile, /if \(!\[j\.leads, j\.deals, j\.cards, j\.products\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
+});
+
 test("Agenda do app fica visível no breakpoint mobile", () => {
   const inicioMobile = appMobileCss.indexOf("\n@media (max-width: 900px) {");
   const agendaVisivel = appMobileCss.indexOf(".ape-agenda {", inicioMobile);
