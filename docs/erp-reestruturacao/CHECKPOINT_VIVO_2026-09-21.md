@@ -11,7 +11,7 @@ com desktop/mobile, autorização server-side e evidência.
 ## Autoridades confirmadas
 
 - repositório: `https://github.com/apecertooficial-arch/-erp-apecerto.git`;
-- aplicação publicada: `main` / `2e05089c5a3684d00a94402cfaf351d92d727928`;
+- aplicação publicada: `main` / `b4056a2518b8e9c3a92f94c56c7be90581ab0a15`;
 - Supabase: `diaegvfveqezispcthwk`;
 - trabalho: `codex/crm-sara-determinismo-20260921`;
 - produção web: `https://apecerto-erp.onrender.com`.
@@ -26,6 +26,8 @@ com desktop/mobile, autorização server-side e evidência.
 - cobrança focada publicada no build
   `04ab7759499b4cfa151b4e7af3ec66deb0273e48`: cada cartão abre somente as
   pendências do corretor selecionado e permite voltar à fila completa;
+- fonte da Edge `entrada` consolidada na `main` no build `b4056a25`; os dois
+  arquivos conferem byte a byte com a versão remota 23 ativa;
 - limite real de 256 KiB, JSON/ID validados, erros internos redigidos e retorno
   da fila validado;
 - smoke de produção sem efeito comercial: 200/400/405/413 conforme contrato;
@@ -60,6 +62,7 @@ com desktop/mobile, autorização server-side e evidência.
   44 px, sem overflow e sem console de erro; nenhuma escrita foi feita;
 - Sara/dispatcher/janela: 48/48;
 - entrada/distribuição/ownership: 66/66;
+- promoção isolada da fonte `entrada`: 14/14 e paridade remota exata;
 - CRM validado em navegador sanitizado desktop e 390×844;
 - aplicação compilou antes da última mudança exclusiva de Edge/SQL/documentação.
 

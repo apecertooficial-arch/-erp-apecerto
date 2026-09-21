@@ -10,11 +10,11 @@ mantidas como trilha da descoberta, não como indicação de deploy atual.
 
 | Evidência | Estado atual |
 |---|---|
-| `origin/main` e build web publicado | `2e05089c5a3684d00a94402cfaf351d92d727928` |
+| `origin/main` e build web publicado | `b4056a2518b8e9c3a92f94c56c7be90581ab0a15` |
 | worktree ativa | `/private/tmp/apecerto-erp-studio-restore-20260920` |
 | branch isolada | `codex/crm-sara-determinismo-20260921` |
 | Supabase | `diaegvfveqezispcthwk` |
-| Edge `entrada` | versão 23; hash `7513b214a045b69cf1fcfc8c1274f7f98422a096141c846fe5ac922403703ece` |
+| Edge `entrada` | versão 23; hash `7513b214a045b69cf1fcfc8c1274f7f98422a096141c846fe5ac922403703ece`; fonte remota idêntica à `main` |
 | árvore rastreada | limpa no último checkpoint; `node_modules` é vínculo local não versionado |
 
 Contagem desta branch: 29 páginas, 36 rotas de API, 23 áreas de feature, 300

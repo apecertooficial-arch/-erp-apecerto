@@ -4,7 +4,7 @@ Estado inicial. `Não comprovado` significa que a superfície existe, mas ainda
 não foi exercitada ponta a ponta contra persistência e autorização reais.
 
 Reconciliada na branch ativa em 2026-09-21. Base web publicada:
-`2e05089c5a3684d00a94402cfaf351d92d727928`; Supabase:
+`b4056a2518b8e9c3a92f94c56c7be90581ab0a15`; Supabase:
 `diaegvfveqezispcthwk`. Os SHAs de builds anteriores em cada linha permanecem
 como evidência histórica. Estado atual e bloqueios de promoção estão em
 `CHECKPOINT_VIVO_2026-09-21.md`; nenhuma linha muda para “comprovada” apenas por
