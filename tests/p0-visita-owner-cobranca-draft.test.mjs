@@ -8,8 +8,13 @@ const sql = readFileSync(
 );
 
 test("o contrato fica fora de producao e exige CLI", () => {
-  assert.match(sql, /DRAFT NAO EXECUTAVEL \/ NAO APLICADO EM PRODUCAO/);
+  assert.match(sql, /DRAFT NÃO APLICADO/);
   assert.match(sql, /supabase migration new/);
+  assert.match(sql, /4f9cc889bdc980a10843e810f7d1417c5bd055b3f207e43ec17f5edbbd68ec88/);
+  assert.match(sql, /7042f52770b9c20b3d303b160976c8eb00bdb1dd91d74350ca22e6271b56fdaa/);
+  assert.match(sql, /bb1edea1552f2b528d1ca1dbbd1f08b5ecbe8b2fb7680122daacce9b815d4345/);
+  assert.match(sql, /ROLLBACK;\s*$/i);
+  assert.doesNotMatch(sql, /\bCOMMIT\b/i);
 });
 
 test("a RPC exige o corretor atual como dono da carteira", () => {

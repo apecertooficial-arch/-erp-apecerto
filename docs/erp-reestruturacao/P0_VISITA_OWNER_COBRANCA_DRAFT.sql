@@ -1,4 +1,4 @@
--- DRAFT NAO EXECUTAVEL / NAO APLICADO EM PRODUCAO
+-- DRAFT NÃO APLICADO — ensaio sempre termina em ROLLBACK.
 --
 -- Contrato revisavel para fechar duas lacunas do pos-visita:
 --   1. somente o corretor dono da carteira registra o resultado;
@@ -8,10 +8,87 @@
 -- migration deve nascer por `supabase migration new`, ser aplicado primeiro em
 -- banco isolado e receber autorizacao especifica antes de tocar producao.
 -- Push/WhatsApp permanecem DESLIGADOS: o cron cria apenas cobranca in-app.
+--
+-- Baseline remoto sanitizado em 2026-09-21:
+--   public.f2_registrar_resultado_visita(uuid,text,text,text)
+--     sha256 4f9cc889bdc980a10843e810f7d1417c5bd055b3f207e43ec17f5edbbd68ec88
+--   public.f2_visitas_resultado_pendente(date,date)
+--     sha256 7042f52770b9c20b3d303b160976c8eb00bdb1dd91d74350ca22e6271b56fdaa
+--   public.ncrm_notificacao.ncrm_notificacao_tipo_check
+--     sha256 bb1edea1552f2b528d1ca1dbbd1f08b5ecbe8b2fb7680122daacce9b815d4345
 
 begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '120s';
+
+do $preflight$
+declare
+  v_hash text;
+begin
+  if pg_catalog.to_regclass('public.f2_visita') is null
+     or pg_catalog.to_regclass('public.f2_lead') is null
+     or pg_catalog.to_regclass('public.f2_operacao_config') is null
+     or pg_catalog.to_regclass('public.ncrm_notificacao') is null
+     or pg_catalog.to_regclass('public.f2_evento') is null
+     or pg_catalog.to_regclass('public.f2_config_audit') is null
+     or pg_catalog.to_regprocedure('public.current_broker_id()') is null
+     or pg_catalog.to_regprocedure('public.f2_admin()') is null
+     or not exists (
+       select 1 from pg_catalog.pg_extension where extname = 'pg_cron'
+     ) then
+    raise exception 'F2_VISITA_DEPENDENCIA_AUSENTE';
+  end if;
+
+  select pg_catalog.encode(extensions.digest(pg_catalog.pg_get_functiondef(
+    'public.f2_registrar_resultado_visita(uuid,text,text,text)'::regprocedure::oid
+  ), 'sha256'), 'hex') into v_hash;
+  if v_hash <> '4f9cc889bdc980a10843e810f7d1417c5bd055b3f207e43ec17f5edbbd68ec88' then
+    raise exception 'F2_VISITA_REGISTRAR_DIVERGIU: %', v_hash;
+  end if;
+
+  select pg_catalog.encode(extensions.digest(pg_catalog.pg_get_functiondef(
+    'public.f2_visitas_resultado_pendente(date,date)'::regprocedure::oid
+  ), 'sha256'), 'hex') into v_hash;
+  if v_hash <> '7042f52770b9c20b3d303b160976c8eb00bdb1dd91d74350ca22e6271b56fdaa' then
+    raise exception 'F2_VISITA_PENDENCIAS_DIVERGIU: %', v_hash;
+  end if;
+
+  select pg_catalog.encode(extensions.digest(
+    pg_catalog.pg_get_constraintdef(c.oid, true), 'sha256'
+  ), 'hex') into v_hash
+    from pg_catalog.pg_constraint c
+   where c.conrelid = 'public.ncrm_notificacao'::regclass
+     and c.conname = 'ncrm_notificacao_tipo_check';
+  if v_hash is distinct from 'bb1edea1552f2b528d1ca1dbbd1f08b5ecbe8b2fb7680122daacce9b815d4345' then
+    raise exception 'F2_VISITA_TIPO_NOTIFICACAO_DIVERGIU: %', v_hash;
+  end if;
+
+  if exists (
+       select 1 from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'ncrm_notificacao'
+          and column_name = 'visita_id'
+     )
+     or pg_catalog.to_regclass('public.ux_ncrm_visita_feedback_aberta_publico') is not null
+     or pg_catalog.to_regprocedure('public.f2_feedback_visita_nota(text)') is not null
+     or pg_catalog.to_regprocedure('public.f2_feedback_visita_performance(date,date)') is not null
+     or pg_catalog.to_regprocedure('ncrm_private.f2_visitas_feedback_sincronizar(boolean)') is not null
+     or exists (
+       select 1 from cron.job where jobname = 'f2-visitas-feedback-cobrancas'
+     ) then
+    raise exception 'F2_VISITA_PACOTE_JA_EXISTE_OU_COLIDE';
+  end if;
+
+  if not pg_catalog.has_function_privilege(
+       'authenticated', 'public.f2_registrar_resultado_visita(uuid,text,text,text)', 'EXECUTE'
+     )
+     or pg_catalog.has_function_privilege(
+       'anon', 'public.f2_registrar_resultado_visita(uuid,text,text,text)', 'EXECUTE'
+     ) then
+    raise exception 'F2_VISITA_ACL_BASELINE_DIVERGIU';
+  end if;
+end
+$preflight$;
 
 -- Vinculo direto e auditavel; a notificacao nao depende de inferir a visita por
 -- negocio, texto ou horario.
@@ -40,7 +117,7 @@ create index if not exists ncrm_notificacao_visita_id_idx
 -- Vocabulario fechado: acrescenta somente o novo evento e preserva os tipos
 -- confirmados no schema remoto em 2026-09-19.
 alter table public.ncrm_notificacao
-  drop constraint if exists ncrm_notificacao_tipo_check;
+  drop constraint ncrm_notificacao_tipo_check;
 alter table public.ncrm_notificacao
   add constraint ncrm_notificacao_tipo_check
   check (tipo = any (array[
@@ -545,4 +622,4 @@ begin
 end
 $verify$;
 
-commit;
+rollback;
