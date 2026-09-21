@@ -73,7 +73,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
       const response = await fetch("/api/agenda?workspace=1", { headers: { Authorization: `Bearer ${accessToken}` } });
       const body = await response.json() as CrmData & { error?: string };
       if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar a agenda.");
-      if (![body.brokers, body.leads, body.deals, body.products, body.visits, body.tasks].every(Array.isArray)) throw new Error("payload_invalido");
+      if (![body.brokers, body.leads, body.deals, body.products, body.visits, body.tasks, body.pendencias_resultado].every(Array.isArray)) throw new Error("payload_invalido");
       setData(body);
     } catch {
       setError("Não foi possível carregar a agenda.");

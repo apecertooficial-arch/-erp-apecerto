@@ -30,7 +30,7 @@ test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio",
 });
 
 test("Agenda desktop rejeita resposta 200 incompleta em vez de quebrar a tela", () => {
-  assert.match(desktop, /if \(!\[body\.brokers, body\.leads, body\.deals, body\.products, body\.visits, body\.tasks\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
+  assert.match(desktop, /if \(!\[body\.brokers, body\.leads, body\.deals, body\.products, body\.visits, body\.tasks, body\.pendencias_resultado\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
 });
 
 test("nova visita no app rejeita catálogo incompleto em vez de fingir que não há clientes", () => {
