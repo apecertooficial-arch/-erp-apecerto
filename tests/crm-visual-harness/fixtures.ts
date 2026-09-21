@@ -117,7 +117,10 @@ export const negociosVinculados: NegocioVinculadoFunil2[] = leads.slice(0, 8).ma
 export const imoveisVinculados: ImovelVinculadoFunil2[] = [{ negocio_id: primeiro.origem_negocio_id, funil_lead_id: primeiro.id, empreendimento_id: "produto-teste", empreendimento: "Produto teste em Moema", unidade_id: "101", unidade: "101", valor: 890000 }];
 export const arquivosVinculados: ArquivoVinculadoFunil2[] = [{ id: "arquivo-teste-1", funil_lead_id: primeiro.id, negocio_id: primeiro.origem_negocio_id, nome: "proposta-sanitizada.pdf", status: "disponível", criado_em: new Date(base).toISOString() }];
 export const aquario: CandidatoAquarioFunil2[] = Array.from({ length: 3 }, (_, indice) => ({ negocio_id: 990100 + indice, nome: `Candidato teste ${indice + 1}` }));
-export const tagCatalogo: TagCatalogoFunil2[] = [{ id: "tag-teste", nome: "Origem sanitizada", cor: "#8B00CC" }];
+export const tagCatalogo: TagCatalogoFunil2[] = [
+  { id: "tag-teste", nome: "Origem sanitizada", cor: "#8B00CC" },
+  { id: "tag-disponivel", nome: "Tag disponível", cor: "#10B981" },
+];
 
 export const payloadNormal = {
   leads,

@@ -45,8 +45,8 @@ export function AssociarTagLead({
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ action: "associarTag", leadId, tagId: selecionada.id, cor }),
       });
-      const json = await resposta.json().catch(() => ({})) as { error?: string };
-      if (!resposta.ok) throw new Error(json.error || "Não foi possível associar a tag.");
+      const json = await resposta.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!resposta.ok || json.ok !== true) throw new Error(json.error || "O servidor não confirmou a associação da tag.");
       setAberto(false); setTagId(""); setCorManual(null); onSalvo(); onFechar?.();
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Não foi possível associar a tag.");

@@ -58,6 +58,7 @@ const resultadoAcaoInvalido = parametros.get("actionResult") === "invalido";
 const resultadoAtualizacaoInvalido = parametros.get("patchResult") === "invalido";
 const payloadMobileInvalido = parametros.get("mobilePayload") === "invalido";
 const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") === "invalido";
+const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -158,6 +159,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       } });
     }
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "salvarNota" && resultadoAcaoInvalido) return json({});
+    if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "associarTag") return json(resultadoTagInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
     registro.blocked = true;

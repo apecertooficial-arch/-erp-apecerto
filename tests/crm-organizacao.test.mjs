@@ -119,6 +119,10 @@ test("tags já associadas saem do seletor e o formulário começa sem escolha im
   assert.match(tags, /disabled=\{salvando \|\| !selecionada\}/);
 });
 
+test("associação de tag não fecha sem confirmação explícita", () => {
+  assert.match(tags, /if \(!resposta\.ok \|\| json\.ok !== true\) throw new Error\(json\.error \|\| "O servidor não confirmou a associação da tag\."\)/);
+});
+
 test("as visões principais escondem instruções e edição até existir intenção", () => {
   assert.match(desktop, /Regras do CRM/);
   assert.match(desktop, /<summary>Como este funil funciona<\/summary>/);
