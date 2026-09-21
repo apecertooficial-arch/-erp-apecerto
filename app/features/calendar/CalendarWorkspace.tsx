@@ -67,7 +67,20 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
   const gerenteNomeGeral = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.nome ?? null, [data.gerentes]);
   const geralGerenteId = useMemo(() => (data.gerentes ?? []).find((g) => g.geral)?.id ?? null, [data.gerentes]);
 
-  async function load() { setLoading(true); setError(""); const response = await fetch("/api/agenda?workspace=1", { headers: { Authorization: `Bearer ${accessToken}` } }); const body = await response.json() as CrmData & { error?: string }; if (!response.ok) setError(body.error ?? "Não foi possível carregar a agenda."); else setData(body); setLoading(false); }
+  async function load() {
+    setLoading(true); setError("");
+    try {
+      const response = await fetch("/api/agenda?workspace=1", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const body = await response.json() as CrmData & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar a agenda.");
+      if (![body.brokers, body.leads, body.deals, body.products, body.visits, body.tasks].every(Array.isArray)) throw new Error("payload_invalido");
+      setData(body);
+    } catch {
+      setError("Não foi possível carregar a agenda.");
+    } finally {
+      setLoading(false);
+    }
+  }
   useEffect(() => { void load(); }, [accessToken]);
   const brokerById = useMemo(() => new Map(data.brokers.map((item) => [item.id, item.nome])), [data.brokers]);
   const leadById = useMemo(() => new Map(data.leads.map((item) => [item.id, item.nome ?? `Lead #${item.id}`])), [data.leads]);
