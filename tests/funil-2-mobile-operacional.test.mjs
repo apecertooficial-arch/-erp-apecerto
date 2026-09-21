@@ -80,6 +80,12 @@ test("erro e estados vazios móveis são anunciados por tecnologia assistiva", (
   assert.ok((MOBILE.match(/className="ape-estado" role="status" aria-live="polite"/g) ?? []).length >= 2);
 });
 
+test("CRM e Meu Dia recuperam sessão expirada pelo estado compartilhado do app", () => {
+  assert.match(MOBILE, /import \{ AppMobileSessaoExpirada \}/);
+  assert.match(MOBILE, /if \(resposta\.status === 401\) throw new Error\("sessao_expirada"\)/);
+  assert.match(MOBILE, /if \(sessaoExpirada\) return <AppMobileSessaoExpirada \/>/);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });

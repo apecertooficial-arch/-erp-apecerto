@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `4ad0024c7b3f524c91a32b3d072461153d816098`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: o estado compartilhado de sessão expirada não envia mais quatro módulos móveis para `/login`, rota inexistente.
-- Decisão: `Entrar novamente` volta para `/inicio`, onde o `ErpSessionProvider` monta a autenticação real quando não há sessão.
-- Arquivos: `app/features/system/AppMobileSystem.tsx`, `tests/app-mobile-system.test.mjs`.
-- Verificações: o teste falhou primeiro ao encontrar `/login`; 44 testes direcionados e lint passaram; build Vinext passou.
-- Produção: `4ad0024c` publicado e confirmado; Avisos abre normalmente em 390 px, não expõe `/inteligencia` no DOM atual e não gera erros de console.
-- Risco: a validação não encerrou a sessão real do navegador para evitar impacto no usuário; a rota e o estado de autenticação estão cobertos por teste e pelo shell existente.
+- Base: `origin/main` em `53aa187e8d15a21a0fcc51bbc676e7fae55d5e39`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: CRM e Meu Dia reconhecem 401 no carregador móvel compartilhado e exibem a recuperação de sessão do app.
+- Decisão: tratar a expiração uma vez em `useFunil2Mobile`, preservando o erro recuperável genérico para falhas que não sejam de autenticação.
+- Arquivos: `app/features/funil-2/Funil2Mobile.tsx`, `tests/funil-2-mobile-operacional.test.mjs`, `tests/crm-visual-harness/main.tsx`.
+- Verificações: o teste falhou primeiro pela ausência do estado; 42 testes direcionados e lint passaram; build Vinext passou; harness em 390 px mostrou `/inicio`, sem erro genérico ou retry, e CRM desktop normal ficou íntegro em 1280 px, sem erros de console.
+- Produção: `53aa187e` publicado e confirmado; a recuperação compartilhada aponta para a rota real do login.
+- Risco: mutações abertas após a expiração ainda mostram o erro específico de cada formulário; esta fatia corrige o carregamento principal comum a CRM e Meu Dia.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.

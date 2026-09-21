@@ -22,6 +22,7 @@ import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { HorariosVisita } from "./HorariosVisita";
 import { MobileCrmNavigation } from "./MobileCrmNavigation";
+import { AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
   acaoVisivel,
@@ -170,6 +171,7 @@ function limparLeadDaUrl() {
 function useFunil2Mobile(accessToken: string) {
   const [dados, setDados] = useState<PayloadMobile | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [versao, setVersao] = useState(0);
 
   const recarregar = useCallback(() => setVersao((atual) => atual + 1), []);
@@ -182,11 +184,13 @@ function useFunil2Mobile(accessToken: string) {
       signal: controle.signal,
     }).then(async (resposta) => {
       const json = await resposta.json().catch(() => ({})) as PayloadMobile;
+      if (resposta.status === 401) throw new Error("sessao_expirada");
       if (!resposta.ok) throw new Error(json.error || "Não foi possível abrir o CRM.");
-      if (vivo) { setDados(json); setErro(null); }
+      if (vivo) { setDados(json); setErro(null); setSessaoExpirada(false); }
     }).catch((falha: unknown) => {
       if (vivo && !(falha instanceof DOMException && falha.name === "AbortError")) {
-        setErro(falha instanceof Error ? falha.message : "Não foi possível abrir o CRM.");
+        if (falha instanceof Error && falha.message === "sessao_expirada") setSessaoExpirada(true);
+        else setErro(falha instanceof Error ? falha.message : "Não foi possível abrir o CRM.");
       }
     });
     return () => { vivo = false; controle.abort(); };
@@ -197,7 +201,7 @@ function useFunil2Mobile(accessToken: string) {
     return () => window.clearInterval(relogio);
   }, [recarregar]);
 
-  return { dados, erro, recarregar };
+  return { dados, erro, sessaoExpirada, recarregar };
 }
 
 /* A fila mostra somente o necessário para decidir e agir. Origem, campanha,
@@ -757,7 +761,7 @@ export function Funil2Mobile({
   modo: "inicio" | "crm";
   onIr: (destino: string) => void;
 }) {
-  const { dados, erro, recarregar } = useFunil2Mobile(accessToken);
+  const { dados, erro, sessaoExpirada, recarregar } = useFunil2Mobile(accessToken);
   /* No Meu Dia a lista NAO e filtrada por chip: os tres grupos abaixo dao conta
      do recorte. "todos" aqui significa "deixe o agrupamento decidir". */
   const filtroDia: FiltroDia = "todos";
@@ -903,6 +907,8 @@ export function Funil2Mobile({
     return () => { ativo = false; };
   }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
+
+  if (sessaoExpirada) return <AppMobileSessaoExpirada />;
 
   const cartao = (lead: LeadFunil2) => <CartaoLead
     key={lead.id}

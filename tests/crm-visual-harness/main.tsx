@@ -18,7 +18,7 @@ import { SaraTasksMobile } from "../../app/features/tasks/SaraTasksMobile";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
-type Estado = "normal" | "loading" | "vazio" | "erro" | "invalido" | "offline" | "negado";
+type Estado = "normal" | "loading" | "vazio" | "erro" | "invalido" | "offline" | "negado" | "sessao";
 type RegistroRede = { method: string; path: string; blocked: boolean };
 type RegistroConsole = { level: "error" | "warning"; message: string };
 
@@ -149,6 +149,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "loading") return new Promise<Response>(() => undefined);
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
+    if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
     if (url.searchParams.has("historicoLeadId")) return json({ eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
