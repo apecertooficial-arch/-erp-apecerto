@@ -45,6 +45,12 @@ Projeto: `diaegvfveqezispcthwk`.
 - um gatilho Sara; `lead.action_confirmed` ainda ausente;
 - os dois índices novos ainda ausentes;
 - `authenticated` pode executar a RPC atual; `anon` não pode;
+- a RPC atual é `SECURITY DEFINER` e sua própria definição não consulta
+  `auth.uid()`, `current_broker_id()` nem confronta o `corretor_id`; portanto a
+  guarda da API não fecha uma chamada direta pelo cliente autenticado;
+- a Edge remota `f2-sara-reclassificar` permanece byte a byte igual à `main` e
+  diferente do candidato local; publicar só a interface ou só a Edge quebraria
+  o contrato;
 - branch disponível: somente `main`, marcada `MIGRATIONS_FAILED` no catálogo de branches.
 
 Nenhum lead, mensagem, telefone, e-mail ou linha operacional foi consultado.

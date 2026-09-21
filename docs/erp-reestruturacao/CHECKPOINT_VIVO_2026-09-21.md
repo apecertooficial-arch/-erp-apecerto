@@ -72,6 +72,9 @@ com desktop/mobile, autorização server-side e evidência.
 
 ## Gates e riscos
 
+- `f2_confirmar_acao` e `f2_registrar_resultado_visita` são `SECURITY DEFINER`,
+  executáveis por `authenticated` e sem ownership interno; APIs mitigam a rota
+  normal, mas não impedem RPC direta;
 - banco remoto possui 336 migrations sem arquivo mesmo após a recuperação;
 - projeto principal Supabase está com status de migrations `MIGRATIONS_FAILED`;
 - drafts de banco não serão executados em produção sem ensaio isolado;
