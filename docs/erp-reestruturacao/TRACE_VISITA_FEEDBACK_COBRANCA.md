@@ -1,8 +1,11 @@
 # Trace — visita, feedback e cobrança
 
-Atualizado em: 2026-09-20
+Atualizado em: 2026-09-21
 Branch de promoção: `codex/deploy-visita-feedback-20260920`
 Base: `48fcce626d726a8ed71da6c11433834acb003dea`
+
+Estado real: a aplicação da fatia já é ancestral do `main` publicado, mas o
+contrato P0 do banco não foi aplicado. A jornada não pode ser chamada de pronta.
 
 ## Falhas reproduzidas
 
@@ -49,6 +52,30 @@ Edge Function e configuração remota exigem gates e autorização próprios.
 - navegador desktop e aplicativo em 390 × 844: feedback 10/10, sem overflow,
   formulário preservado após falha simulada e console vazio;
 - nenhuma mutação remota, migration, deploy de Edge ou dado pessoal utilizado.
+
+## Divergência remota confirmada em 2026-09-21
+
+Consulta somente de catálogo no projeto `diaegvfveqezispcthwk`, sem linhas
+operacionais ou PII:
+
+- `f2_registrar_resultado_visita(uuid,text,text,text)` existe, é
+  `SECURITY DEFINER`, está fechado para `anon` e aberto para `authenticated`;
+- a função remota não contém ownership pelo `current_broker_id`, envelope
+  `FEEDBACK_VISITA_V1` nem bloqueio `feedback_qualidade_insuficiente`;
+- uma chamada autenticada direta à RPC pode contornar a verificação feita pela
+  API da aplicação;
+- `f2_visitas_resultado_pendente(date,date)` existe, mas não cria a obrigação
+  persistente `visita_feedback_pendente`;
+- as funções de performance e áudio, a coluna `visita_id`, o índice de dedupe,
+  o sincronizador e o cron novos ainda não existem;
+- hashes do baseline remoto foram fixados no draft e o ensaio agora termina
+  obrigatoriamente em `ROLLBACK`.
+
+O gate seguinte é executar os drafts em uma branch Supabase isolada, validar
+ACL, concorrência, idempotência, cron e rollback, e somente então gerar as
+migrations aditivas de produção. A única branch catalogada hoje é a `main`, com
+status `MIGRATIONS_FAILED`; criar uma branch nova tem custo informado de
+US$ 0,01344 por hora e exige confirmação do usuário.
 
 Depois da publicação, o mesmo SHA deve ser repetido em produção antes de
 classificar a jornada como validada.
