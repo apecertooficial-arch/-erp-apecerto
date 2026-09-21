@@ -26,6 +26,7 @@ const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", style: "cu
    passar por ferramenta que reinterpreta sequencia de escape. */
 const MARCAS_DE_ACENTO = new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g");
 const date = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+const periodoOperacao = () => { const [ano, mes] = hojeOperacao().split("-"); return { ano, mes: String(Number(mes)) }; };
 
 export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil = null, sessionUserId = null }: { accessToken: string; sessionRole?: "admin" | "gestor" | "corretor"; perfil?: string | null; sessionUserId?: string | null }) {
   const [data, setData] = useState<FinanceData | null>(null); const [tab, setTab] = useState<Tab>("overview"); const [period, setPeriod] = useState("all"); const [message, setMessage] = useState<string | null>(null); const [initialLoadSettled, setInitialLoadSettled] = useState(false); const [cashOpen, setCashOpen] = useState(false); const [receiptOpen, setReceiptOpen] = useState(false); const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null); const [newSaleOpen, setNewSaleOpen] = useState(false); const [cashEdit, setCashEdit] = useState<Cash | null>(null);
@@ -86,8 +87,9 @@ export function FinanceWorkspace({ accessToken, sessionRole = "corretor", perfil
 
 function FinancePeriodBar({ months }: { months: string[] }) {
   const availableYears = [...new Set(months.map((item) => item.slice(0, 4)))].sort().reverse();
+  const { ano } = periodoOperacao();
   const [month, setMonth] = useState("");
-  const [year, setYear] = useState(availableYears[0] || String(new Date().getFullYear()));
+  const [year, setYear] = useState(availableYears[0] || ano);
   const [semester, setSemester] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -95,10 +97,10 @@ function FinancePeriodBar({ months }: { months: string[] }) {
     const next = start || end ? `range:${start},${end}` : month ? `month:${year}-${month}` : semester ? `semester:${year}-${semester}` : year ? `year:${year}` : "all";
     window.dispatchEvent(new CustomEvent("finance-period-change", { detail: next }));
   };
-  const clear = () => { setMonth(""); setSemester(""); setStart(""); setEnd(""); setYear(availableYears[0] || String(new Date().getFullYear())); window.dispatchEvent(new CustomEvent("finance-period-change", { detail: "all" })); };
+  const clear = () => { setMonth(""); setSemester(""); setStart(""); setEnd(""); setYear(availableYears[0] || periodoOperacao().ano); window.dispatchEvent(new CustomEvent("finance-period-change", { detail: "all" })); };
   return <section className="finance-period-bar" aria-label="Filtros do período financeiro">
     <label>Mês<select value={month} onChange={(event) => { setMonth(event.target.value); if (event.target.value) { setSemester(""); setStart(""); setEnd(""); } }}><option value="">Todos</option>{Array.from({ length: 12 }, (_, index) => { const value = String(index + 1).padStart(2, "0"); const label = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date(2026, index, 15)); return <option value={value} key={value}>{label[0].toUpperCase() + label.slice(1)}</option>; })}</select></label>
-    <label>Ano<select value={year} onChange={(event) => setYear(event.target.value)}>{(availableYears.length ? availableYears : [String(new Date().getFullYear())]).map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
+    <label>Ano<select value={year} onChange={(event) => setYear(event.target.value)}>{(availableYears.length ? availableYears : [ano]).map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
     <label>Semestre<select value={semester} onChange={(event) => { setSemester(event.target.value); if (event.target.value) { setMonth(""); setStart(""); setEnd(""); } }}><option value="">Todos</option><option value="1">1º semestre</option><option value="2">2º semestre</option></select></label>
     <span className="finance-period-divider">ou período</span>
     <label>De<input type="date" value={start} onChange={(event) => { setStart(event.target.value); if (event.target.value) { setMonth(""); setSemester(""); } }} /></label>
@@ -390,9 +392,9 @@ function MoneyInput({ value, onChange, ariaLabel, placeholder }: { value: string
 }
 
 function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceData }) {
-  const now = new Date();
+  const { ano, mes } = periodoOperacao();
   const [metas, setMetas] = useState<Meta[]>([]);
-  const [form, setForm] = useState({ corretorId: "global", periodoTipo: "mensal", ano: String(now.getFullYear()), periodo: String(now.getMonth() + 1), metaVgv: "", metaVendas: "" });
+  const [form, setForm] = useState({ corretorId: "global", periodoTipo: "mensal", ano: ano, periodo: mes, metaVgv: "", metaVendas: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);

@@ -262,6 +262,14 @@ test("painel do corretor separa comissão a receber de repasse já pago", () => 
   assert.doesNotMatch(workspace, /sessionRole === "corretor" \? paidCommission/);
 });
 
+test("filtros e metas usam o ano e o mês operacional de São Paulo", () => {
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /const periodoOperacao = \(\) => \{ const \[ano, mes\] = hojeOperacao\(\)\.split\("-"\); return \{ ano, mes: String\(Number\(mes\)\) \}; \}/);
+  assert.doesNotMatch(workspace, /new Date\(\)\.getFullYear\(\)/);
+  assert.match(workspace, /const \{ ano, mes \} = periodoOperacao\(\)/);
+  assert.match(workspace, /ano: ano, periodo: mes/);
+});
+
 test("falha da primeira carga sai do loading e oferece nova tentativa", () => {
   const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /const \[initialLoadSettled, setInitialLoadSettled\] = useState\(false\)/);
