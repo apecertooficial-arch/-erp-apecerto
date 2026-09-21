@@ -35,6 +35,12 @@ test("aplicativo móvel rejeita mutações sem confirmação explícita", () => 
   assert.equal((mobile.match(/json\.ok !== true/g) ?? []).length, 2);
 });
 
+test("aplicativo móvel não transforma carga parcial em fila válida", () => {
+  assert.match(mobile, /function payloadMobileValido\(payload: PayloadMobile\)/);
+  assert.match(mobile, /\[payload\.leads, payload\.momentos, payload\.eventos, payload\.notas, payload\.tagCatalogo, payload\.etapas\]\.every\(Array\.isArray\)/);
+  assert.match(mobile, /if \(!payloadMobileValido\(json\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
+});
+
 test("ficha não transforma histórico incompleto em linha do tempo vazia", () => {
   assert.match(desktop, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
   assert.match(desktop, /historicoErro && <div className="f2-ficha-vazio" role="alert">/);

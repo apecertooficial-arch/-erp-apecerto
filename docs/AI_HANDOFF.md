@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `5717d00b`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: as sete mutações do CRM móvel não avançam mais quando o servidor responde HTTP 200 sem `ok: true`.
-- Decisão: exigir o envelope canônico em visita, momento, negociação, nota, descarte, temperatura e importação da carteira antes de fechar controles ou limpar dados digitados.
+- Base: `origin/main` em `97cecba0`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o CRM móvel não transforma mais uma carga parcial em fila aparentemente válida.
+- Decisão: exigir como arrays todos os conjuntos usados pela tela — leads, momentos, eventos, notas, tags e etapas — antes de publicar os dados no estado.
 - Arquivos: `app/features/funil-2/Funil2Mobile.tsx`, `tests/crm-organizacao.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness móvel reproduziu o seletor de temperatura fechando após `200 {}` sem mudança persistida; o teste falhou primeiro; depois da correção, o seletor fica aberto com alerta e o envelope válido conserva o fluxo normal.
-- Produção: `5717d00b` publicado e confirmado; o seletor real de temperatura abriu com suas opções e nenhuma alteração foi enviada.
+- Verificações: o harness reproduziu uma fila carregada sem `momentos`; o teste falhou primeiro; depois da correção, a fila parcial é ocultada com erro e o payload completo continua exibindo clientes e momentos.
+- Produção: `97cecba0` publicado e confirmado; as mutações móveis estritas foram promovidas após validação local em fluxo móvel inválido e válido.
 - Risco: baixo; a escrita foi simulada somente no harness local.
 - Próximo passo: executar o build, publicar esta fatia, validar o CRM em produção e seguir para a próxima falha P0/P1 comprovada.

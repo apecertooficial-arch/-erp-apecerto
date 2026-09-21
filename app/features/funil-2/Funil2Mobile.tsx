@@ -53,6 +53,10 @@ type PayloadMobile = {
   error?: string;
 };
 
+function payloadMobileValido(payload: PayloadMobile) {
+  return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray);
+}
+
 type LeadCarteiraAntigaMobile = {
   lead_id: number;
   negocio_id: number | null;
@@ -186,7 +190,7 @@ function useFunil2Mobile(accessToken: string) {
       const json = await resposta.json().catch(() => ({})) as PayloadMobile;
       if (resposta.status === 401) throw new Error("sessao_expirada");
       if (!resposta.ok) throw new Error(json.error || "Não foi possível abrir o CRM.");
-      if (!Array.isArray(json.leads)) throw new Error("Não foi possível abrir o CRM.");
+      if (!payloadMobileValido(json)) throw new Error("Não foi possível abrir o CRM.");
       if (vivo) { setDados(json); setErro(null); setSessaoExpirada(false); }
     }).catch((falha: unknown) => {
       if (vivo && !(falha instanceof DOMException && falha.name === "AbortError")) {

@@ -56,6 +56,7 @@ const horariosVisitaInvalidos = parametros.get("visitSlots") === "invalido";
 const atualizacaoLeadInvalida = parametros.get("leadUpdate") === "invalido";
 const resultadoAcaoInvalido = parametros.get("actionResult") === "invalido";
 const resultadoAtualizacaoInvalido = parametros.get("patchResult") === "invalido";
+const payloadMobileInvalido = parametros.get("mobilePayload") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -189,7 +190,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
     if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
+    return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
   if (url.pathname === "/api/team") return json(estado === "invalido" ? {} : { users: [], brokers: [], instances: [], links: [], audits: [] });
