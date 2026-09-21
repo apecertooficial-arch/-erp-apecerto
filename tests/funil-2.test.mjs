@@ -145,6 +145,13 @@ test("conversa do Funil 2 usa somente a API canônica e respeita o corte do pesc
   assert.match(conversa, /histórico anterior à pesca continua protegido/i);
 });
 
+test("conversa não transforma resposta incompleta em histórico vazio", () => {
+  const conversa = readFileSync(new URL("../app/features/funil-2/Funil2ConversationDrawer.tsx", import.meta.url), "utf8");
+  assert.match(conversa, /if \(!Array\.isArray\(payload\.mensagens\) \|\| !Array\.isArray\(payload\.instancias\)\)/);
+  assert.match(conversa, /!instancias\.length && !carregando && !erro/);
+  assert.match(conversa, /className="f2-conversa-erro" role="alert"/);
+});
+
 test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {
   assert.match(entradaCrm, /GuardaModulo modulo="CRM"/);
   assert.match(entradaCrm, /if \(ehCelular\)[\s\S]*<Funil2Mobile[\s\S]*<Funil2Workspace/);

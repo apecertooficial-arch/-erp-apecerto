@@ -47,8 +47,11 @@ export function Funil2ConversationDrawer({ accessToken, leadId, nome, onClose }:
     }).then(async (resposta) => {
       const payload = await resposta.json().catch(() => ({})) as Payload;
       if (!resposta.ok) throw new Error(payload.error || "Não foi possível carregar a conversa.");
-      setMensagens(payload.mensagens ?? []);
-      setInstancias(payload.instancias ?? []);
+      if (!Array.isArray(payload.mensagens) || !Array.isArray(payload.instancias)) {
+        throw new Error("Não foi possível carregar a conversa.");
+      }
+      setMensagens(payload.mensagens);
+      setInstancias(payload.instancias);
       setHistoricoCompleto(payload.historicoCompleto !== false);
     }).catch((falha) => {
       if (falha instanceof DOMException && falha.name === "AbortError") return;
@@ -66,10 +69,10 @@ export function Funil2ConversationDrawer({ accessToken, leadId, nome, onClose }:
       <header><div><span>HISTÓRICO DO FUNIL 2.0</span><h2>{nome}</h2><p>Somente leitura · responda pelo WhatsApp do celular</p></div><button type="button" onClick={onClose} aria-label="Fechar conversa">×</button></header>
       <div className="f2-conversa-instancias">
         {instancias.map((instancia) => <span className={instancia.atual ? "atual" : ""} key={instancia.id}><i />{instancia.rotulo}{instancia.telefone ? ` · ${instancia.telefone}` : ""}</span>)}
-        {!instancias.length && !carregando && <span>Nenhuma instância vinculada ao histórico.</span>}
+        {!instancias.length && !carregando && !erro && <span>Nenhuma instância vinculada ao histórico.</span>}
       </div>
       {!historicoCompleto && <div className="f2-conversa-corte">Este lead foi pescado. O histórico anterior à pesca continua protegido.</div>}
-      {erro && <div className="f2-conversa-erro">{erro}</div>}
+      {erro && <div className="f2-conversa-erro" role="alert">{erro}</div>}
       <section className="f2-conversa-mensagens" ref={listaRef}>
         {carregando && <p>Carregando conversa real…</p>}
         {!carregando && !erro && mensagens.map((mensagem) => <article className={mensagem.direcao === "enviada" ? "enviada" : "recebida"} key={mensagem.id}>
