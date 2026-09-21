@@ -255,14 +255,12 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
           {retornoCobranca?.corretorId === String(corretor.corretor_id) && <p className={`ape-gestao-cobranca-retorno${retornoCobranca.erro ? " erro" : ""}`} role={retornoCobranca.erro ? "alert" : "status"}>
             {retornoCobranca.texto}
           </p>}
-          <div className="ape-gestao-acoes">
-            <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? `/agenda?corretor=${encodeURIComponent(String(corretor.corretor_id))}` : "/equipe")}>
-              {corretor.visitas_sem_feedback > 0 ? "Ver pendências" : urgente ? "Cobrar corretor" : "Ver desempenho"}
-            </button>
-            {corretor.visitas_sem_feedback > 0 && <button type="button" disabled={cobrandoId === String(corretor.corretor_id)} onClick={() => void registrarCobranca(corretor)}>
+          {corretor.visitas_sem_feedback > 0 && <div className="ape-gestao-acoes">
+            <button type="button" onClick={() => onIr(`/agenda?corretor=${encodeURIComponent(String(corretor.corretor_id))}`)}>Ver pendências</button>
+            <button type="button" disabled={cobrandoId === String(corretor.corretor_id)} onClick={() => void registrarCobranca(corretor)}>
               {cobrandoId === String(corretor.corretor_id) ? "Registrando…" : "Registrar cobrança"}
-            </button>}
-          </div>
+            </button>
+          </div>}
         </article>;
       })}
     </section>

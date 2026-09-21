@@ -25,7 +25,7 @@ test("visão gerencial usa somente o recorte operacional e falha de forma recupe
 });
 
 test("gestor recebe obrigações por corretor, não uma lista de clientes", () => {
-  for (const texto of ["Ações vencidas", "Clientes críticos", "Visitas sem feedback", "Cobrar corretor", "Registrar cobrança"]) {
+  for (const texto of ["Ações vencidas", "Clientes críticos", "Visitas sem feedback", "Registrar cobrança"]) {
     assert.match(gestao, new RegExp(texto));
   }
   assert.match(gestao, /equipe\.sort/);
@@ -35,6 +35,7 @@ test("gestor recebe obrigações por corretor, não uma lista de clientes", () =
   assert.match(gestao, /Ver pendências/);
   assert.match(gestao, /`\/agenda\?corretor=\$\{encodeURIComponent\(String\(corretor\.corretor_id\)\)\}`/);
   assert.match(gestao, /visitas_sem_responsavel/);
+  assert.doesNotMatch(gestao, /"\/equipe"/);
   assert.doesNotMatch(gestao, /lead_id|negocio_id|cliente_id/);
 });
 
