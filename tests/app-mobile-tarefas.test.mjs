@@ -8,6 +8,7 @@ const pagina = ler("../app/(erp)/tarefas/page.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const central = ler("../app/features/automations/CentralOperationsPanel.tsx");
 const estilos = ler("../app/styles/automation-workspace.css");
+const harness = ler("./crm-visual-harness/main.tsx");
 
 test("celular usa Tarefas da Sara e desktop preserva Projetos", () => {
   assert.match(pagina, /ehCelular \? <SaraTasksMobile/);
@@ -23,6 +24,11 @@ test("tarefas usam somente dados reais do Funil 2", () => {
 test("tarefas não recolocam histórico ou atualização manual na fila operacional", () => {
   assert.match(tela, /leadOperacionalNoMeuDia/);
   assert.match(tela, /if \(!leadOperacionalNoMeuDia\(lead\) \|\| semPrazo\(lead\.proxima_acao_em\)\) continue/);
+});
+
+test("fila móvel abre nas tarefas atrasadas antes das próximas", () => {
+  assert.match(tela, /useState<Faixa>\("atrasadas"\)/);
+  assert.match(harness, /tela === "tarefas-mobile"[\s\S]*?<SaraTasksMobile/);
 });
 
 test("corretor executa a próxima ação e não decide revisão humana da Sara", () => {

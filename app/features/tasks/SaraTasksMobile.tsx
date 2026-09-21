@@ -36,7 +36,7 @@ function prazoCurto(lead: LeadFunil2) {
 
 export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   const [dados, setDados] = useState<Payload | null>(null);
-  const [faixa, setFaixa] = useState<Faixa>("agora");
+  const [faixa, setFaixa] = useState<Faixa>("atrasadas");
   const [erro, setErro] = useState("");
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);

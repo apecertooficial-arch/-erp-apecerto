@@ -14,6 +14,7 @@ import { ErpSessionCtx, type ErpSessionValue, type SessionProfile } from "../../
 import PaginaCrm from "../../app/(erp)/crm/page";
 import { CalendarWorkspace } from "../../app/features/calendar/CalendarWorkspace";
 import { TelaAgendaMobile } from "../../app/features/calendar/TelaAgendaMobile";
+import { SaraTasksMobile } from "../../app/features/tasks/SaraTasksMobile";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -187,6 +188,8 @@ document.body.append(transferenciaEvidencia);
 
 const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
+  : tela === "tarefas-mobile"
+    ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"
     ? <ErpShell><CalendarWorkspace accessToken="harness-test-only" corretorIdInicial={corretorEmFoco} /></ErpShell>
     : <ErpShell><PaginaCrm /></ErpShell>;
