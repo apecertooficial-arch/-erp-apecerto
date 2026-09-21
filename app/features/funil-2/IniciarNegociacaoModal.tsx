@@ -68,7 +68,8 @@ export function IniciarNegociacaoModal({ accessToken, lead, negocios, onClose, o
       .then(async (response) => ({ response, json: await response.json().catch(() => ({})) as { error?: string; products?: Produto[]; solicitacoes?: Solicitacao[]; processes?: Processo[] } }))
       .then(({ response, json }) => {
         if (!response.ok) throw new Error(json.error || "Não foi possível preparar a negociação.");
-        setProdutos(json.products ?? []); setSolicitacoes(json.solicitacoes ?? []); setProcessos(json.processes ?? []);
+        if (![json.products, json.solicitacoes, json.processes].every(Array.isArray)) throw new Error("Não foi possível preparar a negociação.");
+        setProdutos(json.products!); setSolicitacoes(json.solicitacoes!); setProcessos(json.processes!);
       })
       .catch((reason) => { if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(reason instanceof Error ? reason.message : "Não foi possível preparar a negociação."); })
       .finally(() => setCarregando(false));
@@ -126,7 +127,7 @@ export function IniciarNegociacaoModal({ accessToken, lead, negocios, onClose, o
         {processo && <div className="f2-duplicado" role="status"><strong>Este negócio já está na Esteira</strong><span>Status de aprovação: {processo.aprovacao_status || "em andamento"}.</span><button type="button" onClick={() => onOpenEsteira()}>Abrir na Esteira</button></div>}
         {existente && <div className="f2-modal-sucesso" role="status"><strong>Negociação enviada — aguardando aprovação</strong><span>A solicitação foi confirmada pela fonte canônica e ainda não virou venda.</span><button type="button" onClick={() => onOpenEsteira(existente.id)}>Abrir na Esteira</button></div>}
         {error && <p className="f2-modal-erro" role="alert">{error}</p>}
-        <footer><button type="button" disabled={busy} onClick={onClose}>Cancelar</button><button type="submit" className="f2-modal-primary" disabled={busy || Boolean(existente) || Boolean(processo) || !form.negocioId || !form.produtoId || Number(form.vgv) <= 0}>{busy ? "Enviando…" : "Enviar para aprovação"}</button></footer>
+        <footer><button type="button" disabled={busy} onClick={onClose}>Cancelar</button><button type="submit" className="f2-modal-primary" disabled={busy || Boolean(error) || Boolean(existente) || Boolean(processo) || !form.negocioId || !form.produtoId || Number(form.vgv) <= 0}>{busy ? "Enviando…" : "Enviar para aprovação"}</button></footer>
       </form>}
     </div>
   </div>;

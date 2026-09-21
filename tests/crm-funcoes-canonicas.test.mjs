@@ -101,6 +101,12 @@ test("Iniciar negociação usa apenas a solicitação pendente da Esteira", () =
   assert.doesNotMatch(salesApi.match(/if \(action === "solicitar"\)[\s\S]*?if \(action === "aprovarSolicitacao"\)/)?.[0] ?? "", /aprovar_solicitacao|from\("vendas"\)\.insert/);
 });
 
+test("Iniciar negociação rejeita preparação incompleta antes de habilitar envio", () => {
+  assert.match(negotiation, /if \(!\[json\.products, json\.solicitacoes, json\.processes\]\.every\(Array\.isArray\)\) throw new Error\("Não foi possível preparar a negociação\."\)/);
+  assert.match(negotiation, /error && <p className="f2-modal-erro" role="alert">/);
+  assert.match(negotiation, /disabled=\{busy \|\| Boolean\(error\) \|\| Boolean\(existente\)/);
+});
+
 test("Esteira preserva recusas de negócio sem expor falhas internas", () => {
   assert.match(salesApi, /function falhaEsteira/);
   assert.match(salesApi, /erro: semPermissao \? "sem_permissao" : "falha_banco"/);

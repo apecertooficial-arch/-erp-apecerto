@@ -51,6 +51,7 @@ const conversaInvalida = parametros.get("conversation") === "invalido";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
+const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -183,7 +184,11 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     corretor_id: lead.corretor_id, corretor_nome: lead.corretor_nome, criado_em: lead.criado_em,
     ultima_mensagem_em: null, mensagens: 0,
   })), curta: false });
-  if (url.pathname === "/api/crm/sales") return json(vendasVazias);
+  if (url.pathname === "/api/crm/sales") return json(preparacaoNegociacaoInvalida && url.searchParams.get("modo") === "prepararSolicitacao"
+    ? {}
+    : url.searchParams.get("modo") === "prepararSolicitacao"
+      ? { ...vendasVazias, products: [{ id: "produto-teste", nome: "Produto teste", origem: "catalogo", bairro: "Moema", cidade: "São Paulo" }] }
+      : vendasVazias);
   registro.blocked = true;
   sincronizarLogRede();
   return json({ error: "Leitura fora do inventário do harness." }, 404);
