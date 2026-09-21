@@ -73,4 +73,5 @@ test("draft é fail-closed, fixa o baseline e sempre desfaz o ensaio", () => {
   assert.match(draft, /ROLLBACK;\s*$/i);
   assert.doesNotMatch(draft, /\bCOMMIT\b/i);
   assert.doesNotMatch(draft.replace(/^\s*--.*$/gm, ""), /delete from|truncate|drop table/i);
+  assert.doesNotMatch(draft, /pg_catalog\.(?:coalesce|nullif|greatest|least)\s*\(/i);
 });

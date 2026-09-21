@@ -60,7 +60,7 @@ BEGIN
     FROM public.automacoes a
     CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(a.mapa#>'{automation,blocks}') b
     CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(
-      pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+      COALESCE(b#>'{options,triggers}', '[]'::jsonb)
     ) t
    WHERE a.id = 49
      AND t->>'name' = 'sara-ciclo-event-trigger';
@@ -72,7 +72,7 @@ BEGIN
       FROM public.automacoes a
       CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(a.mapa#>'{automation,blocks}') b
       CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(
-        pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+        COALESCE(b#>'{options,triggers}', '[]'::jsonb)
       ) t
      WHERE a.id = 49
        AND t->>'name' = 'sara-ciclo-event-trigger'
@@ -215,9 +215,9 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'erro', 'confirmacao_dapi_obrigatoria');
   END IF;
 
-  v_sem_cobranca := pg_catalog.coalesce(v_m.cobra_no_meu_dia, true) IS FALSE;
+  v_sem_cobranca := COALESCE(v_m.cobra_no_meu_dia, true) IS FALSE;
   IF v_sem_cobranca THEN
-    v_passo := pg_catalog.greatest(v_atual.cadencia_passo, 1)::smallint;
+    v_passo := GREATEST(v_atual.cadencia_passo, 1)::smallint;
     v_prazo := public.f2_sem_prazo();
     v_resumo := 'Ação operacional registrada; o card continua sem prazo até nova evidência.';
   ELSIF v_atual.momento_codigo = 'CADENCIA_SEM_RESPOSTA' THEN
@@ -236,7 +236,7 @@ BEGIN
   ELSE
     v_passo := v_atual.cadencia_passo;
     v_prazo := pg_catalog.now()
-      + pg_catalog.make_interval(mins => pg_catalog.coalesce(v_m.prazo_minutos, 1440));
+      + pg_catalog.make_interval(mins => COALESCE(v_m.prazo_minutos, 1440));
     v_resumo := 'A ação operacional foi registrada e aguarda uma nova leitura auditável.';
   END IF;
 
@@ -254,7 +254,7 @@ BEGIN
     funil_lead_id, tipo, titulo, detalhe, payload, criado_por
   ) VALUES (
     p_id, 'acao_confirmada', 'Ação confirmada por registro operacional',
-    pg_catalog.nullif(pg_catalog.left(pg_catalog.btrim(pg_catalog.coalesce(p_observacao, '')), 500), ''),
+    NULLIF(pg_catalog.left(pg_catalog.btrim(COALESCE(p_observacao, '')), 500), ''),
     jsonb_build_object(
       'acao', v_atual.acao_codigo,
       'versao_base', p_versao,
@@ -275,15 +275,15 @@ BEGIN
      AND lead->>'__sara_checkpoint' = 'true'
      AND lead->>'__funil_lead_id' = p_id::text;
 
-  SELECT pg_catalog.coalesce(l.email, '') INTO v_email
+  SELECT COALESCE(l.email, '') INTO v_email
     FROM public.negocios n
     LEFT JOIN public.leads l ON l.id = n.lead_id
    WHERE n.id = v_atual.origem_negocio_id;
 
   v_fila_id := public.motor_enfileirar(49, jsonb_build_object(
-    'nome', pg_catalog.coalesce(v_atual.nome, 'Lead'),
-    'telefone', pg_catalog.coalesce(v_atual.telefone, ''),
-    'email', pg_catalog.coalesce(v_email, ''),
+    'nome', COALESCE(v_atual.nome, 'Lead'),
+    'telefone', COALESCE(v_atual.telefone, ''),
+    'email', COALESCE(v_email, ''),
     '__funil_lead_id', p_id,
     '__motor_priority', 0,
     '__motor_evento', 'lead.action_confirmed',
@@ -343,7 +343,7 @@ BEGIN
     CASE WHEN EXISTS (
       SELECT 1
         FROM pg_catalog.jsonb_array_elements(
-          pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+          COALESCE(b#>'{options,triggers}', '[]'::jsonb)
         ) t
        WHERE t->>'name' = 'sara-ciclo-event-trigger'
     ) THEN jsonb_set(
@@ -355,7 +355,7 @@ BEGIN
             THEN jsonb_set(
               t,
               '{options,eventTypes}',
-              pg_catalog.coalesce(t#>'{options,eventTypes}', '[]'::jsonb)
+              COALESCE(t#>'{options,eventTypes}', '[]'::jsonb)
                 || '["lead.action_confirmed"]'::jsonb,
               true
             )
@@ -363,7 +363,7 @@ BEGIN
           ORDER BY trigger_ord
         )
           FROM pg_catalog.jsonb_array_elements(
-            pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+            COALESCE(b#>'{options,triggers}', '[]'::jsonb)
           ) WITH ORDINALITY AS trigger_item(t, trigger_ord)
       ),
       true
@@ -377,16 +377,16 @@ BEGIN
   v_mapa := jsonb_set(
     v_mapa,
     '{editor,uid}',
-    to_jsonb(pg_catalog.coalesce((v_mapa#>>'{editor,uid}')::integer, 0) + 1),
+    to_jsonb(COALESCE((v_mapa#>>'{editor,uid}')::integer, 0) + 1),
     true
   );
 
   v_validacao := public.automacao_validar_mapa(v_mapa);
-  IF pg_catalog.coalesce((v_validacao->>'ok')::boolean, false) IS NOT TRUE THEN
+  IF COALESCE((v_validacao->>'ok')::boolean, false) IS NOT TRUE THEN
     RAISE EXCEPTION 'AUTOMATION_INVALID: %', v_validacao->'erros';
   END IF;
 
-  SELECT pg_catalog.coalesce(pg_catalog.max(versao), 0) + 1 INTO v_versao
+  SELECT COALESCE(pg_catalog.max(versao), 0) + 1 INTO v_versao
     FROM public.automacao_versoes
    WHERE automacao_id = 49;
 
@@ -413,7 +413,7 @@ BEGIN
     SELECT 1
       FROM pg_catalog.jsonb_array_elements(v_mapa#>'{automation,blocks}') b
       CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(
-        pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+        COALESCE(b#>'{options,triggers}', '[]'::jsonb)
       ) t
      WHERE t->>'name' = 'sara-ciclo-event-trigger'
        AND t#>'{options,eventTypes}' @> '["lead.action_confirmed"]'::jsonb
@@ -450,7 +450,7 @@ BEGIN
     FROM public.automacoes a
     CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(a.mapa#>'{automation,blocks}') b
     CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(
-      pg_catalog.coalesce(b#>'{options,triggers}', '[]'::jsonb)
+      COALESCE(b#>'{options,triggers}', '[]'::jsonb)
     ) t
    WHERE a.id = 49
      AND t->>'name' = 'sara-ciclo-event-trigger'
