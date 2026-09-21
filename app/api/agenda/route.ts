@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import type { TablesUpdate } from "../../lib/supabase/database.types";
 import { denyIfCannot, resolveEffectiveAccess } from "../../lib/supabase/authz";
-import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
+import { confirmarResultadoVisitaPersistido, verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 import { hojeOperacao, instanteSaoPaulo, somarDias } from "../../lib/timezone";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
@@ -511,6 +511,9 @@ export async function PATCH(request: Request) {
         visita_ainda_nao_terminou: "A visita ainda não terminou. Aguarde o horário final para marcá-la como realizada.",
       };
       return Response.json({ error: mensagens[outcome?.erro ?? ""] ?? "Não foi possível registrar o resultado da visita." }, { status: outcome?.erro === "sem_permissao" ? 403 : 422 });
+    }
+    if (!await confirmarResultadoVisitaPersistido(auth.supabase as unknown as SupabaseClient, visitId, status, resultadoCodigo, justificativa)) {
+      return Response.json({ error: "O resultado não foi confirmado. A pendência continua aberta; tente novamente." }, { status: 502 });
     }
     return Response.json({ success: true, message: `Resultado registrado: ${outcome.resultado_rotulo ?? "visita atualizada"}.` });
   }

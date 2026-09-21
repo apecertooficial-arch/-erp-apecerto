@@ -42,3 +42,22 @@ export async function verificarDonoResultadoVisita(
   }
   return { permitido: true };
 }
+
+/** Confirma a escrita antes de a interface remover a pendência da fila. */
+export async function confirmarResultadoVisitaPersistido(
+  db: SupabaseClient,
+  visitaId: string,
+  status: string,
+  resultadoCodigo: string,
+  justificativa: string,
+): Promise<boolean> {
+  const { data, error } = await db.from("f2_visita")
+    .select("status,resultado_codigo,resultado_justificativa,resultado_em")
+    .eq("id", visitaId)
+    .maybeSingle();
+  return !error
+    && data?.status === status
+    && data.resultado_codigo === resultadoCodigo
+    && data.resultado_justificativa === justificativa
+    && typeof data.resultado_em === "string";
+}

@@ -5,7 +5,7 @@ import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../li
 import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
-import { verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
+import { confirmarResultadoVisitaPersistido, verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
 
 export const dynamic = "force-dynamic";
 
@@ -494,6 +494,7 @@ export async function POST(request: Request) {
   }
   let rpc = "";
   let args: Record<string, unknown> = {};
+  let resultadoVisitaEsperado: { id: string; status: string; codigo: string; justificativa: string } | null = null;
 
   if (action === "configurarEtapa") {
     rpc = "f2_configurar_etapa";
@@ -525,6 +526,7 @@ export async function POST(request: Request) {
       if (!ownership.permitido) return Response.json({ error: ownership.mensagem }, { status: ownership.status });
       rpc = "f2_registrar_resultado_visita";
       args = { p_visita_id: body.id, p_status: statusVisita, p_resultado_codigo: resultadoCodigo, p_justificativa: justificativa };
+      resultadoVisitaEsperado = { id: String(body.id), status: statusVisita, codigo: resultadoCodigo, justificativa };
     } else {
       rpc = "f2_salvar_visita";
       args = {
@@ -606,6 +608,15 @@ export async function POST(request: Request) {
   if (resultado.ok === false) {
     const chave = String(resultado.erro ?? "");
     return Response.json({ error: RECUSAS[chave] || "Ação não permitida.", erro: chave }, { status: statusHttpFunil(chave) });
+  }
+  if (resultadoVisitaEsperado && !await confirmarResultadoVisitaPersistido(
+    auth.db,
+    resultadoVisitaEsperado.id,
+    resultadoVisitaEsperado.status,
+    resultadoVisitaEsperado.codigo,
+    resultadoVisitaEsperado.justificativa,
+  )) {
+    return Response.json({ error: "O resultado não foi confirmado. A pendência continua aberta; tente novamente." }, { status: 502 });
   }
   return Response.json({ ok: true, resultado });
 }

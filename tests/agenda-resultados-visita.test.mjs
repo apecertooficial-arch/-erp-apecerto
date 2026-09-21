@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { RESULTADOS_VISITA, resultadoPermitido, rotuloAtrasoResultado, validarResultadoVisita } from "../app/features/calendar/resultadoVisita.ts";
-import { verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
+import { confirmarResultadoVisitaPersistido, verificarDonoResultadoVisita } from "../app/lib/supabase/autorizarResultadoVisita.ts";
 
 const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const apiFunil = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
@@ -119,6 +119,25 @@ test("as APIs autorizam somente o corretor dono da carteira", async () => {
   assert.deepEqual(await verificarDonoResultadoVisita(db(null, 7), "10000000-0000-4000-8000-000000000001"), {
     permitido: false, status: 403, mensagem: "O feedback deve ser registrado pelo corretor responsável.",
   });
+});
+
+test("sucesso só é devolvido depois de reler o resultado persistido", async () => {
+  const db = (data, error = null) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data, error }) }) }) }),
+  });
+  const esperado = {
+    status: "realizada",
+    resultado_codigo: "interessado",
+    resultado_justificativa: "FEEDBACK_VISITA_V1 | Próxima ação: retornar amanhã",
+    resultado_em: "2026-09-21T12:00:00Z",
+  };
+  const args = ["10000000-0000-4000-8000-000000000001", esperado.status, esperado.resultado_codigo, esperado.resultado_justificativa];
+  assert.equal(await confirmarResultadoVisitaPersistido(db(esperado), ...args), true);
+  assert.equal(await confirmarResultadoVisitaPersistido(db({ ...esperado, resultado_em: null }), ...args), false);
+  assert.equal(await confirmarResultadoVisitaPersistido(db({ ...esperado, resultado_codigo: "nao_gostou" }), ...args), false);
+  assert.equal(await confirmarResultadoVisitaPersistido(db(null, { message: "falha" }), ...args), false);
+  assert.match(apiAgenda, /confirmarResultadoVisitaPersistido/);
+  assert.match(apiFunil, /confirmarResultadoVisitaPersistido/);
 });
 
 test("Agenda não devolve nem registra mensagem interna do banco", () => {
