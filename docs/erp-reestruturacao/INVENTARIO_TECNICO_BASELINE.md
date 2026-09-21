@@ -10,7 +10,7 @@ mantidas como trilha da descoberta, não como indicação de deploy atual.
 
 | Evidência | Estado atual |
 |---|---|
-| `origin/main` e build web publicado | `b4056a2518b8e9c3a92f94c56c7be90581ab0a15` |
+| `origin/main` e build web publicado | `b75aa537ac4af05d3115344876b3a9dc5bc6d39e` |
 | worktree ativa | `/private/tmp/apecerto-erp-studio-restore-20260920` |
 | branch isolada | `codex/crm-sara-determinismo-20260921` |
 | Supabase | `diaegvfveqezispcthwk` |
