@@ -132,11 +132,12 @@ export function CampaignWorkspace({ accessToken }: { accessToken: string }) {
       const response = await fetch("/api/campaigns", { headers: { Authorization: `Bearer ${accessToken}` } });
       const body = await response.json() as CampaignData & { error?: string };
       if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar os disparos.");
+      if (![body.leads, body.deals, body.stages, body.approaches, body.products, body.recent, body.instances, body.brokers, body.instanceLinks].every(Array.isArray)) throw new Error("payload_invalido");
       setData(body);
       const withInstances = (body.brokers ?? []).filter((b) => (body.instances ?? []).some((i) => i.corretor_id === b.id) || (body.instanceLinks ?? []).some((l) => l.corretor_id === b.id));
       setSelectedBrokers((prev) => prev.length ? prev : withInstances.map((b) => b.id));
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Não foi possível carregar os disparos.";
+      const message = reason instanceof Error && reason.message !== "payload_invalido" ? reason.message : "Não foi possível carregar os disparos.";
       if (background) throw new Error(message);
       setError(message);
     } finally {

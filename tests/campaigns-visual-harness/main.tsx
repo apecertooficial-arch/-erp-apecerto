@@ -33,6 +33,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     item.blocked = true; log.textContent = JSON.stringify(requests); return json({ error: "Harness visual: mutação bloqueada." }, 405);
   }
   if (estado === "erro") return json({ error: "Não foi possível carregar os disparos no momento." }, 502);
+  if (estado === "invalido") return json({});
   if (estado === "vazio") return json({ ...payload, leads: [], deals: [], approaches: [], recent: [] });
   return json(payload);
 };

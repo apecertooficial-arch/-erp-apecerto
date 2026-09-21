@@ -63,6 +63,7 @@ test("a interface preserva sucesso confirmado quando apenas a recarga falha", ()
   assert.match(ui, /As mensagens foram agendadas, mas o painel não pôde ser atualizado\. Recarregue antes de repetir\./);
   assert.match(ui, /finally \{ setBusy\(false\); \}/);
   assert.match(ui, /Não foi possível carregar os disparos/);
+  assert.match(ui, /if \(!\[body\.leads, body\.deals, body\.stages, body\.approaches, body\.products, body\.recent, body\.instances, body\.brokers, body\.instanceLinks\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
 });
 
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
