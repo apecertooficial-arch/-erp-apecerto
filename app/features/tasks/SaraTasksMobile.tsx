@@ -37,6 +37,7 @@ function prazoCurto(lead: LeadFunil2) {
 export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   const [dados, setDados] = useState<Payload | null>(null);
   const [faixa, setFaixa] = useState<Faixa>("atrasadas");
+  const [limite, setLimite] = useState(25);
   const [erro, setErro] = useState("");
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
@@ -89,7 +90,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     <AppMobileOffline atualizadoEm={atualizadoEm} />
     <nav className="ape-filtros ape-tarefas-filtros" aria-label="Filtrar tarefas">
       {(["atrasadas", "agora", "hoje", "futuras"] as const).map((chave) => <button
-        type="button" key={chave} className={faixa === chave ? "ativo" : ""} onClick={() => setFaixa(chave)}
+        type="button" key={chave} className={faixa === chave ? "ativo" : ""} onClick={() => { setFaixa(chave); setLimite(25); }}
       >{chave === "atrasadas" ? "Atrasadas" : chave === "agora" ? "Agora" : chave === "hoje" ? "Hoje" : "Futuras"}{contagens[chave] ? ` · ${contagens[chave]}` : ""}</button>)}
     </nav>
 
@@ -101,7 +102,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     </div>}
 
     {visiveis.length > 0 && <section className="ape-tarefas-lista">
-      {visiveis.map(({ lead, faixa: faixaTarefa }) => {
+      {visiveis.slice(0, limite).map(({ lead, faixa: faixaTarefa }) => {
         const prazo = prazoCurto(lead);
         return <article className="ape-tarefa-card" key={lead.id}>
           <header><span className={`ape-tarefa-tag ${faixaTarefa}`}>{rotuloFaixa(faixaTarefa)}</span><span className={`ape-tarefa-prazo ${prazo.classe}`}>{prazo.texto}</span></header>
@@ -112,6 +113,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
           <div className="ape-tarefa-whatsapp"><BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto /></div>
         </article>;
       })}
+      {visiveis.length > limite && <button type="button" className="ape-tarefas-mais" onClick={() => setLimite((atual) => atual + 25)}>Mostrar mais</button>}
     </section>}
 
     <p className="ape-tarefas-nota">Concluir uma tarefa não significa que o contato aconteceu — somente a sincronização oficial confirma.</p>

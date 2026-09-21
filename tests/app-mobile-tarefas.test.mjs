@@ -31,6 +31,12 @@ test("fila móvel abre nas tarefas atrasadas antes das próximas", () => {
   assert.match(harness, /tela === "tarefas-mobile"[\s\S]*?<SaraTasksMobile/);
 });
 
+test("fila extensa não monta todos os cards de uma vez no celular", () => {
+  assert.match(tela, /useState\(25\)/);
+  assert.match(tela, /visiveis\.slice\(0, limite\)\.map/);
+  assert.match(tela, /Mostrar mais/);
+});
+
 test("corretor executa a próxima ação e não decide revisão humana da Sara", () => {
   assert.match(tela, /acaoVisivel\(lead\)/);
   assert.match(tela, /BotaoWhatsApp/);

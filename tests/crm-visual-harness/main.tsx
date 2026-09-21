@@ -35,6 +35,14 @@ const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const qualidadeExemplo = parametros.get("quality") === "sample";
 const corretorEmFoco = parametros.get("broker");
 const saraPendente = parametros.get("sara") === "pendente";
+const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
+  ...payloadNormal,
+  leads: Array.from({ length: 32 }, (_, indice) => ({
+    ...payloadNormal.leads[0]!, id: `lead-tarefa-${indice}`, lead_id: 7000 + indice,
+    origem_negocio_id: 8000 + indice, nome: `Cliente sanitizado ${indice + 1}`,
+    proxima_acao_em: new Date(Date.now() - (indice + 1) * 60_000).toISOString(),
+  })),
+} : null;
 const payloadSaraPendente = {
   ...payloadNormal,
   leads: payloadNormal.leads.map((lead, indice) => indice === 0 ? {
@@ -141,7 +149,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
     if (url.searchParams.has("historicoLeadId")) return json({ eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(estado === "vazio" ? payloadVazio : saraPendente ? payloadSaraPendente : payloadNormal);
+    return json(estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/funil2/conversa") return json({ mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/carteira") return json({ leads: leads.slice(0, 8).map((lead) => ({ id: lead.id, nome: lead.nome, telefoneMascarado: "••••0000", negocioId: lead.origem_negocio_id, corretorNome: lead.corretor_nome })), pagina: 1, curta: false, temMais: false });
