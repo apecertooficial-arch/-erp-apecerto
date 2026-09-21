@@ -10,11 +10,15 @@ import {
 import { isProductManagerRole } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 import { canViewUnitOwner } from "../../features/products/product-domain";
+import { lerComandoJson } from "../../lib/http/read-json-command.mjs";
 
 export const dynamic = "force-dynamic";
 
 type ProductUpdate = Database["public"]["Tables"]["empreendimentos"]["Update"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PRODUCT_COMMAND_MAX_BYTES = 512 * 1024;
+const PHOTO_AI_MAX_SUGGESTIONS = 20;
+const PHOTO_AI_MAX_RESTORE_ITEMS = 500;
 const PUBLICATION_RULE_CODES = new Set([
   "PRODUCT_NOT_READY",
   "UNIT_NOT_READY",
@@ -264,12 +268,12 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await authenticatedClient(request);
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
-  let body: Record<string, unknown>;
-  try {
-    body = await request.json() as Record<string, unknown>;
-  } catch {
-    return Response.json({ error: "O corpo da solicitação é inválido.", code: "INVALID_JSON" }, { status: 400 });
-  }
+  const command = await lerComandoJson(request, PRODUCT_COMMAND_MAX_BYTES);
+  if (!command.ok) return Response.json(
+    { error: command.message, code: command.code },
+    { status: command.status },
+  );
+  const body = command.value;
   const id = typeof body.id === "string" ? body.id : "";
   if (!UUID.test(id)) return Response.json({ error: "Produto inválido." }, { status: 400 });
   const authenticatedSupabase = auth.supabase;
@@ -654,6 +658,45 @@ export async function PATCH(request: Request) {
       if (favoriteError) return productTechnicalFailure("unset_favorite", favoriteError, "Não foi possível atualizar o favorito.");
     }
     return Response.json({ success: true, favorite });
+  }
+
+  if (body.action === "applyPhotoAiSuggestions" || body.action === "restorePhotoAiSuggestions") {
+    const unitId = typeof body.unitId === "string" && body.unitId ? body.unitId : null;
+    const expectedVersion = typeof body.expectedVersion === "string" ? body.expectedVersion : "";
+    const suggestions = Array.isArray(body.suggestions) ? body.suggestions : [];
+    const restoring = body.action === "restorePhotoAiSuggestions";
+    const suggestionLimit = restoring ? PHOTO_AI_MAX_RESTORE_ITEMS : PHOTO_AI_MAX_SUGGESTIONS;
+    if ((unitId && !UUID.test(unitId)) || !/^[0-9a-f]{32}$/i.test(expectedVersion) || suggestions.length < 1 || suggestions.length > suggestionLimit) {
+      return Response.json({ error: "Revisão de fotos inválida.", code: "MEDIA_AI_INVALID" }, { status: 400 });
+    }
+    const { data, error } = await auth.supabase.rpc("produto_midias_aplicar_ia", {
+      p_empreendimento_id: id,
+      p_unidade_id: unitId,
+      p_versao_esperada: expectedVersion,
+      p_sugestoes: suggestions as Database["public"]["Functions"]["produto_midias_aplicar_ia"]["Args"]["p_sugestoes"],
+      p_restaurar: restoring,
+    });
+    if (error) {
+      const databaseMessage = error.message ?? "";
+      const status = /MEDIA_AI_CONFLICT/.test(databaseMessage) ? 409
+        : /MEDIA_AI_FORBIDDEN|permission denied/i.test(databaseMessage) ? 403
+          : /MEDIA_AI_INVALID/.test(databaseMessage) ? 422 : 502;
+      if (status === 409) {
+        return Response.json({ error: "A galeria mudou desde a análise.", code: "MEDIA_AI_CONFLICT" }, { status: 409 });
+      }
+      if (status === 403) {
+        return Response.json({ error: "Você não tem permissão para aplicar sugestões nesta galeria.", code: "MEDIA_AI_FORBIDDEN" }, { status: 403 });
+      }
+      if (status === 422) {
+        return Response.json({ error: "As sugestões precisam ser revisadas.", code: "MEDIA_AI_INVALID" }, { status: 422 });
+      }
+      return productTechnicalFailure("apply_photo_ai_suggestions", error, "Não foi possível aplicar a revisão das fotos.");
+    }
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+    if (!result || result.ok !== true || typeof result.versao !== "string") {
+      return Response.json({ error: "O banco não confirmou a revisão das fotos.", code: "MEDIA_UPDATE_NOT_CONFIRMED" }, { status: 502 });
+    }
+    return Response.json(result);
   }
 
   if (body.action === "linkLead" || body.action === "unlinkLead") {

@@ -3,12 +3,17 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const route = await readFile("app/api/product/route.ts", "utf8");
+const jsonBoundary = await readFile("app/lib/http/read-json-command.mjs", "utf8");
 const types = await readFile("app/lib/supabase/database.types.ts", "utf8");
 const patchBlock = route.match(/export async function PATCH[\s\S]*$/)?.[0] ?? "";
 
 test("mutações rejeitam JSON inválido e contexto técnico incompleto", () => {
-  assert.match(patchBlock, /try \{\s*body = await request\.json\(\)/);
-  assert.match(patchBlock, /code: "INVALID_JSON"/);
+  assert.match(route, /import \{ lerComandoJson \} from "\.\.\/\.\.\/lib\/http\/read-json-command\.mjs"/);
+  assert.match(patchBlock, /const command = await lerComandoJson\(request, PRODUCT_COMMAND_MAX_BYTES\)/);
+  assert.match(patchBlock, /if \(!command\.ok\) return Response\.json/);
+  assert.doesNotMatch(patchBlock, /request\.json\(\)/);
+  assert.match(jsonBoundary, /"json_invalido"/);
+  assert.match(jsonBoundary, /total > maxBytes/);
   for (const name of ["productContextError", "profilePatchError", "brokerContextError"]) {
     assert.match(patchBlock, new RegExp(`\\b${name}\\b`));
   }

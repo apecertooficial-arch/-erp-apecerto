@@ -12249,6 +12249,20 @@ export type Database = {
         }
         Returns: Json
       }
+      produto_midias_versao: {
+        Args: { p_empreendimento_id: string; p_unidade_id?: string | null }
+        Returns: string
+      }
+      produto_midias_aplicar_ia: {
+        Args: {
+          p_empreendimento_id: string
+          p_restaurar?: boolean
+          p_sugestoes: Json
+          p_unidade_id: string | null
+          p_versao_esperada: string
+        }
+        Returns: Json
+      }
       produto_excluir: {
         Args: { p_empreendimento_id: string }
         Returns: Json

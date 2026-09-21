@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { lerComandoJson } from "../app/lib/http/read-json-command.mjs";
 import {
   PHOTO_ORGANIZER_MAX_IMAGES,
   buildPhotoOrganizerRequest,
@@ -16,6 +17,7 @@ const component = await readFile("app/features/products/PhotoAiOrganizer.tsx", "
 const productDetail = await readFile("app/features/products/ProductDetail.tsx", "utf8");
 const api = await readFile("app/api/product/route.ts", "utf8");
 const migration = await readFile("supabase/migrations/20260827193000_produtos_organizador_fotos_ia.sql", "utf8");
+const css = await readFile("app/styles/produtos-v3-detail.css", "utf8");
 
 const tokens = ["img_a", "img_b"];
 const validOutput = {
@@ -112,9 +114,33 @@ test("aplicação é atômica, autorizada, versionada e reversível", () => {
   assert.match(api,/restorePhotoAiSuggestions/);
   assert.match(api,/rpc\("produto_midias_aplicar_ia"/);
   assert.match(api,/status === 409/);
+  assert.match(api,/PHOTO_AI_MAX_SUGGESTIONS = 20/);
+  assert.match(api,/PHOTO_AI_MAX_RESTORE_ITEMS = 500/);
+  assert.match(api,/suggestions\.length > suggestionLimit/);
+});
+
+test("API limita o comando antes de interpretar JSON", async () => {
+  assert.match(api,/lerComandoJson\(request, PRODUCT_COMMAND_MAX_BYTES\)/);
+  const oversized = new Request("https://erp.test/api/product", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: "x", padding: "a".repeat(1_024) }),
+    duplex: "half",
+  });
+  const result = await lerComandoJson(oversized, 512);
+  assert.equal(result.ok, false);
+  assert.equal(result.ok ? 0 : result.status, 413);
+  assert.equal(result.ok ? "" : result.code, "comando_muito_grande");
 });
 
 test("upload da unidade preserva os arquivos antes de limpar o seletor", () => {
   assert.match(productDetail, /const pendingFiles = files \? Array\.from\(files\) : \[\];/);
   assert.match(productDetail, /for \(const \[fileIndex, originalFile\] of pendingFiles\.entries\(\)\)/);
+});
+
+test("revisão móvel mantém alvos de toque e campos com no mínimo 44 px", () => {
+  const mobile = css.match(/@media \(max-width: 680px\) \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.match(mobile, /\.photo-ai-organizer button \{ min-height: 44px; \}/);
+  assert.match(mobile, /\.photo-ai-changes select \{ min-height: 44px; \}/);
+  assert.match(mobile, /\.photo-ai-cover \{ min-height: 44px;/);
 });
