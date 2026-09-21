@@ -46,6 +46,7 @@ test("resumo da Agenda não chama visita passada de futura", () => {
 test("Agenda abre no dia operacional de São Paulo", () => {
   assert.match(desktop, /const todayIso = hojeISO\(now\)/);
   assert.match(desktop, /useState\(\(\) => new Date\(`\$\{hojeISO\(\)\}T12:00:00`\)\)/);
+  assert.match(desktop, /onClick=\{\(\) => setAnchor\(new Date\(`\$\{hojeISO\(\)\}T12:00:00`\)\)\}>Hoje<\/button>/);
 });
 
 test("Agenda administra e cria visitas pela mesma API canônica", () => {

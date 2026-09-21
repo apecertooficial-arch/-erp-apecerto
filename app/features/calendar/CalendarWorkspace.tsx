@@ -203,7 +203,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
       </section>}
       <div className="calendar-nav">
         <button type="button" onClick={() => navigate(-1)}>‹</button>
-        <button className="cal-today-btn" type="button" onClick={() => setAnchor(new Date())}>Hoje</button>
+        <button className="cal-today-btn" type="button" onClick={() => setAnchor(new Date(`${hojeISO()}T12:00:00`))}>Hoje</button>
         <button type="button" onClick={() => navigate(1)}>›</button>
         <strong>{rangeLabel}</strong>
         <nav className="cal-view-switch">{([["day", "Dia"], ["week", "Semana"], ["month", "Mês"], ["list", "Lista"]] as Array<[ViewMode, string]>).map(([key, label]) => <button className={view === key ? "active" : ""} type="button" onClick={() => setView(key)} key={key}>{label}</button>)}</nav>
