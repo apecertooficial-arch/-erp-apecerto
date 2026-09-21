@@ -126,7 +126,20 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
     setNoticeKind(tipoAviso);
     setNotice(texto);
   }
-  async function createVisit() { const deal = data.deals.find((item) => String(item.id) === form.dealId); if (!deal) { mostrarAviso("Selecione um lead com negócio aberto.", "error"); return; } const response = await fetch("/api/agenda", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "createVisit", leadId: deal.lead_id, dealId: deal.id, productId: form.productId, date: form.date, startTime: form.startTime, endTime: form.endTime, local: form.local, observations: form.observations, withManager: form.withManager, gerenteId: form.withManager ? (form.gerenteId || geralGerenteId) : null, reminder: form.reminder }) }); const body = await response.json() as { success?: boolean; error?: string; message?: string }; if (!response.ok || !body.success) mostrarAviso(body.error ?? "Não foi possível agendar.", "error"); else { mostrarAviso(body.message ?? "Visita agendada com sucesso.", "success"); setCreating(false); await load(); } }
+  async function createVisit() {
+    const deal = data.deals.find((item) => String(item.id) === form.dealId);
+    if (!deal) { mostrarAviso("Selecione um lead com negócio aberto.", "error"); return; }
+    try {
+      const response = await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "createVisit", leadId: deal.lead_id, dealId: deal.id, productId: form.productId, date: form.date, startTime: form.startTime, endTime: form.endTime, local: form.local, observations: form.observations, withManager: form.withManager, gerenteId: form.withManager ? (form.gerenteId || geralGerenteId) : null, reminder: form.reminder }),
+      });
+      const body = await response.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
+      if (!response.ok || body.success !== true) { mostrarAviso(body.error ?? "Não foi possível agendar.", "error"); return; }
+      mostrarAviso(body.message ?? "Visita agendada com sucesso.", "success"); setCreating(false); await load();
+    } catch { mostrarAviso("Não foi possível agendar. Verifique a conexão e tente novamente.", "error"); }
+  }
   function openEdit(visit: Visit) {
     setEditForm({ date: visit.data, startTime: visit.hora_inicio?.slice(0, 5) ?? "", endTime: visit.hora_fim?.slice(0, 5) ?? "", local: visit.local ?? "", observations: visit.observacoes ?? "", withManager: visit.com_gerente, gerenteId: visit.gerente_id ? String(visit.gerente_id) : (visit.com_gerente ? String(geralGerenteId ?? "") : ""), productId: visit.empreendimento_id ?? "" });
     setDisp(null); setSelected(null); setEditing(visit);

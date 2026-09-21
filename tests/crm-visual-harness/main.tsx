@@ -60,6 +60,7 @@ const payloadMobileInvalido = parametros.get("mobilePayload") === "invalido";
 const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") === "invalido";
 const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
 const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
+const criacaoAgendaOffline = parametros.get("agendaCreate") === "offline";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -103,7 +104,7 @@ const payloadAgenda = {
     ],
   } : { status: "ok", historico_total: 94, estruturados_total: 0, legados_total: 94, feedback_visita_min: 120, itens: [] },
   brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
-  leads: [], deals: [], cards: [], products: [], visits: [{
+  leads: [{ id: 501, nome: "Cliente agenda sanitizado" }], deals: [{ id: 601, lead_id: 501, corretor_id: 7 }], cards: [], products: [{ id: "produto-agenda", nome: "Produto Alfa" }], visits: [{
     id: "30000000-0000-4000-8000-000000000001", lead_id: 1, negocio_id: 101, corretor_id: 7,
     cliente_nome: "Cliente agenda sanitizado", produto: "Produto Alfa", empreendimento_id: null,
     data: "2026-09-21", hora_inicio: "10:00:00", hora_fim: "11:00:00", local: "Local sanitizado",
@@ -166,6 +167,10 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "associarTag") return json(resultadoTagInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
+    if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "createVisit") {
+      if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
+      return json({ success: true, message: "Visita agendada com sucesso." });
+    }
     registro.blocked = true;
     sincronizarLogRede();
     return json({ error: "Harness visual: mutações são bloqueadas." }, 405);

@@ -37,6 +37,13 @@ test("nova visita no app rejeita catálogo incompleto em vez de fingir que não 
   assert.match(mobile, /if \(!\[j\.leads, j\.deals, j\.cards, j\.products\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
 });
 
+test("nova visita desktop mostra falha de rede sem abandonar o formulário", () => {
+  const criar = desktop.slice(desktop.indexOf("async function createVisit"), desktop.indexOf("function openEdit"));
+  assert.match(criar, /try \{/);
+  assert.match(criar, /response\.json\(\)\.catch\(\(\) => \(\{\}\)\)/);
+  assert.match(criar, /catch \{ mostrarAviso\("Não foi possível agendar\. Verifique a conexão e tente novamente\.", "error"\); \}/);
+});
+
 test("Agenda do app fica visível no breakpoint mobile", () => {
   const inicioMobile = appMobileCss.indexOf("\n@media (max-width: 900px) {");
   const agendaVisivel = appMobileCss.indexOf(".ape-agenda {", inicioMobile);
