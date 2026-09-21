@@ -28,6 +28,7 @@ import {
   erroAgendamentoVisita,
   esperandoPrimeiraChamada,
   eventoSaraVisivel,
+  leadOperacionalNoMeuDia,
   leituraSaraVisivel,
   rotuloTemperatura,
   situacaoPrazo,
@@ -842,11 +843,12 @@ export function Funil2Mobile({
   }
 
   const fimHoje = useMemo(() => { const data = new Date(agora); data.setHours(23, 59, 59, 999); return +data; }, [agora]);
+  const leadsOperacionais = useMemo(() => leads.filter(leadOperacionalNoMeuDia), [leads]);
   const contagens = useMemo(() => ({
-    agora: leads.filter((lead) => +new Date(lead.proxima_acao_em) <= agora).length,
-    hoje: leads.filter((lead) => venceHoje(lead, agora)).length,
-    novos: leads.filter((lead) => esperandoPrimeiraChamada(lead)).length,
-  }), [agora, leads]);
+    agora: leadsOperacionais.filter((lead) => +new Date(lead.proxima_acao_em) <= agora).length,
+    hoje: leadsOperacionais.filter((lead) => venceHoje(lead, agora)).length,
+    novos: leadsOperacionais.filter((lead) => esperandoPrimeiraChamada(lead)).length,
+  }), [agora, leadsOperacionais]);
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
@@ -855,7 +857,7 @@ export function Funil2Mobile({
       const cabeNoDia = filtroDia === "todos"
         || (filtroDia === "novos" ? esperandoPrimeiraChamada(lead)
           : filtroDia === "agora" ? prazo <= agora : prazo <= fimHoje);
-      const cabeNaEtapa = etapa === "ativos" ? lead.etapa !== "legado" : lead.etapa === etapa;
+      const cabeNaEtapa = etapa === "ativos" ? leadOperacionalNoMeuDia(lead) : lead.etapa === etapa;
       const cabeNaTemperatura = temperatura === "todas" || temperaturaMobile(lead) === temperatura;
       const cabeNaBusca = !termo || `${lead.nome} ${lead.telefone ?? ""} ${lead.interesse ?? ""} ${(lead.tags ?? []).map((tag) => tag.nome).join(" ")}`.toLocaleLowerCase("pt-BR").includes(termo);
       return cabeNoDia && cabeNaEtapa && cabeNaTemperatura && cabeNaBusca;

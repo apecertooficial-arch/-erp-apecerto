@@ -42,6 +42,15 @@ test("Meu Dia entrega o lead e a chamada; a orientação completa fica na ficha"
   assert.ok(MOBILE.includes("esperam você agora"), "a manchete precisa contar quem espera agora");
 });
 
+test("contadores móveis usam a mesma fila operacional exibida", () => {
+  assert.match(MOBILE, /leadOperacionalNoMeuDia/);
+  assert.match(MOBILE, /const leadsOperacionais = useMemo\(\(\) => leads\.filter\(leadOperacionalNoMeuDia\), \[leads\]\)/);
+  assert.match(MOBILE, /agora: leadsOperacionais\.filter/);
+  assert.match(MOBILE, /hoje: leadsOperacionais\.filter/);
+  assert.match(MOBILE, /novos: leadsOperacionais\.filter/);
+  assert.match(MOBILE, /etapa === "ativos" \? leadOperacionalNoMeuDia\(lead\)/);
+});
+
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
   const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
   const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
