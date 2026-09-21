@@ -67,7 +67,7 @@ export function destinoAviso(aviso: Aviso): string | null {
   if (/^\/negocio\/[0-9]+(?:\/[a-z-]+)?$/.test(link)) return link;
   if (ROTAS_INTERNAS_AVISO.has(link)) return link;
   if (link === "/meu-dia") return "/inicio";
-  if (/^\/gestao\/[a-z-]+$/.test(link)) return "/inteligencia";
+  if (/^\/gestao\/[a-z-]+$/.test(link)) return "/inicio";
 
   const negocioId = Number(aviso.negocio_id);
   return Number.isSafeInteger(negocioId) && negocioId > 0 ? `/negocio/${negocioId}` : null;

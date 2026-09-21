@@ -48,6 +48,7 @@ test("tipos operacionais mostram ação específica e destino resolutivo", () =>
   assert.equal(destinoAviso({ ...base, tipo: "canal_indisponivel", deep_link: "/negocio/104" }), "/configuracoes?visao=conexoes");
   assert.equal(destinoAviso({ ...base, tipo: "visita_feedback_pendente", deep_link: "/negocio/104" }), "/agenda");
   assert.equal(destinoAviso({ ...base, tipo: "presenca_pendente", negocio_id: null, deep_link: "/meu-dia" }), "/inicio");
+  assert.equal(destinoAviso({ ...base, tipo: "escalonamento", negocio_id: null, deep_link: "/gestao/escalonamentos" }), "/inicio");
   assert.equal(destinoAviso({ ...base, tipo: "lead_quente", deep_link: "/negocio/104" }), "/negocio/104");
 });
 
