@@ -24,6 +24,10 @@ test("áudio usa bucket privado e restrito, nunca chat-midia público", () => {
   assert.match(sql, /audio\/webm/);
   assert.doesNotMatch(sql, /bucket_id\s*=\s*'chat-midia'/);
   assert.doesNotMatch(sql, /for delete to authenticated/i);
+  assert.match(sql, /446c8e8a255ce2cf1dce24610e64578c2633185a4d9c7783095a66b87ae75a70/);
+  assert.match(sql, /4a0d467a489ed00cd8766de886b95ac10a3d99d8a234040b10a423d202a844ed/);
+  assert.match(sql, /ROLLBACK;\s*$/i);
+  assert.doesNotMatch(sql, /\bCOMMIT\b/i);
 });
 
 test("metadado é append-only, vinculado à visita e protegido pelo dono", () => {

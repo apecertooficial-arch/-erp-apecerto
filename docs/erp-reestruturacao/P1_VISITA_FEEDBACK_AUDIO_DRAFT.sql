@@ -2,10 +2,22 @@
 -- Gerar migration somente pela CLI oficial e ensaiar em branch Supabase
 -- isolada. Este contrato não apaga objetos, não envia mensagens e não expõe
 -- URL pública. Deploy da Edge exige verify_jwt=true e segredo interno no Vault.
+-- O ensaio SQL termina sempre em ROLLBACK e mantém o dispatcher desligado.
+--
+-- Baseline remoto sanitizado em 2026-09-21:
+--   public.current_broker_id()
+--     sha256 446c8e8a255ce2cf1dce24610e64578c2633185a4d9c7783095a66b87ae75a70
+--   public.f2_admin()
+--     sha256 4a0d467a489ed00cd8766de886b95ac10a3d99d8a234040b10a423d202a844ed
+--   bucket, policies, tabelas, RPCs, cron e Edge da fatia: ausentes.
 
 begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '120s';
 
 do $guard$
+declare
+  v_hash text;
 begin
   if to_regclass('public.f2_visita') is null
      or to_regclass('public.f2_lead') is null
@@ -15,6 +27,18 @@ begin
      or not exists(select 1 from pg_extension where extname='pg_net')
      or not exists(select 1 from pg_extension where extname='pg_cron') then
     raise exception 'preflight_feedback_audio_incompleto';
+  end if;
+  select pg_catalog.encode(extensions.digest(pg_catalog.pg_get_functiondef(
+    'public.current_broker_id()'::regprocedure::oid
+  ), 'sha256'), 'hex') into v_hash;
+  if v_hash <> '446c8e8a255ce2cf1dce24610e64578c2633185a4d9c7783095a66b87ae75a70' then
+    raise exception 'current_broker_id_divergiu: %', v_hash;
+  end if;
+  select pg_catalog.encode(extensions.digest(pg_catalog.pg_get_functiondef(
+    'public.f2_admin()'::regprocedure::oid
+  ), 'sha256'), 'hex') into v_hash;
+  if v_hash <> '4a0d467a489ed00cd8766de886b95ac10a3d99d8a234040b10a423d202a844ed' then
+    raise exception 'f2_admin_divergiu: %', v_hash;
   end if;
   if to_regclass('public.f2_visita_feedback_audio') is not null
      or to_regclass('public.f2_visita_feedback_audio_config') is not null
@@ -417,10 +441,11 @@ begin
 end
 $assert$;
 
--- ROLLBACK MANUAL ANTES DO CUTOVER (somente se bucket/tabela ainda vazios):
+-- O rollback destrutivo abaixo pertence apenas ao futuro runbook de cutover,
+-- nunca ao ensaio nem a uma execução automática:
 -- select cron.unschedule('f2-feedback-visita-audio');
 -- revoke execute on function public.f2_feedback_audio_* ...;
 -- drop policies f2_feedback_audio_*;
 -- drop functions e tabela; delete bucket apenas após provar zero objetos.
 
-commit;
+rollback;
