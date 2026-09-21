@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `97cecba0`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: o CRM móvel não transforma mais uma carga parcial em fila aparentemente válida.
-- Decisão: exigir como arrays todos os conjuntos usados pela tela — leads, momentos, eventos, notas, tags e etapas — antes de publicar os dados no estado.
-- Arquivos: `app/features/funil-2/Funil2Mobile.tsx`, `tests/crm-organizacao.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu uma fila carregada sem `momentos`; o teste falhou primeiro; depois da correção, a fila parcial é ocultada com erro e o payload completo continua exibindo clientes e momentos.
-- Produção: `97cecba0` publicado e confirmado; as mutações móveis estritas foram promovidas após validação local em fluxo móvel inválido e válido.
+- Base: `origin/main` em `7d0f368a`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: a edição de visita não presume mais que o gerente está livre quando a consulta de disponibilidade falha ou vem incompleta.
+- Decisão: validar HTTP e `conflitos` como array, bloquear Salvar alteração no estado não confirmado e oferecer a alternativa explícita de ir sem gerente.
+- Arquivos: `app/features/calendar/CalendarWorkspace.tsx`, `tests/agenda-gerente-filtro.test.mjs`, `tests/crm-visual-harness/main.tsx`.
+- Verificações: o harness reproduziu erro HTTP aparecendo como gerente livre e botão habilitado; o teste falhou primeiro; depois da correção, o erro bloqueia o salvamento e a resposta válida libera normalmente.
+- Produção: `7d0f368a` publicado e confirmado; a validação anterior de carga móvel parcial foi promovida após os gates locais.
 - Risco: baixo; a escrita foi simulada somente no harness local.
 - Próximo passo: executar o build, publicar esta fatia, validar o CRM em produção e seguir para a próxima falha P0/P1 comprovada.

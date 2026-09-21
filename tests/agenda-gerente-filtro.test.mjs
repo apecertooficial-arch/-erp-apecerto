@@ -41,3 +41,10 @@ test("filtro vem de deep link validado e pode voltar à visão completa", async 
   const harness = await readFile(new URL("../tests/crm-visual-harness/main.tsx", import.meta.url), "utf8");
   assert.match(harness, /corretorIdInicial=\{corretorEmFoco\}/);
 });
+
+test("edição não presume gerente livre quando a disponibilidade não foi confirmada", async () => {
+  const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(desktop, /if \(!response\.ok \|\| !Array\.isArray\(result\.conflitos\)\) throw new Error\("disponibilidade_invalida"\)/);
+  assert.match(desktop, /Não foi possível confirmar a agenda do gerente/);
+  assert.match(desktop, /editForm\.withManager && \(disp\?\.loading \|\| disp\?\.error\)/);
+});

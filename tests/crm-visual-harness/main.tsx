@@ -57,6 +57,7 @@ const atualizacaoLeadInvalida = parametros.get("leadUpdate") === "invalido";
 const resultadoAcaoInvalido = parametros.get("actionResult") === "invalido";
 const resultadoAtualizacaoInvalido = parametros.get("patchResult") === "invalido";
 const payloadMobileInvalido = parametros.get("mobilePayload") === "invalido";
+const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -100,7 +101,12 @@ const payloadAgenda = {
     ],
   } : { status: "ok", historico_total: 94, estruturados_total: 0, legados_total: 94, feedback_visita_min: 120, itens: [] },
   brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
-  leads: [], deals: [], cards: [], products: [], visits: [], tasks: [],
+  leads: [], deals: [], cards: [], products: [], visits: [{
+    id: "30000000-0000-4000-8000-000000000001", lead_id: 1, negocio_id: 101, corretor_id: 7,
+    cliente_nome: "Cliente agenda sanitizado", produto: "Produto Alfa", empreendimento_id: null,
+    data: "2026-09-21", hora_inicio: "10:00:00", hora_fim: "11:00:00", local: "Local sanitizado",
+    observacoes: null, com_gerente: true, gerente_id: 1, status: "confirmada",
+  }], tasks: [],
   gerentes: [{ id: 1, nome: "Gerente sanitizado", geral: true, corretor_id: null }], role: papel,
 };
 const requisicoes: RegistroRede[] = [];
@@ -153,6 +159,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "salvarNota" && resultadoAcaoInvalido) return json({});
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
+    if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
     registro.blocked = true;
     sincronizarLogRede();
     return json({ error: "Harness visual: mutações são bloqueadas." }, 405);

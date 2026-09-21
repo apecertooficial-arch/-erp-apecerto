@@ -46,7 +46,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
   const [editing, setEditing] = useState<Visit | null>(null);
   const [editForm, setEditForm] = useState({ date: "", startTime: "", endTime: "", local: "", observations: "", withManager: false, gerenteId: "", productId: "" });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [disp, setDisp] = useState<{ loading: boolean; conflitos: Conflito[]; gerenteNome: string | null } | null>(null);
+  const [disp, setDisp] = useState<{ loading: boolean; conflitos: Conflito[]; gerenteNome: string | null; error?: boolean } | null>(null);
   const [resultadoPendente, setResultadoPendente] = useState<ResultadoPendente | null>(null);
   const [salvandoResultado, setSalvandoResultado] = useState(false);
   const [erroResultado, setErroResultado] = useState("");
@@ -176,10 +176,11 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
     const timer = window.setTimeout(async () => {
       try {
         const response = await fetch("/api/agenda", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "gerenteDisponibilidade", corretorId: editing.corretor_id, gerenteId: editForm.gerenteId || geralGerenteId, date: editForm.date, startTime: editForm.startTime, endTime: editForm.endTime || null, visitId: editing.id }) });
-        const result = await response.json() as { conflitos?: Conflito[]; gerente_id?: number | null };
+        const result = await response.json().catch(() => ({})) as { conflitos?: Conflito[]; gerente_id?: number | null };
+        if (!response.ok || !Array.isArray(result.conflitos)) throw new Error("disponibilidade_invalida");
         const gnome = (data.gerentes ?? []).find((g) => g.id === (result.gerente_id ?? -1))?.nome ?? gerenteNomeGeral;
-        if (alive) setDisp({ loading: false, conflitos: result.conflitos ?? [], gerenteNome: gnome });
-      } catch { if (alive) setDisp(null); }
+        if (alive) setDisp({ loading: false, conflitos: result.conflitos, gerenteNome: gnome });
+      } catch { if (alive) setDisp({ loading: false, conflitos: [], gerenteNome: null, error: true }); }
     }, 450);
     return () => { alive = false; window.clearTimeout(timer); };
   }, [editing, editForm.withManager, editForm.gerenteId, editForm.date, editForm.startTime, editForm.endTime, accessToken]);
@@ -255,10 +256,10 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
           <label className="wide">Observações<textarea value={editForm.observations} onChange={(event) => setEditForm({ ...editForm, observations: event.target.value })} /></label>
           <label className="check"><input type="checkbox" disabled={!isAdmin && !editForm.withManager} checked={editForm.withManager} onChange={(event) => setEditForm({ ...editForm, withManager: event.target.checked, gerenteId: event.target.checked ? (editForm.gerenteId || String(geralGerenteId ?? "")) : "" })} /> Com gerente{!isAdmin && editForm.withManager && <em className="only-admin"> · você pode optar por ir sem</em>}</label>
           {editForm.withManager && <label className="wide">Gerente que vai atender<select disabled={!isAdmin} value={editForm.gerenteId || String(geralGerenteId ?? "")} onChange={(event) => setEditForm({ ...editForm, gerenteId: event.target.value })}>{(data.gerentes ?? []).map((g) => <option value={String(g.id)} key={g.id}>{g.nome}{g.geral ? " (geral)" : ""}</option>)}</select>{!isAdmin && <em className="only-admin"> · somente a gestão troca o gerente</em>}</label>}
-          {editForm.withManager && <div className={`cal-disp wide ${disp && disp.conflitos.length ? "conflito" : "livre"}`}>{disp?.loading ? "Checando a agenda do gerente…" : disp && disp.conflitos.length ? <><span>⚠ {disp.gerenteNome || "O gerente"} já tem {disp.conflitos.length} visita{disp.conflitos.length > 1 ? "s" : ""} nesse horário ({disp.conflitos.map((c) => `${c.hora_inicio?.slice(0, 5) ?? ""} ${c.cliente_nome ?? ""}`.trim()).join("; ")}).</span><button type="button" onClick={() => setEditForm({ ...editForm, withManager: false, gerenteId: "" })}>Ir sem gerente neste horário</button></> : `✓ ${disp?.gerenteNome || gerenteNomeGeral || "Gerente"} livre nesse horário.`}</div>}
+          {editForm.withManager && <div className={`cal-disp wide ${disp?.error || (disp && disp.conflitos.length) ? "conflito" : "livre"}`}>{disp?.loading ? "Checando a agenda do gerente…" : disp?.error ? <><span>Não foi possível confirmar a agenda do gerente.</span><button type="button" onClick={() => setEditForm({ ...editForm, withManager: false, gerenteId: "" })}>Ir sem gerente neste horário</button></> : disp && disp.conflitos.length ? <><span>⚠ {disp.gerenteNome || "O gerente"} já tem {disp.conflitos.length} visita{disp.conflitos.length > 1 ? "s" : ""} nesse horário ({disp.conflitos.map((c) => `${c.hora_inicio?.slice(0, 5) ?? ""} ${c.cliente_nome ?? ""}`.trim()).join("; ")}).</span><button type="button" onClick={() => setEditForm({ ...editForm, withManager: false, gerenteId: "" })}>Ir sem gerente neste horário</button></> : `✓ ${disp?.gerenteNome || gerenteNomeGeral || "Gerente"} livre nesse horário.`}</div>}
           {!editForm.withManager && <div className="cal-disp wide sem-gerente">Esta visita será salva sem acompanhamento de gerente.</div>}
         </div>
-        <footer><button type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="confirm" type="submit" disabled={savingEdit || !editForm.date || !editForm.startTime}>{savingEdit ? "Salvando…" : "Salvar alteração"}</button></footer>
+        <footer><button type="button" onClick={() => setEditing(null)}>Cancelar</button><button className="confirm" type="submit" disabled={savingEdit || !editForm.date || !editForm.startTime || Boolean(editForm.withManager && (disp?.loading || disp?.error))}>{savingEdit ? "Salvando…" : "Salvar alteração"}</button></footer>
       </form>
     </div>}
   </div>;
