@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   diaPorExtenso, gradeDoMes, hojeISO, horaCurta, jaPassou, proximo, quandoComeca,
-  filtrarPendenciasPorCorretor, resumoDoDia, somarDias,
+  filtrarPendenciasPorCorretor, resumoDoDia, rotuloTotalResultados, somarDias,
   type Compromisso,
 } from "./telaAgenda.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
@@ -233,7 +233,7 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
         <button type="button" onClick={recarregar}>Tentar novamente</button>
       </section>}
       {!erroPendenciasResultado && (pendenciasResultadoVisiveis.length > 0 || corretorEmFoco) && <section className="ape-agenda-resultados">
-        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultadoVisiveis.length} visitas {gerenciandoPendencias ? corretorEmFoco ? "aguardam o corretor" : "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{resumoResultados.justificadas ?? 0} concluídas</strong></header>
+        <header><div><small>RESULTADOS PENDENTES</small><h2>{pendenciasResultadoVisiveis.length} visitas {gerenciandoPendencias ? corretorEmFoco ? "aguardam o corretor" : "aguardam os corretores" : "precisam da sua resposta"}</h2></div><strong>{rotuloTotalResultados(`${resumoResultados.justificadas ?? 0} concluídas`, Boolean(corretorEmFoco))}</strong></header>
         {corretorEmFoco && <div className="ape-agenda-filtro-corretor" role="status"><span>Mostrando a cobrança de <strong>{nomeCorretorEmFoco}</strong></span><button type="button" onClick={() => setCorretorEmFoco(null)}>Ver todos os corretores</button></div>}
         <p>{gerenciandoPendencias ? "Cobre o responsável. A pendência sai da fila quando o corretor registra um desfecho válido." : "Informe o que aconteceu. A visita continuará aqui até receber desfecho e justificativa."}</p>
         {pendenciasResultadoVisiveis.length === 0

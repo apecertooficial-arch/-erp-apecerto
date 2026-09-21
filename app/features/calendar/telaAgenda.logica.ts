@@ -33,6 +33,10 @@ export function filtrarPendenciasPorCorretor<T extends { corretor_id?: number | 
   return itens.filter((item) => item.corretor_id != null && String(item.corretor_id) === corretorId);
 }
 
+export function rotuloTotalResultados(texto: string, filtrado: boolean) {
+  return `${texto}${filtrado ? " no total" : ""}`;
+}
+
 /**
  * O próximo compromisso é o primeiro que AINDA NÃO começou.
  *

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
 import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
-import { contarVisitasFuturas, filtrarPendenciasPorCorretor } from "./telaAgenda.logica";
+import { contarVisitasFuturas, filtrarPendenciasPorCorretor, rotuloTotalResultados } from "./telaAgenda.logica";
 
 type Broker = { id: number; nome: string };
 type Lead = { id: number; nome: string | null; telefone?: string | null; email?: string | null; status?: string | null; origem?: string | null; corretor_id?: number | null };
@@ -189,7 +189,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
         <header><div><small>VERIFICAÇÃO INCOMPLETA</small><h2>Não foi possível verificar os resultados pendentes</h2><p>A agenda continua disponível, mas a fila de cobrança não foi confirmada. Tente novamente antes de considerar que não há pendências.</p></div><button type="button" onClick={() => void load()}>Tentar novamente</button></header>
       </section>}
       {!data.pendencias_resultado_erro && (data.resumo_resultados?.pendentes ?? 0) > 0 && <section className="calendar-resultados-pendentes">
-        <header><div><small>PRESTAÇÃO DE CONTAS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>{isAdmin ? "Cobre o corretor responsável. A pendência sai da fila quando ele registra um desfecho válido." : "Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos."}</p></div><strong>{data.resumo_resultados?.justificadas ?? 0}/{(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas</strong></header>
+        <header><div><small>PRESTAÇÃO DE CONTAS</small><h2>{data.resumo_resultados?.pendentes} visitas precisam de resultado</h2><p>{isAdmin ? "Cobre o corretor responsável. A pendência sai da fila quando ele registra um desfecho válido." : "Informe o desfecho e a justificativa. A pendência só sai da lista quando os dois forem salvos."}</p></div><strong>{rotuloTotalResultados(`${data.resumo_resultados?.justificadas ?? 0}/${(data.resumo_resultados?.justificadas ?? 0) + (data.resumo_resultados?.pendentes ?? 0)} justificadas`, Boolean(corretorEmFoco))}</strong></header>
         <div className="calendar-resultados-kpis"><span><b>{data.resumo_resultados?.passadas_sem_desfecho ?? 0}</b> sem desfecho</span><span><b>{data.resumo_resultados?.realizadas_sem_feedback ?? 0}</b> realizadas sem feedback</span><span><b>{data.resumo_resultados?.canceladas_sem_motivo ?? 0}</b> canceladas sem motivo</span></div>
         {isAdmin && corretorEmFoco && <div className="calendar-resultados-filtro" role="status"><span>Mostrando somente o corretor selecionado</span><button type="button" onClick={() => setCorretorEmFoco(null)}>Ver todos os corretores</button></div>}
         {isAdmin && corretorEmFoco && pendenciasVisiveis.length === 0 && <p>Nenhuma visita pendente foi confirmada para este corretor agora.</p>}
