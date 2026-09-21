@@ -30,6 +30,11 @@ test("atualizações PATCH não avançam sem confirmação explícita", () => {
   assert.equal((desktop.match(/if \([^\n]+\.json\.ok !== true\) \{ setErro\("O servidor não confirmou a atualização\. Nenhum sucesso foi presumido\."\); return false; \}/g) ?? []).length, 2);
 });
 
+test("aplicativo móvel rejeita mutações sem confirmação explícita", () => {
+  assert.equal((mobile.match(/dados\?\.ok !== true/g) ?? []).length, 5);
+  assert.equal((mobile.match(/json\.ok !== true/g) ?? []).length, 2);
+});
+
 test("ficha não transforma histórico incompleto em linha do tempo vazia", () => {
   assert.match(desktop, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
   assert.match(desktop, /historicoErro && <div className="f2-ficha-vazio" role="alert">/);

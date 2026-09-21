@@ -368,7 +368,7 @@ function AgendarVisitaMobile({
         }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string; erro?: string; resultado?: { gerente_removido?: boolean } } | null;
-      if (!resposta.ok || dados?.ok === false) {
+      if (!resposta.ok || dados?.ok !== true) {
         setErro(dados?.error || (dados?.erro === "gerente_ocupado"
           ? "Esse gerente já tem visita nesse horário. Escolha outro horário ou outro gerente."
           : "Não foi possível agendar. Confira os dados e tente de novo."));
@@ -466,7 +466,7 @@ function AtualizarMomentoMobile({ lead, momento, momentos, etapas, accessToken, 
         body: JSON.stringify({ action: "atualizarMomento", id: lead.id, versao: lead.versao, momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: observacao.trim() || null }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível atualizar o momento."); return; }
+      if (!resposta.ok || dados?.ok !== true) { setErro(dados?.error || "Não foi possível atualizar o momento."); return; }
       setAberto(false); setObservacao(""); setPrazo(""); onSalvo();
     } catch {
       setErro("Não foi possível atualizar. Tente novamente.");
@@ -508,7 +508,7 @@ function GerarNegociacaoMobile({ lead, accessToken, onSalvo, abertoInicial = fal
         body: JSON.stringify({ action: "salvarNegociacao", leadId: lead.id, titulo: titulo.trim(), valor: valor ? Number(valor) : null, etapa: "qualificacao" }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível criar a negociação."); return; }
+      if (!resposta.ok || dados?.ok !== true) { setErro(dados?.error || "Não foi possível criar a negociação."); return; }
       setAberto(false); setTitulo(""); setValor(""); onSalvo(); onFechar?.();
     } catch {
       setErro("Não foi possível criar a negociação. Tente novamente.");
@@ -552,7 +552,7 @@ function NotasMobile({
         body: JSON.stringify({ action: "salvarNota", leadId: lead.id, texto: limpo }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível salvar a nota."); return; }
+      if (!resposta.ok || dados?.ok !== true) { setErro(dados?.error || "Não foi possível salvar a nota."); return; }
       setTexto("");
       onSalvo();
     } catch {
@@ -606,7 +606,7 @@ function DescartarMobile({
         body: JSON.stringify({ action: "descartar", id: lead.id, versao: lead.versao, motivo, detalhe: detalhe.trim() || null }),
       });
       const dados = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
-      if (!resposta.ok || dados?.ok === false) { setErro(dados?.error || "Não foi possível descartar este lead."); return; }
+      if (!resposta.ok || dados?.ok !== true) { setErro(dados?.error || "Não foi possível descartar este lead."); return; }
       onDescartado();
     } catch {
       setErro("Não foi possível descartar. Tente de novo.");
@@ -708,8 +708,8 @@ function FichaLead({
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ action: "atualizarTemperatura", id: lead.id, versao: lead.versao, temperatura: temperaturaNova }),
       });
-      const json = await resposta.json().catch(() => ({})) as { error?: string };
-      if (!resposta.ok) throw new Error(json.error || "Não foi possível alterar a temperatura.");
+      const json = await resposta.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!resposta.ok || json.ok !== true) throw new Error(json.error || "O servidor não confirmou a alteração de temperatura.");
       setTemperaturaAberta(false);
       onRecarregar();
     } catch (falha) {
@@ -840,8 +840,8 @@ export function Funil2Mobile({
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ action: "trazerLeadAntigo", leadId: alvoCarteira.lead_id, etapa: etapaDestino, momento: momentoDestino }),
       });
-      const json = await resposta.json().catch(() => ({})) as { error?: string };
-      if (!resposta.ok) throw new Error(json.error || "Não foi possível trazer o cliente para o funil.");
+      const json = await resposta.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!resposta.ok || json.ok !== true) throw new Error(json.error || "O servidor não confirmou a entrada do cliente no funil.");
       const nomeCliente = alvoCarteira.nome ?? "Cliente";
       setCarteiraAntiga((atuais) => atuais.filter((item) => item.lead_id !== alvoCarteira.lead_id));
       setAlvoCarteira(null);
