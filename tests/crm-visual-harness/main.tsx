@@ -53,6 +53,7 @@ const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
 const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
 const horariosVisitaInvalidos = parametros.get("visitSlots") === "invalido";
+const atualizacaoLeadInvalida = parametros.get("leadUpdate") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -134,12 +135,18 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   requisicoes.push(registro);
   sincronizarLogRede();
   if (method !== "GET") {
-    const corpo = typeof init?.body === "string" ? JSON.parse(init.body) as { action?: string } : {};
+    const corpo = typeof init?.body === "string" ? JSON.parse(init.body) as { action?: string; nome?: string; telefone?: string; email?: string; cpfCnpj?: string; endereco?: string } : {};
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "visitaDisponibilidade") {
       return json(horariosVisitaInvalidos ? { horarios: "indisponivel" } : { horarios: [
         { inicio: "10:00", fim: "11:00", estado: "disponivel" },
         { inicio: "11:00", fim: "12:00", estado: "indisponivel" },
       ] });
+    }
+    if (method === "PATCH" && url.pathname === "/api/funil2/clientes" && corpo.action === "atualizar") {
+      return json(atualizacaoLeadInvalida ? {} : { lead: {
+        nome: corpo.nome, telefone: corpo.telefone || null, email: corpo.email || null,
+        cpf_cnpj: corpo.cpfCnpj || null, endereco: corpo.endereco || null, atualizado_em: "2026-09-21T18:00:00Z",
+      } });
     }
     registro.blocked = true;
     sincronizarLogRede();

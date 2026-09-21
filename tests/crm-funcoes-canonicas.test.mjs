@@ -38,6 +38,11 @@ test("Dados do lead possui edição real, estado sujo, cancelar e persistência 
   assert.doesNotMatch(clientApi, /service_role|SUPABASE_SERVICE_ROLE/);
 });
 
+test("Dados do lead não confirma sucesso sem identidade devolvida pelo servidor", () => {
+  assert.match(dataEditor, /if \(!result\.lead \|\| typeof result\.lead\.nome !== "string" \|\| typeof result\.lead\.atualizado_em !== "string"\) throw new Error\("O servidor não confirmou os dados salvos\."\)/);
+  assert.doesNotMatch(dataEditor, /result\.lead\?\.nome \?\? form\.nome\.trim\(\)/);
+});
+
 test("Adicionar cliente fica visível e usa criação canônica reconciliável", () => {
   assert.match(workspace, />Adicionar cliente</);
   // App mobile restaurado para a versão anterior ao CRM V3 (revert 90b5bd8a / 29fc970d): contrato mantido só no desktop.

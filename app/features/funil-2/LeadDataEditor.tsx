@@ -69,15 +69,16 @@ export function LeadDataEditor({ accessToken, lead, onSaved, onDirtyChange }: {
         if (response.status === 403) throw new Error("Você não tem permissão para editar este cliente.");
         throw new Error(result.error || "Não foi possível salvar as alterações.");
       }
+      if (!result.lead || typeof result.lead.nome !== "string" || typeof result.lead.atualizado_em !== "string") throw new Error("O servidor não confirmou os dados salvos.");
       const confirmado: Formulario = {
-        nome: result.lead?.nome ?? form.nome.trim(),
-        telefone: result.lead?.telefone ?? "",
-        email: result.lead?.email ?? "",
-        cpfCnpj: result.lead?.cpf_cnpj ?? "",
-        endereco: result.lead?.endereco ?? "",
+        nome: result.lead.nome,
+        telefone: result.lead.telefone ?? "",
+        email: result.lead.email ?? "",
+        cpfCnpj: result.lead.cpf_cnpj ?? "",
+        endereco: result.lead.endereco ?? "",
       };
       setReferencia(confirmado); setForm(confirmado);
-      setExpectedUpdatedAt(result.lead?.atualizado_em ?? expectedUpdatedAt);
+      setExpectedUpdatedAt(result.lead.atualizado_em);
       setSuccess("Alterações salvas e confirmadas pelo servidor.");
       await onSaved();
     } catch (reason) {
