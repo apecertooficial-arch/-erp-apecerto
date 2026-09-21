@@ -272,6 +272,7 @@ test("filtros e metas usam o ano e o mês operacional de São Paulo", () => {
 
 test("falha da primeira carga sai do loading e oferece nova tentativa", () => {
   const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /if \(!\[result\.sales, result\.details, result\.commissions, result\.receipts, result\.cash, result\.users, result\.brokers, result\.goals, result\.leads, result\.deals\]\.every\(Array\.isArray\)\) throw new Error\("Não foi possível confirmar os dados financeiros\."\)/);
   assert.match(workspace, /const \[initialLoadSettled, setInitialLoadSettled\] = useState\(false\)/);
   assert.match(workspace, /\.finally\(\(\) => setInitialLoadSettled\(true\)\)/);
   assert.match(workspace, /if \(!data && !initialLoadSettled\) return <div className="crm-loading"/);

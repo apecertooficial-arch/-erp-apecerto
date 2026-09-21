@@ -6,7 +6,7 @@ import "../../app/styles/redesign-apecerto-produtos-financeiro.css";
 import "../../app/styles/redesign-apecerto-financeiro-abas.css";
 import { FinanceWorkspace, type FinanceData } from "../../app/features/finance/FinanceWorkspace";
 
-type Estado = "normal" | "vazio" | "erro" | "offline" | "loading" | "metaserror";
+type Estado = "normal" | "vazio" | "erro" | "offline" | "loading" | "metaserror" | "invalido";
 const estado = (new URLSearchParams(window.location.search).get("state") ?? "normal") as Estado;
 const payload: FinanceData = {
   sales: [{ id: "venda-teste-1", created_at: "2026-09-02T12:00:00Z", data_venda: "2026-09-02", data_conclusao: "2026-09-05", empreendimento_id: "produto-teste-1", empreendimento_nome: "Residencial Horizonte", unidade_id: "unidade-teste-1", unidade_rotulo: "Unidade 82", cliente_nome: "Cliente sanitizado", proprietario_nome: null, vgv: 1250000, custos: 0, forma_pgto: "Financiamento", percentual_comissao: 0.05, status: "concluida", obs: null }],
@@ -56,6 +56,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (estado === "loading") return new Promise<Response>(() => undefined);
   if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
   if (estado === "erro") return json({ error: "Não foi possível carregar o financeiro no momento." }, 502);
+  if (estado === "invalido") return json({});
   if (estado === "vazio") return json({ ...payload, sales: [], details: [], commissions: [], deals: [], rankingVgv: [], payouts: [] });
   return json(payload);
 };
