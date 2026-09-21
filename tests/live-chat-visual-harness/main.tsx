@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "../../app/globals.css";
 import { LiveChatWorkspace, type ChatData } from "../../app/features/chat/LiveChatWorkspace";
 
-type Estado = "normal" | "vazio" | "erro" | "agendamentos-erro";
+type Estado = "normal" | "vazio" | "erro" | "agendamentos-erro" | "mensagens-invalido";
 const estado = (new URLSearchParams(window.location.search).get("state") ?? "normal") as Estado;
 const agora = "2026-09-20T14:00:00Z";
 const payload: ChatData = {
@@ -48,7 +48,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (method === "GET") {
     if (estado === "erro" && !url.searchParams.has("conversationId")) return json({ error: "Não foi possível carregar o chat no momento." }, 502);
-    if (url.searchParams.has("conversationId")) return json({ messages: mensagens });
+    if (url.searchParams.has("conversationId")) return json(estado === "mensagens-invalido" ? {} : { messages: mensagens });
     return json(estado === "vazio" ? { ...payload, conversations: [], contacts: [], latest: {}, leads: [], deals: [], activities: [] } : payload);
   }
   if (method === "POST" && action === "listScheduled") {

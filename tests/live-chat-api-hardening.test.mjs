@@ -54,6 +54,8 @@ test("proposta parcial exige reconciliação em vez de falso fracasso total", ()
 });
 
 test("interface não converte falha de agendamento em lista vazia ou cancelamento local", () => {
+  assert.match(ui, /if \(!Array\.isArray\(result\.messages\)\) throw new Error\("Não foi possível confirmar as mensagens recebidas\."\)/);
+  assert.match(ui, /messages\.length === 0 && scheduled\.length === 0 && !messageLoadError && !scheduledLoadError/);
   assert.match(ui, /if \(!response\.ok\) throw new Error\(result\.error \|\| "Não foi possível carregar os agendamentos\."\)/);
   assert.doesNotMatch(ui, /catch \{ setScheduled\(\[\]\); \}/);
   assert.match(ui, /if \(!response\.ok\) throw new Error\(result\.error \|\| "Não foi possível cancelar o agendamento\."\)/);
