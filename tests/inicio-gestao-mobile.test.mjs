@@ -33,7 +33,7 @@ test("gestor recebe obrigações por corretor, não uma lista de clientes", () =
   assert.match(gestao, /clientes_criticos/);
   assert.match(gestao, /corretor\.visitas_sem_feedback/);
   assert.match(gestao, /Cobrar feedback/);
-  assert.match(gestao, /onIr\(corretor\.visitas_sem_feedback > 0 \? "\/agenda" : "\/equipe"\)/);
+  assert.match(gestao, /`\/agenda\?corretor=\$\{encodeURIComponent\(String\(corretor\.corretor_id\)\)\}`/);
   assert.match(gestao, /visitas_sem_responsavel/);
   assert.doesNotMatch(gestao, /lead_id|negocio_id|cliente_id/);
 });

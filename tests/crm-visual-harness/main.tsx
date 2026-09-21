@@ -28,6 +28,7 @@ const tela = parametros.get("screen") ?? "desktop-crm";
 const gravadorVisivel = parametros.get("evidence") === "1";
 const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const qualidadeExemplo = parametros.get("quality") === "sample";
+const corretorEmFoco = parametros.get("broker");
 const saraPendente = parametros.get("sara") === "pendente";
 const payloadSaraPendente = {
   ...payloadNormal,
@@ -181,7 +182,7 @@ transferenciaEvidencia.querySelector("button")?.addEventListener("click", () => 
 document.body.append(transferenciaEvidencia);
 
 const app = tela === "agenda-mobile"
-  ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} />
+  ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
   : tela === "agenda-manager"
     ? <ErpShell><CalendarWorkspace accessToken="harness-test-only" /></ErpShell>
     : <ErpShell><PaginaCrm /></ErpShell>;
