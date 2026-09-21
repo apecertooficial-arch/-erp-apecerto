@@ -342,6 +342,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       setErro(resposta.json.error ?? "Não foi possível atualizar o atendimento.");
       return false;
     }
+    if (resposta.json.ok !== true) { setErro("O servidor não confirmou a atualização. Nenhum sucesso foi presumido."); return false; }
     await carregar(); return true;
   }
 
@@ -379,6 +380,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         await carregar();
         return false;
       }
+      if (resultado.json.ok !== true) { setErro("O servidor não confirmou a atualização. Nenhum sucesso foi presumido."); return false; }
       setMenuCardId(null);
       await carregar();
       return true;

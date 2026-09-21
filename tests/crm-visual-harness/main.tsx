@@ -55,6 +55,7 @@ const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalid
 const horariosVisitaInvalidos = parametros.get("visitSlots") === "invalido";
 const atualizacaoLeadInvalida = parametros.get("leadUpdate") === "invalido";
 const resultadoAcaoInvalido = parametros.get("actionResult") === "invalido";
+const resultadoAtualizacaoInvalido = parametros.get("patchResult") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -150,6 +151,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       } });
     }
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "salvarNota" && resultadoAcaoInvalido) return json({});
+    if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
     registro.blocked = true;
     sincronizarLogRede();
     return json({ error: "Harness visual: mutações são bloqueadas." }, 405);
