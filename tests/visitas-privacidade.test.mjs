@@ -47,6 +47,11 @@ test("horarios do corretor continuam clicaveis e gerente ocupado vira aviso", ()
   assert.match(seletor, /aria-pressed/);
 });
 
+test("seletor rejeita horários malformados sem derrubar a ficha", () => {
+  assert.match(seletor, /if \(!resposta\.ok \|\| !Array\.isArray\(corpo\?\.horarios\)\) throw new Error/);
+  assert.match(seletor, /estado === "erro" && <p className="f2-horarios-erro" role="alert">/);
+});
+
 test("API devolve estados anonimos, nunca dados do compromisso alheio", () => {
   assert.match(funilApi, /action === "visitaDisponibilidade"/);
   assert.match(funilApi, /f2_disponibilidade_visitas/);

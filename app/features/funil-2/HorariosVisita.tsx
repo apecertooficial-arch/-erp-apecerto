@@ -66,7 +66,7 @@ export function HorariosVisita({ accessToken, leadId = "", visitId = "", comGere
       signal: controlador.signal,
     }).then(async (resposta) => {
       const corpo = await resposta.json().catch(() => null) as { horarios?: Horario[]; error?: string } | null;
-      if (!resposta.ok || !corpo?.horarios) throw new Error(corpo?.error || "Não foi possível consultar os horários.");
+      if (!resposta.ok || !Array.isArray(corpo?.horarios)) throw new Error(corpo?.error || "Não foi possível consultar os horários.");
       setResultado({ chave: chaveConsulta, horarios: corpo.horarios, erro: false });
     }).catch((erro) => {
       if (erro?.name === "AbortError") return;
