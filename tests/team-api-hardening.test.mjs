@@ -58,3 +58,7 @@ test("interface não exibe mensagem técnica de Storage", () => {
 test("interface bloqueia criação e convite enquanto a autoridade está indisponível", () => {
   assert.ok((ui.match(/disabled=\{loading \|\| Boolean\(error\)/g) ?? []).length >= 2);
 });
+
+test("interface rejeita resposta 200 incompleta em vez de desmontar a equipe", () => {
+  assert.match(ui, /if \(!\[body\.users, body\.brokers, body\.instances, body\.links, body\.audits\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
+});

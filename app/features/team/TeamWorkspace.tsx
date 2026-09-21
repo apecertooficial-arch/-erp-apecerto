@@ -87,11 +87,17 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
 
   async function load() {
     setLoading(true); setError("");
-    const response = await fetch("/api/team", { headers: { Authorization: `Bearer ${accessToken}` } });
-    const body = await response.json() as TeamData & { error?: string };
-    if (!response.ok) setError(body.error ?? "Não foi possível carregar a equipe.");
-    else setData(body);
-    setLoading(false);
+    try {
+      const response = await fetch("/api/team", { headers: { Authorization: `Bearer ${accessToken}` } });
+      const body = await response.json() as TeamData & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar a equipe.");
+      if (![body.users, body.brokers, body.instances, body.links, body.audits].every(Array.isArray)) throw new Error("payload_invalido");
+      setData(body);
+    } catch {
+      setError("Não foi possível carregar a equipe.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { void load(); }, [accessToken]);
