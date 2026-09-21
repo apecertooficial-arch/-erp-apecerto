@@ -20,6 +20,9 @@ com desktop/mobile, autorização server-side e evidência.
 
 - `entrada` Supabase Edge Function versão 23, hash
   `7513b214a045b69cf1fcfc8c1274f7f98422a096141c846fe5ac922403703ece`;
+- início móvel do gerente publicado no build
+  `27b8f960ab22f6fa682ec866c0f540ebba746ed1`: visitas sem feedback são
+  atribuídas por corretor e a cobrança abre a Agenda;
 - limite real de 256 KiB, JSON/ID validados, erros internos redigidos e retorno
   da fila validado;
 - smoke de produção sem efeito comercial: 200/400/405/413 conforme contrato;
@@ -32,8 +35,6 @@ com desktop/mobile, autorização server-side e evidência.
 - drafts reversíveis para ownership/qualidade/cobrança de visita e áudio;
 - quatro fontes já aplicadas da Sara recuperadas do histórico remoto;
 - draft da janela de conversa: 90 s de silêncio, teto de 10 min;
-- início móvel do gerente agora atribui visitas sem feedback ao corretor
-  responsável, destaca visitas sem responsável e leva a cobrança à Agenda;
 - função produtiva de preservação de dono confirmada: identidade por IDs,
   telefone/e-mail; visita e negociação mantêm o corretor anterior.
 
@@ -43,6 +44,9 @@ com desktop/mobile, autorização server-side e evidência.
 - recorte gestão móvel/Agenda: 39/39, typecheck e lint;
 - gestão móvel validada em navegador real 390×844: sem overflow, alvos de
   44 px, deep link `/agenda`, estado de erro fail-closed e console limpo;
+- produção validada autenticada no build `27b8f960`: 59 pendências no snapshot
+  consultado, soma por corretor consistente, seis cobranças acionáveis, sem
+  overflow nem console de erro; nenhum dado foi alterado;
 - Sara/dispatcher/janela: 48/48;
 - entrada/distribuição/ownership: 66/66;
 - CRM validado em navegador sanitizado desktop e 390×844;
@@ -65,4 +69,5 @@ Com aprovação do custo: criar a branch Supabase, executar os drafts com dados
 sintéticos, testar concorrência/rollback e promover apenas o contrato aprovado.
 Sem essa aprovação: continuar inventário e correções locais independentes.
 A próxima autoridade incompleta é a persistência/resolução da cobrança; a fila
-visual do gerente já inclui a dívida de feedback de visita por corretor.
+visual do gerente já inclui em produção a dívida de feedback de visita por
+corretor.
