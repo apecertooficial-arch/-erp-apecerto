@@ -88,6 +88,7 @@ export type StudioJob = {
 export type StudioData = {
   organizationId: string;
   timezone: typeof STUDIO_TIMEZONE;
+  externalActionsEnabled?: boolean;
   campaigns: StudioCampaign[];
   snapshots: StudioSnapshot[];
   pieces: StudioPiece[];

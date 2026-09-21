@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess } from "../../lib/supabase/authz";
 import { hojeOperacao, normalizarInstanteSaoPaulo } from "../../lib/timezone";
+import { lerComandoJson } from "../../lib/http/read-json-command.mjs";
 import {
   STUDIO_ORGANIZATION_ID,
   STUDIO_TIMEZONE,
@@ -15,6 +16,17 @@ import {
 } from "../../features/studio/domain";
 
 export const dynamic = "force-dynamic";
+
+const STUDIO_COMMAND_MAX_BYTES = 512 * 1024;
+const EXTERNAL_ACTIONS = new Set([
+  "generatePackage",
+  "enqueueRender",
+  "preparePublication",
+  "retryJob",
+  "setBudget",
+  "metaOAuthStart",
+  "metaOAuthDisconnect",
+]);
 
 type Auth = {
   token: string;
@@ -31,6 +43,13 @@ class StudioError extends Error {
 
 const clean = (value: unknown, max = 500) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const jsonObject = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
+const externalActionsEnabled = () => process.env.STUDIO_EXTERNAL_ACTIONS_ENABLED === "true";
+
+function requireExternalActions() {
+  if (!externalActionsEnabled()) {
+    throw new StudioError("As ações externas do Studio ainda estão desativadas neste ambiente.", 409, "external_actions_disabled");
+  }
+}
 
 function env() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -72,10 +91,10 @@ async function rest<T>(auth: Auth, path: string, init: RequestInit = {}): Promis
   });
   const data = await response.json().catch(() => null) as unknown;
   if (!response.ok) {
-    const details = jsonObject(data) ? clean(data.message, 600) || clean(data.details, 600) : "";
-    const missing = response.status === 404 || /relation .* does not exist|schema cache/i.test(details);
+    const internalMessage = jsonObject(data) ? clean(data.message, 600) || clean(data.details, 600) : "";
+    const missing = response.status === 404 || /relation .* does not exist|schema cache/i.test(internalMessage);
     throw new StudioError(
-      missing ? "A migration operacional do Studio ainda não foi aplicada neste ambiente." : details || "Falha ao acessar os dados do Studio.",
+      missing ? "A estrutura operacional do Studio ainda não está disponível neste ambiente." : "Não foi possível acessar os dados do Studio.",
       missing ? 503 : response.status,
       missing ? "studio_schema_missing" : "studio_database_error",
     );
@@ -109,12 +128,12 @@ async function studioData(auth: Auth): Promise<StudioData> {
     optionalRest(auth, "usuarios?ativo=eq.true&select=id,nome,role&order=nome.asc&limit=200", []),
   ]);
   const enrichedTemplates = templates.map((template) => { const published = templateVersions.find((version) => version.template_id === template.id); return { ...template, versao_publicada: published?.versao, origem: published?.origem, manifesto: published?.manifesto }; });
-  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates, tasks, comments, metrics, members };
+  return { organizationId: STUDIO_ORGANIZATION_ID, timezone: STUDIO_TIMEZONE, externalActionsEnabled: externalActionsEnabled(), campaigns, snapshots, pieces, versions, schedules, jobs, integrations, budgets, briefs, templates: enrichedTemplates, tasks, comments, metrics, members };
 }
 
 function errorResponse(reason: unknown) {
   if (reason instanceof StudioError) return Response.json({ error: reason.message, code: reason.code, details: reason.details }, { status: reason.status });
-  return Response.json({ error: reason instanceof Error ? reason.message : "Falha inesperada no Studio.", code: "unexpected_error" }, { status: 500 });
+  return Response.json({ error: "Não foi possível concluir a ação no Studio.", code: "unexpected_error" }, { status: 500 });
 }
 
 export async function GET(request: Request) {
@@ -155,15 +174,7 @@ async function setJob(auth: Auth, id: string, patch: Record<string, unknown>) {
 
 async function generatePackage(auth: Auth, campaignId: string) {
   requirePermission(auth, "gerar");
-  const key = `package|${campaignId}|${crypto.randomUUID()}`;
-  const jobId = await rpc<string>(auth, "social_enqueue_job", {
-    p_organization_id: STUDIO_ORGANIZATION_ID,
-    p_campaign_id: campaignId,
-    p_piece_id: null,
-    p_type: "estrategia",
-    p_payload: { schema_version: 1 },
-    p_idempotency_key: key,
-  });
+  let jobId: string | null = null;
   try {
     const [integrations, budgets, campaigns, snapshots, pieces, templates, templateVersions] = await Promise.all([
       rest<Array<{ status: string }>>(auth, `social_integrations?organization_id=eq.${STUDIO_ORGANIZATION_ID}&provider=eq.openai&select=status`),
@@ -176,11 +187,19 @@ async function generatePackage(auth: Auth, campaignId: string) {
     ]);
     const budget = budgets[0];
     if (integrations[0]?.status !== "configurada" || !budget || budget.limite_usd <= budget.consumido_usd) {
-      await setJob(auth, jobId, { status: "aguardando_configuracao", erro_codigo: "provider_disabled", erro_mensagem: "IA governada não configurada ou orçamento zerado." });
-      throw new StudioError("A IA está em modo seguro: configure o ia-router e aprove um orçamento maior que zero para gerar.", 409, "ai_not_configured", { jobId });
+      throw new StudioError("A IA está em modo seguro: configure o ia-router e aprove um orçamento maior que zero para gerar.", 409, "ai_not_configured");
     }
     const campaign = campaigns[0], snapshot = snapshots[0];
     if (!campaign || !snapshot) throw new StudioError("Campanha ou snapshot factual não encontrado.", 404, "campaign_not_found");
+    const key = `package|${campaignId}|${crypto.randomUUID()}`;
+    jobId = await rpc<string>(auth, "social_enqueue_job", {
+      p_organization_id: STUDIO_ORGANIZATION_ID,
+      p_campaign_id: campaignId,
+      p_piece_id: null,
+      p_type: "estrategia",
+      p_payload: { schema_version: 1 },
+      p_idempotency_key: key,
+    });
     await setJob(auth, jobId, { status: "processando", progresso: 10, iniciado_em: new Date().toISOString(), tentativas: 1 });
     const { url, key: publishableKey } = env();
     const prompt = JSON.stringify({
@@ -196,7 +215,7 @@ async function generatePackage(auth: Auth, campaignId: string) {
       body: JSON.stringify({ agente_slug: "social-media-apecerto", input: prompt, tela: "/studio", disable_tools: true }),
     });
     const ia = await iaResponse.json().catch(() => ({})) as Record<string, unknown>;
-    if (!iaResponse.ok || ia.ok !== true) throw new StudioError(clean(ia.detalhe, 500) || clean(ia.reason, 200) || "O ia-router não concluiu a geração.", 502, "ai_router_failed");
+    if (!iaResponse.ok || ia.ok !== true) throw new StudioError("O serviço de IA não concluiu a geração.", 502, "ai_router_failed");
     let raw = ia.saida;
     if (typeof raw === "string") { try { raw = JSON.parse(raw); } catch { /* schema validator reports it */ } }
     const pkg = validateGeneratedPackage(raw);
@@ -237,7 +256,7 @@ async function generatePackage(auth: Auth, campaignId: string) {
     if (cost > 0) await rest(auth, `social_budgets?organization_id=eq.${STUDIO_ORGANIZATION_ID}&provider=eq.openai&mes=eq.${hojeOperacao().slice(0, 7)}-01`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ consumido_usd: Math.min(budget.limite_usd, budget.consumido_usd + cost), atualizado_por: auth.userId }) });
     return { ok: true, jobId, versions: stored, package: pkg };
   } catch (reason) {
-    if (!(reason instanceof StudioError && reason.code === "ai_not_configured")) {
+    if (jobId && !(reason instanceof StudioError && reason.code === "ai_not_configured")) {
       await setJob(auth, jobId, { status: "falhou", erro_codigo: reason instanceof StudioError ? reason.code : "generation_failed", erro_mensagem: reason instanceof Error ? reason.message.slice(0, 600) : "Falha na geração", erro_transitorio: false, concluido_em: new Date().toISOString() }).catch(() => undefined);
     }
     throw reason;
@@ -401,8 +420,11 @@ async function metaOAuth(auth: Auth, action: "start" | "disconnect") {
 export async function POST(request: Request) {
   try {
     const auth = await authenticate(request);
-    const body = await request.json() as Record<string, unknown>;
+    const command = await lerComandoJson(request, STUDIO_COMMAND_MAX_BYTES);
+    if (!command.ok) return Response.json({ error: command.message, code: command.code }, { status: command.status });
+    const body = command.value;
     const action = clean(body.action, 60);
+    if (EXTERNAL_ACTIONS.has(action)) requireExternalActions();
     if (action === "createCampaign") {
       requirePermission(auth, "criar");
       const code = clean(body.productCode, 80), name = clean(body.name, 160), objective = clean(body.objective, 500);

@@ -84,6 +84,28 @@ test("custos externos começam bloqueados e IA passa somente pelo ia-router", ()
   assert.doesNotMatch(api, /api\.openai\.com|OPENAI_API_KEY/);
 });
 
+test("rollout do Studio bloqueia efeitos externos no servidor e antes de criar jobs", () => {
+  assert.match(api, /process\.env\.STUDIO_EXTERNAL_ACTIONS_ENABLED === "true"/);
+  for (const action of ["generatePackage", "enqueueRender", "preparePublication", "retryJob", "setBudget", "metaOAuthStart", "metaOAuthDisconnect"]) {
+    assert.match(api, new RegExp(`"${action}"`));
+  }
+  assert.match(api, /if \(EXTERNAL_ACTIONS\.has\(action\)\) requireExternalActions\(\)/);
+  assert.ok(api.indexOf("budget.limite_usd <= budget.consumido_usd") < api.indexOf('jobId = await rpc<string>(auth, "social_enqueue_job"'));
+  assert.match(ui, /data\.externalActionsEnabled === true/);
+  assert.match(ui, /Ações externas estão desativadas neste ambiente/);
+});
+
+test("API do Studio autentica antes de ler JSON, limita streaming e sanitiza falhas", () => {
+  assert.match(api, /import \{ lerComandoJson \} from "\.\.\/\.\.\/lib\/http\/read-json-command\.mjs"/);
+  const post = api.slice(api.indexOf("export async function POST"));
+  assert.ok(post.indexOf("authenticate(request)") < post.indexOf("lerComandoJson(request, STUDIO_COMMAND_MAX_BYTES)"));
+  assert.match(api, /const STUDIO_COMMAND_MAX_BYTES = 512 \* 1024/);
+  assert.doesNotMatch(api, /const body = await request\.json/);
+  assert.match(api, /error: "Não foi possível concluir a ação no Studio\."/);
+  assert.doesNotMatch(api, /error: reason instanceof Error \? reason\.message/);
+  assert.doesNotMatch(api, /clean\(ia\.detalhe|clean\(ia\.reason/);
+});
+
 test("schema de conteúdo aceita pacote completo e rejeita formato ausente", () => {
   const piece = (formato) => ({ formato, titulo: `Peça ${formato}`, headline: "Mude com leveza", legenda: "Conteúdo factual do imóvel.", cta: "Agende sua visita", alertas_factuais: [], ...(formato === "carousel" ? { slides: [] } : {}), ...(formato === "story" ? { stories: [] } : {}), ...(formato === "reel" ? { cenas: [] } : {}) });
   const valid = validateGeneratedPackage({ estrategia: { objetivo: "Visitas", publico: "Compradores", etapa_funil: "Consideração", angulo_editorial: "Praticidade", pilares: ["Localização"] }, pecas: [piece("feed"), piece("carousel"), piece("story"), piece("reel")], alertas_factuais: [] });
