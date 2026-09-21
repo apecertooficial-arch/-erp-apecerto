@@ -654,6 +654,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
      não está no funil, senão vai procurar a ação dele e não encontrar. */
   const [carteira, setCarteira] = useState<LeadCarteiraAntiga[]>([]);
   const [buscandoCarteira, setBuscandoCarteira] = useState(false);
+  const [erroCarteira, setErroCarteira] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<LeadCarteiraAntiga | null>(null);
   const atrasados = leads.filter((lead) => situacaoPrazo(lead.proxima_acao_em).classe === "atrasado").length;
   const termo = busca.trim().toLocaleLowerCase("pt-BR");
@@ -684,14 +685,18 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
     const termoBusca = busca.trim();
     const t = window.setTimeout(() => {
       if (!vivo) return;
-      if (termoBusca.length < 3) { setCarteira([]); setBuscandoCarteira(false); return; }
-      setBuscandoCarteira(true);
+      if (termoBusca.length < 3) { setCarteira([]); setBuscandoCarteira(false); setErroCarteira(null); return; }
+      setBuscandoCarteira(true); setErroCarteira(null);
       void fetch(`/api/funil2/carteira?q=${encodeURIComponent(termoBusca)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
-        .then((r) => r.json() as Promise<{ leads?: LeadCarteiraAntiga[] }>)
-        .then((json) => { if (vivo) setCarteira(json.leads ?? []); })
-        /* Falha aqui não pode derrubar a tela: a lista do 2.0 continua
-           funcionando, só a seção da carteira antiga fica vazia. */
-        .catch(() => { if (vivo) setCarteira([]); })
+        .then(async (resposta) => {
+          const json = await resposta.json().catch(() => ({})) as { leads?: LeadCarteiraAntiga[] };
+          if (!resposta.ok || !Array.isArray(json.leads)) throw new Error("Não foi possível pesquisar a carteira antiga.");
+          return json.leads;
+        })
+        .then((recebidos) => { if (vivo) setCarteira(recebidos); })
+        /* Falha aqui não derruba os cards atuais, mas precisa ficar explícita:
+           esconder a seção pareceria uma busca completa sem resultados. */
+        .catch((falha: unknown) => { if (vivo) { setCarteira([]); setErroCarteira(falha instanceof Error ? falha.message : "Não foi possível pesquisar a carteira antiga."); } })
         .finally(() => { if (vivo) setBuscandoCarteira(false); });
     }, 350);
     return () => { vivo = false; window.clearTimeout(t); };
@@ -709,11 +714,12 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
 
     {/* Carteira antiga: mesma busca, seção separada. Só aparece quando há algo
         a mostrar — seção vazia permanente vira ruído que ninguém mais lê. */}
-    {busca.trim().length >= 3 && (buscandoCarteira || carteira.length > 0) && <section className="f2-carteira-antiga">
+    {busca.trim().length >= 3 && (buscandoCarteira || carteira.length > 0 || erroCarteira) && <section className="f2-carteira-antiga">
       <header>
         <div><span className="f2-eyebrow">DA SUA CARTEIRA ANTIGA</span><h3>Fora do Funil</h3><p>Clientes que você já trabalhou e que nunca viraram card aqui. Traga para o Funil quando voltar a atender.</p></div>
-        <b>{buscandoCarteira ? "buscando…" : `${carteira.length} encontrado(s)`}</b>
+        <b>{buscandoCarteira ? "buscando…" : erroCarteira ? "indisponível" : `${carteira.length} encontrado(s)`}</b>
       </header>
+      {erroCarteira && <div className="f2-sem-resultado" role="alert"><b>Carteira antiga indisponível.</b><span>{erroCarteira}</span></div>}
       {carteira.map((item) => <article key={item.lead_id} className="f2-carteira-linha">
         <div className="f2-nome"><i>{iniciais(item.nome ?? "?")}</i><span><b>{item.nome ?? "Sem nome"}</b><small>{item.corretor_nome ?? "Sem responsável"}{item.telefone ? ` · ${item.telefone}` : ""}</small></span></div>
         <span className="f2-carteira-hist">{item.mensagens > 0 ? `${item.mensagens} mensagem(ns) · último contato ${dataCurta(item.ultima_mensagem_em ?? item.criado_em)}` : "Sem conversa registrada"}</span>
@@ -722,7 +728,7 @@ function TodosLeads({ leads, momentos, etapas, accessToken, busy, onAbrir, onTra
           <button type="button" className="primario" onClick={() => setAlvo(item)}>Trazer para o funil</button>
         </div>
       </article>)}
-      {!buscandoCarteira && carteira.length === 0 && <div className="f2-sem-resultado"><b>Nada na carteira antiga.</b><span>Nenhum cliente seu fora do Funil bate com essa busca.</span></div>}
+      {!buscandoCarteira && !erroCarteira && carteira.length === 0 && <div className="f2-sem-resultado"><b>Nada na carteira antiga.</b><span>Nenhum cliente seu fora do Funil bate com essa busca.</span></div>}
     </section>}
 
     {alvo && <ModalTrazerLeadAntigo alvo={alvo} etapas={etapas} momentos={momentos} busy={busy} onFechar={() => setAlvo(null)} onConfirmar={async (etapa, momento) => { const ok = await onTrazer(alvo.lead_id, etapa, momento); if (ok) setAlvo(null); }} />}

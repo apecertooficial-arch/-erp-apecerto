@@ -28,6 +28,13 @@ test("ficha não transforma histórico incompleto em linha do tempo vazia", () =
   assert.match(desktop, /setHistoricoTentativa\(\(atual\) => atual \+ 1\)/);
 });
 
+test("Todos os Leads não esconde falha da carteira antiga como busca vazia", () => {
+  assert.match(desktop, /if \(!resposta\.ok \|\| !Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível pesquisar a carteira antiga\."\)/);
+  assert.match(desktop, /erroCarteira && <div className="f2-sem-resultado" role="alert">/);
+  assert.match(desktop, /erroCarteira \? "indisponível" : `\$\{carteira\.length\} encontrado\(s\)`/);
+  assert.match(desktop, /!buscandoCarteira && !erroCarteira && carteira\.length === 0/);
+});
+
 test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
   for (const rotulo of ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"]) assert.ok(desktop.includes(rotulo));
   assert.match(desktop, /role="tablist"/);
