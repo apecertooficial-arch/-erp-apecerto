@@ -297,7 +297,7 @@ function TaskCard({ task, userById, data, onOpen }: { task: Tarefa; userById: Ma
 }
 
 function CalendarView({ tasks, onOpen }: { tasks: Tarefa[]; onOpen: (id: string) => void }) {
-  const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [month, setMonth] = useState(() => new Date(`${hoje()}T12:00:00`));
   const label = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(month);
   const first = new Date(month); first.setDate(1 - ((first.getDay() + 7) % 7));
   const cells = Array.from({ length: 42 }, (_, i) => { const d = new Date(first); d.setDate(first.getDate() + i); return d; });

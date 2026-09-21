@@ -48,3 +48,7 @@ test("interface trata JSON inválido e preserva estado depois de uma escrita con
   assert.match(ui, /Não foi possível carregar os projetos[\s\S]*Tentar novamente/);
   assert.doesNotMatch(ui, /const result = await response\.json\(\) as ApiData/);
 });
+
+test("calendário de projetos abre no mês operacional de São Paulo", () => {
+  assert.match(ui, /useState\(\(\) => new Date\(`\$\{hoje\(\)\}T12:00:00`\)\)/);
+});
