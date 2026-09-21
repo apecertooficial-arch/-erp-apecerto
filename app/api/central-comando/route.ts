@@ -57,21 +57,26 @@ function respostaErroCentral(error: { message?: string } | null) {
 }
 
 async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClient>, days: number) {
+  const loose = supabase as unknown as SupabaseClient;
   const rpc = (supabase as unknown as {
     rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
   }).rpc.bind(supabase);
   const hoje = new Date();
   const inicioPendencias = new Date(hoje.getTime() - 365 * 86_400_000);
-  const [central, teamExecution, visitPending] = await Promise.all([
+  const [central, teamExecution, visitPending, chargeActions] = await Promise.all([
     rpc("central_comando_dashboard_v2", { p_days: days }),
     rpc("central_comando_equipe_execucao", { p_days: days }),
     rpc("f2_visitas_resultado_pendente", {
       p_inicio: dataIso(inicioPendencias),
       p_fim: dataIso(hoje),
     }),
+    loose.from("central_alerta_acoes")
+      .select("alerta_chave,prazo,resolvido,atualizado_em")
+      .like("alerta_chave", "visita-feedback-corretor:%")
+      .eq("resolvido", false),
   ]);
-  if (central.error || teamExecution.error || visitPending.error) {
-    return respostaErroCentral(central.error || teamExecution.error || visitPending.error);
+  if (central.error || teamExecution.error || visitPending.error || chargeActions.error) {
+    return respostaErroCentral(central.error || teamExecution.error || visitPending.error || chargeActions.error);
   }
   if (!registro(central.data)) {
     return Response.json(
@@ -97,6 +102,20 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
   }
   const pendenciasPorCorretor = pendencias.porCorretor;
   let pendenciasSemCorretor = pendencias.semCorretor;
+  const cobrancaPorCorretor = new Map<string, { cobrada_em: string; prazo: string | null }>();
+  for (const action of chargeActions.data ?? []) {
+    const match = typeof action.alerta_chave === "string"
+      ? /^visita-feedback-corretor:(\d+)$/.exec(action.alerta_chave)
+      : null;
+    if (!match || typeof action.atualizado_em !== "string"
+        || (action.prazo !== null && typeof action.prazo !== "string")) {
+      return Response.json(
+        { error: "O histórico de cobranças gerenciais chegou em formato inválido." },
+        { status: 502, headers: { "Cache-Control": "private, no-store, max-age=0" } },
+      );
+    }
+    cobrancaPorCorretor.set(match[1], { cobrada_em: action.atualizado_em, prazo: action.prazo });
+  }
 
   const summaryKeys = ["acoes_vencidas", "clientes_aguardando", "clientes_criticos", "visitas_sem_feedback", "corretores_ativos"] as const;
   const summary = Object.fromEntries(summaryKeys.map((key) => [key, numeroNaoNegativo(summaryData[key])]));
@@ -147,6 +166,9 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
       online: item.online === true,
       no_escritorio: item.no_escritorio === true,
       ...metrics,
+      cobranca_visita: metrics.visitas_sem_feedback > 0
+        ? cobrancaPorCorretor.get(String(item.corretor_id)) ?? null
+        : null,
     });
     pendenciasPorCorretor.delete(String(item.corretor_id));
   }
@@ -256,12 +278,68 @@ export async function POST(request: Request) {
   if (auth.kind === "denied") return Response.json({ error: "A Central de Comando é restrita à gestão." }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-  const key = texto(body.key, 120);
   const action = texto(body.action, 20);
-  if (!/^[a-z0-9:_-]+$/i.test(key)) return Response.json({ error: "Alerta inválido." }, { status: 422 });
-  if (!new Set(["assign", "seen", "resolve", "reopen"]).has(action)) return Response.json({ error: "Ação inválida." }, { status: 422 });
+  if (!new Set(["assign", "seen", "resolve", "reopen", "charge"]).has(action)) return Response.json({ error: "Ação inválida." }, { status: 422 });
 
   const loose = auth.supabase as unknown as SupabaseClient;
+  if (action === "charge") {
+    const corretorId = Number(body.corretorId);
+    if (!Number.isSafeInteger(corretorId) || corretorId <= 0) {
+      return Response.json({ error: "Corretor inválido." }, { status: 422 });
+    }
+    const agora = new Date();
+    const inicioPendencias = new Date(agora.getTime() - 365 * 86_400_000);
+    const rpc = (auth.supabase as unknown as {
+      rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
+    }).rpc.bind(auth.supabase);
+    const [corretor, pendenciasResult] = await Promise.all([
+      loose.from("corretores").select("id,nome").eq("id", corretorId).maybeSingle(),
+      rpc("f2_visitas_resultado_pendente", {
+        p_inicio: dataIso(inicioPendencias),
+        p_fim: dataIso(agora),
+      }),
+    ]);
+    if (corretor.error || pendenciasResult.error) {
+      return respostaErroCentral(corretor.error || pendenciasResult.error);
+    }
+    if (!corretor.data || typeof corretor.data.nome !== "string" || !corretor.data.nome.trim()) {
+      return Response.json({ error: "Corretor não encontrado." }, { status: 404 });
+    }
+    if (!registro(pendenciasResult.data) || pendenciasResult.data.ok !== true || !Array.isArray(pendenciasResult.data.itens)) {
+      return Response.json({ error: "A fila de feedback chegou em formato inválido." }, { status: 502 });
+    }
+    const pendencias = agruparPendenciasVisita(pendenciasResult.data.itens);
+    if (!pendencias) return Response.json({ error: "A fila de feedback chegou em formato inválido." }, { status: 502 });
+    const quantidade = pendencias.porCorretor.get(String(corretorId)) ?? 0;
+    if (quantidade === 0) {
+      return Response.json({ error: "Não há feedback pendente para cobrar deste corretor." }, { status: 409 });
+    }
+
+    const key = `visita-feedback-corretor:${corretorId}`;
+    const prazo = dataIso(new Date(agora.getTime() + 2 * 86_400_000));
+    const patch = {
+      alerta_chave: key,
+      responsavel: corretor.data.nome.trim().slice(0, 80),
+      prazo,
+      visto: true,
+      resolvido: false,
+      atualizado_em: agora.toISOString(),
+      atualizado_por: auth.user.id,
+    };
+    const { data, error } = await loose
+      .from("central_alerta_acoes")
+      .upsert(patch, { onConflict: "alerta_chave" })
+      .select("alerta_chave,responsavel,prazo,visto,resolvido,atualizado_em")
+      .single();
+    if (error || !data) return Response.json({ error: "Não foi possível registrar a cobrança." }, { status: 502 });
+    return Response.json({
+      action: data,
+      cobranca: { cobrada_em: data.atualizado_em, prazo: data.prazo, pendencias: quantidade },
+    });
+  }
+
+  const key = texto(body.key, 120);
+  if (!/^[a-z0-9:_-]+$/i.test(key)) return Response.json({ error: "Alerta inválido." }, { status: 422 });
   const { data: existing } = await loose
     .from("central_alerta_acoes")
     .select("alerta_chave,responsavel,prazo,visto,resolvido")

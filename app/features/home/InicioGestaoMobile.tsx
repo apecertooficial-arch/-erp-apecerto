@@ -23,6 +23,7 @@ type CorretorGestao = {
   visitas_sem_feedback: number;
   carteira_trabalhada: number;
   pct_carteira_trabalhada: number | null;
+  cobranca_visita: { cobrada_em: string; prazo: string | null } | null;
 };
 
 type DadosGestao = { summary: ResumoGestao; team: CorretorGestao[]; generated_at: string };
@@ -52,6 +53,12 @@ function numeroValido(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+function cobrancaValida(value: unknown) {
+  return value === null || (registro(value)
+    && typeof value.cobrada_em === "string"
+    && (value.prazo === null || (typeof value.prazo === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.prazo))));
+}
+
 function interpretar(value: unknown): DadosGestao | null {
   if (!registro(value)) return null;
   if (!registro(value.summary) || !Array.isArray(value.team) || typeof value.generated_at !== "string") return null;
@@ -65,6 +72,7 @@ function interpretar(value: unknown): DadosGestao | null {
     if (!CAMPOS_EQUIPE.every((campo) => numeroValido(row[campo]))) return null;
     if (row.pct_carteira_trabalhada !== null && !numeroValido(row.pct_carteira_trabalhada)) return null;
     if (Number(row.carteira_ativa) > 0 && row.pct_carteira_trabalhada === null) return null;
+    if (!cobrancaValida(row.cobranca_visita)) return null;
   }
   return value as DadosGestao;
 }
@@ -77,6 +85,19 @@ function primeiroNome(nome: string) {
   return nome.trim().split(/\s+/)[0] || "Gestor";
 }
 
+function dataHoraCurta(value: string) {
+  const data = new Date(value);
+  return Number.isNaN(data.getTime()) ? "horário indisponível" : new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+  }).format(data);
+}
+
+function dataCurta(value: string | null) {
+  if (!value) return "sem novo prazo";
+  const [ano, mes, dia] = value.split("-");
+  return ano && mes && dia ? `${dia}/${mes}` : "prazo indisponível";
+}
+
 export function InicioGestaoMobile({ accessToken, nome, onIr }: {
   accessToken: string;
   nome: string;
@@ -85,6 +106,8 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
   const [dados, setDados] = useState<DadosGestao | null>(null);
   const [estado, setEstado] = useState<"loading" | "live" | "error">("loading");
   const [erro, setErro] = useState("");
+  const [cobrandoId, setCobrandoId] = useState<string | null>(null);
+  const [retornoCobranca, setRetornoCobranca] = useState<{ corretorId: string; erro: boolean; texto: string } | null>(null);
 
   const carregar = useCallback(async (signal?: AbortSignal) => {
     setEstado((atual) => atual === "live" ? atual : "loading");
@@ -119,6 +142,39 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
       controller.abort();
     };
   }, [carregar]);
+
+  const registrarCobranca = useCallback(async (corretor: CorretorGestao) => {
+    const corretorId = String(corretor.corretor_id);
+    setCobrandoId(corretorId);
+    setRetornoCobranca(null);
+    try {
+      const response = await fetch("/api/central-comando", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "charge", corretorId: corretor.corretor_id }),
+      });
+      const body = await response.json().catch(() => null) as unknown;
+      if (!response.ok) {
+        const mensagem = registro(body) && typeof body.error === "string" ? body.error : "Não foi possível registrar a cobrança.";
+        throw new Error(mensagem);
+      }
+      const cobranca = registro(body) && cobrancaValida(body.cobranca) ? body.cobranca as { cobrada_em: string; prazo: string | null } : null;
+      if (!cobranca) throw new Error("A cobrança não foi confirmada pelo servidor.");
+      setDados((atual) => atual ? {
+        ...atual,
+        team: atual.team.map((item) => String(item.corretor_id) === corretorId ? { ...item, cobranca_visita: cobranca } : item),
+      } : atual);
+      setRetornoCobranca({ corretorId, erro: false, texto: "Cobrança registrada. A pendência só será resolvida quando o corretor enviar o feedback." });
+    } catch (cause) {
+      setRetornoCobranca({
+        corretorId,
+        erro: true,
+        texto: cause instanceof Error ? cause.message : "Não foi possível registrar a cobrança.",
+      });
+    } finally {
+      setCobrandoId(null);
+    }
+  }, [accessToken]);
 
   const equipe = useMemo(() => {
     const equipe = [...(dados?.team ?? [])];
@@ -193,9 +249,20 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
             <span><i style={{ width: `${Math.min(100, corretor.pct_carteira_trabalhada ?? 0)}%` }} /></span>
             <small>{inteiro(corretor.carteira_trabalhada)} de {inteiro(corretor.carteira_ativa)} acompanhados em 7 dias</small>
           </div>
-          <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? `/agenda?corretor=${encodeURIComponent(String(corretor.corretor_id))}` : "/equipe")}>
-            {corretor.visitas_sem_feedback > 0 ? "Cobrar feedback" : urgente ? "Cobrar corretor" : "Ver desempenho"}
-          </button>
+          {corretor.cobranca_visita && <p className="ape-gestao-cobranca-status">
+            Cobrado em {dataHoraCurta(corretor.cobranca_visita.cobrada_em)} · lembrar em {dataCurta(corretor.cobranca_visita.prazo)}
+          </p>}
+          {retornoCobranca?.corretorId === String(corretor.corretor_id) && <p className={`ape-gestao-cobranca-retorno${retornoCobranca.erro ? " erro" : ""}`} role={retornoCobranca.erro ? "alert" : "status"}>
+            {retornoCobranca.texto}
+          </p>}
+          <div className="ape-gestao-acoes">
+            <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? `/agenda?corretor=${encodeURIComponent(String(corretor.corretor_id))}` : "/equipe")}>
+              {corretor.visitas_sem_feedback > 0 ? "Ver pendências" : urgente ? "Cobrar corretor" : "Ver desempenho"}
+            </button>
+            {corretor.visitas_sem_feedback > 0 && <button type="button" disabled={cobrandoId === String(corretor.corretor_id)} onClick={() => void registrarCobranca(corretor)}>
+              {cobrandoId === String(corretor.corretor_id) ? "Registrando…" : "Registrar cobrança"}
+            </button>}
+          </div>
         </article>;
       })}
     </section>

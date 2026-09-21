@@ -8,9 +8,9 @@ const estado = new URLSearchParams(window.location.search).get("state") ?? "norm
 const payload = {
   summary: { acoes_vencidas: 12, clientes_aguardando: 8, clientes_criticos: 3, visitas_sem_feedback: 4, visitas_sem_responsavel: 1, corretores_ativos: 3 },
   team: [
-    { corretor_id: 7, nome: "Corretora Alfa", online: true, no_escritorio: true, carteira_ativa: 34, acoes_vencidas: 7, clientes_aguardando: 5, clientes_criticos: 2, visitas_sem_feedback: 2, carteira_trabalhada: 22, pct_carteira_trabalhada: 64.7 },
-    { corretor_id: 8, nome: "Corretor Beta", online: false, no_escritorio: true, carteira_ativa: 28, acoes_vencidas: 5, clientes_aguardando: 3, clientes_criticos: 1, visitas_sem_feedback: 1, carteira_trabalhada: 21, pct_carteira_trabalhada: 75 },
-    { corretor_id: 9, nome: "Corretora Gama", online: false, no_escritorio: false, carteira_ativa: 19, acoes_vencidas: 0, clientes_aguardando: 0, clientes_criticos: 0, visitas_sem_feedback: 0, carteira_trabalhada: 18, pct_carteira_trabalhada: 94.7 },
+    { corretor_id: 7, nome: "Corretora Alfa", online: true, no_escritorio: true, carteira_ativa: 34, acoes_vencidas: 7, clientes_aguardando: 5, clientes_criticos: 2, visitas_sem_feedback: 2, carteira_trabalhada: 22, pct_carteira_trabalhada: 64.7, cobranca_visita: { cobrada_em: "2026-09-20T11:30:00.000Z", prazo: "2026-09-22" } },
+    { corretor_id: 8, nome: "Corretor Beta", online: false, no_escritorio: true, carteira_ativa: 28, acoes_vencidas: 5, clientes_aguardando: 3, clientes_criticos: 1, visitas_sem_feedback: 1, carteira_trabalhada: 21, pct_carteira_trabalhada: 75, cobranca_visita: null },
+    { corretor_id: 9, nome: "Corretora Gama", online: false, no_escritorio: false, carteira_ativa: 19, acoes_vencidas: 0, clientes_aguardando: 0, clientes_criticos: 0, visitas_sem_feedback: 0, carteira_trabalhada: 18, pct_carteira_trabalhada: 94.7, cobranca_visita: null },
   ],
   generated_at: "2026-09-20T12:00:00.000Z",
 };
@@ -29,7 +29,24 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const item = { method, path: `${url.pathname}${url.search}`, blocked: false };
   requests.push(item);
   log.textContent = JSON.stringify(requests);
-  if (method !== "GET" || url.origin !== window.location.origin || url.pathname !== "/api/central-comando" || url.searchParams.get("section") !== "gestao-mobile") {
+  if (url.origin !== window.location.origin || url.pathname !== "/api/central-comando") {
+    item.blocked = true;
+    log.textContent = JSON.stringify(requests);
+    return json({ error: "Rede fora do harness bloqueada." }, 405);
+  }
+  if (method === "POST") {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { action?: unknown; corretorId?: unknown };
+    if (body.action !== "charge" || ![7, 8].includes(Number(body.corretorId))) {
+      item.blocked = true;
+      log.textContent = JSON.stringify(requests);
+      return json({ error: "Mutação fora do contrato sanitizado." }, 422);
+    }
+    return json({
+      action: { alerta_chave: `visita-feedback-corretor:${Number(body.corretorId)}`, resolvido: false },
+      cobranca: { cobrada_em: "2026-09-20T12:15:00.000Z", prazo: "2026-09-22", pendencias: Number(body.corretorId) === 7 ? 2 : 1 },
+    });
+  }
+  if (method !== "GET" || url.searchParams.get("section") !== "gestao-mobile") {
     item.blocked = true;
     log.textContent = JSON.stringify(requests);
     return json({ error: "Rede fora do harness bloqueada." }, 405);

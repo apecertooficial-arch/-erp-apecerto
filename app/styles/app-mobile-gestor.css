@@ -43,11 +43,11 @@
   .ape-gestao-pulso span { color: #958B84; font-size: 9px; line-height: 1.3; }
 
   .ape-gestao-atalhos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .ape-gestao-atalhos button,.ape-gestao-equipe article > button,.ape-gestao-erro button {
+  .ape-gestao-atalhos button,.ape-gestao-acoes button,.ape-gestao-erro button {
     min-height: 44px; border: 1px solid #DDD5CF; border-radius: 999px; background: #fff;
     color: #3B342F; font: 750 12px/1 'Quicksand',system-ui,sans-serif; cursor: pointer;
   }
-  .ape-gestao-atalhos button:first-child,.ape-gestao-equipe article.urgente > button { border-color: #FF7000; background: #FF7000; color: #fff; }
+  .ape-gestao-atalhos button:first-child,.ape-gestao-equipe article.urgente .ape-gestao-acoes button:last-child { border-color: #FF7000; background: #FF7000; color: #fff; }
 
   .ape-gestao-equipe { display: flex; flex-direction: column; gap: 9px; }
   .ape-gestao-equipe > header { display: flex; align-items: flex-end; gap: 10px; margin-top: 2px; }
@@ -71,8 +71,13 @@
   .ape-gestao-progresso > span { display: block; height: 5px; overflow: hidden; border-radius: 999px; background: #EEE9E5; }
   .ape-gestao-progresso i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#FF7000,#8B00CC); }
   .ape-gestao-progresso small { display: block; margin-top: 6px; color: #8B827B; font-size: 9px; }
+  .ape-gestao-cobranca-status,.ape-gestao-cobranca-retorno { margin: 9px 0 0; border-radius: 10px; background: #F7F3FA; padding: 8px 9px; color: #65586C; font-size: 10px; font-weight: 650; line-height: 1.4; }
+  .ape-gestao-cobranca-retorno { background: #F0F8F3; color: #216B43; }
+  .ape-gestao-cobranca-retorno.erro { background: #FFF2F2; color: #913C3C; }
+  .ape-gestao-acoes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; margin-top: 11px; }
+  .ape-gestao-acoes button:only-child { grid-column: 1 / -1; }
+  .ape-gestao-acoes button:disabled { cursor: wait; opacity: .62; }
   .ape-gestao-sem-responsavel { margin: 0; border: 1px solid #F0C7C7; border-radius: 14px; background: #FFF8F8; padding: 11px 12px; color: #8E3434; font-size: 11px; font-weight: 700; line-height: 1.4; }
-  .ape-gestao-equipe article > button { width: 100%; margin-top: 11px; }
 
   .ape-gestao-erro,.ape-gestao-vazio { border: 1px solid #F0C7C7; border-radius: 16px; background: #FFF8F8; padding: 16px; color: #7F3030; }
   .ape-gestao-erro strong,.ape-gestao-erro span { display: block; }

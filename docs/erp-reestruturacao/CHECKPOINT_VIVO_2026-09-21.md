@@ -46,6 +46,9 @@ com desktop/mobile, autorização server-side e evidência.
   coerentes, trilhas separadas, console limpo, zero overflow e alvos móveis de
   44 px;
 - erro móvel agora é anunciado como alerta e estados vazios como status;
+- gerente pode registrar de forma auditável que cobrou um corretor por feedback
+  de visita; o comando reutiliza `central_alerta_acoes`, confirma no servidor
+  que a pendência ainda existe e não marca a visita como resolvida;
 - confirmação explícita de ação operacional no CRM, desktop e celular;
 - draft fail-closed para evento `lead.action_confirmed` e fila idempotente;
 - drafts reversíveis para ownership/qualidade/cobrança de visita e áudio;
@@ -56,7 +59,10 @@ com desktop/mobile, autorização server-side e evidência.
 
 ## Verificações
 
-- regressão local completa: 1031/1031;
+- regressão local completa: 1032/1032;
+- cobrança gerencial: 23/23 no recorte gestão/Agenda, typecheck e lint;
+- navegador 390×844 confirmou o histórico, o novo lembrete e a permanência de
+  1 visita pendente após registrar a cobrança; zero overflow e alvos ≥44 px;
 - autoridade visual CRM: 56/56; recorte mobile adicional: 39/39; typecheck,
   lint e build Vinext completos;
 - recorte gestão móvel/Agenda: 39/39, typecheck e lint;
@@ -135,8 +141,9 @@ com desktop/mobile, autorização server-side e evidência.
 - drafts de banco não serão executados em produção sem ensaio isolado;
 - branch Supabase isolada custa US$ 0,01344/h; gate solicitado: até 4 h,
   máximo US$ 0,05376, exclusão após evidência;
-- aproximadamente 752 MiB livres após o build local; `dist/` ocupa cerca de
-  460 MiB e uma restauração local grande continua inviável;
+- aproximadamente 285 MiB livres depois de criar a worktree isolada de release;
+  o `dist/` anterior ocupa cerca de 460 MiB e o novo build aguarda autorização
+  explícita para remover somente esse artefato regenerável;
 - fluxo positivo da entrada não foi exercitado contra campanha real para não
   criar lead nem disparar WhatsApp.
 - `app/styles/funil-2.css`, `app/styles/funil-trilhas.css` e
