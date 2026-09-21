@@ -35,9 +35,9 @@ const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
 const tela = parametros.get("screen") ?? "desktop-crm";
-if (tela === "crm-mobile") {
+if (tela === "crm-mobile" || tela === "agenda-mobile") {
   const estiloMobile = document.createElement("style");
-  estiloMobile.textContent = ".ape-app{display:block!important}";
+  estiloMobile.textContent = ".ape-app,.ape-agenda{display:block!important}";
   document.head.append(estiloMobile);
 }
 const gravadorVisivel = parametros.get("evidence") === "1";
@@ -48,6 +48,7 @@ const saraPendente = parametros.get("sara") === "pendente";
 const historicoInvalido = parametros.get("history") === "invalido";
 const carteiraInvalida = parametros.get("legacy") === "invalido";
 const conversaInvalida = parametros.get("conversation") === "invalido";
+const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -157,7 +158,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       return json({ ok: true, disponivel: true, audios });
     }
     if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
-    return json(payloadAgenda);
+    return json(pendenciasAgendaInvalidas ? { ...payloadAgenda, pendencias_resultado: undefined } : payloadAgenda);
   }
   if (url.pathname === "/api/funil2") {
     if (estado === "loading") return new Promise<Response>(() => undefined);

@@ -109,8 +109,8 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null; performance_feedback?: PerformanceFeedback };
-    if (!Array.isArray(j.itens)) throw new Error("payload_invalido");
-    return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
+    if (!Array.isArray(j.itens) || !Array.isArray(j.pendencias_resultado)) throw new Error("payload_invalido");
+    return { itens: j.itens, pendencias: j.pendencias_resultado, resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
   }, [accessToken, dia, periodo]);
 
   useEffect(() => {
@@ -225,6 +225,13 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
   const seguinte = () => setDia((d) => (periodo === "mes" ? somarMeses(d, 1) : somarDias(d, periodo === "semana" ? 7 : 1)));
 
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
+  if (erro) return <div className="ape-agenda">
+    <AppMobileOffline atualizadoEm={atualizadoEm} />
+    <div className="ape-agenda-erro" role="alert">
+      <strong>Não foi possível carregar a agenda.</strong>
+      <button type="button" onClick={() => { setErro(false); recarregar(); }}>Tentar de novo</button>
+    </div>
+  </div>;
 
   return (
     <div className="ape-agenda">
@@ -359,15 +366,6 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
 
       {itens === null && (
         <div className="ape-agenda-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <span key={i} />)}</div>
-      )}
-
-      {erro && (
-        <div className="ape-agenda-erro" role="alert">
-          <strong>Não foi possível carregar a agenda.</strong>
-          <button type="button" onClick={() => { setErro(false); recarregar(); }}>
-            Tentar de novo
-          </button>
-        </div>
       )}
 
       {itens !== null && !erro && paraListar.length === 0 && (
