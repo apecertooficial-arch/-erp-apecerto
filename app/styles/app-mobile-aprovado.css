@@ -35,7 +35,7 @@
   .ape-sobrancelha { color: #FF7000; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
   .ape-manchete { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.12; letter-spacing: -.02em; text-wrap: pretty; }
   .ape-atualizado { display: flex; align-items: center; gap: 10px; color: #9A918A; font-size: 12px; font-weight: 500; }
-  .ape-atualizar { display: flex; align-items: center; gap: 5px; min-height: 32px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .ape-atualizar { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0; border: 0; background: transparent; color: #FF7000; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 
   /* ---------- Três números do dia ---------- */
   .ape-numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -89,7 +89,7 @@
   .ape-filtros { display: flex; gap: 7px; overflow-x: auto; margin: 0 -20px 14px; padding: 0 20px 3px; scrollbar-width: none; }
   .ape-filtros::-webkit-scrollbar { display: none; }
   .ape-filtros button {
-    flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid #E4DFD9; border-radius: 999px;
+    flex: 0 0 auto; min-height: 44px; padding: 0 14px; border: 1px solid #E4DFD9; border-radius: 999px;
     background: #fff; color: #6B635C; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
     transition: background 200ms cubic-bezier(.2, .8, .2, 1);
   }
@@ -101,7 +101,7 @@
   .ape-card { background:#fff; box-shadow:0 1px 3px rgba(31,28,26,.06); padding:12px; border:1px solid #eee9e5; border-radius:16px; }
   .ape-card-topo { display: grid; align-items: flex-start; grid-template-columns:36px minmax(0,1fr) auto; gap:9px; }
   .ape-avatar { display: grid; place-items: center; border-radius: 999px; background: #FFE4D1; color: #CC5800; font-weight: 700; width:36px; height:36px; font-size:12px; }
-  .ape-quem { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0; border: 0; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
+  .ape-quem { display: flex; flex-direction: column; justify-content:center; gap: 2px; min-width: 0; min-height: 44px; padding: 0; border: 0; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
   .ape-quem strong { overflow: hidden; color: #1F1C1A; font-weight: 700; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; font-size:14.5px; }
   .ape-quem span { overflow: hidden; color: #9A918A; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; font-size:11px; }
   .ape-prazo { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; background: #F4F0EC; color: #6B635C; font-weight: 600; white-space: nowrap; padding:4px 8px; font-size:11px; }
@@ -634,7 +634,7 @@
   .ape-temperatura-filtros { display:flex; align-items:center; gap:7px; overflow-x:auto; margin:-5px -20px 13px; padding:0 20px 3px; scrollbar-width:none; }
   .ape-temperatura-filtros::-webkit-scrollbar { display:none; }
   .ape-temperatura-filtros>span { flex:none; color:#918981; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-  .ape-temperatura-filtros button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 11px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#68615B; font-family:inherit; font-size:11px; font-weight:700; }
+  .ape-temperatura-filtros button { flex:none; display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 11px; border:1px solid #E4DFD9; border-radius:999px; background:#fff; color:#68615B; font-family:inherit; font-size:11px; font-weight:700; }
   .ape-temperatura-filtros button::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
   .ape-temperatura-filtros button.ativo { border-color:currentColor; box-shadow:0 0 0 2px color-mix(in srgb,currentColor 12%,transparent); }
   .ape-temperatura-filtros .temperatura-quente { color:#B84325; background:#FDEAE3; border-color:#F3C2B5; }

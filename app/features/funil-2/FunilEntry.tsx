@@ -43,20 +43,15 @@ export function FunilEntry() {
             />
           );
         }
-        return (
-          <>
-            <style>{'@import url("/funil-web-sexta.css") screen and (min-width: 901px);'}</style>
-            <Funil2Workspace
-              key={profile?.userId || "perfil-pendente"}
-              accessToken={accessToken}
-              profile={{
-                userId: profile?.userId ?? "",
-                role,
-                name: profile?.name ?? "Corretor",
-              }}
-            />
-          </>
-        );
+        return <Funil2Workspace
+          key={profile?.userId || "perfil-pendente"}
+          accessToken={accessToken}
+          profile={{
+            userId: profile?.userId ?? "",
+            role,
+            name: profile?.name ?? "Corretor",
+          }}
+        />;
       }}
     </GuardaModulo>
   );

@@ -21,6 +21,10 @@ type Estado = "normal" | "loading" | "vazio" | "erro" | "offline" | "negado";
 type RegistroRede = { method: string; path: string; blocked: boolean };
 type RegistroConsole = { level: "error" | "warning"; message: string };
 
+// O shell real decide o item ativo pela rota. Normalizar o runner para /crm
+// evita uma evidência visual falsa em que o Kanban aparece com "Início" ativo.
+if (window.location.pathname !== "/crm") window.history.replaceState(null, "", `/crm${window.location.search}`);
+
 const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;

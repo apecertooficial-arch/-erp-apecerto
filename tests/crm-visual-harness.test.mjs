@@ -10,10 +10,17 @@ const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
 const funilCss = read("../app/styles/funil.css");
+const mobileCss = read("../app/styles/app-mobile-aprovado.css");
 
 test("harness renderiza a rota e o shell reais sem segunda interface", () => {
   assert.match(harness, /import PaginaCrm from "\.\.\/\.\.\/app\/\(erp\)\/crm\/page"/);
   assert.match(harness, /import \{ ErpShell \} from "\.\.\/\.\.\/app\/features\/system\/ErpShell"/);
+  assert.match(harness, /import "\.\.\/\.\.\/app\/styles\/funil\.css"/);
+  assert.doesNotMatch(harness, /import "\.\.\/\.\.\/app\/styles\/funil-2\.css"/);
+  assert.doesNotMatch(harness, /import "\.\.\/\.\.\/app\/styles\/funil-trilhas\.css"/);
+  assert.match(funilCss, /\.f2-funil-troca \{/);
+  assert.match(funilCss, /\.f2m-funil-etiqueta \{/);
+  assert.match(harness, /window\.history\.replaceState\(null, "", `\/crm\$\{window\.location\.search\}`\)/);
   assert.match(harness, /<ErpShell><PaginaCrm \/><\/ErpShell>/);
   assert.doesNotMatch(harness, /crm-v3|iframe|dangerouslySetInnerHTML/);
   assert.match(vite, /root: aqui/);
@@ -66,4 +73,11 @@ test("falha inicial não expõe mutações e falha posterior preserva a carteira
 test("Funil móvel remove junto o cabeçalho global oculto e o espaço reservado", () => {
   assert.match(funilCss, /\.app-shell:has\(\.funil-oficial\.modo-crm\) \.app-mobile-top\{display:none\}/);
   assert.match(funilCss, /\.app-shell:has\(\.funil-oficial\.modo-crm\) \.workspace\{padding-top:0\}/);
+});
+
+test("controles móveis acionáveis preservam alvo mínimo de 44 px", () => {
+  assert.match(mobileCss, /\.ape-atualizar \{[^}]*min-height: 44px/);
+  assert.match(mobileCss, /\.ape-filtros button \{[^}]*min-height: 44px/);
+  assert.match(mobileCss, /\.ape-quem \{[^}]*min-height: 44px/);
+  assert.match(mobileCss, /\.ape-temperatura-filtros button \{[^}]*min-height:44px/);
 });

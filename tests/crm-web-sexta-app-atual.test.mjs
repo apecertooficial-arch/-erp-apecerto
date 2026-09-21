@@ -7,15 +7,18 @@ const page = read("../app/(erp)/crm/page.tsx");
 const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
+const layout = read("../app/layout.tsx");
 const webCssSource = read("../app/styles/funil.css");
-const webCssPublic = read("../public/funil-web-sexta.css");
 
-test("CRM separa explicitamente o web de sexta do app atualmente publicado", () => {
+test("CRM usa uma autoridade visual importada pelo aplicativo, sem CSS público injetado", () => {
   assert.match(page, /<FunilEntry/);
   assert.match(entry, /ehCelular[\s\S]*<Funil2Mobile/);
   assert.match(entry, /<Funil2Workspace/);
-  assert.match(entry, /@import url\("\/funil-web-sexta\.css"\) screen and \(min-width: 901px\)/);
-  assert.equal(webCssPublic, webCssSource);
+  assert.match(layout, /import "\.\/styles\/funil\.css"/);
+  assert.doesNotMatch(layout, /import "\.\/styles\/funil-2\.css"/);
+  assert.doesNotMatch(layout, /import "\.\/styles\/funil-trilhas\.css"/);
+  assert.doesNotMatch(entry, /funil-web-sexta\.css|<style>/);
+  assert.match(webCssSource, /CRM FUNIL 2 — FOLHA CANÔNICA ÚNICA/);
 });
 
 test("desktop recupera a hierarquia operacional aprovada na sexta", () => {

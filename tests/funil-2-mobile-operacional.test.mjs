@@ -64,6 +64,12 @@ test("CRM mobile oferece as etapas do Funil como filtro nos dois modos", () => {
   assert.match(MOBILE, /modo: "inicio" \| "crm"/);
 });
 
+test("erro e estados vazios móveis são anunciados por tecnologia assistiva", () => {
+  assert.match(MOBILE, /erro && <div className="ape-estado ruim" role="alert" aria-live="assertive">/);
+  assert.match(MOBILE, /pedidoUrl !== null && !leadPedido && <div className="ape-estado ruim" role="alert" aria-live="assertive">/);
+  assert.ok((MOBILE.match(/className="ape-estado" role="status" aria-live="polite"/g) ?? []).length >= 2);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });

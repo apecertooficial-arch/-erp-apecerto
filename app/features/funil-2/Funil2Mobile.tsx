@@ -968,7 +968,7 @@ export function Funil2Mobile({
       {TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} className={`${temperatura === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => setTemperatura(item.codigo)}><i />{item.rotulo}</button>)}
     </nav>}
 
-    {erro && <div className="ape-estado ruim">
+    {erro && <div className="ape-estado ruim" role="alert" aria-live="assertive">
       <span className="ape-estado-icone"><IconeAlerta /></span>
       <strong>Não deu pra carregar sua fila</strong>
       <p>{erro}</p>
@@ -983,20 +983,20 @@ export function Funil2Mobile({
       </div>)}
     </div>}
 
-    {dados && pedidoUrl !== null && !leadPedido && <div className="ape-estado ruim">
+    {dados && pedidoUrl !== null && !leadPedido && <div className="ape-estado ruim" role="alert" aria-live="assertive">
       <span className="ape-estado-icone"><IconeAlerta /></span>
       <strong>Este cliente não está mais na sua carteira</strong>
       <button type="button" onClick={() => { limparLeadDaUrl(); onIr("/crm"); }}>Voltar ao CRM</button>
     </div>}
 
-    {dados && !erro && modo === "inicio" && totalNoDia === 0 && <div className="ape-estado">
+    {dados && !erro && modo === "inicio" && totalNoDia === 0 && <div className="ape-estado" role="status" aria-live="polite">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Fila zerada por agora</strong>
       <p>Você respondeu todo mundo que estava esperando hoje. O restante da carteira está no CRM.</p>
       <button type="button" onClick={() => onIr("/crm")}>Ver minha carteira</button>
     </div>}
 
-    {dados && !erro && modo === "crm" && visiveis.length === 0 && carteiraAntiga.length === 0 && !buscandoCarteira && <div className="ape-estado">
+    {dados && !erro && modo === "crm" && visiveis.length === 0 && carteiraAntiga.length === 0 && !buscandoCarteira && <div className="ape-estado" role="status" aria-live="polite">
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Nenhum cliente neste filtro</strong>
       <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
