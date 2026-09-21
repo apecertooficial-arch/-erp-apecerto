@@ -51,6 +51,11 @@ test("novo negócio usa pesquisa remota paginada, acessível e sem 699 options",
   assert.match(picker, /Sem conexão\. A pesquisa está indisponível offline/);
 });
 
+test("novo negócio não transforma resposta incompleta em nenhum cliente", () => {
+  assert.match(picker, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("payload_invalido"\)/);
+  assert.match(picker, /setErro\(navigator\.onLine \? "Não foi possível pesquisar os clientes\."/);
+});
+
 test("pesquisa do Funil preserva autenticação, RLS e minimização de dados", () => {
   assert.match(carteira, /db\.auth\.getUser\(token\)/);
   assert.match(carteira, /from\("f2_lead"\)/);
@@ -61,4 +66,3 @@ test("pesquisa do Funil preserva autenticação, RLS e minimização de dados", 
   assert.match(carteira, /\[\.\.\.digitos\]\.join\("\*"\)/);
   assert.doesNotMatch(carteira, /service_role|SUPABASE_SERVICE_ROLE/);
 });
-

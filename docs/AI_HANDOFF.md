@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `c63750a504a02c768ba7eed790bf8a623f008461`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: Todos os Leads não esconde mais falha da carteira antiga como busca vazia.
-- Decisão: validar status e `leads` no limite da busca; manter os cards atuais disponíveis, mas mostrar “indisponível” e alerta na seção legada sem o vazio contraditório.
-- Arquivos: `app/features/funil-2/Funil2Workspace.tsx`, `tests/crm-organizacao.test.mjs`.
-- Verificações: o harness desktop reproduziu a seção ausente após `{}`; o teste falhou primeiro; depois da correção, o erro fica explícito sem “Nada na carteira antiga”, e a resposta válida preserva oito resultados acionáveis.
-- Produção: `c63750a5` publicado e confirmado; a Agenda desktop real carregou calendário sem erro.
-- Risco: baixo; busca legitimamente vazia continua válida quando a API devolve `leads: []`.
+- Base: `origin/main` em `895ac6097caa080b965148b0efff70537e9c02c1`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o seletor de cliente do Novo negócio não transforma mais HTTP 200 incompleto em “nenhum cliente”.
+- Decisão: exigir `leads` como array no componente compartilhado e reutilizar o tratamento de erro de rede já existente.
+- Arquivos: `app/features/funil-2/LeadSearchPicker.tsx`, `tests/crm-correcao-6-2-para-10.test.mjs`.
+- Verificações: o harness reproduziu o falso vazio após `{}`; o teste falhou primeiro; depois da correção, aparece alerta e uma resposta válida preserva os clientes selecionáveis.
+- Produção: `895ac609` publicado e confirmado; a busca real por “Mar” retornou 40 clientes legados acionáveis.
+- Risco: baixo; pesquisa legitimamente vazia continua válida quando a API devolve `leads: []`.
 - Próximo passo: executar o build, publicar esta fatia, validar o CRM em produção e seguir para a próxima falha P0/P1 comprovada.

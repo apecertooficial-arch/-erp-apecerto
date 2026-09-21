@@ -59,7 +59,8 @@ export function LeadSearchPicker({ accessToken, value, onChange, rotulo = "Busca
               : json.error ?? "Não foi possível pesquisar os clientes.");
           setResultados([]); setTemMais(false); return;
         }
-        const recebidos = json.leads ?? [];
+        if (!Array.isArray(json.leads)) throw new Error("payload_invalido");
+        const recebidos = json.leads;
         setResultados((atuais) => pagina === 1 ? recebidos : [...atuais, ...recebidos.filter((lead) => !atuais.some((item) => item.id === lead.id))]);
         setTemMais(json.temMais === true);
       } catch (causa) {
