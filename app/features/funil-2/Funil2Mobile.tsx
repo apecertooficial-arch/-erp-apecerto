@@ -658,6 +658,8 @@ function FichaLead({
   accessToken,
   onSalvo,
   onRecarregar,
+  historicoErro,
+  onRecarregarHistorico,
   tagCatalogo,
 }: {
   lead: LeadFunil2;
@@ -670,6 +672,8 @@ function FichaLead({
   accessToken: string;
   onSalvo: (mensagem?: string) => void;
   onRecarregar: () => void;
+  historicoErro: string | null;
+  onRecarregarHistorico: () => void;
   tagCatalogo: TagCatalogoFunil2[];
 }) {
   const [aba, setAba] = useState<"atendimento" | "notas" | "historico">("atendimento");
@@ -738,7 +742,7 @@ function FichaLead({
 
       {aba === "notas" && <div className="ape-ficha-painel"><NotasMobile lead={lead} notas={notas} accessToken={accessToken} onSalvo={onRecarregar} /></div>}
 
-      {aba === "historico" && <div className="ape-ficha-painel"><section className="f2m-historico"><h3>Últimas atualizações</h3>{eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((eventoOriginal) => { const evento = eventoSaraVisivel(eventoOriginal); return <article key={evento.id}><i /><div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div></article>; })}</section></div>}
+      {aba === "historico" && <div className="ape-ficha-painel">{historicoErro ? <div className="ape-estado ruim" role="alert"><strong>Histórico indisponível</strong><p>{historicoErro}</p><button type="button" onClick={onRecarregarHistorico}>Tentar novamente</button></div> : <section className="f2m-historico"><h3>Últimas atualizações</h3>{eventos.length === 0 ? <p>Ainda não há atualização registrada neste atendimento.</p> : eventos.slice(0, 8).map((eventoOriginal) => { const evento = eventoSaraVisivel(eventoOriginal); return <article key={evento.id}><i /><div><strong>{evento.titulo}</strong>{evento.detalhe && <span>{evento.detalhe}</span>}<small>{new Date(evento.criado_em).toLocaleString("pt-BR")}</small></div></article>; })}</section>}</div>}
 
       <div className="ape-ficha-rodape-aprovado"><BotaoWhatsApp telefone={lead.telefone} negocioId={lead.origem_negocio_id} compacto /><button type="button" onClick={() => setChatAberto(true)} aria-label="Ver conversa">Chat</button></div>
 
@@ -778,6 +782,8 @@ export function Funil2Mobile({
   const [trazendoLead, setTrazendoLead] = useState(false);
   const [avisoCarteira, setAvisoCarteira] = useState<string | null>(null);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
+  const [historicoErro, setHistoricoErro] = useState<string | null>(null);
+  const [historicoTentativa, setHistoricoTentativa] = useState(0);
   const [pedidoUrl] = useState(lerLeadDaUrl);
   const [agora] = useState(() => Date.now());
 
@@ -902,11 +908,14 @@ export function Funil2Mobile({
     void fetch(`/api/funil2?historicoLeadId=${encodeURIComponent(leadHistoricoId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
       .then(async (response) => ({ ok: response.ok, json: await response.json().catch(() => ({})) as PayloadMobile }))
       .then((resposta) => {
-        if (!ativo || !resposta.ok) return;
+        if (!ativo) return;
+        if (!resposta.ok) { setHistoricoErro(resposta.json.error ?? "Não foi possível carregar o histórico."); return; }
+        if (!Array.isArray(resposta.json.eventos) || !Array.isArray(resposta.json.notas)) { setHistoricoErro("Não foi possível confirmar o histórico deste atendimento."); return; }
+        setHistoricoErro(null);
         setHistoricoDetalhe({ leadId: leadHistoricoId, eventos: resposta.json.eventos ?? [], notas: resposta.json.notas ?? [] });
-      });
+      }).catch(() => { if (ativo) setHistoricoErro("Não foi possível carregar o histórico."); });
     return () => { ativo = false; };
-  }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
+  }, [accessToken, leadHistoricoId, leadHistoricoVersao, historicoTentativa]);
   const primeiroNome = nome.trim().split(/\s+/)[0] || "corretor";
 
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
@@ -1050,6 +1059,8 @@ export function Funil2Mobile({
       accessToken={accessToken}
       onSalvo={(mensagem) => { setSucesso(mensagem ?? "Ela já está na Agenda, no horário escolhido."); void recarregar(); setSelecionado(null); }}
       onRecarregar={() => { void recarregar(); }}
+      historicoErro={historicoErro}
+      onRecarregarHistorico={() => setHistoricoTentativa((atual) => atual + 1)}
     />}
 
     {alvoCarteira && <TrazerLeadAntigoMobile

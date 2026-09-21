@@ -19,6 +19,7 @@ import { NotificationsWorkspace } from "../../app/features/notifications/Notific
 import { TeamWorkspace } from "../../app/features/team/TeamWorkspace";
 import { PermissionsWorkspace } from "../../app/features/permissions/PermissionsWorkspace";
 import { ApproachesWorkspace } from "../../app/features/approaches/ApproachesWorkspace";
+import { Funil2Mobile } from "../../app/features/funil-2/Funil2Mobile";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -34,6 +35,11 @@ const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
 const tela = parametros.get("screen") ?? "desktop-crm";
+if (tela === "crm-mobile") {
+  const estiloMobile = document.createElement("style");
+  estiloMobile.textContent = ".ape-app{display:block!important}";
+  document.head.append(estiloMobile);
+}
 const gravadorVisivel = parametros.get("evidence") === "1";
 const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const qualidadeExemplo = parametros.get("quality") === "sample";
@@ -209,6 +215,8 @@ document.body.append(transferenciaEvidencia);
 
 const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
+  : tela === "crm-mobile"
+    ? <Funil2Mobile accessToken="harness-test-only" nome="Corretor teste" modo="crm" onIr={() => undefined} />
   : tela === "avisos-mobile"
     ? <NotificationsWorkspace accessToken="harness-test-only" />
   : tela === "tarefas-mobile"

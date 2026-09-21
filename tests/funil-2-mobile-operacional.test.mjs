@@ -90,6 +90,12 @@ test("CRM móvel rejeita resposta 200 incompleta em vez de fingir carteira vazia
   assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
 });
 
+test("ficha móvel não transforma histórico incompleto em atualização vazia", () => {
+  assert.match(MOBILE, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
+  assert.match(MOBILE, /historicoErro \? <div className="ape-estado ruim" role="alert">/);
+  assert.match(MOBILE, /onRecarregarHistorico=\{\(\) => setHistoricoTentativa\(\(atual\) => atual \+ 1\)\}/);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });
