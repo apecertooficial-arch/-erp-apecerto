@@ -49,6 +49,7 @@ const historicoInvalido = parametros.get("history") === "invalido";
 const carteiraInvalida = parametros.get("legacy") === "invalido";
 const conversaInvalida = parametros.get("conversation") === "invalido";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
+const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -174,6 +175,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/permissions") return json(estado === "invalido" ? {} : { perfis: [], usuarios: [] });
   if (url.pathname === "/api/approaches") return json(estado === "invalido" ? {} : { approaches: [], products: [] });
   if (url.pathname === "/api/funil2/conversa") return json(conversaInvalida ? {} : { mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
+  if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "opcoes") return json(opcoesClienteInvalidas ? {} : { corretores: [{ corretor_id: 7, nome: "Corretor teste", is_self: true }], corretorProprioId: 7, podeEscolher: false });
   if (url.pathname === "/api/funil2/carteira") return json(carteiraInvalida ? {} : { leads: leads.slice(0, 8).map((lead) => ({
     lead_id: lead.lead_id, negocio_id: lead.origem_negocio_id, nome: lead.nome, telefone: "••••0000",
     corretor_id: lead.corretor_id, corretor_nome: lead.corretor_nome, criado_em: lead.criado_em,

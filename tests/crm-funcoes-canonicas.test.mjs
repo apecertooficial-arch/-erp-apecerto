@@ -56,6 +56,11 @@ test("Adicionar cliente fica visível e usa criação canônica reconciliável",
   assert.doesNotMatch(clientApi, /fetch\(|WhatsApp|D-API|service_role/);
 });
 
+test("Adicionar cliente rejeita opções incompletas em vez de bloquear sem explicação", () => {
+  assert.match(addClient, /if \(!Array\.isArray\(json\.corretores\)\) throw new Error\("Não foi possível preparar o cadastro\."\)/);
+  assert.match(addClient, /error && <p className="f2-modal-erro" role="alert">/);
+});
+
 test("negócio novo do Funil 2 cria o card visível na mesma transação", () => {
   assert.match(cardAtomicoMigration, /after insert or update of pipeline_id, stage_id, status, corretor_id/i);
   assert.match(cardAtomicoMigration, /new\.pipeline_id = public\.f2_pipeline_id\(\)/i);

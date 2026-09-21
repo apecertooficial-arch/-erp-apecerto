@@ -55,7 +55,8 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       .then(async (response) => ({ response, json: await response.json().catch(() => ({})) as { error?: string; corretores?: CorretorPermitido[]; corretorProprioId?: number | null; podeEscolher?: boolean } }))
       .then(({ response, json }) => {
         if (!response.ok) throw new Error(json.error || "Não foi possível preparar o cadastro.");
-        const lista = json.corretores ?? [];
+        if (!Array.isArray(json.corretores)) throw new Error("Não foi possível preparar o cadastro.");
+        const lista = json.corretores;
         setCorretores(lista); setPodeEscolher(json.podeEscolher === true);
         const inicial = json.corretorProprioId ?? lista.find((item) => item.is_self)?.corretor_id ?? lista[0]?.corretor_id;
         setForm((atual) => ({ ...atual, corretorId: inicial ? String(inicial) : "" }));
