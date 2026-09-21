@@ -4,6 +4,15 @@ import { isInvalidSessionError } from "../../lib/supabase/auth-errors";
 export const dynamic = "force-dynamic";
 
 type EquipeError = { code?: string } | null | undefined;
+type EquipeRow = {
+  corretor_id: number;
+  nome: string;
+  score: number;
+  vgv_mes: number;
+  vendas_mes: number;
+  meta_vgv: number;
+  is_self: boolean;
+};
 
 function falhaEquipe(error: EquipeError, operacao: string) {
   console.error("equipe_operacao_falhou", {
@@ -14,6 +23,34 @@ function falhaEquipe(error: EquipeError, operacao: string) {
     error: "Não foi possível carregar sua equipe agora.",
     erro: "equipe_indisponivel",
   }, { status: 502, headers: { "Cache-Control": "private, no-store, no-cache" } });
+}
+
+function normalizarEquipe(value: unknown): EquipeRow[] | null {
+  if (!Array.isArray(value)) return null;
+  const team = value.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const row = item as Record<string, unknown>;
+    const corretorId = Number(row.corretor_id);
+    const score = Number(row.score);
+    const vgvMes = Number(row.vgv_mes);
+    const vendasMes = Number(row.vendas_mes);
+    const metaVgv = Number(row.meta_vgv);
+    if (!Number.isSafeInteger(corretorId) || corretorId <= 0
+      || typeof row.nome !== "string" || !row.nome.trim()
+      || ![score, vgvMes, vendasMes, metaVgv].every(Number.isFinite)) return null;
+    return {
+      corretor_id: corretorId,
+      nome: row.nome,
+      score,
+      vgv_mes: vgvMes,
+      vendas_mes: vendasMes,
+      meta_vgv: metaVgv,
+      // A RPC devolve NULL quando o corretor ainda não possui usuário ligado.
+      // Para a sessão atual isso significa, deterministicamente, "não é eu".
+      is_self: row.is_self === true,
+    };
+  });
+  return team.every((item): item is EquipeRow => item !== null) ? team : null;
 }
 
 async function authClient(request: Request) {
@@ -38,6 +75,7 @@ export async function GET(request: Request) {
   if (auth.status === "auth_error") return falhaEquipe(auth.error, "autenticar");
   const { data, error } = await auth.supabase.rpc("equipe_visao");
   if (error) return falhaEquipe(error, "carregar_equipe");
-  if (!Array.isArray(data)) return falhaEquipe(null, "validar_equipe");
-  return Response.json({ team: data }, { headers: { "Cache-Control": "private, no-store, no-cache" } });
+  const team = normalizarEquipe(data);
+  if (!team) return falhaEquipe(null, "validar_equipe");
+  return Response.json({ team }, { headers: { "Cache-Control": "private, no-store, no-cache" } });
 }

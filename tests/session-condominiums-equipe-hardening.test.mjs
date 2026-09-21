@@ -61,6 +61,9 @@ test("Equipe separa falha técnica de sessão e registra somente código", () =>
   assert.match(equipeApi, /auth\.status === "auth_error"/);
   assert.match(equipeApi, /falhaEquipe\(auth\.error, "autenticar"\)/);
   assert.match(equipeApi, /falhaEquipe\(error, "carregar_equipe"\)/);
+  assert.match(equipeApi, /function normalizarEquipe\(/);
+  assert.match(equipeApi, /is_self: row\.is_self === true/);
+  assert.match(equipeApi, /if \(!team\) return falhaEquipe\(null, "validar_equipe"\)/);
   assert.doesNotMatch(equipeApi, /console\.(?:error|warn|log)\([^\n]*(?:message|nome|email|payload)/i);
 });
 
