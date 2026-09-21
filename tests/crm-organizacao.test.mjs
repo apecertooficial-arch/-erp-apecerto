@@ -22,6 +22,12 @@ test("CRM desktop rejeita resposta incompleta em vez de fingir carteira vazia", 
   assert.match(desktop, /<button type="button" onClick=\{\(\) => void carregar\(\)\}>Tentar novamente<\/button>/);
 });
 
+test("ficha não transforma histórico incompleto em linha do tempo vazia", () => {
+  assert.match(desktop, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
+  assert.match(desktop, /historicoErro && <div className="f2-ficha-vazio" role="alert">/);
+  assert.match(desktop, /setHistoricoTentativa\(\(atual\) => atual \+ 1\)/);
+});
+
 test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
   for (const rotulo of ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"]) assert.ok(desktop.includes(rotulo));
   assert.match(desktop, /role="tablist"/);

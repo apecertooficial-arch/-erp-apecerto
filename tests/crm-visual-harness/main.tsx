@@ -39,6 +39,7 @@ const estadoAudio = parametros.get("audio") ?? "indisponivel";
 const qualidadeExemplo = parametros.get("quality") === "sample";
 const corretorEmFoco = parametros.get("broker");
 const saraPendente = parametros.get("sara") === "pendente";
+const historicoInvalido = parametros.get("history") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -156,7 +157,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
     if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
-    if (url.searchParams.has("historicoLeadId")) return json({ eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
+    if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });

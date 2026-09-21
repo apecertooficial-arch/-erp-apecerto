@@ -139,6 +139,8 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [menuCardId, setMenuCardId] = useState<string | null>(null);
   const [filtrosQuadroAbertos, setFiltrosQuadroAbertos] = useState(false);
   const [historicoDetalhe, setHistoricoDetalhe] = useState<{ leadId: string; eventos: EventoFunil2[]; notas: NotaFunil2[] } | null>(null);
+  const [historicoErro, setHistoricoErro] = useState<string | null>(null);
+  const [historicoTentativa, setHistoricoTentativa] = useState(0);
   const [limiteDia, setLimiteDia] = useState(50);
   /* Filtro do Meu Dia. Começa em "atrasadas": é o que o corretor tem que
      resolver agora. Os outros recortes existem, mas por escolha dele. */
@@ -242,11 +244,14 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     void fetch(`/api/funil2?historicoLeadId=${encodeURIComponent(leadHistoricoId)}`, { headers: { Authorization: `Bearer ${accessToken}` } })
       .then(async (response) => ({ ok: response.ok, json: await response.json().catch(() => ({})) as Payload }))
       .then((resposta) => {
-        if (!ativo || !resposta.ok) return;
+        if (!ativo) return;
+        if (!resposta.ok) { setHistoricoErro(resposta.json.error ?? "Não foi possível carregar o histórico."); return; }
+        if (!Array.isArray(resposta.json.eventos) || !Array.isArray(resposta.json.notas)) { setHistoricoErro("Não foi possível confirmar o histórico deste atendimento."); return; }
+        setHistoricoErro(null);
         setHistoricoDetalhe({ leadId: leadHistoricoId, eventos: resposta.json.eventos ?? [], notas: resposta.json.notas ?? [] });
-      });
+      }).catch(() => { if (ativo) setHistoricoErro("Não foi possível carregar o histórico."); });
     return () => { ativo = false; };
-  }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
+  }, [accessToken, leadHistoricoId, leadHistoricoVersao, historicoTentativa]);
   const eventosLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.eventos : eventos.filter((e) => e.funil_lead_id === lead.id)) : [];
   const notasLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.notas : notas.filter((n) => n.funil_lead_id === lead.id)) : [];
   const leadsOperacionais = leads.filter(leadOperacionalNoMeuDia);
@@ -588,7 +593,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       {chatDireto && (chatDireto.lead_id > 0 ? <Funil2ConversationDrawer accessToken={accessToken} leadId={chatDireto.id} nome={chatDireto.nome} onClose={fecharChatDireto} /> : <div className="f2-acao-painel-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget) fecharChatDireto(); }}><section className="f2-acao-painel" role="dialog" aria-label={`Chat de ${chatDireto.nome}`}><header><strong>Conversa</strong><button type="button" aria-label="Fechar chat" onClick={fecharChatDireto}>×</button></header><p>Este lead ainda não possui uma conversa vinculada.</p></section></div>)}
 
       {lead && momentoAtual && <Detalhe key={`${lead.id}:${lead.versao}`}
-        accessToken={accessToken} lead={lead} negociacao={negociacaoLead} negocios={negociosVinculados.filter((item) => item.funil_lead_id === lead.id)} imoveis={imoveisVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivos={arquivosVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivosEstado={fontes?.arquivos ?? "sem_vinculo"} momento={momentoAtual} momentos={momentosAtivos.filter((m) => funilDe(m) === funilDe(lead))} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} atividades={atividades.filter((atividade) => atividade.funil_lead_id === lead.id)} visitas={visitas.filter((visita) => visita.funil_lead_id === lead.id)} tagCatalogo={tagCatalogo} busy={busy}
+        accessToken={accessToken} lead={lead} negociacao={negociacaoLead} negocios={negociosVinculados.filter((item) => item.funil_lead_id === lead.id)} imoveis={imoveisVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivos={arquivosVinculados.filter((item) => item.funil_lead_id === lead.id)} arquivosEstado={fontes?.arquivos ?? "sem_vinculo"} momento={momentoAtual} momentos={momentosAtivos.filter((m) => funilDe(m) === funilDe(lead))} etapas={etapasAtivas} eventos={eventosLead} notas={notasLead} atividades={atividades.filter((atividade) => atividade.funil_lead_id === lead.id)} visitas={visitas.filter((visita) => visita.funil_lead_id === lead.id)} tagCatalogo={tagCatalogo} busy={busy} historicoErro={historicoErro}
         abrirNoChat={abrirNoChat}
         onFechar={() => { setSelecionado(null); setAbrirNoChat(false); }}
         onMomento={(codigo, prazo, obs) => void atualizar("atualizarMomento", { momentoCodigo: codigo, prazoCombinado: prazo || null, observacao: obs })}
@@ -602,6 +607,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         onSalvarNota={(texto) => executar("salvarNota", { leadId: lead.id, texto })}
         onTagSalva={() => void carregar()}
         onRecarregar={carregar}
+        onRecarregarHistorico={() => setHistoricoTentativa((atual) => atual + 1)}
       />}
     </div>
   );
@@ -1014,7 +1020,7 @@ function Modal({ titulo, texto, onFechar, children }: { titulo:string; texto:str
 }
 
 function Detalhe({
-  abrirNoChat, accessToken, lead, negociacao, negocios, imoveis, arquivos, arquivosEstado, momento, momentos, etapas, eventos, notas, atividades, visitas, tagCatalogo, busy, onFechar, onMomento, onTemperatura, onAgendarVisita, onIniciarNegociacao, onGerarNegociacao, onSalvarNegociacao, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva, onRecarregar }: {
+  abrirNoChat, accessToken, lead, negociacao, negocios, imoveis, arquivos, arquivosEstado, momento, momentos, etapas, eventos, notas, atividades, visitas, tagCatalogo, busy, historicoErro, onFechar, onMomento, onTemperatura, onAgendarVisita, onIniciarNegociacao, onGerarNegociacao, onSalvarNegociacao, onAbrirEsteira, onDescartar, onSalvarNota, onTagSalva, onRecarregar, onRecarregarHistorico }: {
   accessToken: string;
   lead: LeadFunil2; negociacao: NegociacaoFunil2 | null; negocios: NegocioVinculadoFunil2[]; imoveis: ImovelVinculadoFunil2[]; arquivos: ArquivoVinculadoFunil2[]; arquivosEstado: "ok" | "sem_vinculo" | "erro"; momento: MomentoFunil2; momentos: MomentoFunil2[]; etapas: EtapaConfigFunil2[]; eventos: EventoFunil2[]; notas: NotaFunil2[]; atividades: AtividadeFunil2[]; visitas: VisitaFunil2[]; tagCatalogo: TagCatalogoFunil2[]; busy: boolean;
   onFechar: () => void; onMomento: (codigo: string, prazo: string, obs: string) => void;
@@ -1023,6 +1029,7 @@ function Detalhe({
   onSalvarNegociacao: (etapa: NegociacaoFunil2["etapa"]) => Promise<boolean>;
   onDescartar: () => void; onSalvarNota: (texto: string) => Promise<boolean>;
   onTagSalva: () => void; onRecarregar: () => Promise<void>;
+  historicoErro: string | null; onRecarregarHistorico: () => void;
   abrirNoChat?: boolean;
 }) {
   const [codigo, setCodigo] = useState(lead.momento_codigo);
@@ -1152,7 +1159,7 @@ function Detalhe({
             <section className="f2-ficha-atendimento-secao"><header><h3>Comentários e notas</h3><button type="button" className="f2-secundario" onClick={() => setComentarioAberto((aberto) => !aberto)}>+ Comentário</button></header>{notas.slice(0, 2).map((item) => <article className="f2-ficha-nota" key={item.id}><span>{item.texto}</span><small>{item.autor_nome ?? "Equipe"} · {dataCurta(item.criado_em)} · nota interna</small></article>)}{notas.length === 0 && !comentarioAberto && <p>Nenhuma nota escrita ainda.</p>}{comentarioAberto && <div className="f2-ficha-comentario"><textarea aria-label="Novo comentário" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Combinado, objeção ou contexto importante." maxLength={2000} /><button type="button" disabled={busy || nota.trim().length < 2} onClick={() => { void onSalvarNota(nota.trim()).then((ok) => { if (ok) { setNota(""); setComentarioAberto(false); } }); }}>{busy ? "Salvando…" : "Salvar comentário"}</button></div>}</section>
           </div>}
 
-          {abaDetalhe === "historico" && <section className="f2-ficha-bloco"><header><h3>Linha do tempo única</h3><div className="f2-ficha-filtros">{([ ["todos", "Tudo"], ["humanos", "Humano"], ["automaticos", "Sara e D-API"] ] as const).map(([valor, rotulo]) => <button type="button" className={filtroHistorico === valor ? "ativo" : ""} onClick={() => setFiltroHistorico(valor)} key={valor}>{rotulo}</button>)}</div></header><div className="f2-ficha-timeline">{eventosVisiveis.map((eventoOriginal) => { const evento = eventoSaraVisivel(eventoOriginal); return <article key={evento.id}><i /><div><header><strong>{evento.titulo}</strong><em>{/sara|automa|sistema/i.test(`${evento.titulo} ${evento.detalhe}`) ? "Sara · automático" : "humano"}</em><time>{dataCurta(evento.criado_em)}</time></header><span>{evento.detalhe}</span></div></article>; })}{eventosVisiveis.length === 0 && <p>Nenhuma atualização neste filtro.</p>}</div></section>}
+          {abaDetalhe === "historico" && <section className="f2-ficha-bloco"><header><h3>Linha do tempo única</h3><div className="f2-ficha-filtros">{([ ["todos", "Tudo"], ["humanos", "Humano"], ["automaticos", "Sara e D-API"] ] as const).map(([valor, rotulo]) => <button type="button" className={filtroHistorico === valor ? "ativo" : ""} onClick={() => setFiltroHistorico(valor)} key={valor}>{rotulo}</button>)}</div></header>{historicoErro && <div className="f2-ficha-vazio" role="alert"><strong>Histórico indisponível</strong><span>{historicoErro}</span><button type="button" onClick={onRecarregarHistorico}>Tentar novamente</button></div>}{!historicoErro && <div className="f2-ficha-timeline">{eventosVisiveis.map((eventoOriginal) => { const evento = eventoSaraVisivel(eventoOriginal); return <article key={evento.id}><i /><div><header><strong>{evento.titulo}</strong><em>{/sara|automa|sistema/i.test(`${evento.titulo} ${evento.detalhe}`) ? "Sara · automático" : "humano"}</em><time>{dataCurta(evento.criado_em)}</time></header><span>{evento.detalhe}</span></div></article>; })}{eventosVisiveis.length === 0 && <p>Nenhuma atualização neste filtro.</p>}</div>}</section>}
 
           {abaDetalhe === "atividades" && <section className="f2-ficha-bloco"><header><h3>Atividades do lead</h3><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>+ Nova atividade</Link></header><div className="f2-ficha-lista">{atividadesCompletas.map((atividade) => <article key={`${atividade.tipo}:${atividade.id}`}><div><strong>{atividade.titulo}</strong><span>{atividade.tipo === "tarefa" ? `${atividade.responsavel || "Responsável não identificado"} · ${atividade.prioridade || "prioridade normal"}` : `Visita · negócio #${lead.origem_negocio_id}`}</span></div><time>{atividade.data_em ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: FUSO_OPERACAO }).format(new Date(atividade.data_em)) : "Sem prazo"}</time><em>{atividade.status}</em><Link href={`/agenda?lead=${encodeURIComponent(String(lead.lead_id || lead.id))}`}>Abrir na Agenda</Link></article>)}{atividadesCompletas.length === 0 && <p>Nenhuma atividade vinculada a esta ficha.</p>}</div></section>}
 
