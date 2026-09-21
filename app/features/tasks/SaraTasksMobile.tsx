@@ -94,7 +94,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
       >{chave === "atrasadas" ? "Atrasadas" : chave === "agora" ? "Agora" : chave === "hoje" ? "Hoje" : "Futuras"}{contagens[chave] ? ` · ${contagens[chave]}` : ""}</button>)}
     </nav>
 
-    {dados === null && <div className="ape-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i}><div className="ape-barra curta" /><div className="ape-barra media" /><div className="ape-barra alta" /></div>)}</div>}
+    {dados === null && <><span className="sr-only" role="status">Carregando tarefas…</span><div className="ape-esqueleto" aria-hidden="true">{[0, 1, 2].map((i) => <div key={i}><div className="ape-barra curta" /><div className="ape-barra media" /><div className="ape-barra alta" /></div>)}</div></>}
     {erro && <div className="ape-estado ruim" role="alert"><strong>Não foi possível carregar suas tarefas.</strong><p>{erro}</p><button type="button" onClick={() => { setDados(null); setTentativa((n) => n + 1); }}>Tentar novamente</button></div>}
 
     {dados !== null && !erro && visiveis.length === 0 && <div className="ape-estado">

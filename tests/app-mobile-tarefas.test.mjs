@@ -60,4 +60,5 @@ test("tarefas têm os cinco estados de sistema", () => {
   for (const trecho of ["ape-esqueleto", "Fila zerada", "Tentar novamente", "AppMobileOffline", "AppMobileSessaoExpirada"]) {
     assert.ok(tela.includes(trecho), `faltou ${trecho}`);
   }
+  assert.match(tela, /role="status">Carregando tarefas…/);
 });
