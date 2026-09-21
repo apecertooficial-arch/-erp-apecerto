@@ -177,6 +177,13 @@ test("Ajuda, Conhecimento e Financiamento não montam o runtime legado", () => {
   assert.match(paginas[2], /FinancingWorkspace/);
 });
 
+test("Ajuda móvel não oferece atalhos para módulos exclusivos do desktop", () => {
+  const ajuda = readFileSync(join(raizApp, "features/system/HelpWorkspace.tsx"), "utf8");
+  const suporteCss = readFileSync(join(raizApp, "styles/tela-suporte-financiamento.css"), "utf8");
+  assert.equal((ajuda.match(/help-desktop-only/g) ?? []).length, 2);
+  assert.match(suporteCss, /@media\(max-width:900px\)[^}]*\.help-desktop-only\{display:none\}/);
+});
+
 test("Financiamento lê fichas reais com o JWT e respeita RLS", () => {
   const api = readFileSync(join(raizApp, "api/financiamento/route.ts"), "utf8");
   assert.match(api, /createServerSupabaseClient\(token\)/);
