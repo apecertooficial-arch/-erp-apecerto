@@ -23,6 +23,9 @@ com desktop/mobile, autorização server-side e evidência.
 - início móvel do gerente publicado no build
   `27b8f960ab22f6fa682ec866c0f540ebba746ed1`: visitas sem feedback são
   atribuídas por corretor e a cobrança abre a Agenda;
+- cobrança focada publicada no build
+  `04ab7759499b4cfa151b4e7af3ec66deb0273e48`: cada cartão abre somente as
+  pendências do corretor selecionado e permite voltar à fila completa;
 - limite real de 256 KiB, JSON/ID validados, erros internos redigidos e retorno
   da fila validado;
 - smoke de produção sem efeito comercial: 200/400/405/413 conforme contrato;
@@ -31,8 +34,6 @@ com desktop/mobile, autorização server-side e evidência.
 ## Concluído localmente
 
 - confirmação explícita de ação operacional no CRM, desktop e celular;
-- cobrança gerencial focada: o atalho de cada corretor abre somente suas
-  visitas pendentes na Agenda e permite retornar à fila completa;
 - draft fail-closed para evento `lead.action_confirmed` e fila idempotente;
 - drafts reversíveis para ownership/qualidade/cobrança de visita e áudio;
 - quatro fontes já aplicadas da Sara recuperadas do histórico remoto;
@@ -52,6 +53,11 @@ com desktop/mobile, autorização server-side e evidência.
 - novo deep link validado em harness real 390×844: 2 itens no corretor focado,
   3 ao remover o filtro, uma única leitura GET, 44 px, sem overflow/console e
   falha da fonte sem falso zero;
+- pacote isolado sobre `main`: 984/984, typecheck, lint e build completo com os
+  arquivos públicos exatos do commit;
+- produção `04ab7759` validada autenticada em 390×844: seis cobranças na origem,
+  11 itens no primeiro corretor exercitado, 59 ao remover o filtro, botão de
+  44 px, sem overflow e sem console de erro; nenhuma escrita foi feita;
 - Sara/dispatcher/janela: 48/48;
 - entrada/distribuição/ownership: 66/66;
 - CRM validado em navegador sanitizado desktop e 390×844;
