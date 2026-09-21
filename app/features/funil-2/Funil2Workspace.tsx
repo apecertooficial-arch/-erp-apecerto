@@ -31,6 +31,10 @@ type Payload = {
   visitas?: VisitaFunil2[]; atividades?: AtividadeFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro"; conversas?: "ok" | "erro"; instanciasPadrao?: "ok" | "erro"; operacao?: "ok" | "erro"; sara?: "ok" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; podePescar?: boolean; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; error?: string; erro?: string; alteracaoAplicada?: boolean; reconciliacaoNecessaria?: boolean;
 };
 
+function payloadFunilValido(payload: Payload) {
+  return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas, payload.visitas, payload.atividades, payload.negociacoes, payload.negociosVinculados, payload.imoveisVinculados, payload.arquivosVinculados, payload.aquario].every(Array.isArray);
+}
+
 /* Lista fechada, igual a da tabela motivos_descarte. Motivo escrito a mao nao
    vira relatorio: ninguem consegue contar quantos "sem grana" existem. */
 const MOTIVOS_DESCARTE = ["Contato inválido", "Sem interesse", "Sem capacidade financeira", "Fora da região", "Já comprou", "Duplicado", "Pediu para não receber contato", "Produto incompatível"] as const;
@@ -153,6 +157,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
     const resposta = await api(accessToken);
     setCarregando(false);
     if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil."); return; }
+    if (!payloadFunilValido(resposta.json)) { setErro("Não foi possível confirmar os dados do CRM."); return; }
     setCarregado(true);
     setLeads(resposta.json.leads ?? []);
     setMomentos(resposta.json.momentos ?? []);
@@ -179,6 +184,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
       if (!ativo) return;
       setCarregando(false);
       if (!resposta.ok) { setErro(resposta.json.error ?? "Não foi possível carregar o Funil."); return; }
+      if (!payloadFunilValido(resposta.json)) { setErro("Não foi possível confirmar os dados do CRM."); return; }
       setCarregado(true);
       const leadsCarregados = resposta.json.leads ?? [];
       setLeads(leadsCarregados);
@@ -446,7 +452,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         </div>
       </header>
 
-      {erro && <div className="f2-erro">{erro}</div>}
+      {erro && <div className="f2-erro" role="alert"><span>{erro}</span><button type="button" onClick={() => void carregar()}>Tentar novamente</button></div>}
       {sucesso && <div className="f2-sucesso" role="status"><span>{sucesso}</span><button type="button" onClick={() => { setAba("visitas"); setSucesso(null); }}>Ver visitas</button><button type="button" className="fechar" aria-label="Fechar confirmação" onClick={() => setSucesso(null)}>×</button></div>}
       {fontes?.sara === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Sara temporariamente indisponível.</strong><span>Os atendimentos continuam visíveis, mas a leitura automática pode estar desatualizada.</span></div>}
       {aba === "config" && fontes?.operacao === "erro" && <div className="f2-aviso-fonte" role="status"><strong>Configuração operacional indisponível.</strong><span>Não altere parâmetros até a leitura ser restabelecida.</span></div>}

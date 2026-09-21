@@ -16,6 +16,12 @@ const modelo = ler("../app/features/funil-2/modelo.ts");
 const temperaturaMigration = ler("../supabase/migrations/20260825150000_funil_2_temperatura_manual_auditavel.sql");
 const boardPrimitives = ler("../app/features/funil-2/Funil2BoardPrimitives.tsx");
 
+test("CRM desktop rejeita resposta incompleta em vez de fingir carteira vazia", () => {
+  assert.match(desktop, /function payloadFunilValido\(payload: Payload\)/);
+  assert.equal((desktop.match(/if \(!payloadFunilValido\(resposta\.json\)\)/g) ?? []).length, 2);
+  assert.match(desktop, /<button type="button" onClick=\{\(\) => void carregar\(\)\}>Tentar novamente<\/button>/);
+});
+
 test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
   for (const rotulo of ["Atendimento", "Histórico", "Atividades", "Negócios", "Imóveis", "Arquivos", "Dados do lead"]) assert.ok(desktop.includes(rotulo));
   assert.match(desktop, /role="tablist"/);
