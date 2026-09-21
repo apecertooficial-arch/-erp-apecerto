@@ -128,6 +128,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/agenda") {
     if (estado === "loading") return new Promise<Response>(() => undefined);
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
+    if (estado === "invalido") return json({});
     if (url.searchParams.has("feedbackAudioVisitaId")) {
       if (estadoAudio === "indisponivel") return json({ ok: true, disponivel: false, audios: [] });
       const audios = estadoAudio === "transcrito" ? [{

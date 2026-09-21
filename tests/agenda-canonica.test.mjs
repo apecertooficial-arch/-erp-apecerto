@@ -24,6 +24,10 @@ test("desktop, mobile e chat consomem somente a API canônica da Agenda", () => 
   assert.doesNotMatch(chat, /\/api\/crm/);
 });
 
+test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
+  assert.match(mobile, /if \(!Array\.isArray\(j\.itens\)\) throw new Error\("payload_invalido"\)/);
+});
+
 test("Agenda do app fica visível no breakpoint mobile", () => {
   const inicioMobile = appMobileCss.indexOf("\n@media (max-width: 900px) {");
   const agendaVisivel = appMobileCss.indexOf(".ape-agenda {", inicioMobile);

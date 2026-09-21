@@ -109,6 +109,7 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null; performance_feedback?: PerformanceFeedback };
+    if (!Array.isArray(j.itens)) throw new Error("payload_invalido");
     return { itens: j.itens ?? [], pendencias: j.pendencias_resultado ?? [], resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
   }, [accessToken, dia, periodo]);
 
