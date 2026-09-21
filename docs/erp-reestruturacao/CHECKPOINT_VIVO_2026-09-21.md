@@ -32,12 +32,17 @@ com desktop/mobile, autorização server-side e evidência.
 - drafts reversíveis para ownership/qualidade/cobrança de visita e áudio;
 - quatro fontes já aplicadas da Sara recuperadas do histórico remoto;
 - draft da janela de conversa: 90 s de silêncio, teto de 10 min;
+- início móvel do gerente agora atribui visitas sem feedback ao corretor
+  responsável, destaca visitas sem responsável e leva a cobrança à Agenda;
 - função produtiva de preservação de dono confirmada: identidade por IDs,
   telefone/e-mail; visita e negociação mantêm o corretor anterior.
 
 ## Verificações
 
-- regressão sem o HTML compilado: 1002/1002;
+- regressão sem o HTML compilado: 1004/1004;
+- recorte gestão móvel/Agenda: 39/39, typecheck e lint;
+- gestão móvel validada em navegador real 390×844: sem overflow, alvos de
+  44 px, deep link `/agenda`, estado de erro fail-closed e console limpo;
 - Sara/dispatcher/janela: 48/48;
 - entrada/distribuição/ownership: 66/66;
 - CRM validado em navegador sanitizado desktop e 390×844;
@@ -58,5 +63,6 @@ com desktop/mobile, autorização server-side e evidência.
 
 Com aprovação do custo: criar a branch Supabase, executar os drafts com dados
 sintéticos, testar concorrência/rollback e promover apenas o contrato aprovado.
-Sem essa aprovação: continuar inventário e correções locais independentes,
-priorizando a fila de cobrança do gerente e a matriz de rastreabilidade.
+Sem essa aprovação: continuar inventário e correções locais independentes.
+A próxima autoridade incompleta é a persistência/resolução da cobrança; a fila
+visual do gerente já inclui a dívida de feedback de visita por corretor.

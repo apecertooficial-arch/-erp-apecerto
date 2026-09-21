@@ -31,6 +31,10 @@ test("gestor recebe obrigações por corretor, não uma lista de clientes", () =
   assert.match(gestao, /equipe\.sort/);
   assert.match(gestao, /acoes_vencidas/);
   assert.match(gestao, /clientes_criticos/);
+  assert.match(gestao, /corretor\.visitas_sem_feedback/);
+  assert.match(gestao, /Cobrar feedback/);
+  assert.match(gestao, /onIr\(corretor\.visitas_sem_feedback > 0 \? "\/agenda" : "\/equipe"\)/);
+  assert.match(gestao, /visitas_sem_responsavel/);
   assert.doesNotMatch(gestao, /lead_id|negocio_id|cliente_id/);
 });
 
@@ -43,6 +47,9 @@ test("API móvel não aciona mídia ou analytics e não libera perfil em falha",
   const recorte = api.slice(inicioRecorte, fimRecorte);
   assert.match(recorte, /central_comando_dashboard_v2/);
   assert.match(recorte, /central_comando_equipe_execucao/);
+  assert.match(recorte, /f2_visitas_resultado_pendente/);
+  assert.match(recorte, /pendenciasPorCorretor/);
+  assert.match(recorte, /summary\.visitas_sem_feedback = pendencias\.total/);
   assert.match(recorte, /if \(!execution\)/);
   assert.doesNotMatch(recorte, /executionByBroker\.get\([^\n]+\) \?\? \{\}/);
   assert.doesNotMatch(recorte, /marketing-ads-read|lerGa4|central_comando_site_marketing/);
