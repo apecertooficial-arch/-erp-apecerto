@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `63bfc692a2a500f086c8d19d4319abdf0d24a7ed`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: Adicionar cliente não fica mais bloqueado sem explicação quando as opções chegam incompletas.
-- Decisão: exigir `corretores` como array no limite da API e reutilizar o alerta já presente no modal.
+- Base: `origin/main` em `6e6acee3450ef51e4d7ed70f4ca34edb888e5e44`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: Adicionar cliente não libera criação após uma verificação de duplicidade incompleta.
+- Decisão: exigir `duplicado` booleano e, quando positivo, o lead correspondente; resposta parcial falha fechada pelo alerta existente.
 - Arquivos: `app/features/funil-2/AdicionarClienteModal.tsx`, `tests/crm-funcoes-canonicas.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu o responsável vazio e botão bloqueado após `{}`; o teste falhou primeiro; depois da correção, aparece alerta e o contrato válido seleciona o próprio corretor.
-- Produção: `63bfc692` publicado e confirmado; o Novo negócio pesquisou clientes reais por “Mar” sem alerta.
-- Risco: baixo; lista legitimamente vazia continua válida quando a API devolve `corretores: []`, embora a criação permaneça bloqueada por ausência real de responsável.
+- Verificações: o harness reproduziu `{}` liberando o botão sem alerta; o teste falhou primeiro; depois da correção, aparece “Não foi possível verificar duplicidade”, enquanto `duplicado: false` válido segue sem bloqueio.
+- Produção: `6e6acee3` publicado e confirmado; Adicionar cliente real abriu com sete responsáveis e Claudia selecionada.
+- Risco: baixo; não houve POST no harness nem mutação em produção.
 - Próximo passo: executar o build, publicar esta fatia, validar o CRM em produção e seguir para a próxima falha P0/P1 comprovada.

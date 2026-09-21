@@ -61,6 +61,10 @@ test("Adicionar cliente rejeita opções incompletas em vez de bloquear sem expl
   assert.match(addClient, /error && <p className="f2-modal-erro" role="alert">/);
 });
 
+test("Adicionar cliente não libera criação após verificação de duplicidade incompleta", () => {
+  assert.match(addClient, /if \(typeof result\.duplicado !== "boolean" \|\| \(result\.duplicado && !result\.lead\)\) throw new Error\("Não foi possível verificar duplicidade\."\)/);
+});
+
 test("negócio novo do Funil 2 cria o card visível na mesma transação", () => {
   assert.match(cardAtomicoMigration, /after insert or update of pipeline_id, stage_id, status, corretor_id/i);
   assert.match(cardAtomicoMigration, /new\.pipeline_id = public\.f2_pipeline_id\(\)/i);

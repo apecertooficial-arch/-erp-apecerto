@@ -76,6 +76,7 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       const response = await fetch(`/api/funil2/clientes?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       const result = await response.json().catch(() => ({})) as { error?: string; duplicado?: boolean; lead?: Omit<Duplicado, "funilLeadId">; funilLeadId?: string | null };
       if (!response.ok) throw new Error(result.error || "Não foi possível verificar duplicidade.");
+      if (typeof result.duplicado !== "boolean" || (result.duplicado && !result.lead)) throw new Error("Não foi possível verificar duplicidade.");
       const encontrado = result.duplicado && result.lead ? { ...result.lead, funilLeadId: result.funilLeadId } : null;
       setDuplicado(encontrado);
       return { ok: true, lead: encontrado };
