@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `a88b4ba6e1b91f755344f940a946d95d248f36e3`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: filtros anuais e formulário de metas do Financeiro usam ano e mês operacionais de São Paulo.
-- Decisão: derivar ano e mês diretamente de `hojeOperacao`, sem criar nova abstração de calendário.
-- Arquivos: `app/features/finance/FinanceWorkspace.tsx`, `tests/finance-venda-atomica.test.mjs`.
-- Verificações: teste falhou primeiro com o relógio local; 37 testes direcionados e lint passaram; build Vinext passou; harness produtivo carregou filtros e Metas em desktop e Financeiro em 390×844 sem erro de console.
-- Produção: `a88b4ba6` publicado e confirmado; Projetos abriu o calendário em setembro de 2026 sem erro de console.
-- Risco: a mudança se limita aos valores iniciais/fallbacks de período; filtros aplicados, valores e mutações financeiras permanecem inalterados.
+- Base: `origin/main` em `9a5329b06f81d1f83620e4d863276ecf15a870ed`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: a data do cabeçalho global do aplicativo usa o dia operacional de São Paulo.
+- Decisão: configurar `timeZone` no formatador existente, sem helper ou estado adicional.
+- Arquivos: `app/features/system/ErpShell.tsx`, `tests/inicio-mobile.test.mjs`.
+- Verificações: teste falhou primeiro sem fuso explícito; 31 testes direcionados e lint passaram; build Vinext passou; shell real carregou em desktop e 390×844 sem erro de console.
+- Produção: `9a5329b0` publicado e confirmado; Financeiro abriu com ano 2026 e Metas com setembro/2026 em desktop e 390×844, sem erro de console.
+- Risco: a mudança afeta apenas o rótulo de data do cabeçalho móvel; navegação, sessão e conteúdo permanecem inalterados.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.

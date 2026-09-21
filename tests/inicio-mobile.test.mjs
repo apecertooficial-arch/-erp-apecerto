@@ -26,6 +26,11 @@ test("o cabeçalho não repete o título do Início", () => {
   assert.ok(/moduloAtual === "Início" \?/.test(shell));
 });
 
+test("o cabeçalho mostra o dia operacional de São Paulo", () => {
+  const shell = ler("../app/features/system/ErpShell.tsx");
+  assert.match(shell, /timeZone: "America\/Sao_Paulo"/);
+});
+
 test("badge aparece somente com número real", () => {
   const shell = ler("../app/features/system/ErpShell.tsx");
   assert.ok(/naoLidas > 0 && <b/.test(shell));

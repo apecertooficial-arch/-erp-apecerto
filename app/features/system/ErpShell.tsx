@@ -68,7 +68,7 @@ export function ErpShell({ children }: { children: ReactNode }) {
   const moduloAtual = moduloDoPath(pathname) ?? "Início";
   const primeiroNome = (profile?.name ?? "").trim().split(/\s+/)[0] || "corretor";
   const inicial = (profile?.name ?? "C").trim().slice(0, 1).toUpperCase();
-  const dataDeHoje = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" })
+  const dataDeHoje = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Sao_Paulo" })
     .format(new Date()).replace("-feira", "");
   /* Badge real: so o que os modulos publicam. Zero significa zero -- nada de
      numero decorativo. O publisher de Notificacoes chega junto com a rodada
