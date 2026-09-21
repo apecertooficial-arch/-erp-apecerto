@@ -22,6 +22,10 @@ test("CRM desktop rejeita resposta incompleta em vez de fingir carteira vazia", 
   assert.match(desktop, /<button type="button" onClick=\{\(\) => void carregar\(\)\}>Tentar novamente<\/button>/);
 });
 
+test("ações do CRM não fecham o formulário sem confirmação explícita", () => {
+  assert.match(desktop, /if \(resposta\.json\.ok !== true\) \{ setErro\("O servidor não confirmou a ação\. Nenhum sucesso foi presumido\."\); return false; \}/);
+});
+
 test("ficha não transforma histórico incompleto em linha do tempo vazia", () => {
   assert.match(desktop, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
   assert.match(desktop, /historicoErro && <div className="f2-ficha-vazio" role="alert">/);
