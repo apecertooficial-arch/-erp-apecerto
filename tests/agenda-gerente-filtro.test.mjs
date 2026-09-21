@@ -36,6 +36,8 @@ test("filtro vem de deep link validado e pode voltar à visão completa", async 
   assert.match(desktop, /Ver todos os corretores/);
   assert.match(agenda, /Nenhuma visita pendente foi confirmada para este corretor agora/);
   assert.match(desktop, /Nenhuma visita pendente foi confirmada para este corretor agora/);
+  assert.match(agenda, /corretorEmFoco && pendenciasResultadoVisiveis\.length === 0 \? "aguardam o corretor"/);
+  assert.match(agenda, /pendenciasResultadoVisiveis\.length > 0 && <p>/);
   const harness = await readFile(new URL("../tests/crm-visual-harness/main.tsx", import.meta.url), "utf8");
   assert.match(harness, /corretorIdInicial=\{corretorEmFoco\}/);
 });
