@@ -23,9 +23,9 @@ test("tarefas usam somente dados reais do Funil 2", () => {
   assert.match(harness, /"invalido"/);
 });
 
-test("tarefas não recolocam histórico ou atualização manual na fila operacional", () => {
+test("tarefas não recolocam histórico, atualização manual ou pescado na fila operacional", () => {
   assert.match(tela, /leadOperacionalNoMeuDia/);
-  assert.match(tela, /if \(!leadOperacionalNoMeuDia\(lead\) \|\| semPrazo\(lead\.proxima_acao_em\)\) continue/);
+  assert.match(tela, /if \(!leadOperacionalNoMeuDia\(lead\) \|\| lead\.etapa === "pescado" \|\| semPrazo\(lead\.proxima_acao_em\)\) continue/);
 });
 
 test("fila móvel abre nas tarefas atrasadas antes das próximas", () => {

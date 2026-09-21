@@ -70,7 +70,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     const agora = new Date();
     const tarefas: Tarefa[] = [];
     for (const lead of dados?.leads ?? []) {
-      if (!leadOperacionalNoMeuDia(lead) || semPrazo(lead.proxima_acao_em)) continue;
+      if (!leadOperacionalNoMeuDia(lead) || lead.etapa === "pescado" || semPrazo(lead.proxima_acao_em)) continue;
       tarefas.push({ lead, faixa: faixaDaTarefa(lead, agora) });
     }
     tarefas.sort((a, b) => new Date(a.lead.proxima_acao_em).getTime() - new Date(b.lead.proxima_acao_em).getTime());

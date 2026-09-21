@@ -40,6 +40,7 @@ const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") ===
   leads: Array.from({ length: 32 }, (_, indice) => ({
     ...payloadNormal.leads[0]!, id: `lead-tarefa-${indice}`, lead_id: 7000 + indice,
     origem_negocio_id: 8000 + indice, nome: `Cliente sanitizado ${indice + 1}`,
+    etapa: indice === 31 ? "pescado" : payloadNormal.leads[0]!.etapa,
     proxima_acao_em: new Date(Date.now() - (indice + 1) * 60_000).toISOString(),
   })),
 } : null;
