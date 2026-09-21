@@ -7,6 +7,7 @@ type ResumoGestao = {
   clientes_aguardando: number;
   clientes_criticos: number;
   visitas_sem_feedback: number;
+  visitas_sem_responsavel: number;
   corretores_ativos: number;
 };
 
@@ -19,6 +20,7 @@ type CorretorGestao = {
   acoes_vencidas: number;
   clientes_aguardando: number;
   clientes_criticos: number;
+  visitas_sem_feedback: number;
   carteira_trabalhada: number;
   pct_carteira_trabalhada: number | null;
 };
@@ -30,13 +32,15 @@ const CAMPOS_RESUMO: Array<keyof ResumoGestao> = [
   "clientes_aguardando",
   "clientes_criticos",
   "visitas_sem_feedback",
+  "visitas_sem_responsavel",
   "corretores_ativos",
 ];
-const CAMPOS_EQUIPE: Array<keyof Pick<CorretorGestao, "carteira_ativa" | "acoes_vencidas" | "clientes_aguardando" | "clientes_criticos" | "carteira_trabalhada" | "pct_carteira_trabalhada">> = [
+const CAMPOS_EQUIPE: Array<keyof Pick<CorretorGestao, "carteira_ativa" | "acoes_vencidas" | "clientes_aguardando" | "clientes_criticos" | "visitas_sem_feedback" | "carteira_trabalhada" | "pct_carteira_trabalhada">> = [
   "carteira_ativa",
   "acoes_vencidas",
   "clientes_aguardando",
   "clientes_criticos",
+  "visitas_sem_feedback",
   "carteira_trabalhada",
 ];
 
@@ -119,8 +123,8 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
   const equipe = useMemo(() => {
     const equipe = [...(dados?.team ?? [])];
     equipe.sort((a, b) => {
-      const urgenciaA = a.acoes_vencidas + a.clientes_criticos;
-      const urgenciaB = b.acoes_vencidas + b.clientes_criticos;
+      const urgenciaA = a.acoes_vencidas + a.clientes_criticos + a.visitas_sem_feedback;
+      const urgenciaB = b.acoes_vencidas + b.clientes_criticos + b.visitas_sem_feedback;
       return urgenciaB - urgenciaA || b.clientes_aguardando - a.clientes_aguardando || a.nome.localeCompare(b.nome, "pt-BR");
     });
     return equipe;
@@ -157,8 +161,12 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
     <section className={`ape-gestao-pulso${semPendencia ? " ok" : ""}`} aria-label="Resumo das prioridades">
       <article><small>Ações vencidas</small><strong>{inteiro(resumo.acoes_vencidas)}</strong><span>prazo definido já ultrapassado</span></article>
       <article><small>Clientes críticos</small><strong>{inteiro(resumo.clientes_criticos)}</strong><span>aguardando primeira resposta</span></article>
-      <article><small>Visitas sem feedback</small><strong>{inteiro(resumo.visitas_sem_feedback)}</strong><span>retorno pendente há mais de 48 h</span></article>
+      <article><small>Visitas sem feedback</small><strong>{inteiro(resumo.visitas_sem_feedback)}</strong><span>visita já passou e aguarda resultado</span></article>
     </section>
+
+    {resumo.visitas_sem_responsavel > 0 && <p className="ape-gestao-sem-responsavel" role="alert">
+      {inteiro(resumo.visitas_sem_responsavel)} visita{resumo.visitas_sem_responsavel === 1 ? "" : "s"} sem corretor ativo na fila. Revise a carteira na Agenda.
+    </p>}
 
     <div className="ape-gestao-atalhos">
       <button type="button" onClick={() => onIr("/notificacoes")}>Abrir avisos</button>
@@ -168,7 +176,7 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
     <section className="ape-gestao-equipe" aria-labelledby="titulo-equipe-prioridade">
       <header><div><span>EQUIPE</span><h2 id="titulo-equipe-prioridade">Quem precisa de cobrança</h2></div><b>{inteiro(resumo.corretores_ativos)} ativos</b></header>
       {equipe.length === 0 ? <p className="ape-gestao-vazio">Nenhum corretor ativo foi devolvido pela fonte operacional.</p> : equipe.map((corretor) => {
-        const urgente = corretor.acoes_vencidas > 0 || corretor.clientes_criticos > 0;
+        const urgente = corretor.acoes_vencidas > 0 || corretor.clientes_criticos > 0 || corretor.visitas_sem_feedback > 0;
         return <article className={urgente ? "urgente" : ""} key={String(corretor.corretor_id)}>
           <div className="ape-gestao-corretor-topo">
             <span className={`ape-gestao-presenca${corretor.online ? " online" : corretor.no_escritorio ? " escritorio" : ""}`} aria-hidden="true" />
@@ -178,13 +186,16 @@ export function InicioGestaoMobile({ accessToken, nome, onIr }: {
           <div className="ape-gestao-metricas">
             <span><strong>{inteiro(corretor.acoes_vencidas)}</strong> vencidas</span>
             <span><strong>{inteiro(corretor.clientes_criticos)}</strong> críticos</span>
+            <span><strong>{inteiro(corretor.visitas_sem_feedback)}</strong> visitas pendentes</span>
             <span><strong>{inteiro(corretor.clientes_aguardando)}</strong> aguardando</span>
           </div>
           <div className="ape-gestao-progresso" aria-label={corretor.pct_carteira_trabalhada == null ? "Sem carteira ativa" : `${inteiro(corretor.pct_carteira_trabalhada)}% da carteira trabalhada`}>
             <span><i style={{ width: `${Math.min(100, corretor.pct_carteira_trabalhada ?? 0)}%` }} /></span>
             <small>{inteiro(corretor.carteira_trabalhada)} de {inteiro(corretor.carteira_ativa)} acompanhados em 7 dias</small>
           </div>
-          <button type="button" onClick={() => onIr("/equipe")}>{urgente ? "Cobrar corretor" : "Ver desempenho"}</button>
+          <button type="button" onClick={() => onIr(corretor.visitas_sem_feedback > 0 ? "/agenda" : "/equipe")}>
+            {corretor.visitas_sem_feedback > 0 ? "Cobrar feedback" : urgente ? "Cobrar corretor" : "Ver desempenho"}
+          </button>
         </article>;
       })}
     </section>

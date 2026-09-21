@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ga4Configurado, lerGa4 } from "../../lib/ga4";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
+import { agruparPendenciasVisita } from "../../lib/gestao-mobile";
 import { papelNoGrupo } from "../../lib/papeis";
 import { dataOperacao } from "../../lib/timezone";
 
@@ -59,11 +60,19 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
   const rpc = (supabase as unknown as {
     rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
   }).rpc.bind(supabase);
-  const [central, teamExecution] = await Promise.all([
+  const hoje = new Date();
+  const inicioPendencias = new Date(hoje.getTime() - 365 * 86_400_000);
+  const [central, teamExecution, visitPending] = await Promise.all([
     rpc("central_comando_dashboard_v2", { p_days: days }),
     rpc("central_comando_equipe_execucao", { p_days: days }),
+    rpc("f2_visitas_resultado_pendente", {
+      p_inicio: dataIso(inicioPendencias),
+      p_fim: dataIso(hoje),
+    }),
   ]);
-  if (central.error || teamExecution.error) return respostaErroCentral(central.error || teamExecution.error);
+  if (central.error || teamExecution.error || visitPending.error) {
+    return respostaErroCentral(central.error || teamExecution.error || visitPending.error);
+  }
   if (!registro(central.data)) {
     return Response.json(
       { error: "Os indicadores gerenciais chegaram em formato inválido." },
@@ -71,13 +80,23 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
     );
   }
   const centralData = central.data;
-  if (!registro(centralData.summary) || !Array.isArray(centralData.team) || !Array.isArray(teamExecution.data)) {
+  if (!registro(centralData.summary) || !Array.isArray(centralData.team) || !Array.isArray(teamExecution.data)
+      || !registro(visitPending.data) || visitPending.data.ok !== true || !Array.isArray(visitPending.data.itens)) {
     return Response.json(
       { error: "Os indicadores gerenciais chegaram em formato inválido." },
       { status: 502, headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   }
   const summaryData = centralData.summary;
+  const pendencias = agruparPendenciasVisita(visitPending.data.itens);
+  if (!pendencias) {
+    return Response.json(
+      { error: "A fila de feedback de visitas chegou em formato inválido." },
+      { status: 502, headers: { "Cache-Control": "private, no-store, max-age=0" } },
+    );
+  }
+  const pendenciasPorCorretor = pendencias.porCorretor;
+  let pendenciasSemCorretor = pendencias.semCorretor;
 
   const summaryKeys = ["acoes_vencidas", "clientes_aguardando", "clientes_criticos", "visitas_sem_feedback", "corretores_ativos"] as const;
   const summary = Object.fromEntries(summaryKeys.map((key) => [key, numeroNaoNegativo(summaryData[key])]));
@@ -112,6 +131,7 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
       acoes_vencidas: numeroNaoNegativo(item.acoes_vencidas),
       clientes_aguardando: numeroNaoNegativo(item.clientes_aguardando),
       clientes_criticos: numeroNaoNegativo(item.clientes_criticos),
+      visitas_sem_feedback: pendenciasPorCorretor.get(String(item.corretor_id)) ?? 0,
       carteira_trabalhada: numeroNaoNegativo(execution.carteira_trabalhada),
       pct_carteira_trabalhada: execution.pct_carteira_trabalhada == null ? null : numeroNaoNegativo(execution.pct_carteira_trabalhada),
     };
@@ -128,7 +148,12 @@ async function gestaoMobile(supabase: ReturnType<typeof createServerSupabaseClie
       no_escritorio: item.no_escritorio === true,
       ...metrics,
     });
+    pendenciasPorCorretor.delete(String(item.corretor_id));
   }
+
+  for (const quantidade of pendenciasPorCorretor.values()) pendenciasSemCorretor += quantidade;
+  summary.visitas_sem_feedback = pendencias.total;
+  Object.assign(summary, { visitas_sem_responsavel: pendenciasSemCorretor });
 
   return Response.json(
     { summary, team, period_days: days, generated_at: new Date().toISOString() },
