@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `cb8b345e39c3206f4134a3c1bfa235bc41d14618`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: Perfis e Permissões não transforma mais HTTP 200 incompleto em editor aparentemente zerado com gravação disponível.
-- Decisão: exigir `perfis` e `usuarios` como arrays, manter o erro até uma recarga válida e desabilitar as duas ações de gravação enquanto a autoridade estiver indisponível.
-- Arquivos: `app/features/permissions/PermissionsWorkspace.tsx`, `tests/permissions-api-hardening.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu `{}` como todos os módulos em “Sem acesso” com `Salvar perfil` ativo; o teste falhou primeiro; 68 testes direcionados e lint passaram; após a correção, há erro recuperável, atributo `disabled` na gravação e vazio legítimo preservado, sem erros de console.
-- Produção: `cb8b345e` publicado e confirmado; `/usuarios` carregou 9 usuários e vínculos reais sem erros de console; `/equipe` permaneceu íntegra.
-- Risco: baixo; respostas legitimamente vazias continuam válidas quando contêm os dois arrays.
+- Base: `origin/main` em `40d0ac418ec89690ade63c7578364c81d7ed59df`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: Abordagens não desmonta mais ao receber HTTP 200 sem as listas de abordagens e produtos.
+- Decisão: exigir `approaches` e `products` como arrays antes de marcar a biblioteca como pronta; a mesma validação protege carga inicial e atualização após mutação.
+- Arquivos: `app/features/approaches/ApproachesWorkspace.tsx`, `tests/approaches-api-hardening.test.mjs`, `tests/crm-visual-harness/main.tsx`.
+- Verificações: o harness reproduziu tela desmontada e `TypeError` com `{}`; o teste falhou primeiro; 57 testes direcionados passaram; lint sem erros (uma advertência preexistente de `<img>`); após a correção, o harness mostrou erro recuperável e preservou o vazio legítimo, sem erros de console.
+- Produção: `40d0ac41` publicado e confirmado; `/permissoes` carregou oito perfis reais, manteve `Salvar perfil` habilitado no estado válido e não apresentou erros de console.
+- Risco: baixo; biblioteca legitimamente vazia continua válida quando contém os dois arrays.
 - Próximo passo: publicar esta fatia, validar produção e seguir para a próxima falha P0/P1 comprovada.

@@ -57,6 +57,7 @@ test("grupo comprova linhas e interface separa falha de vazio real", () => {
   assert.match(ui, /Não foi possível carregar a biblioteca de abordagens/);
   assert.match(ui, /Tentar novamente/);
   assert.match(ui, /A alteração foi salva, mas a biblioteca não pôde ser atualizada\. Recarregue antes de repetir\./);
+  assert.match(ui, /if \(!Array\.isArray\(payload\.approaches\) \|\| !Array\.isArray\(payload\.products\)\) throw new Error\("payload_invalido"\)/);
 });
 
 test("entrada incompleta e resposta 2xx inválida não viram mutação ou sucesso", () => {

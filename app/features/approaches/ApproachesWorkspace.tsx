@@ -85,6 +85,7 @@ export function ApproachesWorkspace({ accessToken }: { accessToken: string }) {
         setLoadStatus("error");
         return;
       }
+      if (!Array.isArray(payload.approaches) || !Array.isArray(payload.products)) throw new Error("payload_invalido");
       setData(payload);
       if (!background) setLoadStatus("ready");
     } catch {
