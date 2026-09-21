@@ -53,6 +53,11 @@ test("ficha e galeria ficam acima do cabeçalho móvel", () => {
   assert.match(detailCss, /product-detail-layer:has\(\.pv3-detail\)[^{]*\{[^}]*z-index:\s*80/s);
 });
 
+test("ficha móvel não oferece Histórico para a Auditoria exclusiva do desktop", () => {
+  assert.equal((detail.match(/className="pv3-detail-history"/g) ?? []).length, 2);
+  assert.match(detailCss, /@media \(max-width: 620px\)[\s\S]*\.pv3-detail-history\s*\{\s*display:\s*none;/);
+});
+
 test("corretor recebe próxima melhor ação explicável e ligada ao campo correto", () => {
   assert.match(detail, /Próxima melhor ação/);
   assert.match(detail, /severity: "Bloqueador"/);

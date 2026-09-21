@@ -960,6 +960,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .pv3-detail-history {
+    display: none;
+  }
+
   .pv3-detail-hero {
     height: 190px;
   }
