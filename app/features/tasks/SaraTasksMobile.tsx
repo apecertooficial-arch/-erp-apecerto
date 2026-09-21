@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoWhatsApp } from "../funil-2/BotaoWhatsApp";
-import { acaoVisivel, prazoDaAcao, semPrazo, type LeadFunil2 } from "../funil-2/modelo";
+import { acaoVisivel, leadOperacionalNoMeuDia, prazoDaAcao, semPrazo, type LeadFunil2 } from "../funil-2/modelo";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 
 type Faixa = "atrasadas" | "agora" | "hoje" | "futuras";
@@ -68,7 +68,7 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     const agora = new Date();
     const tarefas: Tarefa[] = [];
     for (const lead of dados?.leads ?? []) {
-      if (semPrazo(lead.proxima_acao_em)) continue;
+      if (!leadOperacionalNoMeuDia(lead) || semPrazo(lead.proxima_acao_em)) continue;
       tarefas.push({ lead, faixa: faixaDaTarefa(lead, agora) });
     }
     tarefas.sort((a, b) => new Date(a.lead.proxima_acao_em).getTime() - new Date(b.lead.proxima_acao_em).getTime());

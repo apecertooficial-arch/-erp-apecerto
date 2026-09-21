@@ -20,6 +20,11 @@ test("tarefas usam somente dados reais do Funil 2", () => {
   assert.doesNotMatch(tela, /const\s+(tasks|tarefas)\s*=\s*\[/i);
 });
 
+test("tarefas não recolocam histórico ou atualização manual na fila operacional", () => {
+  assert.match(tela, /leadOperacionalNoMeuDia/);
+  assert.match(tela, /if \(!leadOperacionalNoMeuDia\(lead\) \|\| semPrazo\(lead\.proxima_acao_em\)\) continue/);
+});
+
 test("corretor executa a próxima ação e não decide revisão humana da Sara", () => {
   assert.match(tela, /acaoVisivel\(lead\)/);
   assert.match(tela, /BotaoWhatsApp/);
