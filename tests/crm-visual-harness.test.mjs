@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const harness = read("./crm-visual-harness/main.tsx");
 const fixtures = read("./crm-visual-harness/fixtures.ts");
 const vite = read("./crm-visual-harness/vite.config.mjs");
+const nextNavigation = read("./crm-visual-harness/next-navigation.ts");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
 const entry = read("../app/features/funil-2/FunilEntry.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
@@ -17,6 +18,8 @@ test("harness renderiza a rota e o shell reais sem segunda interface", () => {
   assert.match(harness, /<ErpShell><PaginaCrm \/><\/ErpShell>/);
   assert.doesNotMatch(harness, /crm-v3|iframe|dangerouslySetInnerHTML/);
   assert.match(vite, /root: aqui/);
+  assert.match(nextNavigation, /export function useSearchParams\(\)/);
+  assert.match(nextNavigation, /new URLSearchParams\(atual\)/);
 });
 
 test("harness exercita a cobrança real da Agenda sem dados pessoais nem mutações", () => {

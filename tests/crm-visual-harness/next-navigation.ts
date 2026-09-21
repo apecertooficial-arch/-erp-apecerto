@@ -10,9 +10,15 @@ const ouvir = (notificar: () => void) => {
 };
 
 const caminho = () => window.location.pathname;
+const busca = () => window.location.search;
 
 export function usePathname() {
   return useSyncExternalStore(ouvir, caminho, () => "/crm");
+}
+
+export function useSearchParams() {
+  const atual = useSyncExternalStore(ouvir, busca, () => "");
+  return useMemo(() => new URLSearchParams(atual), [atual]);
 }
 
 export function useRouter() {

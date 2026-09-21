@@ -2487,6 +2487,6 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
 .f2-confirmar-acao-confirmacao textarea { min-height:76px; resize:vertical; padding:10px; border:1px solid var(--f2-line); border-radius:10px; background:var(--bg-subtle); color:var(--fg-1); font:inherit; }
 .f2-confirmar-acao-confirmacao em { color:var(--danger); font-size:12px; font-style:normal; }
 .f2-confirmar-acao-confirmacao > div { display:flex; justify-content:flex-end; gap:8px; }
-.f2-confirmar-acao-confirmacao > div button { min-height:38px; padding:0 14px; border:1px solid var(--f2-line); border-radius:10px; background:var(--bg-surface); color:var(--fg-1); font-weight:750; cursor:pointer; }
+.f2-confirmar-acao-confirmacao > div button { min-height:42px; padding:0 14px; border:1px solid var(--f2-line); border-radius:10px; background:var(--bg-surface); color:var(--fg-1); font-weight:750; cursor:pointer; }
 .f2-confirmar-acao-confirmacao > div button.primario { border-color:transparent; background:var(--brand-primary, #e15b2a); color:#fff; }
 .f2-confirmar-acao-confirmacao button:disabled { cursor:wait; opacity:.65; }
