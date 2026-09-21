@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const ui = `${readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/Funil2BoardToolbar.tsx", import.meta.url), "utf8")}`;
+const confirmarAcao = readFileSync(new URL("../app/features/funil-2/ConfirmarAcaoOperacional.tsx", import.meta.url), "utf8");
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
@@ -99,8 +100,8 @@ test("mensagem precisa de confirmação D-API real e toda mudança gera históri
   assert.match(migration, /confirmacao_dapi_obrigatoria/);
   assert.match(migration, /'acao_confirmada'/);
   assert.match(migration, /'sara_reavaliou'/);
-  assert.match(ui, /A conclusão vem do D-API/);
-  assert.match(ui, /envio confirmado no celular é a evidência/i);
+  assert.match(confirmarAcao, /só é confirmada automaticamente pelo D-API/);
+  assert.match(confirmarAcao, /evidência real de envio/i);
   assert.doesNotMatch(ui, /Simular evidência confirmada/);
 });
 

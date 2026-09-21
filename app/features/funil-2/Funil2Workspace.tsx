@@ -20,6 +20,7 @@ import { LeadSearchPicker } from "./LeadSearchPicker";
 import { ChipTemperatura, FiltrosTemperatura, IconeConversa, IconeOperacional, InteresseLead, TEMPERATURAS, temperaturaDoLead, type TemperaturaFiltro } from "./Funil2BoardPrimitives";
 import { Funil2BoardToolbar } from "./Funil2BoardToolbar";
 import { HorariosVisita } from "./HorariosVisita";
+import { ConfirmarAcaoOperacional } from "./ConfirmarAcaoOperacional";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { dataHoraLocalSaoPaulo, dataIsoSaoPaulo, FUSO_OPERACAO } from "../../lib/timezone";
 import { ResultadoVisitaForm } from "../calendar/ResultadoVisitaForm";
@@ -1113,7 +1114,7 @@ function Detalhe({
           <div><span>Próxima ação</span><strong>{acaoVisivel(lead)}</strong></div>
           <em className={situacao.classe}>{situacao.rotulo}</em>
           {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer">{tentativa ? `Enviar tentativa ${tentativa}` : "Abrir WhatsApp"}</a> : <button type="button" disabled>Telefone inválido</button>}
-          {momento.exige_dapi && <small>A conclusão vem do D-API — o envio confirmado no celular é a evidência.</small>}
+          <ConfirmarAcaoOperacional accessToken={accessToken} lead={lead} momento={momento} onConfirmada={() => { void onRecarregar(); }} />
         </section>
 
         <nav className="f2-detalhe-abas" aria-label="Áreas do atendimento" role="tablist" onKeyDown={(evento) => {

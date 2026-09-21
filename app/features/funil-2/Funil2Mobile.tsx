@@ -21,6 +21,7 @@ import { BotaoWhatsApp } from "./BotaoWhatsApp";
 import { AssociarTagLead } from "./AssociarTagLead";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
 import { HorariosVisita } from "./HorariosVisita";
+import { ConfirmarAcaoOperacional } from "./ConfirmarAcaoOperacional";
 import { MobileCrmNavigation } from "./MobileCrmNavigation";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import {
@@ -723,6 +724,8 @@ function FichaLead({
       </div>
 
       <section className="ape-ordem ape-proxima-aprovada"><span className="ape-contexto-titulo">Próxima ação</span><h3>{acaoVisivel(lead)}</h3>{momento?.descricao ? <p>{momento.descricao}</p> : null}</section>
+
+      {momento && <ConfirmarAcaoOperacional accessToken={accessToken} lead={lead} momento={momento} modo="mobile" onConfirmada={() => onRecarregar()} />}
 
       <div className="ape-ficha-acoes-aprovadas"><button type="button" onClick={() => setChatAberto(true)}>Chat</button><button type="button" onClick={() => setAcaoMais("visita")}>Agendar visita</button><button type="button" aria-expanded={maisAcoes} onClick={() => setMaisAcoes(true)}>Mais</button></div>
 

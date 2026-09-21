@@ -63,6 +63,7 @@ export const leads: LeadFunil2[] = etapasQuadro.flatMap((etapa, coluna) => Array
     instancia_telefone: null,
     instancia_status: "conectado",
     instancia_origem: "padrao",
+    pode_confirmar_acao: true,
     interesse: sequencia % 2 ? "Reserva Botânica · 2 dorms" : "Apartamento mobiliado · Moema",
     tags: [{ nome: "Origem sanitizada", cor: "var(--ape-purple)" }],
     etapa,

@@ -10,8 +10,8 @@ const desktop = ler("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const harness = ler("./crm-visual-harness/main.tsx");
 
-test("o navegador não confirma ação enquanto o contrato produtivo ainda pode forjar releitura", () => {
-  assert.match(rota, /action === "confirmarAcao"[\s\S]*?confirmacao_temporariamente_bloqueada/);
+test("o navegador só registra ação manual pelo contrato auditável e nunca forja D-API", () => {
+  assert.match(rota, /action === "confirmarAcao"[\s\S]*?body\.fonte !== "registro_operacional"/);
   assert.doesNotMatch(rota, /body\.fonte === "dapi" \? "dapi"/);
   assert.match(desktop, /Abrir WhatsApp|Enviar tentativa/);
   assert.doesNotMatch(desktop, />Confirmar ação<\/a>/);

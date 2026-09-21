@@ -316,10 +316,12 @@ export async function GET(request: Request) {
     }
   }
   const corretorIds = [...new Set((leads ?? []).map((lead) => Number(lead.corretor_id)).filter(Number.isFinite))];
-  const [instanciasResultado, instanciaDoLeadResultado] = await Promise.all([
+  const [instanciasResultado, instanciaDoLeadResultado, corretorAtualResultado] = await Promise.all([
     instanciasPorCorretor(db, corretorIds),
     instanciasPorLead(db),
+    db.rpc("current_broker_id"),
   ]);
+  const corretorAtualId = corretorAtualResultado.error ? Number.NaN : Number(corretorAtualResultado.data);
   const leadsComOrigem = (leads ?? []).map((lead) => {
     /* A conversa manda. O numero padrao do corretor so entra quando o lead
        ainda nao trocou nenhuma mensagem -- ai qualquer numero dele serve, e o
@@ -351,6 +353,8 @@ export async function GET(request: Request) {
       instancia_telefone: instancia?.telefone ?? null,
       instancia_status: instancia?.status ?? null,
       instancia_origem: daConversa ? "conversa" : instancia ? "padrao" : "indisponivel",
+      pode_confirmar_acao: Number.isSafeInteger(corretorAtualId)
+        && Number(lead.corretor_id) === corretorAtualId,
     };
   });
   return Response.json({
@@ -638,6 +642,11 @@ const RECUSAS: Record<string, string> = {
   texto_muito_longo: "A nota passou de 2000 caracteres.",
   temperatura_invalida: "Escolha uma temperatura válida.",
   versao_conflito: "O lead acabou de mudar. Tente salvar novamente.",
+  confirmacao_dapi_obrigatoria: "Esta ação só termina após a confirmação real do D-API.",
+  confirmacao_dapi_pelo_webhook: "A evidência do D-API só pode vir do webhook oficial.",
+  momento_invalido: "O momento atual não possui um contrato operacional válido. Recarregue e acione a gestão.",
+  lead_descartado: "Este lead já saiu da operação ativa.",
+  versao_invalida: "A versão recebida é inválida. Recarregue o atendimento.",
 };
 
 export async function PATCH(request: Request) {
@@ -682,14 +691,47 @@ export async function PATCH(request: Request) {
     rpc = "f2_atualizar_temperatura";
     args = { p_id: id, p_versao: versao, p_temperatura: temperatura };
   } else if (action === "confirmarAcao") {
-    /* O contrato produtivo legado também carimba "Sara reavaliou" sem executar
-       uma nova análise. Até a migration auditável entrar, o navegador não pode
-       chamar essa RPC nem alegar origem D-API. O webhook oficial continua fora
-       desta rota e é a única autoridade para confirmar mensagens. */
-    return Response.json({
-      error: "A confirmação manual está temporariamente bloqueada até a nova leitura da Sara ter comprovação auditável.",
-      erro: "confirmacao_temporariamente_bloqueada",
-    }, { status: 409 });
+    if (body.fonte !== "registro_operacional") {
+      return Response.json({ error: "A evidência D-API só pode vir do webhook oficial." }, { status: 422 });
+    }
+    const [{ data: corretorAtual, error: erroCorretor }, { data: lead, error: erroLead }] = await Promise.all([
+      db.rpc("current_broker_id"),
+      db.from("f2_lead").select("corretor_id,versao,momento_codigo").eq("id", id).maybeSingle(),
+    ]);
+    if (erroCorretor || erroLead) {
+      return respostaFalhaBanco(erroCorretor ?? erroLead, "PATCH:confirmarAcao:autoridade");
+    }
+    if (!lead) return Response.json({ error: "Atendimento não encontrado." }, { status: 404 });
+    const corretorId = Number(corretorAtual);
+    if (!Number.isSafeInteger(corretorId) || Number(lead.corretor_id) !== corretorId) {
+      return Response.json({ error: "Somente o corretor responsável pode confirmar esta ação." }, { status: 403 });
+    }
+    if (Number(lead.versao) !== versao && Number(lead.versao) !== versao + 1) {
+      return Response.json({
+        error: "Este atendimento mudou em outra sessão. Recarregue antes de confirmar.",
+        erro: "versao_conflito",
+      }, { status: 409 });
+    }
+    const { data: momento, error: erroMomento } = await db.from("f2_momento_config")
+      .select("exige_dapi").eq("codigo", String(lead.momento_codigo)).maybeSingle();
+    if (erroMomento || !momento) {
+      return erroMomento
+        ? respostaFalhaBanco(erroMomento, "PATCH:confirmarAcao:momento")
+        : Response.json({ error: "Não foi possível validar o contrato desta ação." }, { status: 409 });
+    }
+    if (momento.exige_dapi === true) {
+      return Response.json({
+        error: "Esta ação só termina após confirmação real do D-API.",
+        erro: "confirmacao_dapi_obrigatoria",
+      }, { status: 409 });
+    }
+    rpc = "f2_confirmar_acao";
+    args = {
+      p_id: id,
+      p_versao: versao,
+      p_fonte: "registro_operacional",
+      p_observacao: String(body.observacao ?? "").slice(0, 500) || null,
+    };
   } else if (action === "descartar") {
     /* Nenhum lead sai do funil sozinho, por silencio ou por tempo. Sempre tem
        alguem clicando e escolhendo o motivo -- regra do Romulo, 05/08/2026. */

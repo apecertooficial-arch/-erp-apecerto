@@ -749,3 +749,20 @@
 /* Catálogo mobile: os mesmos produtos reais de /api/catalog, sem fallback. */
 
 /* Painel e área de gestão: visíveis somente na navegação de gestor/admin. */
+.ape-ficha > .f2-confirmar-acao.mobile { margin:0 16px 14px; min-width:0; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-abrir { width:100%; min-height:48px; border:0; border-radius:14px; background:var(--ape-laranja, #e15b2a); color:#fff; font-size:14px; font-weight:850; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-sucesso { display:grid; gap:4px; padding:12px 14px; border:1px solid #b8dfc8; border-radius:14px; background:#ecf9f1; color:#116b3d; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-sucesso strong { font-size:13px; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-sucesso span { font-size:11px; line-height:1.4; }
+.f2-confirmar-acao.mobile.estado { display:grid; gap:4px; padding:12px 14px; border:1px solid var(--ape-borda, #e8e2dc); border-radius:14px; background:var(--ape-card, #fff); }
+.f2-confirmar-acao.mobile.estado strong { color:var(--ape-texto, #26211d); font-size:13px; }
+.f2-confirmar-acao.mobile.estado span { color:var(--ape-texto-suave, #746b64); font-size:12px; line-height:1.45; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao { display:grid; gap:10px; padding:14px; border:1px solid var(--ape-borda, #e8e2dc); border-radius:16px; background:var(--ape-card, #fff); box-shadow:0 12px 30px rgb(45 31 20 / 10%); }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao > strong { font-size:15px; color:var(--ape-texto, #26211d); }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao > span { color:var(--ape-texto-suave, #746b64); font-size:12px; line-height:1.45; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao label { display:grid; gap:6px; color:var(--ape-texto, #26211d); font-size:12px; font-weight:750; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao textarea { min-height:84px; padding:10px; border:1px solid var(--ape-borda, #e8e2dc); border-radius:12px; background:var(--ape-fundo, #f8f5f2); color:var(--ape-texto, #26211d); font:inherit; resize:vertical; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao em { color:#b42318; font-size:12px; font-style:normal; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao > div { display:grid; grid-template-columns:1fr 1.25fr; gap:8px; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao button { min-height:44px; border:1px solid var(--ape-borda, #e8e2dc); border-radius:12px; background:#fff; color:var(--ape-texto, #26211d); font-weight:800; }
+.f2-confirmar-acao.mobile .f2-confirmar-acao-confirmacao button.primario { border-color:transparent; background:var(--ape-laranja, #e15b2a); color:#fff; }

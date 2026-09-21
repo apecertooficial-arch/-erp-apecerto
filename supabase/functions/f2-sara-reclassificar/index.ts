@@ -22,11 +22,16 @@ const MAX_MENSAGENS_CARREGADAS = 250;
 const MAX_MENSAGENS_NOVAS = 24;
 const MENSAGENS_ANCORA = 8;
 const TEMPERATURAS = ["frio", "morno", "quente", "negociando"] as const;
+const EVENTOS_DE_PRAZO = new Set([
+  "lead.next_action_due",
+  "lead.cadence_due",
+]);
 const EVENTOS_SARA = new Set([
   "conversation.message_received",
   "conversation.message_sent",
   "lead.next_action_due",
   "lead.cadence_due",
+  "lead.action_confirmed",
 ]);
 
 type Catalogo = {
@@ -336,7 +341,7 @@ async function processar(
         ultima_mensagem_id:mensagens.at(-1)?.id ?? null };
     }
   }
-  if (!entradas.length && saidas.length && !evento.eventType?.startsWith("lead.")) {
+  if (!entradas.length && saidas.length && !EVENTOS_DE_PRAZO.has(evento.eventType ?? "")) {
     if (!deveAplicarCadenciaSemResposta(c, fatos)) {
       return { id:c.funil_lead_id,versao_base:c.versao,context_hash:hash,
         origem:"deterministica",status:"sem_historico",momento_codigo:null,
@@ -360,7 +365,7 @@ async function processar(
         momento,
         momento.prazo_minutos === null ? null : new Date(Date.now()+momento.prazo_minutos*60000).toISOString(),
       ),
-      checkpoint_anterior:evento.eventType?.startsWith("lead.") ? {
+      checkpoint_anterior:EVENTOS_DE_PRAZO.has(evento.eventType ?? "") ? {
         event_type:evento.eventType,source_id:evento.sourceId,
         expected_action:evento.expectedAction,
         executada:mensagensPosteriores.some((m:any)=>direcaoCorretor(m.direcao)) ||
@@ -388,7 +393,7 @@ async function processar(
       evidencias:evidencia ? [evidencia] : [],confianca:0,mensagens:mensagens.length,
       qualidade_nota:null,temperatura:"morno",temperatura_confianca:0,
       temperatura_evidencias:evidencia ? [evidencia] : [],
-      checkpoint_anterior:evento.eventType?.startsWith("lead.") ? {
+      checkpoint_anterior:EVENTOS_DE_PRAZO.has(evento.eventType ?? "") ? {
         event_type:evento.eventType,source_id:evento.sourceId,
         expected_action:evento.expectedAction,executada:null,evidencias:[],
       } : null,
@@ -475,7 +480,7 @@ async function processar(
   const qualidadeResumo = texto(parsed.qualidade_resumo,500)
     ?? (nota === null ? "Sem mensagens suficientes para avaliar o atendimento." : null);
   if (nota !== null && !qualidadeResumo) throw new Error("ia_qualidade_sem_justificativa");
-  const eventoDue = evento.eventType?.startsWith("lead.") ?? false;
+  const eventoDue = EVENTOS_DE_PRAZO.has(evento.eventType ?? "");
   const acaoAnteriorExecutada = eventoDue ? parsed.acao_anterior_executada : null;
   if (eventoDue && typeof acaoAnteriorExecutada !== "boolean")
     throw new Error("ia_acao_anterior_sem_resultado");
@@ -545,8 +550,11 @@ Deno.serve(async (req: Request) => {
     const executionId = Number.isSafeInteger(executionRaw) && executionRaw > 0 ? executionRaw : null;
     const expectedAction = body.expected_action && typeof body.expected_action === "object" &&
       !Array.isArray(body.expected_action) ? body.expected_action as Record<string,unknown> : null;
-    if (eventType?.startsWith("lead.") && (!sourceId || !executionId || !expectedAction))
+    const eventoDePrazo = EVENTOS_DE_PRAZO.has(eventType ?? "");
+    if (eventoDePrazo && (!sourceId || !executionId || !expectedAction))
       return Response.json({ok:false,erro:"contexto_due_incompleto"},{status:400});
+    if (eventType === "lead.action_confirmed" && (!sourceId || !executionId || !/^\d+$/.test(sourceId)))
+      return Response.json({ok:false,erro:"contexto_acao_confirmada_incompleto"},{status:400});
 
     const { data: config, error: ec } = await db.from("f2_sara_config").select("enabled,lote").eq("id",true).maybeSingle();
     if (ec || !config) throw new Error("config_indisponivel");
@@ -564,7 +572,7 @@ Deno.serve(async (req: Request) => {
     let analisadoEm: string | null = null;
     let resumoAnterior: string | null = null;
     const evidenciasOperacionais: ContextoEvento["evidenciasOperacionais"] = [];
-    if (eventType?.startsWith("lead.") && sourceId && /^\d+$/.test(sourceId)) {
+    if (eventoDePrazo && sourceId && /^\d+$/.test(sourceId)) {
       const { data: analise, error: ea } = await db.from("f2_sara_analise")
         .select("id,funil_lead_id,analisado_em,resumo").eq("id",Number(sourceId))
         .eq("funil_lead_id",funilLeadId).maybeSingle();
@@ -593,6 +601,19 @@ Deno.serve(async (req: Request) => {
       if (ea) throw new Error("analise_anterior_indisponivel");
       analisadoEm = analiseAnterior?.analisado_em ?? null;
       resumoAnterior = analiseAnterior?.resumo ?? null;
+      if (eventType === "lead.action_confirmed" && sourceId) {
+        const { data: eventoConfirmacao, error: erroConfirmacao } = await db.from("f2_evento")
+          .select("id,tipo,titulo,criado_em").eq("id",Number(sourceId))
+          .eq("funil_lead_id",funilLeadId).eq("tipo","acao_confirmada").maybeSingle();
+        if (erroConfirmacao || !eventoConfirmacao)
+          return Response.json({ok:false,erro:"acao_confirmada_origem_invalida"},{status:409});
+        evidenciasOperacionais.push({
+          id:`evento:${String(eventoConfirmacao.id)}`,
+          tipo:String(eventoConfirmacao.tipo),
+          resumo:texto(eventoConfirmacao.titulo,120) ?? "ação operacional confirmada",
+          criado_em:String(eventoConfirmacao.criado_em),
+        });
+      }
     }
     const evento: ContextoEvento = {
       eventType,sourceId,executionId,expectedAction,analisadoEm,resumoAnterior,

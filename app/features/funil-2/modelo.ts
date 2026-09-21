@@ -226,6 +226,8 @@ export type LeadFunil2 = {
   instancia_telefone?: string | null;
   instancia_status?: string | null;
   instancia_origem?: "conversa" | "padrao" | "indisponivel";
+  /** Capacidade server-side: somente o corretor dono registra ação manual. */
+  pode_confirmar_acao: boolean;
   /** Interesse principal inferido somente das tags reais do lead original. */
   interesse?: string | null;
   /** Tags normalizadas do lead original (produto, anúncio, campanha e origem). */
