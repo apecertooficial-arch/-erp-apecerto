@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, eventoSaraVisivel, leituraSaraVisivel, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type ArquivoVinculadoFunil2, type AtividadeFunil2, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type ImovelVinculadoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NegocioVinculadoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
+import { acaoVisivel, dataCurta, erroAgendamentoVisita, esperandoPrimeiraChamada, eventoSaraVisivel, leadOperacionalNoMeuDia, leituraSaraVisivel, prazoDaAcao, rotuloCadencia, rotuloTemperatura, situacaoPrazo, tentativaAtual, venceHoje, type ArquivoVinculadoFunil2, type AtividadeFunil2, type CandidatoAquarioFunil2, type EtapaConfigFunil2, type EventoFunil2, type ImovelVinculadoFunil2, type LeadFunil2, type MomentoFunil2, type NegociacaoFunil2, type NegocioVinculadoFunil2, type NotaFunil2, type OperacaoConfigFunil2, type SaraStatusFunil2, type TagCatalogoFunil2, type TemperaturaLead, type VisitaFunil2 } from "./modelo";
 import { combinarAtividades, validarMovimentoSeguro } from "./contratos.mjs";
 import { SalesProcessView } from "../sales/SalesProcessWorkspace";
 import { Funil2ConversationDrawer } from "./Funil2ConversationDrawer";
@@ -243,10 +243,11 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   }, [accessToken, leadHistoricoId, leadHistoricoVersao]);
   const eventosLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.eventos : eventos.filter((e) => e.funil_lead_id === lead.id)) : [];
   const notasLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.notas : notas.filter((n) => n.funil_lead_id === lead.id)) : [];
-  const atrasados = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado").length;
-  const urgentes = leads.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
-  const vencemHoje = leads.filter((l) => venceHoje(l)).length;
-  const leadsNovos = leads.filter((l) => esperandoPrimeiraChamada(l)).length;
+  const leadsOperacionais = leads.filter(leadOperacionalNoMeuDia);
+  const atrasados = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado").length;
+  const urgentes = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
+  const vencemHoje = leadsOperacionais.filter((l) => venceHoje(l)).length;
+  const leadsNovos = leadsOperacionais.filter((l) => esperandoPrimeiraChamada(l)).length;
   const hojeSaoPaulo = dataIsoSaoPaulo(new Date());
   const visitasDoDia = visitas
     .filter((v) => {
@@ -281,7 +282,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   } as const;
   const filtroAtivo = FILTROS_DIA[filtroDia];
   const mostrandoVisitas = filtroDia === "visitas";
-  const aFazer = mostrandoVisitas ? [] : leads.filter(filtroAtivo.teste).sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+  const aFazer = mostrandoVisitas ? [] : leadsOperacionais.filter(filtroAtivo.teste).sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
   const totalDoFiltro = mostrandoVisitas ? visitasHoje : aFazer.length;
   const etapasAtivas = etapas.filter((e) => e.ativo);
   /* FUNIS PARALELOS: os rótulos usam as listas completas (um lead de qualquer

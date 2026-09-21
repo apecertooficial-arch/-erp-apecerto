@@ -401,6 +401,10 @@ export function entraNoMeuDia(lead: Pick<LeadFunil2, "proxima_acao_em">, agora =
   return new Date(lead.proxima_acao_em).getTime() <= agora + 2 * 60 * 60 * 1000;
 }
 
+export function leadOperacionalNoMeuDia(lead: Pick<LeadFunil2, "etapa">) {
+  return !["legado", "atualizar_manual"].includes(lead.etapa);
+}
+
 /* A LISTA "LEAD NOVO" É A DE QUEM AINDA NÃO FOI CHAMADO.
 
    No pipe o pescado fica na coluna Pescado -- é lá que ele pertence, e é isso

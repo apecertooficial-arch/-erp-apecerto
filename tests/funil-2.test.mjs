@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { leadOperacionalNoMeuDia } from "../app/features/funil-2/modelo.ts";
 
 const ui = `${readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/Funil2BoardToolbar.tsx", import.meta.url), "utf8")}`;
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
@@ -228,6 +229,14 @@ test("Meu Dia mostra cliente, etapa, momento, tempo e central de atenção", () 
   assert.match(ui, /CentralAtencao/);
   assert.match(ui, /ações atrasadas/);
   assert.match(ui, /vencem em até 2h/);
+});
+
+test("Meu Dia não transforma carteira legada em ação operacional", () => {
+  assert.equal(leadOperacionalNoMeuDia({ etapa: "novo" }), true);
+  assert.equal(leadOperacionalNoMeuDia({ etapa: "legado" }), false);
+  assert.equal(leadOperacionalNoMeuDia({ etapa: "atualizar_manual" }), false);
+  assert.match(ui, /const leadsOperacionais = leads\.filter\(leadOperacionalNoMeuDia\)/);
+  assert.match(ui, /leadsOperacionais\.filter\(filtroAtivo\.teste\)/);
 });
 
 test("Funil entrega áreas operacionais e captura sem tocar nas origens", () => {

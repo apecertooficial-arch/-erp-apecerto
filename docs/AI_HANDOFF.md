@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
-- Objetivo: fechar a jornada gerente → corretor → visita → feedback persistido → pendência encerrada; sucesso só pode ser anunciado após releitura do registro e confirmação de saída da fila.
-- Base: `origin/main` em `83ff73f949f461cfcad4da9d166963be053e617a`; branch `codex/feedback-fila-confirmada`.
-- Concluído nesta fatia: a confirmação compartilhada agora consulta `f2_visitas_resultado_pendente` no dia operacional da visita e falha fechada se o item continuar na fila ou a resposta não for comprovável.
-- Decisão: estender a função compartilhada existente, sem alterar APIs, schema, migration ou dados de produção.
-- Arquivos: `app/lib/supabase/autorizarResultadoVisita.ts`, `tests/agenda-resultados-visita.test.mjs`.
-- Verificações: teste vermelho reproduziu o falso sucesso; 41 testes direcionados passaram; lint dos arquivos tocados passou; build Vinext passou; harness real mostrou Visitas no desktop e Resultados pendentes em 390×844, ambos sem erro de console.
-- Produção: `83ff73f9` publicado e confirmado por `/api/build`; Agenda desktop/mobile carregou a fila filtrada com console limpo.
-- Risco: a confirmação acrescenta uma consulta à fila após a releitura e, por segurança, devolve 502 se RLS, conectividade ou o contrato da fila impedirem comprovar o encerramento.
-- Próximo passo: publicar esta fatia, confirmar `/api/build` e validar produção somente leitura; depois buscar a próxima falha P0/P1 comprovada no CRM/Meu Dia/Agenda.
+- Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
+- Base: `origin/main` em `85c8d888d4bfd5179eaa7d4dad02183779e2b620`; branch `codex/meu-dia-sem-legado`.
+- Concluído nesta fatia: o Meu Dia deixa de contar e promover registros `legado`/`atualizar_manual` como ações operacionais; o histórico continua disponível em Todos os Leads.
+- Decisão: uma função compartilhada filtra a fila antes dos contadores e da ordenação, sem alterar banco, API ou dados.
+- Arquivos: `app/features/funil-2/modelo.ts`, `app/features/funil-2/Funil2Workspace.tsx`, `tests/funil-2.test.mjs`.
+- Verificações: produção reproduziu carteira legada como primeiro item acionável; teste vermelho confirmou a regra ausente; 78 testes direcionados e lint passaram; build Vinext passou; harness desktop/mobile 390×844 carregou CRM sem erro de console.
+- Produção: `85c8d888` publicado e confirmado por `/api/build`; Agenda desktop e mobile 390×844 carregaram a fila filtrada, responsável e qualidade com console limpo.
+- Risco: somente etapas explicitamente históricas são removidas do Meu Dia; nenhuma etapa comercial ativa muda de comportamento.
+- Próximo passo: publicar esta fatia, validar que o primeiro item de produção não é histórico e seguir para a próxima falha P0/P1 de Meu Dia/Agenda/aplicativo.
