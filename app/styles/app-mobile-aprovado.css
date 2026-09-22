@@ -720,6 +720,35 @@
   body:has(.ape-folha) #sara-fab { display:none !important; }
 }
 
+/* Prova móvel CRM / Meu Dia: fila tátil sobre atmosfera discreta. */
+@media (max-width:900px){
+  .ape-app:is(.modo-crm,.modo-inicio){max-width:none;margin:0;padding:12px 16px calc(30px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 86% 0,rgba(124,58,237,.20),transparent 25%),radial-gradient(circle at 12% 2%,rgba(37,99,235,.22),transparent 28%),linear-gradient(#eef3ff 0,rgba(248,250,252,.94) 310px)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-abertura{padding:18px 4px 16px}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-sobrancelha{color:var(--ape-blue)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-manchete{max-width:14ch;font-size:30px;line-height:1.05;letter-spacing:-.04em}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-crm-kpis,.ape-app:is(.modo-crm,.modo-inicio) .ape-numeros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px}
+  .ape-app.modo-crm .ape-crm-kpis article{min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;border:1px solid var(--border-glass);border-radius:18px;background:rgba(255,255,255,.84);box-shadow:var(--shadow-depth);backdrop-filter:blur(14px)}
+  .ape-app.modo-crm .ape-crm-kpis article>span,.ape-app.modo-crm .ape-crm-kpis article>small{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+  .ape-app.modo-crm .ape-crm-kpis article>strong{margin:4px 0;font-size:22px;line-height:1}
+  .ape-app.modo-crm .ape-crm-kpis article:first-child{background:linear-gradient(145deg,rgba(37,99,235,.96),rgba(55,48,163,.92));color:#fff}
+  .ape-app.modo-crm .ape-crm-kpis article:first-child span,.ape-app.modo-crm .ape-crm-kpis article:first-child small{color:rgba(255,255,255,.76)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-numeros>article{min-width:0;padding:12px;border:1px solid var(--border-glass);border-radius:18px;background:rgba(255,255,255,.84);box-shadow:var(--shadow-depth);backdrop-filter:blur(14px)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-numeros>article:first-child{background:linear-gradient(145deg,rgba(37,99,235,.96),rgba(55,48,163,.92));color:#fff}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-busca{min-height:52px;border-color:rgba(55,48,163,.14);border-radius:16px;box-shadow:0 8px 24px rgba(37,56,120,.08)}
+  .ape-app.modo-crm .ape-filtros button.ativo{background:linear-gradient(135deg,var(--ape-blue),var(--ape-violet));box-shadow:0 8px 18px rgba(79,70,229,.20)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-lista{gap:12px}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card{padding:15px;border-color:rgba(55,48,163,.12);border-radius:20px;background:rgba(255,255,255,.94);box-shadow:0 14px 32px rgba(37,56,120,.11)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-avatar{background:linear-gradient(145deg,#dbeafe,#ede9fe);color:var(--ape-indigo)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card-leitura{gap:8px;margin-top:10px}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card-leitura b{border-color:rgba(55,48,163,.12);background:#f7f8ff}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card-acao{margin-top:10px;padding:12px 13px;border:1px solid rgba(37,99,235,.16);border-radius:14px;background:linear-gradient(135deg,#eff6ff,#f5f3ff)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card-acao small{display:block;margin-bottom:3px;color:var(--ape-blue);font-size:9px;font-weight:800;letter-spacing:.10em}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-card-acao strong{color:var(--fg-1);font-size:13px;white-space:normal}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-acoes .ncrm-wa-principal{box-shadow:0 10px 24px rgba(30,158,90,.20)}
+  .ape-app:is(.modo-crm,.modo-inicio) .ape-mais{border-color:rgba(55,48,163,.16);background:#f7f8ff;color:var(--ape-indigo)}
+}
+@media (prefers-reduced-motion: reduce){.ape-app:is(.modo-crm,.modo-inicio) .ape-card,.ape-app.modo-crm .ape-filtros button{transition:none}.ape-app:is(.modo-crm,.modo-inicio) .ape-trazer-folha>section,.ape-app:is(.modo-crm,.modo-inicio) .ape-ficha{animation:none}}
+
 /* CRM mobile fiel ao protótipo: dois níveis de filtro, cartões curtos e a
    temperatura editável sem abrir uma tela administrativa. */
 

@@ -1,19 +1,19 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: seguir pelas falhas P0/P1 comprovadas do CRM, Meu Dia, Agenda e aplicativo.
-- Base: `origin/main` em `46a81615`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: o nome devolvido pelo Funil deixa de repetir telefones importados, protegendo título, cartão e rótulos acessíveis no desktop e no aplicativo.
-- Decisão: sanitizar uma vez na resposta canônica `/api/funil2`, preservando o telefone separado para busca e contato.
-- Arquivos: `app/api/funil2/route.ts`, `app/features/funil-2/contratos.mjs`, teste comportamental e fonte do painel.
-- Verificações: reprodução real em produção mostrou telefone completo no nome; 30 testes, lint e build passaram. Em produção, 65 cartões desktop e 60 móveis ficaram sem telefone no nome ou nos rótulos acessíveis.
-- Produção: `2f4c9d97` publicado e confirmado por `/api/build`.
-- Risco: baixo; somente apresentação do nome muda, sem alterar o cadastro nem o número usado para contato.
-- Direção visual: a reformulação visual e estrutural integral ainda **não foi entregue**. A referência aprovada deve começar por uma prova completa do CRM / Meu Dia em desktop e mobile, sem ser confundida com estas correções funcionais pontuais.
+- Base: `origin/main` em `aaf507d3`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: prova visual operacional do CRM / Meu Dia em desktop e mobile, usando o shell, tokens e componentes reais; nenhuma interface paralela foi criada.
+- Decisão: consolidar azul, índigo, violeta, atmosfera e profundidade nas autoridades CSS existentes, mantendo laranja nas ações principais e sem dependência nova.
+- Arquivos: autoridades de identidade, shell, Funil desktop e aplicativo móvel; teste estrutural da direção visual e fonte do painel.
+- Verificações: CRM e Meu Dia com dados sanitizados no navegador real; desktop e 390×844; carregamento, vazio, erro e acesso negado sem overflow; redução de movimento; console sem warnings ou erros. Gates automatizados e build devem permanecer verdes antes da publicação.
+- Produção: `aaf507d3` é o checkpoint anterior confirmado por `/api/build`; a prova visual aguarda o commit desta fatia.
+- Risco: baixo a moderado e restrito à apresentação; fluxos, dados e mutações não foram alterados.
+- Direção visual: a prova está completa, mas a reformulação visual e estrutural integral ainda **não foi entregue**. Propagação para os demais módulos depende da aprovação desta prova.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[██████████░░░░░░░░░░] 51/100`
-  - CRM / Kanban: `[███████████████░░░░░] 73/100`
-  - Identidade visual: `[█████████████░░░░░░░] 67/100`
-  - Meu Dia: `[██████████████░░░░░░] 70/100`
+  - Transformação completa: `[██████████░░░░░░░░░░] 52/100`
+  - CRM / Kanban: `[███████████████░░░░░] 75/100`
+  - Identidade visual: `[██████████████░░░░░░] 70/100`
+  - Meu Dia: `[██████████████░░░░░░] 72/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
-  - Aplicativo móvel: `[█████████████░░░░░░░] 66/100`
-- Próximo passo: iniciar a prova visual completa do CRM / Meu Dia somente se houver margem para concluí-la, validá-la e publicar sem parcialidade.
+  - Aplicativo móvel: `[██████████████░░░░░░] 70/100`
+- Próximo passo: publicar a prova e obter aprovação explícita antes de propagar a linguagem visual; a reformulação integral continua pendente.

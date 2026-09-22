@@ -37,28 +37,29 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 51,
+  overallPercent: 52,
   fronts: [
-    { name: "CRM / Kanban", percent: 73 },
-    { name: "Identidade visual", percent: 67 },
-    { name: "Meu Dia", percent: 70 },
+    { name: "CRM / Kanban", percent: 75 },
+    { name: "Identidade visual", percent: 70 },
+    { name: "Meu Dia", percent: 72 },
     { name: "Agenda / visitas", percent: 75 },
-    { name: "Aplicativo móvel", percent: 66 },
+    { name: "Aplicativo móvel", percent: 70 },
   ],
-  weeklyUsagePercent: 64,
+  weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 70,
-  currentTask: "Sanitização do nome dos cartões confirmada em produção",
-  lastCheckpoint: "CRM desktop e móvel sem telefone importado no título ou nos rótulos acessíveis.",
-  lastCheckpointAt: "2026-09-22T14:23:40-03:00",
-  lastCommitSent: "2f4c9d9719a19946c2a657acf883c404caed3dea",
-  productionCommit: "2f4c9d9719a19946c2a657acf883c404caed3dea",
+  currentTask: "Prova visual operacional do CRM e Meu Dia pronta para publicação",
+  lastCheckpoint: "Prova desktop e móvel validada com tokens, profundidade, estados reais e redução de movimento.",
+  lastCheckpointAt: "2026-09-22T14:45:00-03:00",
+  lastCommitSent: "aaf507d3750fad34ec963adb01d72d00f236f16a",
+  productionCommit: "aaf507d3750fad34ec963adb01d72d00f236f16a",
   latestDeliveries: [
+    "Prova visual do CRM e Meu Dia consolidada no shell e nas autoridades CSS existentes.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
   blockers: [],
-  nextStep: "A reformulação visual e estrutural integral ainda não foi entregue; iniciar uma prova completa do CRM / Meu Dia antes de propagá-la.",
+  nextStep: "Publicar e obter aprovação da prova CRM / Meu Dia antes de propagar; a reformulação integral ainda não foi entregue.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

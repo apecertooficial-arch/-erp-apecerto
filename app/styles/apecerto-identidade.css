@@ -44,6 +44,16 @@
   --ape-purple-100: #EBD1F5;
   --ape-purple-50:  #F7ECFC;
 
+  /* Profundidade operacional: azul e violeta apoiam a marca sem substituir
+     o laranja nas ações principais. */
+  --ape-blue:       #2563EB;
+  --ape-indigo:     #3730A3;
+  --ape-violet:     #7C3AED;
+  --bg-atmosphere:  radial-gradient(circle at 78% 8%, rgba(124,58,237,.20), transparent 32%), radial-gradient(circle at 18% 0%, rgba(37,99,235,.22), transparent 34%), #EEF3FF;
+  --surface-glass:  rgba(255,255,255,.82);
+  --border-glass:   rgba(255,255,255,.72);
+  --shadow-depth:   0 18px 44px rgba(37,56,120,.14), 0 2px 8px rgba(31,28,26,.05);
+
   /* ============================
      NEUTROS — quentes, levemente areia
      ============================ */
@@ -75,6 +85,7 @@
   --bg-raised:      var(--neutral-0);
   --bg-sunken:      var(--neutral-100);
   --bg-tint-orange: var(--ape-orange-50);
+  --bg-tint-blue:   color-mix(in srgb, var(--ape-blue) 8%, var(--neutral-0));
   --bg-tint-purple: var(--ape-purple-50);
 
   --border-soft:    var(--neutral-200);
