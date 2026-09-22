@@ -104,11 +104,11 @@ test("worker novo assume sem atropelar a aba ativa", () => {
   assert.match(registro, /navigator\.serviceWorker\.addEventListener\("controllerchange", aoTrocar\)/,
     "sem ouvir controllerchange a pagina nao sabe que a versao nova assumiu");
 
-  // 3. aba escondida pode recarregar sozinha
-  assert.match(registro, /document\.visibilityState === "hidden"[\s\S]*?window\.location\.reload\(\)/,
-    "com a aba em segundo plano a recarga automatica e segura e desejada");
+  // 3. um rascunho impede recarga automatica, mesmo com a aba escondida
+  assert.match(registro, /const podeRecarregarSemPerda = \(\) => !houveEdicao\.current/);
+  assert.doesNotMatch(registro, /document\.visibilityState === "hidden" \|\| podeRecarregarSemPerda\(\)/);
 
-  // 4. aba visivel NUNCA recarrega sozinha: apenas avisa
+  // 4. com rascunho, avisa e espera o clique antes de recarregar
   assert.match(registro, /\} else \{\s*setPrecisaRecarregar\(true\);/,
     "aba na frente so pode ser avisada; recarregar por cima de um atendimento perde texto");
 

@@ -64,7 +64,8 @@ test("folha da agenda rola e mantém a ação de salvar alcançável no celular"
 test("PWA assume a nova versão sozinho quando não há formulário aberto", () => {
   assert.match(pwa, /podeRecarregarSemPerda/);
   assert.match(pwa, /querySelector\('\[aria-modal="true"\]'/);
-  assert.match(pwa, /document\.visibilityState === "hidden" \|\| podeRecarregarSemPerda\(\)/);
+  assert.match(pwa, /if \(podeRecarregarSemPerda\(\)\) \{\s*recarregando = true;\s*window\.location\.reload\(\)/);
+  assert.doesNotMatch(pwa, /document\.visibilityState === "hidden" \|\| podeRecarregarSemPerda\(\)/);
 });
 
 test("agenda não exibe segundos vindos da API histórica", () => {
