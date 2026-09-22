@@ -72,6 +72,11 @@ test("interface não converte falha de agendamento em lista vazia ou cancelament
   assert.equal((ui.match(/activeConversation\.current = selectedId/g) ?? []).length, 1, "a troca de conversa deve disparar uma única carga");
 });
 
+test("visita criada pelo Chat exige confirmação canônica da Agenda", () => {
+  assert.match(ui, /const result = await response\.json\(\)\.catch\(\(\) => \(\{\}\)\) as \{ success\?: boolean;/);
+  assert.match(ui, /if \(endpoint === "\/api\/agenda" && result\.success !== true\) throw new Error\(result\.error \|\| "A Agenda não confirmou a visita\."\)/);
+});
+
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
   assert.match(harness, /LiveChatWorkspace/);
   assert.match(harness, /liveChatHarness = "sanitizado"/);

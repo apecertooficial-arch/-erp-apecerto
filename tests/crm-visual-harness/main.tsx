@@ -20,6 +20,7 @@ import { TeamWorkspace } from "../../app/features/team/TeamWorkspace";
 import { PermissionsWorkspace } from "../../app/features/permissions/PermissionsWorkspace";
 import { ApproachesWorkspace } from "../../app/features/approaches/ApproachesWorkspace";
 import { Funil2Mobile } from "../../app/features/funil-2/Funil2Mobile";
+import { LiveChatWorkspace } from "../../app/features/chat/LiveChatWorkspace";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -61,6 +62,7 @@ const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") ===
 const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
 const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
 const criacaoAgendaOffline = parametros.get("agendaCreate") === "offline";
+const visitaChatInvalida = parametros.get("chatVisit") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -167,9 +169,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "associarTag") return json(resultadoTagInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
-    if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "createVisit") {
+    if ((method === "PATCH" || method === "POST") && url.pathname === "/api/agenda" && corpo.action === "createVisit") {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
-      return json({ success: true, message: "Visita agendada com sucesso." });
+      return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });
     }
     registro.blocked = true;
     sincronizarLogRede();
@@ -211,6 +213,14 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
+  if (url.pathname === "/api/live-chat") return json(url.searchParams.has("conversationId") ? { messages: [] } : {
+    conversations: [{ id: "conversa-teste", contato_id: "contato-teste", instancia_id: "instancia-teste", status: "aberta", ultima_msg_em: "2026-09-21T12:00:00Z", origem: "WhatsApp" }],
+    contacts: [{ id: "contato-teste", nome: "Cliente chat sanitizado", telefone: "5511999990000", lead_id: 501 }],
+    instances: [{ id: "instancia-teste", session_id: "sessao-teste", rotulo: "WhatsApp teste", status: "conectada", corretor_id: 7 }],
+    dapi: [], latest: {}, leads: [{ id: 501, nome: "Cliente chat sanitizado", telefone: "5511999990000", email: null, corretor_id: 7, origem: "WhatsApp", tags: [] }],
+    deals: [{ id: 601, lead_id: 501, corretor_id: 7, stage_id: 1, empreendimento_id: null, valor: null, status: "aberto" }],
+    brokers: [{ id: 7, nome: "Corretor teste", usuario_id: null, online: true }], products: [], media: [], activities: [], approaches: [], stages: [],
+  });
   if (url.pathname === "/api/team") return json(estado === "invalido" ? {} : { users: [], brokers: [], instances: [], links: [], audits: [] });
   if (url.pathname === "/api/permissions") return json(estado === "invalido" ? {} : { perfis: [], usuarios: [] });
   if (url.pathname === "/api/approaches") return json(estado === "invalido" ? {} : { approaches: [], products: [] });
@@ -271,6 +281,8 @@ const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
   : tela === "crm-mobile"
     ? <Funil2Mobile accessToken="harness-test-only" nome="Corretor teste" modo="crm" onIr={() => undefined} />
+  : tela === "chat"
+    ? <ErpShell><LiveChatWorkspace accessToken="harness-test-only" /></ErpShell>
   : tela === "avisos-mobile"
     ? <NotificationsWorkspace accessToken="harness-test-only" />
   : tela === "tarefas-mobile"

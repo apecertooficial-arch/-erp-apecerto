@@ -165,8 +165,9 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     setBusy(true); setNotice(null);
     try {
       const response = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const result = await response.json() as { error?: string; scheduled?: number; message?: string };
+      const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string; scheduled?: number; message?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
+      if (endpoint === "/api/agenda" && result.success !== true) throw new Error(result.error || "A Agenda não confirmou a visita.");
       const successMessage = result.message || (result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");
       try {
         await load();
