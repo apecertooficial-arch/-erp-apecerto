@@ -98,13 +98,22 @@ function notaMobileValida(valor: unknown): valor is NotaFunil2 {
     && typeof nota.criado_em === "string";
 }
 
+function tagMobileValida(valor: unknown): valor is TagCatalogoFunil2 {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const tag = valor as Record<string, unknown>;
+  return typeof tag.id === "string"
+    && typeof tag.nome === "string"
+    && typeof tag.cor === "string";
+}
+
 function payloadMobileValido(payload: PayloadMobile) {
   return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray)
     && payload.leads!.every(leadFunil2EssencialValido)
     && payload.etapas!.every(etapaMobileValida)
     && payload.momentos!.every(momentoMobileValido)
     && payload.eventos!.every(eventoMobileValido)
-    && payload.notas!.every(notaMobileValida);
+    && payload.notas!.every(notaMobileValida)
+    && payload.tagCatalogo!.every(tagMobileValida);
 }
 
 type LeadCarteiraAntigaMobile = {

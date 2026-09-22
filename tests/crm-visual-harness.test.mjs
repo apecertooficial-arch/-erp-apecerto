@@ -125,6 +125,10 @@ test("harness reproduz nota malformada ao abrir a ficha", () => {
   assert.match(harness, /colecaoCrmMalformada === "notas" \? \{ \.\.\.payloadNormal, notas: \[null\] \}/);
 });
 
+test("harness reproduz tag malformada ao abrir a ação da ficha", () => {
+  assert.match(harness, /colecaoCrmMalformada === "tags" \? \{ \.\.\.payloadNormal, tagCatalogo: \[null\] \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
