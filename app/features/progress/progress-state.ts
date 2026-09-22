@@ -37,9 +37,9 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 50,
+  overallPercent: 51,
   fronts: [
-    { name: "CRM / Kanban", percent: 72 },
+    { name: "CRM / Kanban", percent: 73 },
     { name: "Identidade visual", percent: 67 },
     { name: "Meu Dia", percent: 70 },
     { name: "Agenda / visitas", percent: 75 },
@@ -47,18 +47,18 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 64,
   weeklyUsageCeilingPercent: 70,
-  currentTask: "Publicar e validar o painel administrativo de progresso",
-  lastCheckpoint: "Painel /progresso implementado com fonte validada e acesso exclusivo de administrador.",
-  lastCheckpointAt: "2026-09-22T12:07:03-03:00",
-  lastCommitSent: "4804e6be1750b3e009a189a2f7bebdb39ff5f06e",
-  productionCommit: "4804e6be1750b3e009a189a2f7bebdb39ff5f06e",
+  currentTask: "Impedir telefone importado no título dos cartões do CRM",
+  lastCheckpoint: "Nome visível do cliente sanitizado uma vez na resposta canônica do Funil.",
+  lastCheckpointAt: "2026-09-22T14:17:14-03:00",
+  lastCommitSent: "46a8161567441cb71a34294c63c7ccb4a005fedf",
+  productionCommit: "46a8161567441cb71a34294c63c7ccb4a005fedf",
   latestDeliveries: [
+    "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
-    "Limpeza de filtros permanece disponível com resultados parciais.",
   ],
   blockers: [],
-  nextStep: "Retomar a próxima falha comprovada no CRM / Kanban após confirmar o painel em produção.",
+  nextStep: "Confirmar a sanitização no CRM desktop e móvel; depois seguir para a próxima falha comprovada.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

@@ -27,6 +27,18 @@ export function validarMovimentoSeguro(ids) {
   return { ok: true, id: String(ids[0]) };
 }
 
+/** Evita transformar telefone copiado para o nome em título público do cartão. */
+export function nomeContatoVisivel(nome) {
+  const original = String(nome ?? "").trim();
+  const semTelefone = original.replace(/(?:\+?\d[\s().-]*){10,13}/g, "");
+  if (semTelefone === original) return original || "Cliente";
+  return semTelefone
+    .replace(/\b(?:BR|Brasil)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s,;|/-]+|[\s,;|/-]+$/g, "")
+    .trim() || "Cliente";
+}
+
 export function combinarAtividades(tarefas, visitas) {
   const normalizadas = [
     ...(tarefas ?? []).map((item) => ({

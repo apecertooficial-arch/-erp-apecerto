@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { normalizarInstanteSaoPaulo } from "../../lib/timezone";
 import { interesseDasTags, normalizarTagsDoLead, type TagDoLead } from "../../lib/lead-tags";
-import { statusHttpFunil } from "../../features/funil-2/contratos.mjs";
+import { nomeContatoVisivel, statusHttpFunil } from "../../features/funil-2/contratos.mjs";
 import { validarResultadoVisita } from "../../features/calendar/resultadoVisita";
 import { validarEnvelopeFeedbackVisita } from "../../features/calendar/feedbackVisita";
 import { confirmarResultadoVisitaPersistido, verificarDonoResultadoVisita } from "../../lib/supabase/autorizarResultadoVisita";
@@ -336,7 +336,7 @@ export async function GET(request: Request) {
       ...lead,
       lead_id: leadOriginalId,
       valor: negocio?.valor ?? null,
-      nome: original?.nome?.trim() || lead.nome,
+      nome: nomeContatoVisivel(original?.nome?.trim() || lead.nome),
       telefone: original?.telefone ?? lead.telefone,
       email: original?.email ?? null,
       cpf_cnpj: textoExtra(original?.extras, "cpf_cnpj"),

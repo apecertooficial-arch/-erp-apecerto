@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { nomeContatoVisivel } from "../app/features/funil-2/contratos.mjs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const workspace = read("../app/features/funil-2/Funil2Workspace.tsx");
@@ -8,6 +9,7 @@ const toolbar = read("../app/features/funil-2/Funil2BoardToolbar.tsx");
 const mobile = read("../app/features/funil-2/Funil2Mobile.tsx");
 const picker = read("../app/features/funil-2/LeadSearchPicker.tsx");
 const carteira = read("../app/api/funil2/carteira/route.ts");
+const funilApi = read("../app/api/funil2/route.ts");
 const css = read("../app/styles/funil.css");
 
 test("contagem do quadro corresponde somente às etapas realmente exibidas", () => {
@@ -120,4 +122,11 @@ test("pesquisa do Funil preserva autenticação, RLS e minimização de dados", 
   assert.match(carteira, /telefoneMascarado/);
   assert.match(carteira, /\[\.\.\.digitos\]\.join\("\*"\)/);
   assert.doesNotMatch(carteira, /service_role|SUPABASE_SERVICE_ROLE/);
+});
+
+test("nome visível não repete telefone importado no campo de nome", () => {
+  assert.equal(nomeContatoVisivel("Cliente Teste +55 11 98765-4321 BR 5511987654321"), "Cliente Teste");
+  assert.equal(nomeContatoVisivel("Apartamento 360"), "Apartamento 360");
+  assert.equal(nomeContatoVisivel("+55 11 98765-4321"), "Cliente");
+  assert.match(funilApi, /nome: nomeContatoVisivel\(original\?\.nome\?\.trim\(\) \|\| lead\.nome\)/);
 });

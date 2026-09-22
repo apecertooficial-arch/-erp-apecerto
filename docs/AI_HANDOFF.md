@@ -1,18 +1,18 @@
 # Checkpoint ERP ApeCerto
 
-- Objetivo: tornar o andamento verificável por administradores e seguir pelas falhas P0/P1 comprovadas do ERP.
-- Base: `origin/main` em `4804e6be`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: painel responsivo `/progresso`, fonte versionada validada, atualização de build a cada 15 segundos, aviso após 10 minutos e acesso fail-closed exclusivo de administrador.
-- Decisão: manter o último commit integralmente confirmado na fonte; o hash corrente de produção vem de `/api/build`, evitando um hash autorreferente impossível no próprio commit.
-- Arquivos: `app/(erp)/progresso/page.tsx`, `app/features/progress/*`, `app/styles/project-progress.css`, navegação do ERP e `tests/project-progress-dashboard.test.mjs`.
-- Verificações: 44 testes dirigidos, lint, `git diff --check` e build passaram; validação real desktop/móvel e hash de produção ainda pendem da publicação desta fatia.
-- Produção: `4804e6be` é o último hash confirmado; publicação do painel pendente neste checkpoint local.
-- Risco: baixo; rota somente leitura e sem dados pessoais, segredos ou logs brutos.
+- Objetivo: seguir pelas falhas P0/P1 comprovadas do CRM, Meu Dia, Agenda e aplicativo.
+- Base: `origin/main` em `46a81615`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o nome devolvido pelo Funil deixa de repetir telefones importados, protegendo título, cartão e rótulos acessíveis no desktop e no aplicativo.
+- Decisão: sanitizar uma vez na resposta canônica `/api/funil2`, preservando o telefone separado para busca e contato.
+- Arquivos: `app/api/funil2/route.ts`, `app/features/funil-2/contratos.mjs`, teste comportamental e fonte do painel.
+- Verificações: reprodução real em produção mostrou telefone completo no nome; teste comportamental falhou antes e passou após a correção. Gates finais e validação publicada ainda pendem desta fatia.
+- Produção: `46a81615` é o último hash confirmado antes desta fatia.
+- Risco: baixo; somente apresentação do nome muda, sem alterar o cadastro nem o número usado para contato.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[██████████░░░░░░░░░░] 50/100`
-  - CRM / Kanban: `[██████████████░░░░░░] 72/100`
+  - Transformação completa: `[██████████░░░░░░░░░░] 51/100`
+  - CRM / Kanban: `[███████████████░░░░░] 73/100`
   - Identidade visual: `[█████████████░░░░░░░] 67/100`
   - Meu Dia: `[██████████████░░░░░░] 70/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
   - Aplicativo móvel: `[█████████████░░░░░░░] 66/100`
-- Próximo passo: publicar e confirmar o painel em produção; depois retomar a próxima falha comprovada no CRM / Kanban.
+- Próximo passo: publicar e confirmar a sanitização no CRM desktop e móvel; depois seguir para a próxima falha comprovada.
