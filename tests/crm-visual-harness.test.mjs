@@ -66,6 +66,11 @@ test("harness reproduz confirmação inválida de leitura de aviso", () => {
   assert.match(harness, /dataset\.avisoDestino = href/);
 });
 
+test("harness reproduz item malformado nos Avisos", () => {
+  assert.match(harness, /itemAvisoInvalido/);
+  assert.match(harness, /itemAvisoInvalido \? \{ notificacoes: \[null\] \}/);
+});
+
 test("harness expõe o badge publicado pelos Avisos", () => {
   assert.match(harness, /dataset\[`badge\$\{chave\}`\] = String\(valor\)/);
   assert.match(harness, /tela === "avisos-desktop"[\s\S]*<ErpShell><NotificationsWorkspace/);

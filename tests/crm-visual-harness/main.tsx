@@ -59,6 +59,7 @@ const conversaItemInvalido = parametros.get("conversation") === "item";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const itemAgendaInvalido = parametros.get("agendaItem") === "item";
 const catalogoAgendaInvalido = parametros.get("agendaCatalog") === "item";
+const itemAvisoInvalido = parametros.get("notificationItem") === "item";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
 const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
@@ -305,7 +306,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : historicoItemInvalido ? { eventos: [null], notas: payloadNormal.notas } : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(colecaoCrmMalformada === "etapas" ? { ...payloadNormal, etapas: [null] } : colecaoCrmMalformada === "momentos" ? { ...payloadNormal, momentos: [null] } : colecaoCrmMalformada === "eventos" ? { ...payloadNormal, eventos: [null] } : colecaoCrmMalformada === "notas" ? { ...payloadNormal, notas: [null] } : colecaoCrmMalformada === "tags" ? { ...payloadNormal, tagCatalogo: [null] } : tarefaMalformada ? { ...payloadNormal, leads: [null] } : payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
-  if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
+  if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : itemAvisoInvalido ? { notificacoes: [null] } : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
   if (url.pathname === "/api/build") return json({ build: "harness-pwa-update" });
   if (url.pathname === "/api/automacoes-operacao") return json(leituraCentralInvalida ? {} : {

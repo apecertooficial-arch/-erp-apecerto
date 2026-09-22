@@ -117,6 +117,7 @@ test("a tela de Avisos tem servidor: a rota chama a RPC do banco", () => {
 
 test("Avisos rejeita resposta 200 incompleta em vez de confirmar fila vazia", () => {
   assert.match(TELA_AVISOS, /if \(!Array\.isArray\(lista\)\) throw new Error\("payload_invalido"\)/);
+  assert.match(TELA_AVISOS, /lista\.every\(avisoValido\)/);
 });
 
 test("a rota traduz o shape da RPC para o contrato da tela", () => {

@@ -26,6 +26,21 @@ import { useErpSession } from "../system/ErpSession";
 
 const POR_PAGINA = 20;
 
+function avisoValido(valor: unknown): valor is Aviso {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const aviso = valor as Record<string, unknown>;
+  return Number.isSafeInteger(aviso.id)
+    && typeof aviso.tipo === "string"
+    && typeof aviso.prioridade === "number" && Number.isFinite(aviso.prioridade)
+    && typeof aviso.titulo === "string"
+    && (aviso.detalhe === null || typeof aviso.detalhe === "string")
+    && (aviso.negocio_id === null || Number.isSafeInteger(aviso.negocio_id))
+    && (aviso.deep_link == null || typeof aviso.deep_link === "string")
+    && typeof aviso.criada_em === "string"
+    && (aviso.vista_em === null || typeof aviso.vista_em === "string")
+    && (aviso.resolvida_em === null || typeof aviso.resolvida_em === "string");
+}
+
 export function NotificationsWorkspace({ accessToken, onNavigate }: {
   accessToken: string;
   onNavigate: (href: string) => void;
@@ -49,7 +64,8 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
     const j = await r.json();
     const lista = j.notificacoes ?? j.itens;
     if (!Array.isArray(lista)) throw new Error("payload_invalido");
-    return lista as Aviso[];
+    if (!lista.every(avisoValido)) throw new Error("payload_invalido");
+    return lista;
   }, [accessToken]);
 
   useEffect(() => {
