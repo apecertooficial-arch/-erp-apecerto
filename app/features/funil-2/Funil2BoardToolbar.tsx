@@ -35,13 +35,15 @@ export function Funil2BoardToolbar(props: Props) {
       <button type="button" className={props.visao === "perdidos" ? "ativo" : ""} onClick={() => props.onVisao("perdidos")}><span>Perdidos</span><b>{props.perdidos}</b><small>encerrados</small></button>
       <button type="button" className={props.visao === "triagem" ? "ativo" : ""} onClick={() => props.onVisao("triagem")}><span>Triagem</span><b>{props.aquario}</b><small>aguardando análise</small></button>
     </div>
-    <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={props.busca} onChange={(evento) => props.onBusca(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
-    {(props.busca || props.temperatura !== "todas" || props.periodo !== "30") && <button type="button" className="f2-v3-limpar" onClick={props.onLimparFiltros}>Limpar filtros</button>}
-    <details className="f2-v3-filtros" open={props.filtrosAbertos} onToggle={(evento) => props.onFiltrosAbertos(evento.currentTarget.open)}><summary>Filtros{filtrosAtivos > 0 ? ` · ${filtrosAtivos}` : ""}</summary>{props.filtrosAbertos && <div className="f2-v3-filtro-painel">
-      <FiltrosTemperatura leads={props.leads} valor={props.temperatura} onChange={props.onTemperatura} />
-      <label><span>Ordenação</span><select aria-label="Ordenar negócios" value={props.ordenacao} onChange={(evento) => props.onOrdenacao(evento.target.value as Props["ordenacao"])}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
-      <label><span>Período</span><select aria-label="Período do quadro" value={props.periodo} onChange={(evento) => props.onPeriodo(evento.target.value as Props["periodo"])}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
-      <div className="f2-v3-filtro-acoes"><button type="button" onClick={props.onAbrirEsteira}>Abrir Esteira</button><button type="button" onClick={props.onAbrirSara}>Abrir Sara</button></div>
-    </div>}</details>
+    {props.visao === "andamento" && <>
+      <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={props.busca} onChange={(evento) => props.onBusca(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
+      {(props.busca || props.temperatura !== "todas" || props.periodo !== "30") && <button type="button" className="f2-v3-limpar" onClick={props.onLimparFiltros}>Limpar filtros</button>}
+      <details className="f2-v3-filtros" open={props.filtrosAbertos} onToggle={(evento) => props.onFiltrosAbertos(evento.currentTarget.open)}><summary>Filtros{filtrosAtivos > 0 ? ` · ${filtrosAtivos}` : ""}</summary>{props.filtrosAbertos && <div className="f2-v3-filtro-painel">
+        <FiltrosTemperatura leads={props.leads} valor={props.temperatura} onChange={props.onTemperatura} />
+        <label><span>Ordenação</span><select aria-label="Ordenar negócios" value={props.ordenacao} onChange={(evento) => props.onOrdenacao(evento.target.value as Props["ordenacao"])}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
+        <label><span>Período</span><select aria-label="Período do quadro" value={props.periodo} onChange={(evento) => props.onPeriodo(evento.target.value as Props["periodo"])}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>
+        <div className="f2-v3-filtro-acoes"><button type="button" onClick={props.onAbrirEsteira}>Abrir Esteira</button><button type="button" onClick={props.onAbrirSara}>Abrir Sara</button></div>
+      </div>}</details>
+    </>}
   </section>;
 }

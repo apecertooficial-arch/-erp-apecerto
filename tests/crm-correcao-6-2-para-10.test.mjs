@@ -58,6 +58,10 @@ test("contador de filtros inclui temperatura e período alterados", () => {
   assert.match(toolbar, /Filtros\{filtrosAtivos > 0 \? ` · \$\{filtrosAtivos\}` : ""\}/);
 });
 
+test("busca e filtros aparecem somente no recorte em andamento", () => {
+  assert.match(toolbar, /\{props\.visao === "andamento" && <>[\s\S]*className="f2-v3-busca"[\s\S]*className="f2-v3-filtros"[\s\S]*<\/>\}/);
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);
