@@ -47,19 +47,20 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Prioridade funcional: captação e distribuição de leads, CRM e Meu Dia",
-  lastCheckpoint: "Usuário rejeitou a prova visual; identidade fica para a última fase. Execução volta às funções observáveis.",
-  lastCheckpointAt: "2026-09-22T16:51:46-03:00",
-  lastCommitSent: "5840dfc0928a79e7cb44e18ea920c00ebcacdcf6",
-  productionCommit: "5840dfc0928a79e7cb44e18ea920c00ebcacdcf6",
+  currentTask: "P0 funcional: dispatcher de automações com fila vencida",
+  lastCheckpoint: "Limite de espera do worker publicado; fila ainda sem claim novo, com 265 itens vencidos e um lease expirado.",
+  lastCheckpointAt: "2026-09-22T17:06:36-03:00",
+  lastCommitSent: "fcbbda5e55d4d397f04691236c0309478515c554",
+  productionCommit: "fcbbda5e55d4d397f04691236c0309478515c554",
   latestDeliveries: [
+    "RPC de processamento do dispatcher agora tem limite de espera e cancelamento.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
     "Resultado de visita só sai da fila após feedback persistido pelo corretor responsável.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
-  blockers: [],
-  nextStep: "Reproduzir a captação e a distribuição de um lead até aparecer na carteira e no Meu Dia; corrigir a primeira falha funcional comprovada. Identidade visual só na última fase, após nova conversa.",
+  blockers: ["Dispatcher mantém heartbeat, mas não reivindica itens desde 21/09; há um lease expirado e 265 itens vencidos. Correção de código não recuperou a fila."],
+  nextStep: "Conferir o processo e logs do worker no Render; recuperar a fila com procedimento operacional controlado, sem presumir sucesso. Depois validar captação → distribuição → carteira → Meu Dia. Identidade visual fica para a última fase.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

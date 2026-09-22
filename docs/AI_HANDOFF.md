@@ -3,6 +3,9 @@
 - Prioridade atual definida pelo usuário: funções observáveis primeiro. Interromper redesign, tokens, shell, gradientes e ajustes estéticos. Identidade visual somente na última fase, após nova conversa e aprovação.
 - Estado visual: a prova dos commits `361b5a16` e `591dd749` está em produção; o usuário a rejeitou como "horrível". Não houve reversão nem reset. Não propagar a linguagem visual para outras telas.
 - Próxima fatia funcional: rastrear captação e distribuição de um lead até sua presença na carteira do corretor e no Meu Dia; reproduzir uma falha real antes de editar. Depois seguir IA/momento/próxima ação, automações, visitas/feedback/cobrança, negociação/vendas/contratos, imóveis/proprietários, financeiro e app móvel.
+- P0 comprovado em 22/09: o dispatcher `apecerto-erp-dispatcher` mantém heartbeat, mas o último claim e o último sucesso são de 21/09. Havia 265 itens vencidos e um item `processando` com lease expirado. O último erro foi `AUTOMATION_RETRY: AI_UNAVAILABLE`. Consulta agregada, sem PII e sem mutação de produção.
+- Correção de código: `fcbbda5e` limita a RPC de processamento a 120 s e cancela a requisição; o teste reproduziu uma RPC sem resposta antes da correção. 36 testes direcionados, lint e build passaram. `/api/build` confirmou o deploy.
+- Validação após deploy: heartbeat continuou, mas não houve claim novo durante a janela observada; 265 itens permanecem vencidos. Não declarar recuperação. Próximo passo depende de verificar o processo/logs reais no Render e aplicar o runbook operacional controlado; não alterar modo, fila ou schema por SQL sem nova autoridade específica.
 
 - Objetivo: seguir pelas falhas P0/P1 comprovadas do CRM, Meu Dia, Agenda e aplicativo.
 - Base: `origin/main` em `5840dfc0`; branch `codex/agenda-hoje-sao-paulo`.
