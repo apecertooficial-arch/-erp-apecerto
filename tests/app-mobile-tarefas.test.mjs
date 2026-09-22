@@ -24,8 +24,8 @@ test("tarefas usam somente dados reais do Funil 2", () => {
 });
 
 test("tarefas rejeitam item malformado antes de montar a fila", () => {
-  assert.match(tela, /function leadTarefaValido\(valor: unknown\): valor is LeadFunil2/);
-  assert.match(tela, /json\.leads\.every\(leadTarefaValido\)/);
+  assert.match(tela, /leadFunil2EssencialValido/);
+  assert.match(tela, /json\.leads\.every\(leadFunil2EssencialValido\)/);
 });
 
 test("tarefas não recolocam histórico, atualização manual ou pescado na fila operacional", () => {

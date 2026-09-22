@@ -31,6 +31,7 @@ import {
   eventoSaraVisivel,
   leadOperacionalNoMeuDia,
   leituraSaraVisivel,
+  leadFunil2EssencialValido,
   rotuloTemperatura,
   situacaoPrazo,
   venceHoje,
@@ -54,7 +55,8 @@ type PayloadMobile = {
 };
 
 function payloadMobileValido(payload: PayloadMobile) {
-  return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray);
+  return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray)
+    && payload.leads!.every(leadFunil2EssencialValido);
 }
 
 type LeadCarteiraAntigaMobile = {

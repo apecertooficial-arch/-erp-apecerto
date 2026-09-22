@@ -259,6 +259,20 @@ export type LeadFunil2 = {
   versaoDados?: string | null;
 };
 
+export function leadFunil2EssencialValido(valor: unknown): valor is LeadFunil2 {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const lead = valor as Record<string, unknown>;
+  return typeof lead.id === "string"
+    && typeof lead.nome === "string"
+    && typeof lead.etapa === "string"
+    && typeof lead.momento_codigo === "string"
+    && typeof lead.acao_rotulo === "string"
+    && typeof lead.proxima_acao_em === "string"
+    && typeof lead.cadencia_passo === "number"
+    && Number.isSafeInteger(lead.origem_negocio_id)
+    && (lead.telefone === null || typeof lead.telefone === "string");
+}
+
 export type EventoFunil2 = {
   id: number;
   funil_lead_id: string;
