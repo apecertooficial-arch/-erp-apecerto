@@ -15,6 +15,12 @@ import { readFileSync } from "node:fs";
 import { itensDaNavegacao, podeVer, rotasModulo, pathDoModulo } from "../app/features/system/erp-routes.ts";
 
 const modulosDoApp = Object.entries(rotasModulo).filter(([, rota]) => rota.mobile).map(([nome]) => nome);
+const menuDesktop = readFileSync(new URL("../app/components/AppShell.tsx", import.meta.url), "utf8");
+
+test("menu do ERP não inventa contadores para CRM e Automações", () => {
+  assert.doesNotMatch(menuDesktop, /item === "CRM" && <small>20<\/small>/);
+  assert.doesNotMatch(menuDesktop, /item === "Automações" && <small>2<\/small>/);
+});
 
 const CORRETOR = {
   role: "corretor", carregado: true, isManager: false,

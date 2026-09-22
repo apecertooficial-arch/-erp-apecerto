@@ -61,8 +61,6 @@ function NavGroup({ label, items, activeItem, onNavigate, badges }: { label: str
           <Link className={`nav-item ${item === activeItem ? "active" : ""}`} key={item} href={pathDoModulo(item)} onClick={() => onNavigate(item)} aria-current={item === activeItem ? "page" : undefined}>
             <span className="nav-icon" aria-hidden="true"><NavIcon item={item} /></span>
             <span>{rotulosMenu[item] ?? item}</span>
-            {item === "CRM" && <small>20</small>}
-            {item === "Automações" && <small>2</small>}
             {item === "Produtos" && badge > 0 && <small className="nav-badge-pending" title={`${badge} produto(s) aguardando aprovação`}>{badge}</small>}
             {item === "Notificações" && badge > 0 && <small title={`${badge} notificação(ões) não lida(s)`}>{badge > 99 ? "99+" : badge}</small>}
           </Link>
