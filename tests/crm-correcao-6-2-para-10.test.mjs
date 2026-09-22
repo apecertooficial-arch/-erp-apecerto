@@ -39,7 +39,10 @@ test("estados vazios explicam o recorte e oferecem recuperação", () => {
   assert.match(workspace, /Ajuste a busca ou os filtros para ver outros negócios\./);
   assert.match(mobile, />Limpar filtros<\/button>/);
   assert.match(mobile, /setBusca\(""\); setEtapa\("ativos"\); setTemperatura\("todas"\)/);
+  assert.match(mobile, /modo === "crm" && \(busca\.trim\(\) \|\| etapa !== "ativos" \|\| temperatura !== "todas"\)/);
+  assert.match(mobile, /className="ape-limpar-filtros"/);
   assert.match(css, /\.funil-oficial \.f2-coluna-vazia/);
+  assert.match(css, /\.funil-oficial \.ape-limpar-filtros/);
 });
 
 test("barra do Kanban permite limpar todo recorte ativo de uma vez", () => {

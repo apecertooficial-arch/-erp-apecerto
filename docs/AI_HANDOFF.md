@@ -1,18 +1,18 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `6c5f629c`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: rótulo fiel do KPI “Em andamento”, que agora descreve a quantidade como “neste recorte”.
-- Decisão: ajustar apenas o texto já existente, sem componente, estado ou estilo novo.
-- Arquivos: `app/features/funil-2/Funil2BoardToolbar.tsx`, `tests/crm-correcao-6-2-para-10.test.mjs`.
-- Verificações: o contrato falhou com “etapas visíveis”; 18 testes dirigidos e o lint passaram; no navegador, o KPI exibiu 108 e 0 com o mesmo rótulo correto “neste recorte”.
-- Produção: `6c5f629c` publicado e confirmado antes desta fatia; busca vazia mostrou KPI 0/cartões 0 e a limpeza restaurou o total real sem loading ou alerta.
+- Base: `origin/main` em `a29e9e4e`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: limpeza persistente dos filtros no CRM móvel — a ação aparece com qualquer recorte ativo, não apenas quando a lista chega a zero.
+- Decisão: centralizar o reset já existente em um único botão condicional e remover sua duplicação do estado vazio.
+- Arquivos: `app/features/funil-2/Funil2Mobile.tsx`, `app/styles/funil.css`, `tests/crm-correcao-6-2-para-10.test.mjs`.
+- Verificações: a falha real mostrou 21 clientes filtrados sem ação de limpeza; 37 testes dirigidos e o lint passaram; no navegador, o botão restaurou 60 cartões, ativou “Todas” e desapareceu.
+- Produção: `a29e9e4e` publicado e confirmado antes desta fatia; o KPI real exibiu 663 e 0 com o rótulo “neste recorte”, sem loading ou alerta.
 - Risco: baixo; apenas conteúdo, semântica e recuperação visual mudam, com os mesmos dados e filtros.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[█████████░░░░░░░░░░░] 47/100`
-  - CRM / Kanban: `[██████████████░░░░░░] 70/100`
-  - Identidade visual: `[█████████████░░░░░░░] 65/100`
+  - Transformação completa: `[██████████░░░░░░░░░░] 48/100`
+  - CRM / Kanban: `[██████████████░░░░░░] 71/100`
+  - Identidade visual: `[█████████████░░░░░░░] 66/100`
   - Meu Dia: `[██████████████░░░░░░] 70/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
-  - Aplicativo móvel: `[████████████░░░░░░░░] 62/100`
-- Próximo passo: publicar esta fatia, validar o desktop em produção sem mutações e seguir apenas com readequação visível do CRM/Kanban antes do teto de 70%.
+  - Aplicativo móvel: `[█████████████░░░░░░░] 64/100`
+- Próximo passo: publicar esta fatia, validar o app em produção sem mutações e parar com margem antes do teto de 70%.

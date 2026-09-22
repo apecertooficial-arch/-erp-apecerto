@@ -2492,6 +2492,7 @@ body:has(.funil-oficial .f2-overlay) #sara-fab,body:has(.funil-oficial .f2-overl
 .funil-oficial .ape-crm-kpis article{min-width:0;display:flex;flex-direction:column;padding:var(--space-3);border:1px solid var(--border-soft);border-radius:var(--radius-md);background:var(--bg-surface);box-shadow:var(--shadow-xs)}
 .funil-oficial .ape-crm-kpis span,.funil-oficial .ape-crm-kpis small{overflow:hidden;color:var(--fg-3);font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 .funil-oficial .ape-crm-kpis strong{margin:var(--space-1) 0;color:var(--fg-1);font-size:var(--text-lg);line-height:1}
+.funil-oficial .ape-limpar-filtros{align-self:flex-start;min-height:44px;margin:calc(var(--space-2) * -1) 0 var(--space-3);padding:0 var(--space-3);border:1px solid var(--ape-orange-100);border-radius:var(--radius-pill);background:var(--bg-tint-orange);color:var(--ape-orange-700);font-size:var(--text-xs);font-weight:var(--weight-semibold)}
 @media(max-width:1500px) and (min-width:901px){
   .funil-oficial .f2-v3-visoes button{min-width:112px;padding-inline:var(--space-2)}
 }
