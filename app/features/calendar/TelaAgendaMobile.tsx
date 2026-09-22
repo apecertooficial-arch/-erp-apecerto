@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  diaPorExtenso, gradeDoMes, hojeISO, horaCurta, jaPassou, proximo, quandoComeca,
+  atualizarFaltamMin, diaPorExtenso, gradeDoMes, hojeISO, horaCurta, jaPassou, proximo, quandoComeca,
   filtrarPendenciasPorCorretor, resumoDoDia, rotuloTotalResultados, somarDias,
   type Compromisso,
 } from "./telaAgenda.logica";
@@ -75,6 +75,7 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
   const [erro, setErro] = useState(false);
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
+  const [agora, setAgora] = useState(() => Date.now());
   const [tentativa, setTentativa] = useState(0);
 
   /* Folhas de escrita. `editando` guarda o compromisso tocado; `criando` abre a
@@ -131,6 +132,11 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
 
   const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
 
+  useEffect(() => {
+    const temporizador = window.setInterval(() => setAgora(Date.now()), 30_000);
+    return () => window.clearInterval(temporizador);
+  }, []);
+
   /** Toda escrita passa por aqui: uma porta, um tratamento de erro, um reload. */
   const gravar = useCallback(async (corpo: Record<string, unknown>, textoDoAviso: string) => {
     setSalvando(true); setErroEscrita("");
@@ -182,7 +188,8 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
       .catch(() => setErroEscrita("Não foi possível carregar seus clientes agora."));
   }, [accessToken, catalogo]);
 
-  const lista = useMemo(() => itens ?? [], [itens]);
+  const minutosDecorridos = atualizadoEm ? Math.max(0, (agora - atualizadoEm.getTime()) / 60_000) : 0;
+  const lista = useMemo(() => atualizarFaltamMin(itens ?? [], minutosDecorridos), [itens, minutosDecorridos]);
   const prox = useMemo(() => proximo(lista), [lista]);
   const pendenciasResultadoVisiveis = useMemo(
     () => filtrarPendenciasPorCorretor(pendenciasResultado, corretorEmFoco),

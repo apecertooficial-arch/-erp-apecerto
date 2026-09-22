@@ -48,6 +48,12 @@ export function proximo(itens: Compromisso[]): Compromisso | null {
   return futuros[0] ?? null;
 }
 
+/** Envelhece o retrato de prazo recebido da API sem forçar nova leitura. */
+export function atualizarFaltamMin(itens: Compromisso[], minutosDecorridos: number): Compromisso[] {
+  if (minutosDecorridos <= 0) return itens;
+  return itens.map((item) => ({ ...item, faltam_min: item.faltam_min - minutosDecorridos }));
+}
+
 /** "em 26 min", "em 2 h", "agora". Nunca horário absoluto: o corretor quer
  *  saber quanto tempo TEM, não que horas são. */
 export function quandoComeca(faltamMin: number): string {

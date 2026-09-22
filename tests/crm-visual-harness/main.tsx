@@ -135,6 +135,27 @@ const payloadAgenda = {
   }], tasks: [],
   gerentes: [{ id: 1, nome: "Gerente sanitizado", geral: true, corretor_id: null }], role: papel,
 };
+const payloadAgendaRelogioNoLimite = {
+  ...payloadAgenda,
+  total: 1,
+  itens: [{
+    id: "20000000-0000-4000-8000-000000000001",
+    data: "2026-09-21",
+    hora: "22:30",
+    tipo: "visita",
+    cliente: "Cliente agenda relógio sanitizado",
+    local: "Local sanitizado",
+    produto: "Produto Alfa",
+    negocio_id: 101,
+    status: "agendada",
+    corretor: "Corretora Alfa",
+    corretor_id: 7,
+    meu: true,
+    faltam_min: 0.05,
+    com_gerente: false,
+    gerente_id: null,
+  }],
+};
 const requisicoes: RegistroRede[] = [];
 const mensagensConsole: RegistroConsole[] = [];
 const fetchNativoDoRunner = window.fetch.bind(window);
@@ -229,7 +250,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       return json({ ok: true, disponivel: true, audios });
     }
     if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
-    return json(pendenciasAgendaInvalidas ? { ...payloadAgenda, pendencias_resultado: undefined } : payloadAgenda);
+    return json(pendenciasAgendaInvalidas ? { ...payloadAgenda, pendencias_resultado: undefined } : relogioNoLimite ? payloadAgendaRelogioNoLimite : payloadAgenda);
   }
   if (url.pathname === "/api/funil2") {
     if (estado === "loading") return new Promise<Response>(() => undefined);

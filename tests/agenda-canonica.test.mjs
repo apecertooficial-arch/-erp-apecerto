@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { erroAgendamentoVisita } from "../app/features/funil-2/modelo.ts";
-import { contarVisitasFuturas } from "../app/features/calendar/telaAgenda.logica.ts";
+import { atualizarFaltamMin, contarVisitasFuturas, proximo } from "../app/features/calendar/telaAgenda.logica.ts";
 
 const agendaApi = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
 const desktop = await readFile(new URL("../app/features/calendar/CalendarWorkspace.tsx", import.meta.url), "utf8");
@@ -27,6 +27,18 @@ test("desktop, mobile e chat consomem somente a API canônica da Agenda", () => 
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
   assert.match(mobile, /if \(!Array\.isArray\(j\.itens\) \|\| !Array\.isArray\(j\.pendencias_resultado\)\) throw new Error\("payload_invalido"\)/);
   assert.match(mobile, /if \(erro\) return <div className="ape-agenda">/);
+});
+
+test("Agenda móvel envelhece o prazo enquanto a tela permanece aberta", () => {
+  assert.match(mobile, /const \[agora, setAgora\] = useState\(\(\) => Date\.now\(\)\)/);
+  assert.match(mobile, /setInterval\(\(\) => setAgora\(Date\.now\(\)\), 30_000\)/);
+  assert.match(mobile, /atualizarFaltamMin\(itens \?\? \[\], minutosDecorridos\)/);
+});
+
+test("prazo envelhecido deixa de ser o próximo compromisso", () => {
+  const compromisso = { id: "visita-limite", data: "2026-09-21", hora: "22:30", tipo: "visita", cliente: "Cliente teste", local: null, produto: null, negocio_id: 1, status: "agendada", corretor: "Corretor teste", meu: true, faltam_min: 0.05 };
+  assert.equal(proximo(atualizarFaltamMin([compromisso], 0.04))?.id, "visita-limite");
+  assert.equal(proximo(atualizarFaltamMin([compromisso], 0.06)), null);
 });
 
 test("Agenda desktop rejeita resposta 200 incompleta em vez de quebrar a tela", () => {

@@ -44,6 +44,12 @@ test("harness reproduz prazo que vence com o Meu Dia aberto", () => {
   assert.match(harness, /Cliente relógio sanitizado/);
 });
 
+test("harness reproduz compromisso que vence com a Agenda aberta", () => {
+  assert.match(harness, /payloadAgendaRelogioNoLimite/);
+  assert.match(harness, /Cliente agenda relógio sanitizado/);
+  assert.match(harness, /faltam_min: 0\.05/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
