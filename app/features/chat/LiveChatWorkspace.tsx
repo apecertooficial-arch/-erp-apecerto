@@ -375,7 +375,7 @@ export function QuickActionModal({ action, lead, deal, brokers, products, gerent
     if (action !== "visit" || !accessToken || !date || !startTime || !corretorId) { setDisp(null); return; }
     let alive = true;
     setDisp({ loading: true, conflitos: [], gerenteNome: null });
-    void fetch("/api/agenda", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "gerenteDisponibilidade", corretorId, date, startTime, endTime }) })
+    void fetch("/api/agenda", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "gerenteDisponibilidade", corretorId, date, startTime, endTime }) })
       .then(async (response) => {
         const result = await response.json().catch(() => ({})) as { gerente_id?: number | null; conflitos?: Array<{ cliente_nome: string | null; hora_inicio: string | null; hora_fim: string | null }> };
         if (!response.ok || !Array.isArray(result.conflitos)) throw new Error("disponibilidade_invalida");

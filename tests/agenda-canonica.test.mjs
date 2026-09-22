@@ -24,6 +24,11 @@ test("desktop, mobile e chat consomem somente a API canônica da Agenda", () => 
   assert.doesNotMatch(chat, /\/api\/crm/);
 });
 
+test("Chat consulta conflitos do gerente pelo método aceito pela Agenda", () => {
+  assert.match(agendaApi, /export async function PATCH\(request: Request\)[\s\S]*action === "gerenteDisponibilidade"/);
+  assert.match(chat, /fetch\("\/api\/agenda", \{ method: "PATCH"[^\n]*action: "gerenteDisponibilidade"/);
+});
+
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
   assert.match(mobile, /!Array\.isArray\(j\.itens\)/);
   assert.match(mobile, /!Array\.isArray\(j\.pendencias_resultado\)/);
