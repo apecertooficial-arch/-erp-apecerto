@@ -46,11 +46,11 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     { name: "Aplicativo móvel", percent: 70 },
   ],
   weeklyUsagePercent: 65,
-  weeklyUsageCeilingPercent: 70,
-  currentTask: "Prova visual operacional do CRM e Meu Dia pronta para publicação",
-  lastCheckpoint: "Prova desktop e móvel validada com tokens, profundidade, estados reais e redução de movimento.",
+  weeklyUsageCeilingPercent: 80,
+  currentTask: "Prova visual do CRM e Meu Dia enviada; aguardando confirmação do deploy",
+  lastCheckpoint: "Prova desktop e móvel publicada em main após testes, lint e build; aguardando confirmação em produção.",
   lastCheckpointAt: "2026-09-22T14:45:00-03:00",
-  lastCommitSent: "aaf507d3750fad34ec963adb01d72d00f236f16a",
+  lastCommitSent: "361b5a169b361d3bf12bcac149a72982e7090df1",
   productionCommit: "aaf507d3750fad34ec963adb01d72d00f236f16a",
   latestDeliveries: [
     "Prova visual do CRM e Meu Dia consolidada no shell e nas autoridades CSS existentes.",
@@ -59,7 +59,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
   blockers: [],
-  nextStep: "Publicar e obter aprovação da prova CRM / Meu Dia antes de propagar; a reformulação integral ainda não foi entregue.",
+  nextStep: "Confirmar a prova visual em produção e seguir pelos P0/P1 comprovados; a reformulação integral ainda não foi entregue.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

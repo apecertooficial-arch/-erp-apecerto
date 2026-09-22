@@ -46,7 +46,7 @@ export function ProgressWorkspace() {
   const stale = now - Date.parse(PROJECT_PROGRESS.lastCheckpointAt) > STALE_AFTER_MS;
   const updatedAt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo" }).format(now);
 
-  return <main className="project-progress">
+  return <div className="project-progress">
     <header>
       <div><span className="project-progress-eyebrow">Projeto ERP ApeCerto</span><h1>Progresso da reconstrução</h1><p>{PROJECT_PROGRESS.currentTask}</p></div>
       <div className={`project-progress-status ${stale ? "stale" : "fresh"}`} role="status"><strong>{stale ? "Desatualizado" : "Atualizado"}</strong><span>checado {updatedAt}</span></div>
@@ -71,5 +71,5 @@ export function ProgressWorkspace() {
       <article><h2>Últimas entregas</h2><ul>{PROJECT_PROGRESS.latestDeliveries.map((item) => <li key={item}>{item}</li>)}</ul></article>
       <article><h2>Bloqueios</h2>{PROJECT_PROGRESS.blockers.length ? <ul>{PROJECT_PROGRESS.blockers.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Nenhum bloqueio registrado.</p>}</article>
     </section>
-  </main>;
+  </div>;
 }

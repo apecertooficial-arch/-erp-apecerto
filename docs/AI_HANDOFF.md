@@ -17,3 +17,4 @@
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
   - Aplicativo móvel: `[██████████████░░░░░░] 70/100`
 - Próximo passo: publicar a prova e obter aprovação explícita antes de propagar a linguagem visual; a reformulação integral continua pendente.
+- Continuação: `361b5a16` foi enviado a `main`; aguardando a confirmação de `/api/build`. O teto semanal autorizado passou a 80%. O painel de Progresso foi ajustado para usar o marco principal do shell e o teste global de acessibilidade voltou a passar.

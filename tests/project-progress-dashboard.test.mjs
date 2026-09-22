@@ -14,7 +14,7 @@ test("fonte versionada valida percentuais, datas e listas", () => {
   assert.match(state, /version: 1/);
   assert.match(state, /function isProjectProgressState/);
   assert.match(state, /percent\(state\.overallPercent\)/);
-  assert.match(state, /weeklyUsageCeilingPercent: 70/);
+  assert.match(state, /weeklyUsageCeilingPercent: 80/);
   assert.match(state, /if \(!isProjectProgressState\(PROJECT_PROGRESS\)\) throw/);
 });
 
