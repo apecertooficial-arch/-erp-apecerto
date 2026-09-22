@@ -55,6 +55,7 @@ const historicoItemInvalido = parametros.get("history") === "item";
 const carteiraInvalida = parametros.get("legacy") === "invalido";
 const carteiraItemInvalido = parametros.get("legacy") === "item";
 const conversaInvalida = parametros.get("conversation") === "invalido";
+const conversaItemInvalido = parametros.get("conversation") === "item";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
@@ -338,7 +339,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     usuarios: [],
   });
   if (url.pathname === "/api/approaches") return json(estado === "invalido" ? {} : { approaches: [], products: [] });
-  if (url.pathname === "/api/funil2/conversa") return json(conversaInvalida ? {} : { mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
+  if (url.pathname === "/api/funil2/conversa") return json(conversaInvalida ? {} : conversaItemInvalido ? { mensagens: [null], instancias: [] } : { mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "opcoes") return json(opcoesClienteInvalidas ? {} : { corretores: [{ corretor_id: 7, nome: "Corretor teste", is_self: true }], corretorProprioId: 7, podeEscolher: false });
   if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "duplicidade") return json(duplicidadeClienteInvalida ? {} : { duplicado: false, lead: null, funilLeadId: null });
   if (url.pathname === "/api/funil2/carteira") return json(carteiraInvalida ? {} : carteiraItemInvalido ? { leads: [null] } : { leads: leads.slice(0, 8).map((lead) => ({

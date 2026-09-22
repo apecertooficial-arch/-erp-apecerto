@@ -29,6 +29,32 @@ type Payload = {
   error?: string;
 };
 
+const textoOuNulo = (valor: unknown) => valor === null || typeof valor === "string";
+
+function mensagemValida(valor: unknown): valor is Mensagem {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const mensagem = valor as Record<string, unknown>;
+  return typeof mensagem.id === "string"
+    && textoOuNulo(mensagem.direcao)
+    && textoOuNulo(mensagem.tipo)
+    && textoOuNulo(mensagem.conteudo)
+    && textoOuNulo(mensagem.media_url)
+    && textoOuNulo(mensagem.enviado_em)
+    && textoOuNulo(mensagem.criado_em)
+    && textoOuNulo(mensagem.status)
+    && textoOuNulo(mensagem.transcricao);
+}
+
+function instanciaValida(valor: unknown): valor is Instancia {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const instancia = valor as Record<string, unknown>;
+  return typeof instancia.id === "string"
+    && typeof instancia.rotulo === "string"
+    && textoOuNulo(instancia.telefone)
+    && textoOuNulo(instancia.status)
+    && typeof instancia.atual === "boolean";
+}
+
 const dataHora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export function Funil2ConversationDrawer({ accessToken, leadId, nome, onClose }: { accessToken: string; leadId: string; nome: string; onClose: () => void }) {
@@ -47,7 +73,10 @@ export function Funil2ConversationDrawer({ accessToken, leadId, nome, onClose }:
     }).then(async (resposta) => {
       const payload = await resposta.json().catch(() => ({})) as Payload;
       if (!resposta.ok) throw new Error(payload.error || "Não foi possível carregar a conversa.");
-      if (!Array.isArray(payload.mensagens) || !Array.isArray(payload.instancias)) {
+      if (!Array.isArray(payload.mensagens)
+        || !Array.isArray(payload.instancias)
+        || !payload.mensagens.every(mensagemValida)
+        || !payload.instancias.every(instanciaValida)) {
         throw new Error("Não foi possível carregar a conversa.");
       }
       setMensagens(payload.mensagens);

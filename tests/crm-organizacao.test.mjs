@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const ler = (caminho) => readFileSync(new URL(caminho, import.meta.url), "utf8");
 const desktop = ler("../app/features/funil-2/Funil2Workspace.tsx");
 const mobile = ler("../app/features/funil-2/Funil2Mobile.tsx");
+const conversa = ler("../app/features/funil-2/Funil2ConversationDrawer.tsx");
 const tags = ler("../app/features/funil-2/AssociarTagLead.tsx");
 const api = ler("../app/api/funil2/route.ts");
 const esteira = ler("../app/features/sales/SalesProcessWorkspace.tsx");
@@ -61,6 +62,11 @@ test("Todos os Leads não esconde falha da carteira antiga como busca vazia", ()
   assert.match(desktop, /erroCarteira && <div className="f2-sem-resultado" role="alert">/);
   assert.match(desktop, /erroCarteira \? "indisponível" : `\$\{carteira\.length\} encontrado\(s\)`/);
   assert.match(desktop, /!buscandoCarteira && !erroCarteira && carteira\.length === 0/);
+});
+
+test("conversa rejeita itens malformados antes de renderizar o histórico", () => {
+  assert.match(conversa, /payload\.mensagens\.every\(mensagemValida\)/);
+  assert.match(conversa, /payload\.instancias\.every\(instanciaValida\)/);
 });
 
 test("desktop replica a ficha aprovada em sete áreas e abre a conversa sob demanda", () => {
