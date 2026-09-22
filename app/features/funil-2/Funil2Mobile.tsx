@@ -54,9 +54,19 @@ type PayloadMobile = {
   error?: string;
 };
 
+function etapaMobileValida(valor: unknown): valor is EtapaConfigFunil2 {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const etapa = valor as Record<string, unknown>;
+  return typeof etapa.codigo === "string"
+    && typeof etapa.rotulo === "string"
+    && typeof etapa.ativo === "boolean"
+    && (etapa.funil == null || typeof etapa.funil === "string");
+}
+
 function payloadMobileValido(payload: PayloadMobile) {
   return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray)
-    && payload.leads!.every(leadFunil2EssencialValido);
+    && payload.leads!.every(leadFunil2EssencialValido)
+    && payload.etapas!.every(etapaMobileValida);
 }
 
 type LeadCarteiraAntigaMobile = {

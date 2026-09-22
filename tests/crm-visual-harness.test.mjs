@@ -108,6 +108,11 @@ test("harness reproduz item malformado nas tarefas do Meu Dia", () => {
   assert.match(harness, /tarefaMalformada \? \{ \.\.\.payloadNormal, leads: \[null\] \}/);
 });
 
+test("harness reproduz etapa malformada no Meu Dia", () => {
+  assert.match(harness, /crmPayload/);
+  assert.match(harness, /colecaoCrmMalformada === "etapas" \? \{ \.\.\.payloadNormal, etapas: \[null\] \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
