@@ -1079,7 +1079,7 @@ export function Funil2Mobile({
       {TEMPERATURAS_MOBILE.map((item) => <button type="button" key={item.codigo} className={`${temperatura === item.codigo ? "ativo " : ""}temperatura-${item.codigo}`} onClick={() => setTemperatura(item.codigo)}><i />{item.rotulo}</button>)}
     </nav>}
 
-    {modo === "crm" && (busca.trim() || etapa !== "ativos" || temperatura !== "todas") && <button type="button" className="ape-limpar-filtros" onClick={() => { setBusca(""); setEtapa("ativos"); setTemperatura("todas"); }}>Limpar filtros</button>}
+    {modo === "crm" && (busca.trim() || etapa !== "ativos" || temperatura !== "todas") && <button type="button" className="ape-limpar-filtros" onClick={() => { setBusca(""); setCarteiraAntiga([]); setBuscandoCarteira(false); setErroCarteira(null); setEtapa("ativos"); setTemperatura("todas"); }}>Limpar filtros</button>}
 
     {erro && <div className="ape-estado ruim" role="alert" aria-live="assertive">
       <span className="ape-estado-icone"><IconeAlerta /></span>

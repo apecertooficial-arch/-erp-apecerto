@@ -118,6 +118,7 @@ test("busca móvel não oferece resultado antigo sob um termo novo", () => {
   assert.match(busca, /setBusca\(valor\);\s*setCarteiraAntiga\(\[\]\);/);
   assert.match(busca, /setBuscandoCarteira\(valor\.trim\(\)\.length >= 3\)/);
   assert.match(MOBILE, /if \(!controle\.signal\.aborted\) setCarteiraAntiga\(json\.leads\)/);
+  assert.match(MOBILE, /onClick=\{\(\) => \{ setBusca\(""\); setCarteiraAntiga\(\[\]\); setBuscandoCarteira\(false\);/);
 });
 
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
