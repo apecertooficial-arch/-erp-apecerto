@@ -29,6 +29,12 @@ test("Chat consulta conflitos do gerente pelo método aceito pela Agenda", () =>
   assert.match(chat, /fetch\("\/api\/agenda", \{ method: "PATCH"[^\n]*action: "gerenteDisponibilidade"/);
 });
 
+test("falha ao consultar conflitos não declara gerente livre", () => {
+  const consulta = agendaApi.slice(agendaApi.indexOf('if (action === "gerenteDisponibilidade")'), agendaApi.indexOf('if (action === "registerVisitResult")'));
+  assert.match(consulta, /const \{ data: conflitos, error \} = await auth\.supabase\.rpc\("gerente_conflitos"/);
+  assert.match(consulta, /if \(error\) return Response\.json\(\{ error: "Não foi possível consultar a disponibilidade do gerente\." \}, \{ status: 502 \}\);/);
+});
+
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
   assert.match(mobile, /!Array\.isArray\(j\.itens\)/);
   assert.match(mobile, /!Array\.isArray\(j\.pendencias_resultado\)/);

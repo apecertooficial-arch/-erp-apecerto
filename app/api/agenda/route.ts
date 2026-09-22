@@ -473,10 +473,11 @@ export async function PATCH(request: Request) {
       gerenteId = Number.isSafeInteger(Number(data)) ? Number(data) : null;
     }
     if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
-    const { data: conflitos } = await auth.supabase.rpc("gerente_conflitos", {
+    const { data: conflitos, error } = await auth.supabase.rpc("gerente_conflitos", {
       p_gerente: gerenteId, p_data: date, p_inicio: startTime,
       p_fim: texto(body.endTime, 8) || startTime, p_exclude: texto(body.visitId, 40) || undefined,
     });
+    if (error) return Response.json({ error: "Não foi possível consultar a disponibilidade do gerente." }, { status: 502 });
     return Response.json({ ok: true, gerente_id: gerenteId, conflitos: conflitos ?? [] });
   }
 
