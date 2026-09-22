@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
+const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
+const harness = readFileSync(new URL("./crm-visual-harness/main.tsx", import.meta.url), "utf8");
 
 test("observação comprova acesso ao processo antes de inserir", () => {
   const comando = api.match(/if \(action === "addObs"\)[\s\S]*?return error \?/)?.[0] ?? "";
@@ -20,4 +22,12 @@ test("movimentação usa revisão otimista e comprova a linha alterada", () => {
   assert.match(move, /\.update\(update\)\.eq\("id", processId\)\.eq\("etapa", ctx\.proc\.etapa\)\.select\("id,etapa"\)\.maybeSingle\(\)/);
   assert.match(move, /if \(!movido\) return Response\.json\(\{ error: "Esta venda mudou de etapa enquanto você trabalhava\. Recarregue e tente novamente\." \}, \{ status: 409 \}\)/);
   assert.match(move, /return Response\.json\(\{ success: true, stage: movido\.etapa \}\)/);
+});
+
+test("Esteira rejeita carga parcial em vez de publicar falso vazio", () => {
+  assert.match(ui, /const payloadVendasValido = \(result: unknown\)/);
+  assert.match(ui, /if \(!response\.ok \|\| !payloadVendasValido\(result\)\) throw new Error\(/);
+  assert.match(ui, /Não foi possível confirmar os dados da Esteira/);
+  assert.match(harness, /SalesProcessView/);
+  assert.match(harness, /salesPayload/);
 });

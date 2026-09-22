@@ -21,6 +21,7 @@ import { PermissionsWorkspace } from "../../app/features/permissions/Permissions
 import { ApproachesWorkspace } from "../../app/features/approaches/ApproachesWorkspace";
 import { Funil2Mobile } from "../../app/features/funil-2/Funil2Mobile";
 import { LiveChatWorkspace } from "../../app/features/chat/LiveChatWorkspace";
+import { SalesProcessView } from "../../app/features/sales/SalesProcessWorkspace";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -68,6 +69,7 @@ const agendamentosChatInvalidos = parametros.get("chatScheduled") === "invalido"
 const resultadoAcaoChatInvalido = parametros.get("chatAction") === "invalido";
 const cancelamentoChatInvalido = parametros.get("chatCancel") === "invalido";
 const envioChatInvalido = parametros.get("chatSend") === "invalido";
+const payloadVendasInvalido = parametros.get("salesPayload") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -222,6 +224,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
+  if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : { sales: [], processes: [], deals: [], leads: [], products: [], brokers: [] });
   if (url.pathname === "/api/live-chat") return json(url.searchParams.has("conversationId") ? { messages: [] } : payloadChatInvalido ? {} : {
     conversations: [{ id: "conversa-teste", contato_id: "contato-teste", instancia_id: "instancia-teste", status: "aberta", ultima_msg_em: "2026-09-21T12:00:00Z", origem: "WhatsApp" }],
     contacts: [{ id: "contato-teste", nome: "Cliente chat sanitizado", telefone: "5511999990000", lead_id: 501 }],
@@ -292,6 +295,8 @@ const app = tela === "agenda-mobile"
     ? <Funil2Mobile accessToken="harness-test-only" nome="Corretor teste" modo="crm" onIr={() => undefined} />
   : tela === "chat"
     ? <ErpShell><LiveChatWorkspace accessToken="harness-test-only" /></ErpShell>
+  : tela === "sales"
+    ? <ErpShell><SalesProcessView accessToken="harness-test-only" /></ErpShell>
   : tela === "avisos-mobile"
     ? <NotificationsWorkspace accessToken="harness-test-only" />
   : tela === "tarefas-mobile"

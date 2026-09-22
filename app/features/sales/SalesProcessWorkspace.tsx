@@ -95,6 +95,12 @@ type SalesData = {
   anexoEventos?: Array<{ id: string; anexo_id: string | null; processo_ref: string | null; lote_id: string | null; evento: string; detalhe: Record<string, unknown> | null; ator: string | null; ator_nome: string | null; criado_em: string }>;
 };
 
+const payloadVendasValido = (result: unknown): result is SalesData => {
+  if (!result || typeof result !== "object") return false;
+  const payload = result as Partial<SalesData>;
+  return [payload.sales, payload.processes, payload.deals, payload.leads, payload.products, payload.brokers].every(Array.isArray);
+};
+
 const saleStages = [
   { id: "inicio", name: "Pedido aprovado", color: "#ff7000", role: "Corretor", days: 1 },
   { id: "doc_comp", name: "Documentação do comprador", color: "#e66200", role: "Corretor", days: 3 },
@@ -113,7 +119,7 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
   const [initialLoadSettled, setInitialLoadSettled] = useState(false);
   const canManageStages = sessionRole !== "corretor";
   const [renderedAt] = useState(() => Date.now());
-  const load = useCallback(async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json() as SalesData & { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível carregar as vendas."); setData(result); }, [accessToken]);
+  const load = useCallback(async () => { const response = await authedFetch("/api/crm/sales", { headers: { Authorization: `Bearer ${accessToken}` } }); const result = await response.json().catch(() => null) as (Partial<SalesData> & { error?: string }) | null; if (!response.ok || !payloadVendasValido(result)) throw new Error(response.ok ? "Não foi possível confirmar os dados da Esteira." : result?.error || "Não foi possível carregar as vendas."); setData(result); }, [accessToken]);
   const decideSolic = async (id: string, aprovar: boolean, motivo?: string) => { setBusy(true); setError(null); try { const response = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(aprovar ? { action: "aprovarSolicitacao", id } : { action: "recusarSolicitacao", id, motivo: motivo || "" }) }); const result = await response.json() as { error?: string }; if (!response.ok) throw new Error(result.error || "Não foi possível decidir a solicitação."); await load(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Erro ao decidir a solicitação."); } finally { setBusy(false); } };
 
   const carregarInicial = useCallback(() => {
