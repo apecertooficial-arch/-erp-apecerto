@@ -296,8 +296,9 @@ export async function PATCH(request: Request) {
       const value = Number(body.value);
       if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
       const patch = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null };
-      const { error } = await auth.supabase.from("lancamentos_caixa").update(patch as never).eq("id", cashId);
+      const { data: alterado, error } = await auth.supabase.from("lancamentos_caixa").update(patch as never).eq("id", cashId).select("id").maybeSingle();
       if (error) return falhaFinanceiro(error, "editar_lancamento");
+      if (!alterado) return Response.json({ error: "O lançamento deixou de existir antes da edição." }, { status: 409 });
       const auditError = await registrar("Editar lançamento", patch);
       if (auditError) return falhaFinanceiro(auditError, "auditar_edicao_lancamento", { parcial: true });
       return Response.json({ success: true });
@@ -306,8 +307,9 @@ export async function PATCH(request: Request) {
     /* Excluir. O lançamento é a prova de que a parcela entrou em caixa — sem ele, a
        parcela tem que voltar a aparecer em "A receber", senão o financeiro passa a
        contar duas histórias diferentes sobre o mesmo dinheiro. */
-    const { error } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", cashId);
+    const { data: alterado, error } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", cashId).select("id").maybeSingle();
     if (error) return falhaFinanceiro(error, "excluir_lancamento");
+    if (!alterado) return Response.json({ error: "O lançamento deixou de existir antes da exclusão." }, { status: 409 });
     const auditError = await registrar("Excluir lançamento", null);
     if (antes.recebimento_id) {
       const { error: reopenError } = await auth.supabase.from("recebimentos")
