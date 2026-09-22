@@ -8,6 +8,7 @@ const workspace = read("../app/features/progress/ProgressWorkspace.tsx");
 const page = read("../app/(erp)/progresso/page.tsx");
 const css = read("../app/styles/project-progress.css");
 const routes = read("../app/features/system/erp-routes.ts");
+const shell = read("../app/components/AppShell.tsx");
 
 test("fonte versionada valida percentuais, datas e listas", () => {
   assert.match(state, /version: 1/);
@@ -24,6 +25,8 @@ test("rota falha fechada para qualquer papel que não seja admin", () => {
   assert.doesNotMatch(workspace, /role === "gestor"|isManager/);
   assert.match(routes, /Progresso: \{ path: "\/progresso"/);
   assert.match(routes, /if \(nome === "Progresso"\) return role === "admin"/);
+  assert.match(shell, /adminSystemItems[^\n]+"Progresso"/);
+  assert.doesNotMatch(shell, /brokerSystemItems[^\n]+"Progresso"/);
 });
 
 test("painel consulta build, atualiza e sinaliza checkpoint velho", () => {
