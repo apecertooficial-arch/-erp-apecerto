@@ -62,8 +62,13 @@ test("Adicionar cliente fica visível e usa criação canônica reconciliável",
 });
 
 test("Adicionar cliente rejeita opções incompletas em vez de bloquear sem explicação", () => {
-  assert.match(addClient, /if \(!Array\.isArray\(json\.corretores\)\) throw new Error\("Não foi possível preparar o cadastro\."\)/);
+  assert.match(addClient, /if \(!Array\.isArray\(json\.corretores\)/);
+  assert.match(addClient, /throw new Error\("Não foi possível preparar o cadastro\."\)/);
   assert.match(addClient, /error && <p className="f2-modal-erro" role="alert">/);
+});
+
+test("Adicionar cliente rejeita responsável malformado antes de renderizar o seletor", () => {
+  assert.match(addClient, /json\.corretores\.every\(\(item\) => item && Number\.isSafeInteger\(item\.corretor_id\) && item\.corretor_id > 0 && typeof item\.nome === "string" && typeof item\.is_self === "boolean"\)/);
 });
 
 test("Adicionar cliente não libera criação após verificação de duplicidade incompleta", () => {

@@ -60,7 +60,7 @@ const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido"
 const itemAgendaInvalido = parametros.get("agendaItem") === "item";
 const catalogoAgendaInvalido = parametros.get("agendaCatalog") === "item";
 const itemAvisoInvalido = parametros.get("notificationItem") === "item";
-const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
+const opcoesClienteInvalidas = parametros.get("clientOptions");
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
 const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
 const horariosVisitaInvalidos = parametros.get("visitSlots") === "invalido";
@@ -345,7 +345,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   });
   if (url.pathname === "/api/approaches") return json(estado === "invalido" ? {} : { approaches: [], products: [] });
   if (url.pathname === "/api/funil2/conversa") return json(conversaInvalida ? {} : conversaItemInvalido ? { mensagens: [null], instancias: [] } : { mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
-  if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "opcoes") return json(opcoesClienteInvalidas ? {} : { corretores: [{ corretor_id: 7, nome: "Corretor teste", is_self: true }], corretorProprioId: 7, podeEscolher: false });
+  if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "opcoes") return json(opcoesClienteInvalidas === "invalido" ? {} : opcoesClienteInvalidas === "item" ? { corretores: [null], corretorProprioId: 7, podeEscolher: false } : { corretores: [{ corretor_id: 7, nome: "Corretor teste", is_self: true }], corretorProprioId: 7, podeEscolher: false });
   if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "duplicidade") return json(duplicidadeClienteInvalida ? {} : { duplicado: false, lead: null, funilLeadId: null });
   if (url.pathname === "/api/funil2/carteira") return json(carteiraInvalida ? {} : carteiraItemInvalido ? { leads: [null] } : { leads: leads.slice(0, 8).map((lead) => ({
     lead_id: lead.lead_id, negocio_id: lead.origem_negocio_id, nome: lead.nome, telefone: "••••0000",

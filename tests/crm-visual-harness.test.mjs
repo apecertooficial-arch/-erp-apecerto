@@ -89,6 +89,10 @@ test("harness reproduz chave pública inválida do push", () => {
   assert.match(harness, /chavePushInvalida \? \{ chave: \{\} \} : \{ chave: "AQID" \}/);
 });
 
+test("harness reproduz responsável malformado ao adicionar cliente", () => {
+  assert.match(harness, /opcoesClienteInvalidas === "item" \? \{ corretores: \[null\]/);
+});
+
 test("harness reproduz atualização do PWA durante edição inline", () => {
   assert.match(harness, /tela === "pwa-update"/);
   assert.match(harness, /dispararAtualizacaoPwa/);
