@@ -183,6 +183,15 @@ test("a rota não grava mais venda tabela a tabela em createSale/deleteSale", ()
   assert.match(criar, /guard\(\[\["vendas", "criar"\], \["financeiro", "criar"\]\]/);
 });
 
+test("baixa de recebimento não confirma sucesso sem linha alterada", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "settleReceipt")');
+  const fim = rota.indexOf('if (action === "updateSale")', inicio);
+  const baixa = rota.slice(inicio, fim);
+  assert.match(baixa, /\.eq\("id", receiptId\)\.select\("id"\)\.maybeSingle\(\)/);
+  assert.match(baixa, /if \(!atualizado\) return Response\.json\([^;]+status: 404/);
+});
+
 test("a migration usa SECURITY INVOKER, transação única e grava auditoria", () => {
   const sql = readFileSync(new URL("../supabase/migrations/20260916120000_fase2_venda_atomica.sql", import.meta.url), "utf8");
   assert.equal((sql.match(/security invoker/g) ?? []).length, 2);

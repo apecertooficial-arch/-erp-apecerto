@@ -334,8 +334,10 @@ export async function PATCH(request: Request) {
     if (!receiptId) return Response.json({ error: "Recebimento inválido." }, { status: 422 });
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Você não tem permissão para dar baixa em recebimentos.");
     if (denied) return denied;
-    const { error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? hojeOperacao() : null }).eq("id", receiptId);
-    return error ? falhaFinanceiro(error, "baixar_recebimento") : Response.json({ success: true });
+    const { data: atualizado, error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? hojeOperacao() : null }).eq("id", receiptId).select("id").maybeSingle();
+    if (error) return falhaFinanceiro(error, "baixar_recebimento");
+    if (!atualizado) return Response.json({ error: "Recebimento não encontrado ou indisponível." }, { status: 404 });
+    return Response.json({ success: true });
   }
 
   if (action === "updateSale") {
