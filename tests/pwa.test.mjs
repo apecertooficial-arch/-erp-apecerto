@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 const manifest = JSON.parse(readFileSync(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"));
 const sw = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 const iconeFonte = readFileSync(new URL("../public/icons/apecerto-app.svg", import.meta.url), "utf8");
+const registroPwa = readFileSync(new URL("../app/components/RegistroPwa.tsx", import.meta.url), "utf8");
 
 test("manifest aponta para o ERP, nao para o CRM", () => {
   assert.equal(manifest.name, "ApêCerto — ERP");
@@ -78,6 +79,12 @@ test("service worker nunca cacheia conteudo sensivel", () => {
 test("service worker tem atualizacao controlada e limpeza de logout", () => {
   assert.ok(sw.includes("ATUALIZAR_AGORA"), "troca de versao precisa ser sob comando da pagina");
   assert.ok(sw.includes("LIMPAR_TUDO"), "logout precisa poder revogar caches");
+});
+
+test("atualização não recarrega por cima de edição inline ainda não salva", () => {
+  assert.match(registroPwa, /const houveEdicao = useRef\(false\)/);
+  assert.match(registroPwa, /document\.addEventListener\("input", marcarEdicao, true\)/);
+  assert.match(registroPwa, /!houveEdicao\.current/);
 });
 
 test("REGRESSAO: logout chama limparDadosLocais", () => {

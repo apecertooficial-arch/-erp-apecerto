@@ -23,6 +23,7 @@ import { Funil2Mobile } from "../../app/features/funil-2/Funil2Mobile";
 import { LiveChatWorkspace } from "../../app/features/chat/LiveChatWorkspace";
 import { SalesProcessView } from "../../app/features/sales/SalesProcessWorkspace";
 import { AvisoNotificacoes } from "../../app/features/home/AvisoNotificacoes";
+import { RegistroPwa } from "../../app/components/RegistroPwa";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -95,6 +96,17 @@ if (tela === "push-register") {
   Object.defineProperty(window, "PushManager", { configurable: true, value: function PushManager() {} });
   Object.defineProperty(window, "Notification", { configurable: true, value: { permission: pushExistente ? "granted" : "default", requestPermission: async () => "granted" } });
   Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => pushExistente ? inscricao : null, subscribe: async () => inscricao } }) } });
+}
+let dispararAtualizacaoPwa = () => undefined;
+if (tela === "pwa-update") {
+  const ouvintes = new Map<string, EventListener>();
+  Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: {
+    register: async () => ({ update: async () => undefined }),
+    addEventListener: (tipo: string, ouvinte: EventListener) => ouvintes.set(tipo, ouvinte),
+    removeEventListener: (tipo: string) => ouvintes.delete(tipo),
+  } });
+  dispararAtualizacaoPwa = () =>
+    ouvintes.get("controllerchange")?.(new Event("controllerchange"));
 }
 const payloadSaraPendente = {
   ...payloadNormal,
@@ -277,6 +289,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
+  if (url.pathname === "/api/build") return json({ build: "harness-pwa-update" });
   if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
     sales: vendaEsteiraDetalhe ? [{ id: "venda-teste", created_at: "2026-09-21T12:00:00Z", data_venda: "2026-09-21", cliente_nome: "Cliente venda sanitizado", empreendimento_id: "produto-teste", empreendimento_nome: "Produto sanitizado", vgv: 350000, forma_pgto: null, status: "em_andamento", obs: null }] : [],
     processes: vendaEsteiraDetalhe ? [{ id: "processo-teste", venda_id: "venda-teste", negocio_id: 801, etapa: "inicio", tipo_venda: "construtora", responsavel_usuario_id: null, prazo_em: null, atualizado_em: "2026-09-21T12:00:00Z", aprovacao_status: "aprovada" }] : [],
@@ -365,6 +378,8 @@ const app = tela === "agenda-mobile"
     ? <ErpShell><NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} /></ErpShell>
   : tela === "push-register"
     ? <AvisoNotificacoes accessToken="harness-test-only" />
+  : tela === "pwa-update"
+    ? <main style={{ padding: 24 }}><label>Rascunho inline<textarea aria-label="Rascunho inline" /></label><button type="button" onClick={dispararAtualizacaoPwa}>Simular versão nova</button><RegistroPwa /></main>
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"

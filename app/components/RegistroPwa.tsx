@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* Registro do service worker.
  *
@@ -41,6 +41,7 @@ async function buildPublicado() {
 
 export function RegistroPwa() {
   const [precisaRecarregar, setPrecisaRecarregar] = useState(false);
+  const houveEdicao = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
@@ -64,13 +65,17 @@ export function RegistroPwa() {
     const conferir = () => { if (document.visibilityState === "visible") void registro?.update(); };
     document.addEventListener("visibilitychange", conferir);
 
-    const podeRecarregarSemPerda = () => !document.querySelector('[aria-modal="true"]');
+    /* Ha editores inline sem aria-modal em Campanhas, Produtos, Agentes e Studio.
+       Um unico input do usuario basta para trocar a recarga automatica pelo aviso:
+       e melhor pedir um clique depois de salvar do que apagar um rascunho real. */
+    const marcarEdicao = () => { houveEdicao.current = true; };
+    document.addEventListener("input", marcarEdicao, true);
+    document.addEventListener("change", marcarEdicao, true);
+    const podeRecarregarSemPerda = () => !houveEdicao.current && !document.querySelector('[aria-modal="true"]');
     let recarregando = false;
     const aoTrocar = () => {
       if (recarregando) return;
-      /* Sem modal aberto nao existe formulario em andamento: a versao nova pode
-         assumir imediatamente. Com modal, preservamos o que a pessoa digitou. */
-      if (document.visibilityState === "hidden" || podeRecarregarSemPerda()) {
+      if (podeRecarregarSemPerda()) {
         recarregando = true;
         window.location.reload();
       } else {
@@ -81,6 +86,8 @@ export function RegistroPwa() {
 
     return () => {
       document.removeEventListener("visibilitychange", conferir);
+      document.removeEventListener("input", marcarEdicao, true);
+      document.removeEventListener("change", marcarEdicao, true);
       navigator.serviceWorker.removeEventListener("controllerchange", aoTrocar);
     };
   }, []);
