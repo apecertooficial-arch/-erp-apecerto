@@ -246,8 +246,9 @@ export async function PATCH(request: Request) {
     const { error } = await auth.supabase.from("lancamentos_caixa").insert(insert as never);
     if (error) return falhaFinanceiro(error, "criar_lancamento");
     if (receiptId && body.settleReceipt === true) {
-      const { error: settleError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: date }).eq("id", receiptId).neq("status", "recebido");
+      const { data: baixado, error: settleError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: date }).eq("id", receiptId).neq("status", "recebido").select("id").maybeSingle();
       if (settleError) return falhaFinanceiro(settleError, "baixar_parcela_apos_lancamento", { parcial: true });
+      if (!baixado) return Response.json({ error: "Lançamento criado, mas a baixa da parcela não foi confirmada. Confira o caixa antes de repetir.", parcial: true, erro: "reconciliacao_necessaria" }, { status: 409 });
     }
     return Response.json({ success: true });
   }

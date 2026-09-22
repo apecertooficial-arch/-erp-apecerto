@@ -202,6 +202,15 @@ test("edição e exclusão de caixa só auditam linhas realmente alteradas", () 
   assert.equal((caixa.match(/if \(!alterado\) return Response\.json/g) ?? []).length, 2);
 });
 
+test("lançamento de caixa não finge baixa de parcela sem confirmação", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "createCash")');
+  const fim = rota.indexOf('if (action === "updateCash" || action === "deleteCash")', inicio);
+  const caixa = rota.slice(inicio, fim);
+  assert.match(caixa, /\.eq\("id", receiptId\)\.neq\("status", "recebido"\)\.select\("id"\)\.maybeSingle\(\)/);
+  assert.match(caixa, /if \(!baixado\) return Response\.json\([^;]+parcial: true/);
+});
+
 test("a migration usa SECURITY INVOKER, transação única e grava auditoria", () => {
   const sql = readFileSync(new URL("../supabase/migrations/20260916120000_fase2_venda_atomica.sql", import.meta.url), "utf8");
   assert.equal((sql.match(/security invoker/g) ?? []).length, 2);
