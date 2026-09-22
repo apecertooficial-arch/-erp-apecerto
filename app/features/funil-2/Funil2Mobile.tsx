@@ -128,6 +128,20 @@ type LeadCarteiraAntigaMobile = {
   mensagens: number;
 };
 
+function leadCarteiraAntigaMobileValido(valor: unknown): valor is LeadCarteiraAntigaMobile {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const lead = valor as Record<string, unknown>;
+  return Number.isSafeInteger(lead.lead_id)
+    && (lead.negocio_id === null || Number.isSafeInteger(lead.negocio_id))
+    && (lead.nome === null || typeof lead.nome === "string")
+    && (lead.telefone === null || typeof lead.telefone === "string")
+    && (lead.corretor_id === null || Number.isSafeInteger(lead.corretor_id))
+    && (lead.corretor_nome === null || typeof lead.corretor_nome === "string")
+    && typeof lead.criado_em === "string"
+    && (lead.ultima_mensagem_em === null || typeof lead.ultima_mensagem_em === "string")
+    && Number.isSafeInteger(lead.mensagens);
+}
+
 type FiltroDia = "agora" | "novos" | "hoje" | "todos";
 type TemperaturaFiltroMobile = TemperaturaLead | "aguardando" | "todas";
 
@@ -885,7 +899,7 @@ export function Funil2Mobile({
       }).then(async (resposta) => {
         const json = await resposta.json().catch(() => ({})) as { leads?: LeadCarteiraAntigaMobile[]; error?: string };
         if (!resposta.ok) throw new Error(json.error || "Não foi possível pesquisar a carteira antiga.");
-        if (!Array.isArray(json.leads)) throw new Error("Não foi possível pesquisar a carteira antiga.");
+        if (!Array.isArray(json.leads) || !json.leads.every(leadCarteiraAntigaMobileValido)) throw new Error("Não foi possível pesquisar a carteira antiga.");
         setCarteiraAntiga(json.leads);
       }).catch((falha: unknown) => {
         if (falha instanceof DOMException && falha.name === "AbortError") return;

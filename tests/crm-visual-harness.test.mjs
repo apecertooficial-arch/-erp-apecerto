@@ -134,6 +134,11 @@ test("harness reproduz item malformado no histórico detalhado", () => {
   assert.match(harness, /historicoItemInvalido \? \{ eventos: \[null\], notas: payloadNormal\.notas \}/);
 });
 
+test("harness reproduz item malformado na carteira antiga", () => {
+  assert.match(harness, /carteiraItemInvalido/);
+  assert.match(harness, /carteiraItemInvalido \? \{ leads: \[null\] \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

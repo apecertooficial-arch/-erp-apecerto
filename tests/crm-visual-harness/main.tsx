@@ -53,6 +53,7 @@ const saraPendente = parametros.get("sara") === "pendente";
 const historicoInvalido = parametros.get("history") === "invalido";
 const historicoItemInvalido = parametros.get("history") === "item";
 const carteiraInvalida = parametros.get("legacy") === "invalido";
+const carteiraItemInvalido = parametros.get("legacy") === "item";
 const conversaInvalida = parametros.get("conversation") === "invalido";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
@@ -340,9 +341,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/funil2/conversa") return json(conversaInvalida ? {} : { mensagens: [], instancias: [{ id: "instancia-teste", rotulo: "WhatsApp de teste", telefone: "••••0000", status: "conectado", atual: true }], historicoCompleto: true });
   if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "opcoes") return json(opcoesClienteInvalidas ? {} : { corretores: [{ corretor_id: 7, nome: "Corretor teste", is_self: true }], corretorProprioId: 7, podeEscolher: false });
   if (url.pathname === "/api/funil2/clientes" && url.searchParams.get("modo") === "duplicidade") return json(duplicidadeClienteInvalida ? {} : { duplicado: false, lead: null, funilLeadId: null });
-  if (url.pathname === "/api/funil2/carteira") return json(carteiraInvalida ? {} : { leads: leads.slice(0, 8).map((lead) => ({
+  if (url.pathname === "/api/funil2/carteira") return json(carteiraInvalida ? {} : carteiraItemInvalido ? { leads: [null] } : { leads: leads.slice(0, 8).map((lead) => ({
     lead_id: lead.lead_id, negocio_id: lead.origem_negocio_id, nome: lead.nome, telefone: "••••0000",
-    corretor_id: lead.corretor_id, corretor_nome: lead.corretor_nome, criado_em: lead.criado_em,
+    corretor_id: lead.corretor_id, corretor_nome: lead.corretor_nome, criado_em: "2026-08-28T08:00:00.000Z",
     ultima_mensagem_em: null, mensagens: 0,
   })), curta: false });
   if (url.pathname === "/api/crm/sales") return json(preparacaoNegociacaoInvalida && url.searchParams.get("modo") === "prepararSolicitacao"

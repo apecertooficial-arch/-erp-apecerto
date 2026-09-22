@@ -57,6 +57,7 @@ test("ficha não transforma histórico incompleto em linha do tempo vazia", () =
 
 test("Todos os Leads não esconde falha da carteira antiga como busca vazia", () => {
   assert.match(desktop, /if \(!resposta\.ok \|\| !Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível pesquisar a carteira antiga\."\)/);
+  assert.match(mobile, /json\.leads\.every\(leadCarteiraAntigaMobileValido\)/);
   assert.match(desktop, /erroCarteira && <div className="f2-sem-resultado" role="alert">/);
   assert.match(desktop, /erroCarteira \? "indisponível" : `\$\{carteira\.length\} encontrado\(s\)`/);
   assert.match(desktop, /!buscandoCarteira && !erroCarteira && carteira\.length === 0/);
