@@ -31,3 +31,8 @@ test("Esteira rejeita carga parcial em vez de publicar falso vazio", () => {
   assert.match(harness, /SalesProcessView/);
   assert.match(harness, /salesPayload/);
 });
+
+test("criação de venda só fecha o modal após confirmação explícita", () => {
+  assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "A Esteira não confirmou a criação da venda\."\)/);
+  assert.match(harness, /salesCreate/);
+});

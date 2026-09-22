@@ -70,6 +70,7 @@ const resultadoAcaoChatInvalido = parametros.get("chatAction") === "invalido";
 const cancelamentoChatInvalido = parametros.get("chatCancel") === "invalido";
 const envioChatInvalido = parametros.get("chatSend") === "invalido";
 const payloadVendasInvalido = parametros.get("salesPayload") === "invalido";
+const criacaoVendaInvalida = parametros.get("salesCreate") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -183,6 +184,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: parametros.has("chatCancel") ? [{ id: 701, texto: "Retorno sanitizado", tipo: "text", quando: "2026-09-22T15:00:00Z", status: "agendado" }] : [] });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "send") return json(envioChatInvalido ? {} : { success: true });
+    if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "create") return json(criacaoVendaInvalida ? {} : { success: true, saleId: "venda-teste" });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action) return json(resultadoAcaoChatInvalido ? {} : { success: true });
     registro.blocked = true;
     sincronizarLogRede();
@@ -224,7 +226,12 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
-  if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : { sales: [], processes: [], deals: [], leads: [], products: [], brokers: [] });
+  if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
+    sales: [], processes: [], brokers: [],
+    deals: parametros.has("salesCreate") ? [{ id: 801, venda_id: null, lead_id: 501, corretor_id: 7, empreendimento_id: "produto-teste", valor: 350000, status: "aberto" }] : [],
+    leads: parametros.has("salesCreate") ? [{ id: 501, nome: "Cliente venda sanitizado", telefone: "••••0000", corretor_id: 7, origem: "teste", tags: [], extras: null }] : [],
+    products: parametros.has("salesCreate") ? [{ id: "produto-teste", nome: "Produto sanitizado", cidade: "São Paulo", bairro: "Centro", preco: 350000, status: "disponivel" }] : [],
+  });
   if (url.pathname === "/api/live-chat") return json(url.searchParams.has("conversationId") ? { messages: [] } : payloadChatInvalido ? {} : {
     conversations: [{ id: "conversa-teste", contato_id: "contato-teste", instancia_id: "instancia-teste", status: "aberta", ultima_msg_em: "2026-09-21T12:00:00Z", origem: "WhatsApp" }],
     contacts: [{ id: "contato-teste", nome: "Cliente chat sanitizado", telefone: "5511999990000", lead_id: 501 }],

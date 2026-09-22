@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `dd4b5ab7`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: a Esteira do CRM rejeita carga HTTP 200 parcial em vez de deixar a área em branco.
-- Decisão: validar as seis coleções obrigatórias antes de publicar o estado e usar o alerta recuperável existente.
+- Base: `origin/main` em `11d2f8f5`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: a criação de venda na Esteira não fecha mais o modal quando a API retorna HTTP 200 sem `success: true`.
+- Decisão: exigir confirmação explícita do contrato antes de recarregar e fechar o formulário.
 - Arquivos: `app/features/sales/SalesProcessWorkspace.tsx`, `tests/crm-sales-write-safety.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu `{}` deixando a Esteira em branco; o teste falhou primeiro; depois da correção, desktop exibe erro com nova tentativa e o payload válido abre em viewport móvel, 25 testes dirigidos e lint passaram.
-- Produção: `dd4b5ab7` publicado e confirmado; o Chat real carregou conversas e o compositor sem executar mutação.
+- Verificações: o harness reproduziu `{}` fechando o modal sem erro; o teste falhou primeiro; depois da correção, a falha mantém o formulário e a resposta válida fecha normalmente em viewport móvel, 33 testes dirigidos e lint passaram.
+- Produção: `11d2f8f5` publicado e confirmado; a Esteira real carregou completamente sem executar mutação.
 - Risco: baixo; a escrita foi simulada somente no harness local.
 - Próximo passo: executar o build, publicar esta fatia, validar o Chat em produção e seguir para a próxima falha P0/P1 comprovada.
