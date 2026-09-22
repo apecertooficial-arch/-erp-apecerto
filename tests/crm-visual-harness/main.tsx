@@ -84,6 +84,7 @@ const movimentoVendaInvalido = parametros.get("salesMove") === "invalido";
 const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
 const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
 const registroPushInvalido = parametros.get("pushRegister") === "invalido";
+const chavePushInvalida = parametros.get("pushKey") === "invalido";
 const escritaPermissoesInvalida = parametros.get("permissionsWrite") === "invalido";
 const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
 const operacaoCentralInvalida = parametros.get("centralWrite") === "invalido";
@@ -307,7 +308,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(colecaoCrmMalformada === "etapas" ? { ...payloadNormal, etapas: [null] } : colecaoCrmMalformada === "momentos" ? { ...payloadNormal, momentos: [null] } : colecaoCrmMalformada === "eventos" ? { ...payloadNormal, eventos: [null] } : colecaoCrmMalformada === "notas" ? { ...payloadNormal, notas: [null] } : colecaoCrmMalformada === "tags" ? { ...payloadNormal, tagCatalogo: [null] } : tarefaMalformada ? { ...payloadNormal, leads: [null] } : payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : itemAvisoInvalido ? { notificacoes: [null] } : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
-  if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
+  if (url.pathname === "/api/ncrm/push/chave") return json(chavePushInvalida ? { chave: {} } : { chave: "AQID" });
   if (url.pathname === "/api/build") return json({ build: "harness-pwa-update" });
   if (url.pathname === "/api/automacoes-operacao") return json(leituraCentralInvalida ? {} : {
     agora: "2026-09-21T12:00:00Z", abordagem_automatica: false,

@@ -146,7 +146,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
 
       const rc = await fetch("/api/ncrm/push/chave", { headers: { Authorization: `Bearer ${accessToken}` } });
       const cj = (await rc.json().catch(() => ({}))) as { chave?: string };
-      if (!rc.ok || !cj.chave) { setErro("Servidor sem chave de notificação configurada."); return; }
+      if (!rc.ok || typeof cj.chave !== "string" || !cj.chave.trim()) { setErro("Servidor sem chave de notificação configurada."); return; }
 
       const reg = await navigator.serviceWorker.ready;
       /* Reaproveita a inscricao existente: chamar subscribe duas vezes com

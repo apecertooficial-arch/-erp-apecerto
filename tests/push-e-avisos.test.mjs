@@ -72,6 +72,10 @@ test("app só confirma o aparelho depois de ok persistido", () => {
   assert.match(REGISTRO_PUSH, /if \(res\.ok !== true\)[\s\S]*res\.erro === "nao_autenticado" \? 403 : 409/);
 });
 
+test("app rejeita chave pública malformada antes de tentar assinar", () => {
+  assert.match(AVISO_APP, /typeof cj\.chave !== "string"/);
+});
+
 test("assinatura existente é reconciliada com o servidor antes de aparecer ligada", () => {
   assert.match(AVISO_APP, /const existente = await reg\.pushManager\.getSubscription\(\)/);
   assert.match(AVISO_APP, /const confirmada = existente \? await registrarInscricao\(existente\) : false/);
