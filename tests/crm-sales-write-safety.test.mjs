@@ -42,3 +42,8 @@ test("drawer só atualiza etapa após movimentação confirmada", () => {
   assert.match(ui, /if \(await move\(detailItem\.id, stage\)\) setDetailItem/);
   assert.match(harness, /salesMove/);
 });
+
+test("escritas do detalhe só limpam o formulário após confirmação explícita", () => {
+  assert.match(ui, /if \(!r\.ok \|\| j\.success !== true\) throw new Error\(j\.error \|\| "A Esteira não confirmou a alteração\."\)/);
+  assert.match(harness, /salesWrite/);
+});

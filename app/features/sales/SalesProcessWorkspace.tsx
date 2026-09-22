@@ -280,7 +280,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
 
   const api = async (payload: Record<string, unknown>) => {
     const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    const j = await r.json() as { error?: string }; if (!r.ok) throw new Error(j.error || "Falha.");
+    const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string }; if (!r.ok || j.success !== true) throw new Error(j.error || "A Esteira não confirmou a alteração.");
   };
   const run = async (fn: () => Promise<void>) => { setWBusy(true); setError(null); try { await fn(); await onReload(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha."); } finally { setWBusy(false); } };
   const upload = (file: File, grupo: string, docNome: string | null, obrigatorio: boolean, observacao: string) => run(async () => {
