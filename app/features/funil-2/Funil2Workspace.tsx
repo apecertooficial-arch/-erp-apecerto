@@ -530,7 +530,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   </article>;
                 })}
                 {daEtapa.length > limiteDaEtapa && <button type="button" className="f2-coluna-mais" onClick={() => setLimitesPorEtapa((atuais) => ({ ...atuais, [etapa.codigo]: limiteDaEtapa + 12 }))}>Mostrar mais 12 · faltam {daEtapa.length - limiteDaEtapa}</button>}
-                {daEtapa.length === 0 && <div className="f2-vazio">Nenhum lead-cópia nesta etapa.</div>}
+                {daEtapa.length === 0 && <div className="f2-coluna-vazia" role="status">
+                  <strong>{termoQuadro || temperaturaQuadro !== "todas" ? "Nenhum negócio neste filtro" : "Nenhum negócio nesta etapa"}</strong>
+                  <span>{termoQuadro || temperaturaQuadro !== "todas" ? "Ajuste a busca ou os filtros para ver outros negócios." : "Esta etapa não tem negócios neste período."}</span>
+                </div>}
               </div>
             </div>;
           })}

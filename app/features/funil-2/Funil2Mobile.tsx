@@ -1112,6 +1112,7 @@ export function Funil2Mobile({
       <span className="ape-estado-icone"><IconeCheck /></span>
       <strong>Nenhum cliente neste filtro</strong>
       <p>Troque a etapa ou limpe a busca para ver o restante da carteira.</p>
+      <button type="button" onClick={() => { setBusca(""); setEtapa("ativos"); setTemperatura("todas"); }}>Limpar filtros</button>
     </div>}
 
     {modo === "inicio"

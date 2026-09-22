@@ -30,6 +30,15 @@ test("CRM publicado resume o pipeline com dados reais no desktop e no app", () =
   assert.match(css, /\.funil-oficial \.ape-crm-kpis/);
 });
 
+test("estados vazios explicam o recorte e oferecem recuperação", () => {
+  assert.match(workspace, /className="f2-coluna-vazia" role="status"/);
+  assert.match(workspace, /termoQuadro \|\| temperaturaQuadro !== "todas"/);
+  assert.match(workspace, /Ajuste a busca ou os filtros para ver outros negócios\./);
+  assert.match(mobile, />Limpar filtros<\/button>/);
+  assert.match(mobile, /setBusca\(""\); setEtapa\("ativos"\); setTemperatura\("todas"\)/);
+  assert.match(css, /\.funil-oficial \.f2-coluna-vazia/);
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);
