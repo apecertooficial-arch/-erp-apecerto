@@ -36,3 +36,9 @@ test("criação de venda só fecha o modal após confirmação explícita", () =
   assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "A Esteira não confirmou a criação da venda\."\)/);
   assert.match(harness, /salesCreate/);
 });
+
+test("drawer só atualiza etapa após movimentação confirmada", () => {
+  assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "A Esteira não confirmou a movimentação da venda\."\)/);
+  assert.match(ui, /if \(await move\(detailItem\.id, stage\)\) setDetailItem/);
+  assert.match(harness, /salesMove/);
+});
