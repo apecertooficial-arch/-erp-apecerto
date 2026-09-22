@@ -72,7 +72,14 @@ test("Adicionar cliente rejeita responsável malformado antes de renderizar o se
 });
 
 test("Adicionar cliente não libera criação após verificação de duplicidade incompleta", () => {
-  assert.match(addClient, /if \(typeof result\.duplicado !== "boolean" \|\| \(result\.duplicado && !result\.lead\)\) throw new Error\("Não foi possível verificar duplicidade\."\)/);
+  assert.match(addClient, /if \(typeof result\.duplicado !== "boolean"/);
+  assert.match(addClient, /throw new Error\("Não foi possível verificar duplicidade\."\)/);
+});
+
+test("Adicionar cliente rejeita identidade malformada nas duas respostas de duplicidade", () => {
+  assert.match(addClient, /function duplicadoValido\(valor: unknown\)/);
+  assert.match(addClient, /result\.duplicado && !duplicadoValido\(result\.lead\)/);
+  assert.match(addClient, /response\.status === 409[\s\S]*!duplicadoValido\(result\.duplicado\)/);
 });
 
 test("Adicionar cliente não fecha com identidade malformada", () => {

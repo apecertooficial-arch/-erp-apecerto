@@ -11,6 +11,13 @@ function idFunilValido(valor: unknown): valor is string {
   return typeof valor === "string" && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(valor);
 }
 
+function duplicadoValido(valor: unknown): valor is Omit<Duplicado, "funilLeadId"> {
+  if (!valor || typeof valor !== "object") return false;
+  const item = valor as Partial<Duplicado>;
+  return Number.isSafeInteger(item.id) && Number(item.id) > 0 && typeof item.nome === "string" && Boolean(item.nome.trim())
+    && (item.telefone === null || typeof item.telefone === "string") && (item.email === null || typeof item.email === "string");
+}
+
 export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
   accessToken: string;
   onClose: () => void;
@@ -80,7 +87,7 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       const response = await fetch(`/api/funil2/clientes?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
       const result = await response.json().catch(() => ({})) as { error?: string; duplicado?: boolean; lead?: Omit<Duplicado, "funilLeadId">; funilLeadId?: string | null };
       if (!response.ok) throw new Error(result.error || "Não foi possível verificar duplicidade.");
-      if (typeof result.duplicado !== "boolean" || (result.duplicado && !result.lead)) throw new Error("Não foi possível verificar duplicidade.");
+      if (typeof result.duplicado !== "boolean" || (result.duplicado && !duplicadoValido(result.lead))) throw new Error("Não foi possível verificar duplicidade.");
       const encontrado = result.duplicado && result.lead ? { ...result.lead, funilLeadId: result.funilLeadId } : null;
       setDuplicado(encontrado);
       return { ok: true, lead: encontrado };
@@ -121,7 +128,10 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
         body: JSON.stringify({ action: "criar", idempotencyKey, ...form, corretorId: Number(form.corretorId) }),
       });
       const result = await response.json().catch(() => ({})) as { error?: string; leadId?: number; funilLeadId?: string | null; duplicado?: Omit<Duplicado, "funilLeadId"> };
-      if (response.status === 409 && result.duplicado) { setDuplicado({ ...result.duplicado, funilLeadId: result.funilLeadId }); return; }
+      if (response.status === 409) {
+        if (!duplicadoValido(result.duplicado)) throw new Error("Não foi possível confirmar o cliente existente.");
+        setDuplicado({ ...result.duplicado, funilLeadId: result.funilLeadId }); return;
+      }
       if (!response.ok && response.status !== 202) throw new Error(result.error || "Não foi possível adicionar o cliente.");
       if (idFunilValido(result.funilLeadId)) { onCreated(result.funilLeadId); return; }
       if (result.funilLeadId || !Number.isSafeInteger(result.leadId) || result.leadId <= 0) throw new Error("O servidor não confirmou a identidade criada.");

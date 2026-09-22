@@ -93,6 +93,10 @@ test("harness reproduz responsável malformado ao adicionar cliente", () => {
   assert.match(harness, /opcoesClienteInvalidas === "item" \? \{ corretores: \[null\]/);
 });
 
+test("harness reproduz duplicidade com cliente malformado", () => {
+  assert.match(harness, /duplicidadeClienteInvalida === "item" \? \{ duplicado: true, lead: \{\}/);
+});
+
 test("harness reproduz atualização do PWA durante edição inline", () => {
   assert.match(harness, /tela === "pwa-update"/);
   assert.match(harness, /dispararAtualizacaoPwa/);
