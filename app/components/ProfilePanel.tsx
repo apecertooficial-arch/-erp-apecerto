@@ -4,16 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { limparDadosLocais } from "./RegistroPwa";
 import { getBrowserSupabaseClient } from "../lib/supabase/browser";
-
-type ProfileBroker = { id: number; nome: string | null; email: string | null; telefone: string | null; creci: string | null; foto_path: string | null; ativo: boolean; online: boolean; notif_leads: boolean; notif_mensagens: boolean; notif_som: boolean };
-type ProfileUser = { id: string; nome: string | null; role: string; ativo: boolean; email: string | null; telefone: string | null; superior_id: string | null; endereco_cep: string | null; endereco_logradouro: string | null; endereco_numero: string | null; endereco_complemento: string | null; endereco_bairro: string | null; endereco_cidade: string | null; endereco_uf: string | null };
-type BankData = { titular_nome: string | null; titular_cpf: string | null; banco_nome: string | null; banco_codigo: string | null; agencia: string | null; conta: string | null; conta_tipo: string | null; pix_tipo: string | null; pix_chave: string | null };
-type ProfileData = {
-  usuario: ProfileUser | null;
-  corretor: ProfileBroker | null;
-  instancias: Array<{ id: number; nome: string | null; telefone: string | null; conectada: boolean; ativa: boolean }>;
-  dados_bancarios: BankData | null;
-};
+import { interpretarProfileData, type BankData, type ProfileData } from "./profile-data";
 
 const emptyBank: BankData = { titular_nome: "", titular_cpf: "", banco_nome: "", banco_codigo: "", agencia: "", conta: "", conta_tipo: null, pix_tipo: null, pix_chave: "" };
 type Endereco = { cep: string; logradouro: string; numero: string; complemento: string; bairro: string; cidade: string; uf: string };
@@ -53,7 +44,8 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
   useEffect(() => {
     void getBrowserSupabaseClient().rpc("meu_perfil").then(async ({ data: result, error: rpcError }) => {
       if (rpcError) { setError(rpcError.message); return; }
-      const profile = result as ProfileData;
+      const profile = interpretarProfileData(result);
+      if (!profile) { setError("Não foi possível confirmar os dados do perfil."); return; }
       setData(profile);
       setName(profile.corretor?.nome || profile.usuario?.nome || "");
       setPhone(profile.corretor?.telefone || profile.usuario?.telefone || "");
@@ -80,10 +72,13 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
     const path = `avatares/${userData.user?.id ?? "anon"}-${Date.now()}.${extension}`;
     const { error: uploadError } = await supabase.storage.from("corretor-docs").upload(path, file, { contentType: file.type || "image/jpeg", upsert: true });
     if (uploadError) { setError(uploadError.message); setSaving(false); return; }
-    const { error: rpcError } = await supabase.rpc("atualizar_meu_perfil", { p_foto_path: path });
+    const { data: result, error: rpcError } = await supabase.rpc("atualizar_meu_perfil", { p_foto_path: path });
     if (rpcError) { setError(rpcError.message); setSaving(false); return; }
+    const profile = interpretarProfileData(result);
+    if (!profile) { setError("O servidor não confirmou a atualização da foto."); setSaving(false); return; }
     const { data: signed } = await supabase.storage.from("corretor-docs").createSignedUrl(path, 3600);
     if (signed?.signedUrl) setAvatarUrl(signed.signedUrl);
+    setData(profile);
     setMessage("Foto atualizada."); setSaving(false);
   }
 
@@ -109,6 +104,8 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
       p_endereco_uf: (endereco.uf || "").toUpperCase().slice(0, 2) || undefined,
     });
     if (rpcError) { setError(rpcError.message); setSaving(false); return; }
+    const profile = interpretarProfileData(result);
+    if (!profile) { setError("O servidor não confirmou os dados salvos."); setSaving(false); return; }
     const hasBank = Object.values(bank).some((value) => value && String(value).trim());
     if (hasBank && data?.usuario?.id) {
       const { error: bankError } = await supabase.from("usuario_dados_bancarios").upsert({
@@ -120,7 +117,7 @@ export function ProfilePanel({ email, onClose, onPreviewLogin, onSaved }: { emai
       });
       if (bankError) { setError(`Perfil salvo, mas os dados bancários falharam: ${bankError.message}`); setSaving(false); return; }
     }
-    setData(result as ProfileData);
+    setData(profile);
     setMessage("Perfil salvo com sucesso.");
     setSaving(false);
     onSaved();
