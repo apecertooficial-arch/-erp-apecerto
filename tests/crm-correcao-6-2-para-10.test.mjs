@@ -47,6 +47,12 @@ test("barra do Kanban permite limpar todo recorte ativo de uma vez", () => {
   assert.match(css, /\.funil-oficial \.f2-v3-toolbar>\.f2-v3-limpar/);
 });
 
+test("pipeline de opção única é contexto visual, não controle inerte", () => {
+  assert.match(toolbar, /<div className="f2-v3-pipeline"><span>Pipeline<\/span><strong>Comercial<\/strong><\/div>/);
+  assert.doesNotMatch(toolbar, /aria-label="Pipeline"|onChange=\{\(\) => undefined\}/);
+  assert.match(css, /\.funil-oficial \.f2-v3-pipeline>strong/);
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);

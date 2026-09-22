@@ -26,7 +26,7 @@ type Props = {
 
 export function Funil2BoardToolbar(props: Props) {
   return <section className="f2-v3-toolbar" aria-label="Busca, filtros e ações do quadro">
-    <label className="f2-v3-pipeline"><span>Pipeline</span><select aria-label="Pipeline" value="comercial" onChange={() => undefined}><option value="comercial">Comercial</option></select></label>
+    <div className="f2-v3-pipeline"><span>Pipeline</span><strong>Comercial</strong></div>
     <span className="f2-v3-separador" aria-hidden="true" />
     <div className="f2-v3-visoes" role="group" aria-label="Resumo acionável do pipeline">
       <button type="button" className={props.visao === "andamento" ? "ativo" : ""} onClick={() => props.onVisao("andamento")}><span>Em andamento</span><b>{props.negociosVisiveis}</b><small>etapas visíveis</small></button>
