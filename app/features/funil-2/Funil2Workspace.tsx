@@ -415,6 +415,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const leadsDoPeriodo = leads.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
   const codigosDoQuadro = new Set(etapasDoQuadro.map((etapa) => etapa.codigo));
   const leadsDoQuadro = leadsDoPeriodo.filter((item) => codigosDoQuadro.has(item.etapa));
+  const leadsVisiveisNoQuadro = leadsDoQuadro.filter((item) => (temperaturaQuadro === "todas" || temperaturaDoLead(item) === temperaturaQuadro) && (!termoQuadro || `${item.nome} ${item.telefone ?? ""} ${item.origem_negocio_id} ${item.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro)));
   const foraDoQuadro = leadsDoPeriodo.length - leadsDoQuadro.length;
   const ganhos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "ganho");
   const perdidos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "perdido");
@@ -473,7 +474,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           filtrosAbertos={filtrosQuadroAbertos}
           ganhos={ganhos.length}
           leads={leads}
-          negociosVisiveis={leadsDoQuadro.length}
+          negociosVisiveis={leadsVisiveisNoQuadro.length}
           ordenacao={ordenacaoQuadro}
           perdidos={perdidos.length}
           periodo={periodoQuadro}
@@ -494,7 +495,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
         {visaoQuadro !== "andamento" && <section className="f2-v3-recorte" aria-live="polite"><div><span>{visaoQuadro === "ganhos" ? "GANHOS" : visaoQuadro === "perdidos" ? "PERDIDOS" : "TRIAGEM"}</span><h2>{visaoQuadro === "ganhos" ? `${ganhos.length} negócios ganhos` : visaoQuadro === "perdidos" ? `${perdidos.length} negócios perdidos` : `${aquario.length} leads aguardando análise`}</h2><p>Este recorte usa os registros canônicos do Funil. Abra a ficha ou a Esteira para consultar todos os detalhes.</p></div>{visaoQuadro === "triagem" && podePescar && <button type="button" disabled={busy} onClick={abrirPesca}>Pescar lead</button>}{visaoQuadro !== "triagem" && <button type="button" onClick={() => trocarAba("vendas")}>Abrir Esteira</button>}</section>}
         {visaoQuadro === "andamento" && <section className="f2-board" aria-label="Etapas do Funil">
           {etapasDoQuadro.map((etapa) => {
-            const daEtapa = leadsDoPeriodo.filter((l) => l.etapa === etapa.codigo && (temperaturaQuadro === "todas" || temperaturaDoLead(l) === temperaturaQuadro) && (!termoQuadro || `${l.nome} ${l.telefone ?? ""} ${l.origem_negocio_id} ${l.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro))).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
+            const daEtapa = leadsVisiveisNoQuadro.filter((l) => l.etapa === etapa.codigo).sort((a, b) => ordenacaoQuadro === "nome" ? a.nome.localeCompare(b.nome, "pt-BR") : +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em));
             const valorEtapa = daEtapa.reduce((total, item) => total + (Number(item.valor) || 0), 0);
             const limiteDaEtapa = limitesPorEtapa[etapa.codigo] ?? 12;
             return <div key={etapa.codigo} className={`f2-coluna etapa-${etapa.codigo}`} onDragOver={(evento) => evento.preventDefault()} onDrop={(evento) => { evento.preventDefault(); const id = evento.dataTransfer.getData("text/funil2-lead"); if (id) void movimentar([id], etapa.codigo); }}>
