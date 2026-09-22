@@ -76,6 +76,7 @@ const movimentoVendaInvalido = parametros.get("salesMove") === "invalido";
 const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
 const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
 const registroPushInvalido = parametros.get("pushRegister") === "invalido";
+const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
@@ -92,8 +93,8 @@ if (tela === "push-register") {
   const chave = new Uint8Array([1, 2, 3]).buffer;
   const inscricao = { endpoint: "https://push.example.invalid/subscription", getKey: () => chave };
   Object.defineProperty(window, "PushManager", { configurable: true, value: function PushManager() {} });
-  Object.defineProperty(window, "Notification", { configurable: true, value: { permission: "default", requestPermission: async () => "granted" } });
-  Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => null, subscribe: async () => inscricao } }) } });
+  Object.defineProperty(window, "Notification", { configurable: true, value: { permission: pushExistente ? "granted" : "default", requestPermission: async () => "granted" } });
+  Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => pushExistente ? inscricao : null, subscribe: async () => inscricao } }) } });
 }
 const payloadSaraPendente = {
   ...payloadNormal,

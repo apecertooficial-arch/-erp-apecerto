@@ -66,6 +66,7 @@ test("harness reproduz confirmação inválida do registro push", () => {
   assert.match(harness, /tela === "push-register"/);
   assert.match(harness, /registroPushInvalido/);
   assert.match(harness, /<AvisoNotificacoes accessToken="harness-test-only"/);
+  assert.match(harness, /pushExistente \? inscricao : null/);
 });
 
 test("interceptador sintético permite somente GETs locais inventariados", () => {

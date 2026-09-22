@@ -82,6 +82,19 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
   }, [estado]);
   const [erro, setErro] = useState<string | null>(null);
 
+  const registrarInscricao = useCallback(async (sub: PushSubscription) => {
+    const dados = extrairInscricao(sub, navigator.userAgent);
+    if (!dados) return false;
+
+    const resposta = await fetch("/api/ncrm/push/registrar", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(dados),
+    });
+    const resultado = await resposta.json().catch(() => ({})) as { ok?: boolean };
+    return resposta.ok && resultado.ok === true;
+  }, [accessToken]);
+
   /* Diagnostico na montagem: nada de pedir permissao aqui. */
   useEffect(() => {
     let vivo = true;
@@ -92,7 +105,9 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
       if (temSW && temPM) {
         try {
           const reg = await navigator.serviceWorker.ready;
-          jaInscrito = (await reg.pushManager.getSubscription()) != null;
+          const existente = await reg.pushManager.getSubscription();
+          const confirmada = existente ? await registrarInscricao(existente) : false;
+          jaInscrito = confirmada;
         } catch { jaInscrito = false; }
       }
       const standalone =
@@ -115,7 +130,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
       setEstado(e);
     })();
     return () => { vivo = false; };
-  }, []);
+  }, [registrarInscricao]);
 
   const ligar = useCallback(async () => {
     setOcupado(true); setErro(null);
@@ -142,16 +157,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
           applicationServerKey: Uint8Array.from(chaveParaBytes(cj.chave)).buffer,
         }));
 
-      const dados = extrairInscricao(sub, navigator.userAgent);
-      if (!dados) { setErro("O navegador não devolveu as chaves do aparelho."); return; }
-
-      const r = await fetch("/api/ncrm/push/registrar", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-      });
-      const resultado = await r.json().catch(() => ({})) as { ok?: boolean };
-      if (!r.ok || resultado.ok !== true) { setErro("Não foi possível registrar este aparelho."); return; }
+      if (!(await registrarInscricao(sub))) { setErro("Não foi possível registrar este aparelho."); return; }
 
       setEstado("ligado");
     } catch {
@@ -159,7 +165,7 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
     } finally {
       setOcupado(false);
     }
-  }, [accessToken]);
+  }, [accessToken, registrarInscricao]);
 
   if (estado === null || estado === "nao_suportado" || dispensado) return null;
 

@@ -67,9 +67,15 @@ test("app confirma visualmente que o aparelho esta inscrito para lead novo", () 
 });
 
 test("app só confirma o aparelho depois de ok persistido", () => {
-  assert.match(AVISO_APP, /const resultado = await r\.json\(\)\.catch\(\(\) => \(\{\}\)\)/);
-  assert.match(AVISO_APP, /if \(!r\.ok \|\| resultado\.ok !== true\)/);
+  assert.match(AVISO_APP, /const resultado = await resposta\.json\(\)\.catch\(\(\) => \(\{\}\)\)/);
+  assert.match(AVISO_APP, /return resposta\.ok && resultado\.ok === true/);
   assert.match(REGISTRO_PUSH, /if \(res\.ok !== true\)[\s\S]*res\.erro === "nao_autenticado" \? 403 : 409/);
+});
+
+test("assinatura existente é reconciliada com o servidor antes de aparecer ligada", () => {
+  assert.match(AVISO_APP, /const existente = await reg\.pushManager\.getSubscription\(\)/);
+  assert.match(AVISO_APP, /const confirmada = existente \? await registrarInscricao\(existente\) : false/);
+  assert.match(AVISO_APP, /jaInscrito = confirmada/);
 });
 
 test("urgente vibra, faz som e permanece visível quando a plataforma permite", () => {
