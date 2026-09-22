@@ -17,6 +17,7 @@ const aquarioStage = readFileSync(new URL("../supabase/migrations/20260810230000
 const promocao = readFileSync(new URL("../supabase/migrations/20260811010000_funil_2_migrar_pipes_antigos.sql", import.meta.url), "utf8");
 const correcaoPosVisita = readFileSync(new URL("../supabase/migrations/20260811015000_funil_2_corrigir_pos_visita.sql", import.meta.url), "utf8");
 const conversaRoute = readFileSync(new URL("../app/api/funil2/conversa/route.ts", import.meta.url), "utf8");
+const apiFunil = readFileSync(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
 const modelo = readFileSync(new URL("../app/features/funil-2/modelo.ts", import.meta.url), "utf8");
 const respostaInstanciasApp = readFileSync(new URL("../supabase/migrations/20260811037000_funil_2_resposta_instancias_app.sql", import.meta.url), "utf8");
 const reinicioPiloto = readFileSync(new URL("../supabase/migrations/20260812010000_funil_2_zerar_com_arquivo_e_fila_independente.sql", import.meta.url), "utf8");
@@ -153,6 +154,10 @@ test("conversa não transforma resposta incompleta em histórico vazio", () => {
   assert.match(conversa, /!payload\.instancias\.every\(instanciaValida\)/);
   assert.match(conversa, /!instancias\.length && !carregando && !erro/);
   assert.match(conversa, /className="f2-conversa-erro" role="alert"/);
+});
+
+test("carteira paginada desempata prazos iguais pelo ID", () => {
+  assert.match(apiFunil, /\.order\("proxima_acao_em", \{ ascending: true \}\)\s*\.order\("id", \{ ascending: true \}\)\s*\.range\(inicio, inicio \+ pagina - 1\)/);
 });
 
 test("corretor usa o Funil 2.0 no celular sem ganhar acesso ao desktop administrativo", () => {

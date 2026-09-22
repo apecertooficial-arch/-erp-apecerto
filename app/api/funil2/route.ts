@@ -51,6 +51,7 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
       .select("*")
       .is("descartado_em", null)
       .order("proxima_acao_em", { ascending: true })
+      .order("id", { ascending: true })
       .range(inicio, inicio + pagina - 1);
     if (error) return { data: null, error };
     todos.push(...((data ?? []) as Record<string, unknown>[]));
