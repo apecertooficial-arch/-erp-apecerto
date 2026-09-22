@@ -16,6 +16,7 @@ Configuração opcional:
 - `AUTOMATIONS_DISPATCHER_POLL_MS` (padrão `750`, mínimo `100`)
 - `AUTOMATIONS_DISPATCHER_HEARTBEAT_MS` (padrão `10000`)
 - `AUTOMATIONS_DISPATCHER_LEASE_SECONDS` (padrão `90`, mínimo `30`)
+- `AUTOMATIONS_DISPATCHER_PROCESS_TIMEOUT_MS` (padrão `120000`, entre `30000` e `300000`)
 - `AUTOMATIONS_DISPATCHER_SHUTDOWN_MS` (padrão `30000`)
 
 Comando local: `node workers/automations-dispatcher/index.mjs`.

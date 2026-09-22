@@ -169,6 +169,35 @@ test("item imediato e processado pelo token de lease e item futuro nao e varrido
   assert.equal(process.args.p_lease_token, "lease-42");
 });
 
+test("RPC de processamento sem resposta não prende o dispatcher indefinidamente", async () => {
+  let cancelado = false;
+  const db = fakeDb({
+    motor_dispatcher_heartbeat: [{ data: { modo: "worker" }, error: null }],
+    motor_dispatcher_claim: [{ data: { id: 42, lease_token: "lease-42" }, error: null }],
+    motor_dispatcher_processar: [new Promise(() => {})],
+  });
+  db.rpc = ((original) => (name, args) => {
+    if (name !== "motor_dispatcher_processar") return original(name, args);
+    return {
+      abortSignal(signal) {
+        signal.addEventListener("abort", () => { cancelado = true; });
+        return new Promise(() => {});
+      },
+    };
+  })(db.rpc.bind(db));
+  const worker = createDispatcher({
+    db,
+    config: { workerId: "worker-a", leaseSeconds: 90, heartbeatMs: 10_000, processTimeoutMs: 10 },
+    log: () => undefined,
+  });
+  const result = await Promise.race([
+    worker.tick().then(() => "processado", (error) => error.message),
+    new Promise((resolve) => setTimeout(() => resolve("travado"), 80)),
+  ]);
+  assert.match(result, /motor_dispatcher_processar.*tempo limite/);
+  assert.equal(cancelado, true);
+});
+
 test("duas replicas concorrentes recebem no maximo uma claim", async () => {
   let claimed = false;
   let processed = 0;

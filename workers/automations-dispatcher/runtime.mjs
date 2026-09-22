@@ -31,6 +31,7 @@ export function environment(source = process.env) {
     heartbeatMs: clamp(source.AUTOMATIONS_DISPATCHER_HEARTBEAT_MS, 2_000, 30_000, 10_000),
     maintenanceMs: clamp(source.AUTOMATIONS_DISPATCHER_MAINTENANCE_MS, 10_000, 300_000, 30_000),
     leaseSeconds: clamp(source.AUTOMATIONS_DISPATCHER_LEASE_SECONDS, 30, 300, 90),
+    processTimeoutMs: clamp(source.AUTOMATIONS_DISPATCHER_PROCESS_TIMEOUT_MS, 30_000, 300_000, 120_000),
     shutdownMs: clamp(source.AUTOMATIONS_DISPATCHER_SHUTDOWN_MS, 5_000, 120_000, 30_000),
   };
   config.public = Object.freeze({
@@ -39,6 +40,7 @@ export function environment(source = process.env) {
     heartbeatMs: config.heartbeatMs,
     maintenanceMs: config.maintenanceMs,
     leaseSeconds: config.leaseSeconds,
+    processTimeoutMs: config.processTimeoutMs,
     shutdownMs: config.shutdownMs,
   });
   return Object.freeze(config);
@@ -80,7 +82,26 @@ export function createDispatcher({
   let lastMaintenanceAt = clock();
 
   async function rpc(name, args) {
-    const { data, error } = await db.rpc(name, args);
+    const processando = name === "motor_dispatcher_processar";
+    const controller = processando ? new AbortController() : null;
+    const request = db.rpc(name, args);
+    const query = controller && typeof request.abortSignal === "function"
+      ? request.abortSignal(controller.signal)
+      : request;
+    let timer;
+    const timeout = controller && new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(`${name}: tempo limite de processamento excedido`));
+        controller.abort();
+      }, config.processTimeoutMs ?? 120_000);
+    });
+    let result;
+    try {
+      result = await (timeout ? Promise.race([query, timeout]) : query);
+    } finally {
+      clearTimeout(timer);
+    }
+    const { data, error } = result;
     if (error) throw rpcError(name, error);
     return data;
   }
