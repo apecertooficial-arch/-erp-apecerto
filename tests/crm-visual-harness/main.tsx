@@ -57,6 +57,7 @@ const carteiraItemInvalido = parametros.get("legacy") === "item";
 const conversaInvalida = parametros.get("conversation") === "invalido";
 const conversaItemInvalido = parametros.get("conversation") === "item";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
+const itemAgendaInvalido = parametros.get("agendaItem") === "item";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
 const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
@@ -291,7 +292,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       return json({ ok: true, disponivel: true, audios });
     }
     if (estado === "erro") return json({ ...payloadAgenda, pendencias_resultado: [], resumo_resultados: {}, pendencias_resultado_erro: "Não foi possível verificar os resultados pendentes." });
-    return json(pendenciasAgendaInvalidas ? { ...payloadAgenda, pendencias_resultado: undefined } : relogioNoLimite ? payloadAgendaRelogioNoLimite : payloadAgenda);
+    return json(pendenciasAgendaInvalidas ? { ...payloadAgenda, pendencias_resultado: undefined } : itemAgendaInvalido ? { ...payloadAgenda, itens: [null] } : relogioNoLimite ? payloadAgendaRelogioNoLimite : payloadAgenda);
   }
   if (url.pathname === "/api/funil2") {
     if (estado === "loading") return new Promise<Response>(() => undefined);

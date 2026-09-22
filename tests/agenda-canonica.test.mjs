@@ -25,7 +25,10 @@ test("desktop, mobile e chat consomem somente a API canônica da Agenda", () => 
 });
 
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
-  assert.match(mobile, /if \(!Array\.isArray\(j\.itens\) \|\| !Array\.isArray\(j\.pendencias_resultado\)\) throw new Error\("payload_invalido"\)/);
+  assert.match(mobile, /!Array\.isArray\(j\.itens\)/);
+  assert.match(mobile, /!Array\.isArray\(j\.pendencias_resultado\)/);
+  assert.match(mobile, /j\.itens\.every\(compromissoValido\)/);
+  assert.match(mobile, /j\.pendencias_resultado\.every\(compromissoValido\)/);
   assert.match(mobile, /if \(erro\) return <div className="ape-agenda">/);
 });
 

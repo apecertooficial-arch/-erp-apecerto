@@ -40,6 +40,26 @@ type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; cards: CardAgenda
 type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_percentual: number };
 type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
 
+function compromissoValido(valor: unknown): valor is Compromisso {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const compromisso = valor as Record<string, unknown>;
+  return typeof compromisso.id === "string"
+    && typeof compromisso.data === "string"
+    && typeof compromisso.hora === "string"
+    && typeof compromisso.tipo === "string"
+    && typeof compromisso.cliente === "string"
+    && (compromisso.local === null || typeof compromisso.local === "string")
+    && (compromisso.produto === null || typeof compromisso.produto === "string")
+    && (compromisso.negocio_id === null || Number.isSafeInteger(compromisso.negocio_id))
+    && (compromisso.status === null || typeof compromisso.status === "string")
+    && typeof compromisso.corretor === "string"
+    && (compromisso.corretor_id == null || typeof compromisso.corretor_id === "string" || Number.isSafeInteger(compromisso.corretor_id))
+    && typeof compromisso.meu === "boolean"
+    && typeof compromisso.faltam_min === "number" && Number.isFinite(compromisso.faltam_min)
+    && (compromisso.com_gerente == null || typeof compromisso.com_gerente === "boolean")
+    && (compromisso.gerente_id == null || Number.isSafeInteger(compromisso.gerente_id));
+}
+
 /** "agosto de 2026" - minuscula, como o resto do app. */
 function mesPorExtenso(iso: string): string {
   const d = new Date(`${iso}T12:00:00`);
@@ -110,7 +130,10 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
     if (r.status === 401) throw new Error("sessao_expirada");
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json() as { itens?: Compromisso[]; pendencias_resultado?: Compromisso[]; resumo_resultados?: { pendentes?: number; justificadas?: number }; pendencias_resultado_erro?: string | null; performance_feedback?: PerformanceFeedback };
-    if (!Array.isArray(j.itens) || !Array.isArray(j.pendencias_resultado)) throw new Error("payload_invalido");
+    if (!Array.isArray(j.itens)
+      || !Array.isArray(j.pendencias_resultado)
+      || !j.itens.every(compromissoValido)
+      || !j.pendencias_resultado.every(compromissoValido)) throw new Error("payload_invalido");
     return { itens: j.itens, pendencias: j.pendencias_resultado, resumo: j.resumo_resultados ?? {}, erroPendencias: j.pendencias_resultado_erro ?? "", performance: j.performance_feedback ?? {} };
   }, [accessToken, dia, periodo]);
 
