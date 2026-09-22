@@ -58,8 +58,8 @@ test("interface não converte falha de agendamento em lista vazia ou cancelament
   assert.match(ui, /messages\.length === 0 && scheduled\.length === 0 && !messageLoadError && !scheduledLoadError/);
   assert.match(ui, /if \(!response\.ok \|\| !Array\.isArray\(result\.agendadas\)\) throw new Error\(/);
   assert.doesNotMatch(ui, /catch \{ setScheduled\(\[\]\); \}/);
-  assert.match(ui, /if \(!response\.ok\) throw new Error\(result\.error \|\| "Não foi possível cancelar o agendamento\."\)/);
-  assert.ok(ui.indexOf("if (!response.ok) throw new Error(result.error || \"Não foi possível cancelar o agendamento.\")") < ui.indexOf("setScheduled((prev) => prev.filter"));
+  assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "Não foi possível confirmar o cancelamento do agendamento\."\)/);
+  assert.ok(ui.indexOf("if (!response.ok || result.success !== true) throw new Error") < ui.indexOf("setScheduled((prev) => prev.filter"));
   assert.match(ui, /A ação foi salva, mas o painel não pôde ser atualizado\. Recarregue antes de repetir\./);
   assert.match(ui, /chatStatus === "error"/);
   assert.match(ui, /Não foi possível carregar o Chat ao Vivo/);
@@ -97,6 +97,11 @@ test("Chat não converte carga parcial de agendamentos em lista vazia", () => {
 
 test("ações rápidas do Chat exigem confirmação explícita da API", () => {
   assert.match(ui, /if \(endpoint === "\/api\/live-chat" && result\.success !== true\) throw new Error\(result\.error \|\| "O Chat não confirmou a ação\."\)/);
+});
+
+test("cancelamento só remove o agendamento após confirmação explícita", () => {
+  assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "Não foi possível confirmar o cancelamento do agendamento\."\)/);
+  assert.ok(ui.indexOf("result.success !== true") < ui.indexOf("setScheduled((prev) => prev.filter"));
 });
 
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {

@@ -66,6 +66,7 @@ const visitaChatInvalida = parametros.get("chatVisit") === "invalido";
 const payloadChatInvalido = parametros.get("chatPayload") === "invalido";
 const agendamentosChatInvalidos = parametros.get("chatScheduled") === "invalido";
 const resultadoAcaoChatInvalido = parametros.get("chatAction") === "invalido";
+const cancelamentoChatInvalido = parametros.get("chatCancel") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -176,7 +177,8 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
       return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });
     }
-    if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: [] });
+    if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: parametros.has("chatCancel") ? [{ id: 701, texto: "Retorno sanitizado", tipo: "text", quando: "2026-09-22T15:00:00Z", status: "agendado" }] : [] });
+    if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action) return json(resultadoAcaoChatInvalido ? {} : { success: true });
     registro.blocked = true;
     sincronizarLogRede();

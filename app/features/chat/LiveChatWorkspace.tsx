@@ -206,8 +206,8 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
   const cancelScheduled = async (id: number) => {
     try {
       const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cancelScheduled", scheduledId: id }) });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(result.error || "Não foi possível cancelar o agendamento.");
+      const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string };
+      if (!response.ok || result.success !== true) throw new Error(result.error || "Não foi possível confirmar o cancelamento do agendamento.");
       setScheduled((prev) => prev.filter((item) => item.id !== id));
       setNotice("Agendamento cancelado.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Não foi possível cancelar o agendamento."); }
