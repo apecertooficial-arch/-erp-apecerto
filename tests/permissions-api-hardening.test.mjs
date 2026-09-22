@@ -50,3 +50,8 @@ test("interface falha fechada quando a autoridade devolve resposta incompleta", 
   assert.match(interfacePermissoes, /if \(!Array\.isArray\(json\.perfis\) \|\| !Array\.isArray\(json\.usuarios\)\) throw new Error\("payload_invalido"\)/);
   assert.ok((interfacePermissoes.match(/disabled=\{busy \|\| Boolean\(error\)/g) ?? []).length >= 2);
 });
+
+test("interface só confirma alteração de acesso depois do sucesso explícito", () => {
+  assert.equal((interfacePermissoes.match(/json\.success !== true/g) ?? []).length, 2);
+  assert.match(interfacePermissoes, /O servidor não confirmou a alteração de permissões/);
+});

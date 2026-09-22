@@ -75,6 +75,12 @@ test("harness reproduz atualização do PWA durante edição inline", () => {
   assert.match(harness, /aria-label="Rascunho inline"/);
 });
 
+test("harness reproduz confirmação inválida ao salvar permissões", () => {
+  assert.match(harness, /permissionsWrite/);
+  assert.match(harness, /url\.pathname === "\/api\/permissions"/);
+  assert.match(harness, /escritaPermissoesInvalida \? \{\} : \{ success: true \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

@@ -97,8 +97,9 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     setBusy(true); setMessage(null); setError(null);
     try {
       const res = await fetch("/api/permissions", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveProfile", perfilId: selPerfil, permissoes: draft }) });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as { error?: string; success?: boolean };
       if (!res.ok) throw new Error(json.error);
+      if (json.success !== true) throw new Error("O servidor não confirmou a alteração de permissões.");
       setMessage(`Perfil "${perfilById.get(selPerfil)?.nome}" salvo.`);
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Erro ao salvar."); } finally { setBusy(false); }
@@ -107,8 +108,9 @@ export function PermissionsWorkspace({ accessToken }: { accessToken: string }) {
     setBusy(true); setMessage(null); setError(null);
     try {
       const res = await fetch("/api/permissions", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(clear ? { action: "clearUserOverride", userId: selUser } : { action: "saveUserOverride", userId: selUser, permissoes: draft }) });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as { error?: string; success?: boolean };
       if (!res.ok) throw new Error(json.error);
+      if (json.success !== true) throw new Error("O servidor não confirmou a alteração de permissões.");
       setMessage(clear ? "Override removido — usuário voltou ao perfil." : "Permissões individuais salvas.");
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Erro ao salvar."); } finally { setBusy(false); }
