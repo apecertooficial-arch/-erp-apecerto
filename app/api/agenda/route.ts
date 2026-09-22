@@ -363,9 +363,11 @@ export async function PATCH(request: Request) {
     if (comGerente) {
       gerenteId = inteiroPositivo(body.gerenteId);
       if (!gerenteId) {
-        const { data: geral } = await auth.supabase.from("gerentes").select("id").eq("ativo", true).eq("geral", true).maybeSingle();
-        gerenteId = geral?.id ?? null;
+        const { data: vinculado, error: gerenteError } = await auth.supabase.rpc("corretor_gerente", { p_corretor: deal.corretor_id ?? 0 });
+        if (gerenteError) return Response.json({ error: "Não foi possível identificar o gerente desta visita." }, { status: 502 });
+        gerenteId = inteiroPositivo(vinculado);
       }
+      if (!gerenteId) return Response.json({ error: "Nenhum gerente ativo está disponível para esta visita." }, { status: 409 });
     }
     const inicioEm = instanteSaoPaulo(date, startTime);
     if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
@@ -469,10 +471,11 @@ export async function PATCH(request: Request) {
     if (!corretorId || !date || !startTime) return Response.json({ ok: true, conflitos: [] });
     let gerenteId = inteiroPositivo(body.gerenteId);
     if (!gerenteId) {
-      const { data } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId });
-      gerenteId = Number.isSafeInteger(Number(data)) ? Number(data) : null;
+      const { data, error } = await auth.supabase.rpc("corretor_gerente", { p_corretor: corretorId });
+      if (error) return Response.json({ error: "Não foi possível identificar o gerente desta visita." }, { status: 502 });
+      gerenteId = inteiroPositivo(data);
     }
-    if (!gerenteId) return Response.json({ ok: true, gerente_id: null, conflitos: [] });
+    if (!gerenteId) return Response.json({ error: "Nenhum gerente ativo está disponível para esta visita." }, { status: 409 });
     const { data: conflitos, error } = await auth.supabase.rpc("gerente_conflitos", {
       p_gerente: gerenteId, p_data: date, p_inicio: startTime,
       p_fim: texto(body.endTime, 8) || startTime, p_exclude: texto(body.visitId, 40) || undefined,

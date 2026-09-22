@@ -35,6 +35,16 @@ test("falha ao consultar conflitos não declara gerente livre", () => {
   assert.match(consulta, /if \(error\) return Response\.json\(\{ error: "Não foi possível consultar a disponibilidade do gerente\." \}, \{ status: 502 \}\);/);
 });
 
+test("agendamento sem gerente explícito usa o mesmo gerente consultado para conflitos", () => {
+  const criar = agendaApi.slice(agendaApi.indexOf('if (action === "createVisit")'), agendaApi.indexOf('if (action === "updateVisit")'));
+  const consulta = agendaApi.slice(agendaApi.indexOf('if (action === "gerenteDisponibilidade")'), agendaApi.indexOf('if (action === "registerVisitResult")'));
+  assert.match(criar, /rpc\("corretor_gerente", \{ p_corretor: deal\.corretor_id \?\? 0 \}\)/);
+  assert.match(consulta, /rpc\("corretor_gerente", \{ p_corretor: corretorId \}\)/);
+  assert.doesNotMatch(criar, /\.eq\("geral", true\)/);
+  assert.match(criar, /if \(gerenteError\) return Response\.json/);
+  assert.match(consulta, /if \(!gerenteId\) return Response\.json\(\{ error: "Nenhum gerente ativo/);
+});
+
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
   assert.match(mobile, /!Array\.isArray\(j\.itens\)/);
   assert.match(mobile, /!Array\.isArray\(j\.pendencias_resultado\)/);
