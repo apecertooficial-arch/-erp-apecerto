@@ -45,6 +45,12 @@ test("agendamento sem gerente explícito usa o mesmo gerente consultado para con
   assert.match(consulta, /if \(!gerenteId\) return Response\.json\(\{ error: "Nenhum gerente ativo/);
 });
 
+test("consulta sem horário final usa a duração padrão da visita", () => {
+  const consulta = agendaApi.slice(agendaApi.indexOf('if (action === "gerenteDisponibilidade")'), agendaApi.indexOf('if (action === "registerVisitResult")'));
+  assert.match(consulta, /p_fim: texto\(body\.endTime, 8\) \|\| null/);
+  assert.doesNotMatch(consulta, /p_fim: texto\(body\.endTime, 8\) \|\| startTime/);
+});
+
 test("Agenda móvel rejeita resposta 200 incompleta em vez de fingir dia vazio", () => {
   assert.match(mobile, /!Array\.isArray\(j\.itens\)/);
   assert.match(mobile, /!Array\.isArray\(j\.pendencias_resultado\)/);
