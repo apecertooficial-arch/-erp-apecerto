@@ -47,20 +47,20 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "P0 funcional: dispatcher de automações com fila vencida",
-  lastCheckpoint: "Logs do Render mostram erro 23505 no claim: lease Sara expirado colide com outro lote pendente do mesmo card. Correção SQL preparada, não aplicada em produção.",
-  lastCheckpointAt: "2026-09-22T17:44:28-03:00",
-  lastCommitSent: "cf0527a0f5f365318e2167354eb762ff9dff290d",
-  productionCommit: "cf0527a0f5f365318e2167354eb762ff9dff290d",
+  currentTask: "Fatia funcional: carteira estável e bloqueios da Sara",
+  lastCheckpoint: "Carteira paginada agora desempata por ID; deploy confirmado e CRM validado em desktop e móvel. Fila segue bloqueada e a API da Sara está sem saldo.",
+  lastCheckpointAt: "2026-09-22T18:01:29-03:00",
+  lastCommitSent: "4f86347c0411980e9e74e5e57a2278c38297d8d3",
+  productionCommit: "4f86347c0411980e9e74e5e57a2278c38297d8d3",
   latestDeliveries: [
+    "Carteira completa usa ordenação estável entre páginas, inclusive para 579 cards empatados sem prazo.",
     "RPC de processamento do dispatcher agora tem limite de espera e cancelamento.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
     "Resultado de visita só sai da fila após feedback persistido pelo corretor responsável.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
-    "Prioridade móvel acompanha o recorte filtrado.",
   ],
-  blockers: ["Fila segue parada: erro 23505 na recuperação de lease Sara. Há 265 itens vencidos; a correção de banco ainda não foi aplicada nem validada em produção."],
-  nextStep: "Validar e aplicar a migração de recuperação em janela controlada quando houver autoridade para alterar schema de produção; confirmar claims e conclusões. Depois validar captação → distribuição → carteira → Meu Dia. Identidade visual fica para a última fase.",
+  blockers: ["Fila segue parada: erro 23505 na recuperação de lease Sara; a migração está preparada, mas não aplicada em produção.", "As 39 falhas recentes da Sara na API de IA retornaram credit_balance_exhausted; saldo da API é separado do teto de uso do Codex."],
+  nextStep: "Seguir pelas fatias funcionais sem dependência da Sara; preservar o gate de schema de produção e não declarar a fila recuperada sem novos claims. Identidade visual fica para a última fase.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
