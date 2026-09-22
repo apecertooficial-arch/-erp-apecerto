@@ -13,7 +13,7 @@ const css = read("../app/styles/funil.css");
 test("contagem do quadro corresponde somente às etapas realmente exibidas", () => {
   assert.match(workspace, /const leadsDoQuadro = leadsDoPeriodo\.filter/);
   assert.match(workspace, /const leadsVisiveisNoQuadro = leadsDoQuadro\.filter/);
-  assert.match(toolbar, /<span>Em andamento<\/span><b>\{props\.negociosVisiveis\}<\/b><small>etapas visíveis<\/small>/);
+  assert.match(toolbar, /<span>Em andamento<\/span><b>\{props\.negociosVisiveis\}<\/b><small>neste recorte<\/small>/);
   assert.match(workspace, /negociosVisiveis=\{leadsVisiveisNoQuadro\.length\}/);
   assert.match(workspace, /> Negócios <b>\{leadsDoQuadro\.length\}<\/b>/);
   assert.match(workspace, /const daEtapa = leadsVisiveisNoQuadro\.filter/);
