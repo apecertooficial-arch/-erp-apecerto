@@ -99,6 +99,12 @@ test("gerente cobra o corretor e não responde a visita por ele", () => {
   assert.match(apiFunil, /verificarDonoResultadoVisita/);
 });
 
+test("detalhe da agenda só oferece resultado para pendência própria confirmada", () => {
+  assert.match(agendaWeb, /pendenciaSelecionada\?\.meu === true/);
+  assert.match(agendaWeb, /setResultadoPendente\(pendenciaSelecionada\)/);
+  assert.doesNotMatch(agendaWeb, /meu: true \}/);
+});
+
 test("as APIs autorizam somente o corretor dono da carteira", async () => {
   const db = (corretorAtual, corretorDono) => ({
     rpc: async () => ({ data: corretorAtual, error: null }),
