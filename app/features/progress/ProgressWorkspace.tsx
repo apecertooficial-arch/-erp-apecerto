@@ -44,7 +44,6 @@ export function ProgressWorkspace() {
   if (!isProjectProgressState(PROJECT_PROGRESS)) return <div className="modulo-sem-acesso" role="alert"><strong>Fonte de progresso inválida.</strong></div>;
 
   const stale = now - Date.parse(PROJECT_PROGRESS.lastCheckpointAt) > STALE_AFTER_MS;
-  const buildConfirmed = build.startsWith(PROJECT_PROGRESS.productionCommit.slice(0, 8));
   const updatedAt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo" }).format(now);
 
   return <main className="project-progress">
@@ -64,7 +63,7 @@ export function ProgressWorkspace() {
 
     <section className="project-progress-details">
       <article><span>Último checkpoint</span><strong>{PROJECT_PROGRESS.lastCheckpoint}</strong><small>{new Date(PROJECT_PROGRESS.lastCheckpointAt).toLocaleString("pt-BR")}</small></article>
-      <article><span>Commit enviado</span><code>{PROJECT_PROGRESS.lastCommitSent.slice(0, 12)}</code><small>Produção: {build.slice(0, 12)} · {buildConfirmed ? "confirmada" : "aguardando"}</small></article>
+      <article><span>Checkpoint-base</span><code>{PROJECT_PROGRESS.lastCommitSent.slice(0, 12)}</code><small>Produção confirmada: {build.slice(0, 12)}</small></article>
       <article><span>Próximo passo</span><strong>{PROJECT_PROGRESS.nextStep}</strong></article>
     </section>
 

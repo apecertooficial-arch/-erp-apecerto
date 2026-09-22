@@ -35,6 +35,8 @@ test("painel consulta build, atualiza e sinaliza checkpoint velho", () => {
   assert.match(workspace, /fetch\("\/api\/build", \{ cache: "no-store" \}\)/);
   assert.match(workspace, /stale \? "Desatualizado" : "Atualizado"/);
   assert.match(workspace, /checado \{updatedAt\}/);
+  assert.match(workspace, /Produção confirmada: \{build\.slice\(0, 12\)\}/);
+  assert.doesNotMatch(workspace, /buildConfirmed|"aguardando"/);
 });
 
 test("renderiza barras acessíveis e layout responsivo", () => {
