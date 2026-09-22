@@ -87,6 +87,11 @@ test("painel só encerra comandos depois da confirmação explícita", () => {
   assert.match(panel, /A Central não confirmou a decisão da Sara/);
 });
 
+test("saúde incompleta nunca aparece como operação íntegra", () => {
+  assert.match(panel, /function saudeValida\(value: unknown\): value is Saude/);
+  assert.match(panel, /if \(!saudeValida\(body\)\) throw new Error\("A Central devolveu uma leitura incompleta\."\)/);
+});
+
 test("autoteste prova os nove contratos sem criar lead real", () => {
   const contratos = migration.match(/'contratos',jsonb_build_array\([\s\S]*?\n    \)\n  \) into v_result/)?.[0] ?? "";
   assert.equal((contratos.match(/jsonb_build_object\('nome'/g) ?? []).length, 9);

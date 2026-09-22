@@ -81,6 +81,7 @@ const registroPushInvalido = parametros.get("pushRegister") === "invalido";
 const escritaPermissoesInvalida = parametros.get("permissionsWrite") === "invalido";
 const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
 const operacaoCentralInvalida = parametros.get("centralWrite") === "invalido";
+const leituraCentralInvalida = parametros.get("centralRead") === "invalido";
 const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
@@ -297,9 +298,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
   if (url.pathname === "/api/build") return json({ build: "harness-pwa-update" });
-  if (url.pathname === "/api/automacoes-operacao") return json({
+  if (url.pathname === "/api/automacoes-operacao") return json(leituraCentralInvalida ? {} : {
     agora: "2026-09-21T12:00:00Z", abordagem_automatica: false,
-    automacoes: { ativas: 1, invalidas: 0 }, fila: { pendentes: 0, quarentena: 1, mais_antiga: null },
+    automacoes: { ativas: 1, invalidas: 0 }, execucoes_24h: {}, fila: { pendentes: 0, quarentena: 1, mais_antiga: null },
     sara: { fila_legada: 0, revisao_humana: 0, sem_evidencia: 0, qualidade_pendente: 0 },
     integridade: { lead_recente_sem_negocio: 0, negocio_funil2_sem_card: 0 }, presenca: { elegiveis: 1, ativos: 1 },
     contratos: [{ nome: "Contrato sanitizado", ok: true }],

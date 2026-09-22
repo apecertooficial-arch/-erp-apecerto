@@ -31,10 +31,23 @@ function rotuloExecucao(chave: string) {
   return chave.replaceAll("_", " ").replace(/\b\w/g, (letra) => letra.toLocaleUpperCase("pt-BR"));
 }
 
+function saudeValida(value: unknown): value is Saude {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const body = value as Partial<Saude>;
+  return typeof body.agora === "string"
+    && typeof body.abordagem_automatica === "boolean"
+    && Boolean(body.automacoes && body.fila && body.sara && body.integridade && body.presenca)
+    && Boolean(body.execucoes_24h && typeof body.execucoes_24h === "object")
+    && Array.isArray(body.contratos)
+    && Array.isArray(body.quarentena)
+    && Array.isArray(body.revisoes);
+}
+
 async function consultarSaude(accessToken: string, signal?: AbortSignal) {
   const response = await fetch("/api/automacoes-operacao", { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal });
-  const body = await response.json().catch(() => ({})) as Saude & { error?: string };
-  if (!response.ok) throw new Error(body.error || "Não foi possível consultar a Central.");
+  const body = await response.json().catch(() => ({})) as unknown;
+  if (!response.ok) throw new Error((body as { error?: string }).error || "Não foi possível consultar a Central.");
+  if (!saudeValida(body)) throw new Error("A Central devolveu uma leitura incompleta.");
   return body;
 }
 

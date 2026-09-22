@@ -93,6 +93,11 @@ test("harness reproduz confirmação inválida ao reprocessar a Central", () => 
   assert.match(harness, /<CentralOperationsPanel accessToken="harness-test-only" view="exceptions"/);
 });
 
+test("harness reproduz leitura incompleta da saúde da Central", () => {
+  assert.match(harness, /centralRead/);
+  assert.match(harness, /leituraCentralInvalida \? \{\} : \{/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
