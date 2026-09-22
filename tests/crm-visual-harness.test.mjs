@@ -81,6 +81,12 @@ test("harness reproduz confirmação inválida ao salvar permissões", () => {
   assert.match(harness, /escritaPermissoesInvalida \? \{\} : \{ success: true \}/);
 });
 
+test("harness reproduz confirmação inválida ao salvar equipe", () => {
+  assert.match(harness, /teamWrite/);
+  assert.match(harness, /escritaEquipeInvalida \? \{\} : \{ success: true \}/);
+  assert.match(harness, /usuario-equipe-teste/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

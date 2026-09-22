@@ -62,3 +62,10 @@ test("interface bloqueia criação e convite enquanto a autoridade está indispo
 test("interface rejeita resposta 200 incompleta em vez de desmontar a equipe", () => {
   assert.match(ui, /if \(!\[body\.users, body\.brokers, body\.instances, body\.links, body\.audits\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
 });
+
+test("interface só confirma gravações da equipe depois de success explícito", () => {
+  assert.equal((ui.match(/\.success !== true/g) ?? []).length, 3);
+  assert.match(ui, /O servidor não confirmou a alteração do corretor/);
+  assert.match(ui, /O servidor não confirmou a alteração de acesso/);
+  assert.match(ui, /O servidor não confirmou o vínculo do documento/);
+});

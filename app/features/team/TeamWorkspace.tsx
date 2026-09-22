@@ -123,14 +123,16 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     if (!selected) return;
     setSaving(true); setToast("");
     const response = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveBroker", brokerId: selected.id, online, active, instanceIds: selectedInstances }) });
-    const body = await response.json() as { error?: string };
+    const body = await response.json() as { error?: string; success?: boolean };
     if (!response.ok) { setToast(body.error ?? "Não foi possível salvar."); setSaving(false); return; }
+    if (body.success !== true) { setToast("O servidor não confirmou a alteração do corretor."); setSaving(false); return; }
     if (selected.usuario_id) {
       // Permissões não são mais gravadas por aqui (evita o formato antigo por rótulo).
       // O usuário segue o perfil do papel; ajustes finos ficam em Perfis e Permissões.
       const accessResponse = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveAccess", userId: selected.usuario_id, role, activeUser, superiorId: superior || null }) });
-      const accessBody = await accessResponse.json() as { error?: string };
+      const accessBody = await accessResponse.json() as { error?: string; success?: boolean };
       if (!accessResponse.ok) { setToast(accessBody.error ?? "Status salvo, mas as permissões falharam."); setSaving(false); return; }
+      if (accessBody.success !== true) { setToast("O servidor não confirmou a alteração de acesso."); setSaving(false); return; }
     }
     setToast("Alterações salvas."); await load();
     setSaving(false);
@@ -147,8 +149,10 @@ export function TeamWorkspace({ accessToken }: { accessToken: string }) {
     const { error: uploadError } = await supabase.storage.from("corretor-docs").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
     if (uploadError) { setToast("Não foi possível enviar o documento agora."); setSaving(false); return; }
     const response = await fetch("/api/team", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveDocument", brokerId: selected.id, type, path, name: file.name }) });
-    const body = await response.json() as { error?: string };
-    if (!response.ok) setToast(body.error ?? "Arquivo enviado, mas não foi vinculado."); else { setToast("Documento salvo."); await load(); }
+    const body = await response.json() as { error?: string; success?: boolean };
+    if (!response.ok) setToast(body.error ?? "Arquivo enviado, mas não foi vinculado.");
+    else if (body.success !== true) setToast("O servidor não confirmou o vínculo do documento.");
+    else { setToast("Documento salvo."); await load(); }
     setSaving(false);
   }
 

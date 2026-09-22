@@ -78,6 +78,7 @@ const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
 const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
 const registroPushInvalido = parametros.get("pushRegister") === "invalido";
 const escritaPermissoesInvalida = parametros.get("permissionsWrite") === "invalido";
+const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
 const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
@@ -246,6 +247,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/notificacoes") return json(leituraAvisoInvalida ? { ok: false, erro: "inexistente" } : { ok: true });
     if (method === "POST" && url.pathname === "/api/ncrm/push/registrar") return json(registroPushInvalido ? {} : { ok: true });
     if (method === "PATCH" && url.pathname === "/api/permissions") return json(escritaPermissoesInvalida ? {} : { success: true });
+    if (method === "PATCH" && url.pathname === "/api/team") return json(escritaEquipeInvalida ? {} : { success: true });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "create") return json(criacaoVendaInvalida ? {} : { success: true, saleId: "venda-teste" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "move") return json(movimentoVendaInvalido ? {} : { success: true, stage: "doc_comp" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "addObs") return json(escritaVendaInvalida ? {} : { success: true });
@@ -308,7 +310,11 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     deals: [{ id: 601, lead_id: 501, corretor_id: 7, stage_id: 1, empreendimento_id: null, valor: null, status: "aberto" }],
     brokers: [{ id: 7, nome: "Corretor teste", usuario_id: null, online: true }], products: [], media: [], activities: [], approaches: [], stages: [],
   });
-  if (url.pathname === "/api/team") return json(estado === "invalido" ? {} : { users: [], brokers: [], instances: [], links: [], audits: [] });
+  if (url.pathname === "/api/team") return json(estado === "invalido" ? {} : tela === "team" ? {
+    users: [{ id: "usuario-equipe-teste", nome: "Corretora Equipe", role: "corretor", ativo: true, permissoes: null, email: "corretora@example.invalid", telefone: null, superior_id: null }],
+    brokers: [{ id: 7, nome: "Corretora Equipe", email: "corretora@example.invalid", telefone: null, usuario_id: "usuario-equipe-teste", ativo: true, online: false, no_escritorio: false, ultima_presenca: null, doc_rg_path: null, doc_rg_nome: null, doc_rg_em: null, doc_contrato_path: null, doc_contrato_nome: null, doc_contrato_em: null }],
+    instances: [], links: [], audits: [],
+  } : { users: [], brokers: [], instances: [], links: [], audits: [] });
   if (url.pathname === "/api/permissions") return json(estado === "invalido" ? {} : {
     perfis: tela === "permissions" ? [{ id: "corretor", nome: "Corretor", is_system: true, permissoes: { crm: ["ver"] }, atualizado_em: "2026-09-21T12:00:00Z" }] : [],
     usuarios: [],
