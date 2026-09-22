@@ -53,6 +53,11 @@ test("pipeline de opção única é contexto visual, não controle inerte", () =
   assert.match(css, /\.funil-oficial \.f2-v3-pipeline>strong/);
 });
 
+test("contador de filtros inclui temperatura e período alterados", () => {
+  assert.match(toolbar, /const filtrosAtivos = Number\(props\.temperatura !== "todas"\) \+ Number\(props\.periodo !== "30"\)/);
+  assert.match(toolbar, /Filtros\{filtrosAtivos > 0 \? ` · \$\{filtrosAtivos\}` : ""\}/);
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);

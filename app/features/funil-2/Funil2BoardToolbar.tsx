@@ -25,6 +25,7 @@ type Props = {
 };
 
 export function Funil2BoardToolbar(props: Props) {
+  const filtrosAtivos = Number(props.temperatura !== "todas") + Number(props.periodo !== "30");
   return <section className="f2-v3-toolbar" aria-label="Busca, filtros e ações do quadro">
     <div className="f2-v3-pipeline"><span>Pipeline</span><strong>Comercial</strong></div>
     <span className="f2-v3-separador" aria-hidden="true" />
@@ -36,7 +37,7 @@ export function Funil2BoardToolbar(props: Props) {
     </div>
     <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={props.busca} onChange={(evento) => props.onBusca(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
     {(props.busca || props.temperatura !== "todas" || props.periodo !== "30") && <button type="button" className="f2-v3-limpar" onClick={props.onLimparFiltros}>Limpar filtros</button>}
-    <details className="f2-v3-filtros" open={props.filtrosAbertos} onToggle={(evento) => props.onFiltrosAbertos(evento.currentTarget.open)}><summary>Filtros{props.temperatura !== "todas" ? " · 1" : ""}</summary>{props.filtrosAbertos && <div className="f2-v3-filtro-painel">
+    <details className="f2-v3-filtros" open={props.filtrosAbertos} onToggle={(evento) => props.onFiltrosAbertos(evento.currentTarget.open)}><summary>Filtros{filtrosAtivos > 0 ? ` · ${filtrosAtivos}` : ""}</summary>{props.filtrosAbertos && <div className="f2-v3-filtro-painel">
       <FiltrosTemperatura leads={props.leads} valor={props.temperatura} onChange={props.onTemperatura} />
       <label><span>Ordenação</span><select aria-label="Ordenar negócios" value={props.ordenacao} onChange={(evento) => props.onOrdenacao(evento.target.value as Props["ordenacao"])}><option value="urgente">Atividade mais urgente</option><option value="nome">Nome do lead</option></select></label>
       <label><span>Período</span><select aria-label="Período do quadro" value={props.periodo} onChange={(evento) => props.onPeriodo(evento.target.value as Props["periodo"])}><option value="30">Últimos 30 dias · movimentação</option><option value="90">Últimos 90 dias · movimentação</option><option value="todos">Todo o período</option></select></label>

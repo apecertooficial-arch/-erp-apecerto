@@ -1,17 +1,17 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `6230f2d4`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: remoção do falso seletor de pipeline — “Comercial”, a única opção disponível, agora é contexto visual estático na barra do Kanban.
-- Decisão: não prometer interação onde não há escolha; preservar a hierarquia com marcação semântica e tokens oficiais.
-- Arquivos: `app/features/funil-2/Funil2BoardToolbar.tsx`, `app/styles/funil.css`, `tests/crm-correcao-6-2-para-10.test.mjs`.
-- Verificações: o contrato falhou antes da mudança; 15 testes dirigidos e o lint passaram; no navegador, “Pipeline / Comercial” permaneceu visível sem qualquer `select` inerte.
-- Produção: `6230f2d4` publicado e confirmado antes desta fatia; o CRM real limpou o recorte, restaurou 65 cartões e não apresentou loading ou alerta.
+- Base: `origin/main` em `70cce834`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: contador confiável de filtros no Kanban — temperatura e período alterados passam a compor o indicador visível.
+- Decisão: derivar o contador diretamente das props já existentes, sem estado duplicado.
+- Arquivos: `app/features/funil-2/Funil2BoardToolbar.tsx`, `tests/crm-correcao-6-2-para-10.test.mjs`.
+- Verificações: o contrato falhou antes da mudança; 16 testes dirigidos e o lint passaram; no navegador, o resumo evoluiu de “Filtros · 1” para “Filtros · 2” e voltou a “Filtros” após limpar.
+- Produção: `70cce834` publicado e confirmado antes desta fatia; o CRM real exibiu “Pipeline / Comercial” sem seletor, loading ou alerta.
 - Risco: baixo; apenas conteúdo, semântica e recuperação visual mudam, com os mesmos dados e filtros.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[█████████░░░░░░░░░░░] 43/100`
-  - CRM / Kanban: `[█████████████░░░░░░░] 65/100`
-  - Identidade visual: `[████████████░░░░░░░░] 60/100`
+  - Transformação completa: `[█████████░░░░░░░░░░░] 44/100`
+  - CRM / Kanban: `[█████████████░░░░░░░] 66/100`
+  - Identidade visual: `[████████████░░░░░░░░] 61/100`
   - Meu Dia: `[██████████████░░░░░░] 70/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
   - Aplicativo móvel: `[████████████░░░░░░░░] 62/100`
