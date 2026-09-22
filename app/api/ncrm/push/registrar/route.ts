@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   if (error) return Response.json({ ok: false, error: "Falha ao registrar o aparelho." }, { status: 502 });
   const res = (data ?? {}) as { ok?: boolean; erro?: string };
-  if (res.ok === false) {
+  if (res.ok !== true) {
     return Response.json({ ok: false, erro: res.erro }, { status: res.erro === "nao_autenticado" ? 403 : 409 });
   }
   return Response.json(data);

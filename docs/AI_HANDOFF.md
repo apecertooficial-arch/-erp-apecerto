@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `cdcbad8a`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: o menu desktop renderiza o badge real de Notificações que o módulo já publica.
-- Decisão: reutilizar o contador genérico recebido pelo `AppShell`, sem nova carga ou estado paralelo; valores acima de 99 aparecem como `99+`.
-- Arquivos: `app/components/AppShell.tsx`, `tests/inicio-mobile.test.mjs`, `tests/crm-visual-harness/main.tsx`, `tests/crm-visual-harness.test.mjs`.
-- Verificações: o teste falhou primeiro; no shell real do harness, badge publicado 1 era descartado antes da correção e passou a aparecer como `Notificações 1`, com título acessível; 39 testes dirigidos passaram.
-- Produção: `cdcbad8a` publicado e confirmado antes desta fatia; a tela real carregou 100 ações/não lidos, mas o menu desktop não exibiu o contador, reproduzindo a lacuna sem mutação.
-- Risco: baixo; somente apresentação de um valor já disponível no contexto.
-- Próximo passo: executar lint e build, publicar esta fatia, validar o badge desktop em produção sem mutação e seguir para a próxima falha P0/P1 comprovada.
+- Base: `origin/main` em `a3e8f30d`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: o aplicativo só confirma “Avisos de lead novo ligados” quando a inscrição do aparelho retorna `ok: true` na interface e na rota.
+- Decisão: falhar fechado para HTTP 200 com payload ausente/incompleto, preservando a inscrição do navegador e permitindo nova tentativa.
+- Arquivos: `app/features/home/AvisoNotificacoes.tsx`, `app/api/ncrm/push/registrar/route.ts`, `tests/push-e-avisos.test.mjs`, `tests/crm-visual-harness/main.tsx`, `tests/crm-visual-harness.test.mjs`.
+- Verificações: o teste falhou primeiro; no harness com permissão, service worker e inscrição sanitizados, `{}` mantém o convite e mostra erro, enquanto `{ok:true}` exibe a confirmação ligada; testes dirigidos passaram.
+- Produção: `a3e8f30d` publicado e confirmado antes desta fatia; o menu real exibiu `99+` para 100 não lidos sem marcar aviso.
+- Risco: baixo; respostas antigas sem confirmação explícita deixam de produzir sucesso falso.
+- Próximo passo: executar testes finais, lint e build, publicar esta fatia, validar a tela de ativação sem registrar aparelho real e seguir para a próxima falha P0/P1 comprovada.

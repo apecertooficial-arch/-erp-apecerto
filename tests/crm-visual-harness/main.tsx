@@ -22,6 +22,7 @@ import { ApproachesWorkspace } from "../../app/features/approaches/ApproachesWor
 import { Funil2Mobile } from "../../app/features/funil-2/Funil2Mobile";
 import { LiveChatWorkspace } from "../../app/features/chat/LiveChatWorkspace";
 import { SalesProcessView } from "../../app/features/sales/SalesProcessWorkspace";
+import { AvisoNotificacoes } from "../../app/features/home/AvisoNotificacoes";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -74,6 +75,7 @@ const criacaoVendaInvalida = parametros.get("salesCreate") === "invalido";
 const movimentoVendaInvalido = parametros.get("salesMove") === "invalido";
 const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
 const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
+const registroPushInvalido = parametros.get("pushRegister") === "invalido";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
@@ -85,6 +87,14 @@ const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") ===
     proxima_acao_em: new Date(Date.now() - (indice + 1) * 60_000).toISOString(),
   })),
 } : null;
+
+if (tela === "push-register") {
+  const chave = new Uint8Array([1, 2, 3]).buffer;
+  const inscricao = { endpoint: "https://push.example.invalid/subscription", getKey: () => chave };
+  Object.defineProperty(window, "PushManager", { configurable: true, value: function PushManager() {} });
+  Object.defineProperty(window, "Notification", { configurable: true, value: { permission: "default", requestPermission: async () => "granted" } });
+  Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => null, subscribe: async () => inscricao } }) } });
+}
 const payloadSaraPendente = {
   ...payloadNormal,
   leads: payloadNormal.leads.map((lead, indice) => indice === 0 ? {
@@ -220,6 +230,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "send") return json(envioChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/notificacoes") return json(leituraAvisoInvalida ? { ok: false, erro: "inexistente" } : { ok: true });
+    if (method === "POST" && url.pathname === "/api/ncrm/push/registrar") return json(registroPushInvalido ? {} : { ok: true });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "create") return json(criacaoVendaInvalida ? {} : { success: true, saleId: "venda-teste" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "move") return json(movimentoVendaInvalido ? {} : { success: true, stage: "doc_comp" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "addObs") return json(escritaVendaInvalida ? {} : { success: true });
@@ -264,6 +275,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
+  if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
   if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
     sales: vendaEsteiraDetalhe ? [{ id: "venda-teste", created_at: "2026-09-21T12:00:00Z", data_venda: "2026-09-21", cliente_nome: "Cliente venda sanitizado", empreendimento_id: "produto-teste", empreendimento_nome: "Produto sanitizado", vgv: 350000, forma_pgto: null, status: "em_andamento", obs: null }] : [],
     processes: vendaEsteiraDetalhe ? [{ id: "processo-teste", venda_id: "venda-teste", negocio_id: 801, etapa: "inicio", tipo_venda: "construtora", responsavel_usuario_id: null, prazo_em: null, atualizado_em: "2026-09-21T12:00:00Z", aprovacao_status: "aprovada" }] : [],
@@ -350,6 +362,8 @@ const app = tela === "agenda-mobile"
     ? <NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} />
   : tela === "avisos-desktop"
     ? <ErpShell><NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} /></ErpShell>
+  : tela === "push-register"
+    ? <AvisoNotificacoes accessToken="harness-test-only" />
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"

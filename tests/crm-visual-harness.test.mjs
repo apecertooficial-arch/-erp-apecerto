@@ -62,6 +62,12 @@ test("harness expõe o badge publicado pelos Avisos", () => {
   assert.match(harness, /badges: tela === "avisos-desktop" \? \{ "Notificações": 1 \} : \{\}/);
 });
 
+test("harness reproduz confirmação inválida do registro push", () => {
+  assert.match(harness, /tela === "push-register"/);
+  assert.match(harness, /registroPushInvalido/);
+  assert.match(harness, /<AvisoNotificacoes accessToken="harness-test-only"/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

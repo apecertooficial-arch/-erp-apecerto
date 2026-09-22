@@ -150,7 +150,8 @@ export function AvisoNotificacoes({ accessToken }: { accessToken: string }) {
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(dados),
       });
-      if (!r.ok) { setErro("Não foi possível registrar este aparelho."); return; }
+      const resultado = await r.json().catch(() => ({})) as { ok?: boolean };
+      if (!r.ok || resultado.ok !== true) { setErro("Não foi possível registrar este aparelho."); return; }
 
       setEstado("ligado");
     } catch {

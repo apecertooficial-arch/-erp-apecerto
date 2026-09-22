@@ -17,6 +17,7 @@ import { destinoAviso } from "../app/features/notifications/telaAvisos.logica.ts
 const ler = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const SW = ler("../public/sw.js");
 const ROTA = ler("../app/api/notificacoes/route.ts");
+const REGISTRO_PUSH = ler("../app/api/ncrm/push/registrar/route.ts");
 const ENTRADA = `${ler("../app/(erp)/crm/page.tsx")}\n${ler("../app/features/funil-2/FunilEntry.tsx")}`;
 const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
@@ -63,6 +64,12 @@ test("app confirma visualmente que o aparelho esta inscrito para lead novo", () 
   assert.match(AVISO_APP, /Avisos de lead novo ligados/);
   assert.match(AVISO_APP, /Este aparelho vai avisar quando um lead cair para você/);
   assert.match(AVISO_APP, /Notification\.requestPermission\(\)/);
+});
+
+test("app só confirma o aparelho depois de ok persistido", () => {
+  assert.match(AVISO_APP, /const resultado = await r\.json\(\)\.catch\(\(\) => \(\{\}\)\)/);
+  assert.match(AVISO_APP, /if \(!r\.ok \|\| resultado\.ok !== true\)/);
+  assert.match(REGISTRO_PUSH, /if \(res\.ok !== true\)[\s\S]*res\.erro === "nao_autenticado" \? 403 : 409/);
 });
 
 test("urgente vibra, faz som e permanece visível quando a plataforma permite", () => {
