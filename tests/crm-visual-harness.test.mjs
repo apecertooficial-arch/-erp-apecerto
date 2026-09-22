@@ -50,6 +50,12 @@ test("harness reproduz compromisso que vence com a Agenda aberta", () => {
   assert.match(harness, /faltam_min: 0\.05/);
 });
 
+test("harness reproduz confirmação inválida de leitura de aviso", () => {
+  assert.match(harness, /leituraAvisoInvalida/);
+  assert.match(harness, /Aviso sanitizado pendente/);
+  assert.match(harness, /dataset\.avisoDestino = href/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

@@ -73,6 +73,7 @@ const payloadVendasInvalido = parametros.get("salesPayload") === "invalido";
 const criacaoVendaInvalida = parametros.get("salesCreate") === "invalido";
 const movimentoVendaInvalido = parametros.get("salesMove") === "invalido";
 const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
+const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
@@ -218,6 +219,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: parametros.has("chatCancel") ? [{ id: 701, texto: "Retorno sanitizado", tipo: "text", quando: "2026-09-22T15:00:00Z", status: "agendado" }] : [] });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "send") return json(envioChatInvalido ? {} : { success: true });
+    if (method === "POST" && url.pathname === "/api/notificacoes") return json(leituraAvisoInvalida ? { ok: false, erro: "inexistente" } : { ok: true });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "create") return json(criacaoVendaInvalida ? {} : { success: true, saleId: "venda-teste" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "move") return json(movimentoVendaInvalido ? {} : { success: true, stage: "doc_comp" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "addObs") return json(escritaVendaInvalida ? {} : { success: true });
@@ -261,7 +263,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
-  if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
+  if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
     sales: vendaEsteiraDetalhe ? [{ id: "venda-teste", created_at: "2026-09-21T12:00:00Z", data_venda: "2026-09-21", cliente_nome: "Cliente venda sanitizado", empreendimento_id: "produto-teste", empreendimento_nome: "Produto sanitizado", vgv: 350000, forma_pgto: null, status: "em_andamento", obs: null }] : [],
     processes: vendaEsteiraDetalhe ? [{ id: "processo-teste", venda_id: "venda-teste", negocio_id: 801, etapa: "inicio", tipo_venda: "construtora", responsavel_usuario_id: null, prazo_em: null, atualizado_em: "2026-09-21T12:00:00Z", aprovacao_status: "aprovada" }] : [],
@@ -345,7 +347,7 @@ const app = tela === "agenda-mobile"
   : tela === "sales"
     ? <ErpShell><SalesProcessView accessToken="harness-test-only" sessionRole={papel} /></ErpShell>
   : tela === "avisos-mobile"
-    ? <NotificationsWorkspace accessToken="harness-test-only" />
+    ? <NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} />
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"

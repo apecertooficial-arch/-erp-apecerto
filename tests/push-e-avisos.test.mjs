@@ -125,6 +125,12 @@ test("desktop e celular compartilham uma única tela e uma única fonte de aviso
   assert.doesNotMatch(TELA_AVISOS, /\/api\/crm|\/api\/live-chat|erp_auditoria/);
 });
 
+test("Avisos só remove o não lido depois de confirmação persistida", () => {
+  assert.match(TELA_AVISOS, /const resposta = await fetch\("\/api\/notificacoes"/);
+  assert.match(TELA_AVISOS, /if \(resposta\.ok && resultado\.ok === true\) setAvisos/);
+  assert.doesNotMatch(TELA_AVISOS, /setAvisos[\s\S]{0,300}void fetch\("\/api\/notificacoes"/);
+});
+
 /* ---------------- o toque no push ---------------- */
 
 test("no celular, ?lead= abre a ficha no Funil 2.0", () => {

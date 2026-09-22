@@ -76,13 +76,18 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
     const destino = destinoAviso(aviso);
     if (!destino) return;
     if (!aviso.vista_em) {
-      setAvisos((atuais) => (atuais ?? []).map((item) => item.id === aviso.id ? { ...item, vista_em: new Date().toISOString() } : item));
-      void fetch("/api/notificacoes", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ id: aviso.id }),
-        keepalive: true,
-      });
+      try {
+        const resposta = await fetch("/api/notificacoes", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ id: aviso.id }),
+          keepalive: true,
+        });
+        const resultado = await resposta.json().catch(() => ({})) as { ok?: boolean };
+        if (resposta.ok && resultado.ok === true) setAvisos((atuais) => (atuais ?? []).map((item) => item.id === aviso.id ? { ...item, vista_em: new Date().toISOString() } : item));
+      } catch {
+        /* A ação continua abrindo; ao voltar, a API ainda mostrará o aviso não lido. */
+      }
     }
     onNavigate(destino);
   }, [accessToken, onNavigate]);
