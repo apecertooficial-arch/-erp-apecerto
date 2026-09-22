@@ -1,18 +1,18 @@
 # Checkpoint ERP ApeCerto
 
-- Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `f8555819`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: prioridade móvel fiel ao recorte — o indicador agora conta apenas clientes visíveis com ação vencida.
-- Decisão: reutilizar `visiveis`, `leadOperacionalNoMeuDia` e o mesmo prazo já canônico, sem estado ou predicado paralelo.
-- Arquivos: `app/features/funil-2/Funil2Mobile.tsx`, `tests/crm-correcao-6-2-para-10.test.mjs`.
-- Verificações: a falha real mostrou 21 clientes visíveis e prioridade global 108; 37 testes dirigidos e o lint passaram; no navegador, “Quente” mostrou visíveis 21/prioridade 21 e a limpeza restaurou 108/108.
-- Produção: `f8555819` publicado e confirmado antes desta fatia; a limpeza móvel foi validada localmente com 21 → 60 cartões e sem duplicação.
-- Risco: baixo; apenas conteúdo, semântica e recuperação visual mudam, com os mesmos dados e filtros.
+- Objetivo: tornar o andamento verificável por administradores e seguir pelas falhas P0/P1 comprovadas do ERP.
+- Base: `origin/main` em `4804e6be`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: painel responsivo `/progresso`, fonte versionada validada, atualização de build a cada 15 segundos, aviso após 10 minutos e acesso fail-closed exclusivo de administrador.
+- Decisão: manter o último commit integralmente confirmado na fonte; o hash corrente de produção vem de `/api/build`, evitando um hash autorreferente impossível no próprio commit.
+- Arquivos: `app/(erp)/progresso/page.tsx`, `app/features/progress/*`, `app/styles/project-progress.css`, navegação do ERP e `tests/project-progress-dashboard.test.mjs`.
+- Verificações: 44 testes dirigidos, lint, `git diff --check` e build passaram; validação real desktop/móvel e hash de produção ainda pendem da publicação desta fatia.
+- Produção: `4804e6be` é o último hash confirmado; publicação do painel pendente neste checkpoint local.
+- Risco: baixo; rota somente leitura e sem dados pessoais, segredos ou logs brutos.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[██████████░░░░░░░░░░] 49/100`
+  - Transformação completa: `[██████████░░░░░░░░░░] 50/100`
   - CRM / Kanban: `[██████████████░░░░░░] 72/100`
-  - Identidade visual: `[█████████████░░░░░░░] 66/100`
+  - Identidade visual: `[█████████████░░░░░░░] 67/100`
   - Meu Dia: `[██████████████░░░░░░] 70/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
   - Aplicativo móvel: `[█████████████░░░░░░░] 66/100`
-- Próximo passo: publicar esta fatia e, havendo margem segura, criar o painel administrativo `/progresso` com fonte versionada e fail-closed.
+- Próximo passo: publicar e confirmar o painel em produção; depois retomar a próxima falha comprovada no CRM / Kanban.

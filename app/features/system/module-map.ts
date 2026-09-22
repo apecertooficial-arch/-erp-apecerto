@@ -72,6 +72,10 @@ export const moduleMap = {
     description: "Rastros operacionais disponíveis para auditoria técnica.",
     tables: ["wa_eventos", "perf_eventos", "motor_execucoes"],
   },
+  Progresso: {
+    description: "Andamento técnico versionado da reconstrução do ERP.",
+    tables: [],
+  },
   "Perfis e Permissões": {
     description: "Controle de acesso: perfis, permissões por módulo/ação e overrides por usuário.",
     tables: ["perfis", "usuarios"],

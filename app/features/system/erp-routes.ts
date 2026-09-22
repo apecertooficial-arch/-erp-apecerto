@@ -79,6 +79,7 @@ export const rotasModulo: Record<ModuleName, RotaModulo> = {
      Quem tem o slug hoje: admin, auditor, diretor, financeiro. */
   Financeiro: { path: "/financeiro", slugs: ["financeiro"], classe: "B", mobile: false },
   Auditoria: { path: "/auditoria", slugs: ["auditoria"], classe: "B", mobile: false },
+  Progresso: { path: "/progresso", slugs: [], classe: "C", mobile: true },
 
   "Chat ao Vivo": { path: "/chat", slugs: ["chat"], classe: "C", rotuloCurto: "Chat", mobile: false },
   Disparos: { path: "/disparos", slugs: ["disparos"], classe: "C", mobile: false },
@@ -142,6 +143,7 @@ export function podeVer(
 ): boolean {
   const { role, permissoes, carregado, isManager = false, temCorretorVinculado = false } = opcoes;
 
+  if (nome === "Progresso") return role === "admin";
   if (role === "admin") return true;
   // A API e a RPC repetem esta autorização. Na interface, a Central aparece
   // somente para quem exerce gestão; corretor não recebe nem o link.

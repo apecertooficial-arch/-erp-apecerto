@@ -84,6 +84,7 @@ import "./styles/app-mobile-aprovado.css";
    aprovada porque reusa os mesmos valores e completa o que faltava dela. */
 import "./styles/app-mobile-gestor.css";
 import "./styles/apecerto-studio.css";
+import "./styles/project-progress.css";
 import { RegistroPwa } from "./components/RegistroPwa";
 
 export const metadata: Metadata = {
