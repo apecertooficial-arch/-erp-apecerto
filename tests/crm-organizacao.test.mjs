@@ -40,6 +40,7 @@ test("aplicativo móvel não transforma carga parcial em fila válida", () => {
   assert.match(mobile, /payload\.leads!\.every\(leadFunil2EssencialValido\)/);
   assert.match(mobile, /payload\.etapas!\.every\(etapaMobileValida\)/);
   assert.match(mobile, /payload\.momentos!\.every\(momentoMobileValido\)/);
+  assert.match(mobile, /payload\.eventos!\.every\(eventoMobileValido\)/);
   assert.match(mobile, /\[payload\.leads, payload\.momentos, payload\.eventos, payload\.notas, payload\.tagCatalogo, payload\.etapas\]\.every\(Array\.isArray\)/);
   assert.match(mobile, /if \(!payloadMobileValido\(json\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
 });

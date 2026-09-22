@@ -117,6 +117,10 @@ test("harness reproduz momento malformado no Meu Dia", () => {
   assert.match(harness, /colecaoCrmMalformada === "momentos" \? \{ \.\.\.payloadNormal, momentos: \[null\] \}/);
 });
 
+test("harness reproduz evento malformado ao abrir a ficha", () => {
+  assert.match(harness, /colecaoCrmMalformada === "eventos" \? \{ \.\.\.payloadNormal, eventos: \[null\] \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
