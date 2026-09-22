@@ -58,6 +58,7 @@ const conversaInvalida = parametros.get("conversation") === "invalido";
 const conversaItemInvalido = parametros.get("conversation") === "item";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
 const itemAgendaInvalido = parametros.get("agendaItem") === "item";
+const catalogoAgendaInvalido = parametros.get("agendaCatalog") === "item";
 const opcoesClienteInvalidas = parametros.get("clientOptions") === "invalido";
 const duplicidadeClienteInvalida = parametros.get("clientDuplicate") === "invalido";
 const preparacaoNegociacaoInvalida = parametros.get("salesPrepare") === "invalido";
@@ -277,6 +278,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "loading") return new Promise<Response>(() => undefined);
     if (estado === "offline") throw new TypeError("Sem conexão no harness visual.");
     if (estado === "invalido") return json({});
+    if (url.searchParams.has("workspace")) return json(catalogoAgendaInvalido ? { ...payloadAgenda, leads: [null] } : payloadAgenda);
     if (url.searchParams.has("feedbackAudioVisitaId")) {
       if (estadoAudio === "indisponivel") return json({ ok: true, disponivel: false, audios: [] });
       const audios = estadoAudio === "transcrito" ? [{

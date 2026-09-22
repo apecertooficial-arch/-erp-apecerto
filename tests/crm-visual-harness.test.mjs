@@ -55,6 +55,11 @@ test("harness reproduz item malformado na Agenda móvel", () => {
   assert.match(harness, /itemAgendaInvalido \? \{ \.\.\.payloadAgenda, itens: \[null\] \}/);
 });
 
+test("harness reproduz item malformado no catálogo da Agenda móvel", () => {
+  assert.match(harness, /catalogoAgendaInvalido/);
+  assert.match(harness, /catalogoAgendaInvalido \? \{ \.\.\.payloadAgenda, leads: \[null\] \}/);
+});
+
 test("harness reproduz confirmação inválida de leitura de aviso", () => {
   assert.match(harness, /leituraAvisoInvalida/);
   assert.match(harness, /Aviso sanitizado pendente/);

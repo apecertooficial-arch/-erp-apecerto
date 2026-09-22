@@ -49,7 +49,11 @@ test("Agenda desktop rejeita resposta 200 incompleta em vez de quebrar a tela", 
 });
 
 test("nova visita no app rejeita catálogo incompleto em vez de fingir que não há clientes", () => {
-  assert.match(mobile, /if \(!\[j\.leads, j\.deals, j\.cards, j\.products\]\.every\(Array\.isArray\)\) throw new Error\("payload_invalido"\)/);
+  for (const colecao of ["leads", "deals", "cards", "products"]) assert.match(mobile, new RegExp(`!Array\\.isArray\\(j\\.${colecao}\\)`));
+  assert.match(mobile, /j\.leads\.every\(leadAgendaValido\)/);
+  assert.match(mobile, /j\.deals\.every\(negocioAgendaValido\)/);
+  assert.match(mobile, /j\.cards\.every\(cardAgendaValido\)/);
+  assert.match(mobile, /j\.products\.every\(produtoAgendaValido\)/);
 });
 
 test("nova visita desktop mostra falha de rede sem abandonar o formulário", () => {

@@ -40,6 +40,12 @@ type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; cards: CardAgenda
 type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_percentual: number };
 type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
 
+const registro = (valor: unknown): valor is Record<string, unknown> => Boolean(valor) && typeof valor === "object" && !Array.isArray(valor);
+const leadAgendaValido = (valor: unknown): valor is LeadAgenda => registro(valor) && Number.isSafeInteger(valor.id) && typeof valor.nome === "string";
+const negocioAgendaValido = (valor: unknown): valor is NegocioAgenda => registro(valor) && Number.isSafeInteger(valor.id) && Number.isSafeInteger(valor.lead_id);
+const cardAgendaValido = (valor: unknown): valor is CardAgenda => registro(valor) && typeof valor.id === "string" && Number.isSafeInteger(valor.origem_negocio_id);
+const produtoAgendaValido = (valor: unknown): valor is ProdutoAgenda => registro(valor) && typeof valor.id === "string" && typeof valor.nome === "string";
+
 function compromissoValido(valor: unknown): valor is Compromisso {
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
   const compromisso = valor as Record<string, unknown>;
@@ -205,7 +211,14 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
       .then(async (r) => {
         if (!r.ok) throw new Error(String(r.status));
         const j = await r.json() as { leads?: LeadAgenda[]; deals?: NegocioAgenda[]; cards?: CardAgenda[]; products?: ProdutoAgenda[] };
-        if (![j.leads, j.deals, j.cards, j.products].every(Array.isArray)) throw new Error("payload_invalido");
+        if (!Array.isArray(j.leads)
+          || !Array.isArray(j.deals)
+          || !Array.isArray(j.cards)
+          || !Array.isArray(j.products)
+          || !j.leads.every(leadAgendaValido)
+          || !j.deals.every(negocioAgendaValido)
+          || !j.cards.every(cardAgendaValido)
+          || !j.products.every(produtoAgendaValido)) throw new Error("payload_invalido");
         setCatalogo({ leads: j.leads, deals: j.deals, cards: j.cards, products: j.products } as Catalogo);
       })
       .catch(() => setErroEscrita("Não foi possível carregar seus clientes agora."));
