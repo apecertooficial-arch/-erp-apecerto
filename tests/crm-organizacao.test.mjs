@@ -49,6 +49,8 @@ test("aplicativo móvel não transforma carga parcial em fila válida", () => {
 
 test("ficha não transforma histórico incompleto em linha do tempo vazia", () => {
   assert.match(desktop, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
+  assert.match(mobile, /resposta\.json\.eventos\.every\(eventoMobileValido\)/);
+  assert.match(mobile, /resposta\.json\.notas\.every\(notaMobileValida\)/);
   assert.match(desktop, /historicoErro && <div className="f2-ficha-vazio" role="alert">/);
   assert.match(desktop, /setHistoricoTentativa\(\(atual\) => atual \+ 1\)/);
 });

@@ -51,6 +51,7 @@ const qualidadeExemplo = parametros.get("quality") === "sample";
 const corretorEmFoco = parametros.get("broker");
 const saraPendente = parametros.get("sara") === "pendente";
 const historicoInvalido = parametros.get("history") === "invalido";
+const historicoItemInvalido = parametros.get("history") === "item";
 const carteiraInvalida = parametros.get("legacy") === "invalido";
 const conversaInvalida = parametros.get("conversation") === "invalido";
 const pendenciasAgendaInvalidas = parametros.get("agendaPending") === "invalido";
@@ -296,7 +297,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "erro") return json({ error: "Falha sanitizada ao carregar o Funil." }, 502);
     if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
-    if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
+    if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : historicoItemInvalido ? { eventos: [null], notas: payloadNormal.notas } : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
     return json(colecaoCrmMalformada === "etapas" ? { ...payloadNormal, etapas: [null] } : colecaoCrmMalformada === "momentos" ? { ...payloadNormal, momentos: [null] } : colecaoCrmMalformada === "eventos" ? { ...payloadNormal, eventos: [null] } : colecaoCrmMalformada === "notas" ? { ...payloadNormal, notas: [null] } : colecaoCrmMalformada === "tags" ? { ...payloadNormal, tagCatalogo: [null] } : tarefaMalformada ? { ...payloadNormal, leads: [null] } : payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });

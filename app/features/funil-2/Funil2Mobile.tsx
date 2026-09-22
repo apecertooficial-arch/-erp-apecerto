@@ -979,7 +979,13 @@ export function Funil2Mobile({
       .then((resposta) => {
         if (!ativo) return;
         if (!resposta.ok) { setHistoricoErro(resposta.json.error ?? "Não foi possível carregar o histórico."); return; }
-        if (!Array.isArray(resposta.json.eventos) || !Array.isArray(resposta.json.notas)) { setHistoricoErro("Não foi possível confirmar o histórico deste atendimento."); return; }
+        if (!Array.isArray(resposta.json.eventos)
+          || !Array.isArray(resposta.json.notas)
+          || !resposta.json.eventos.every(eventoMobileValido)
+          || !resposta.json.notas.every(notaMobileValida)) {
+          setHistoricoErro("Não foi possível confirmar o histórico deste atendimento.");
+          return;
+        }
         setHistoricoErro(null);
         setHistoricoDetalhe({ leadId: leadHistoricoId, eventos: resposta.json.eventos ?? [], notas: resposta.json.notas ?? [] });
       }).catch(() => { if (ativo) setHistoricoErro("Não foi possível carregar o histórico."); });
