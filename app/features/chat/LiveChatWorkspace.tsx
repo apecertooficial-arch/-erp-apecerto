@@ -192,9 +192,9 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     setScheduledLoadError(null);
     try {
       const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "listScheduled", leadId: lid }) });
-      const result = await response.json() as { agendadas?: Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }>; error?: string };
-      if (!response.ok) throw new Error(result.error || "Não foi possível carregar os agendamentos.");
-      setScheduled(result.agendadas ?? []);
+      const result = await response.json().catch(() => ({})) as { agendadas?: Array<{ id: number; texto: string | null; tipo: string; quando: string; status: string }>; error?: string };
+      if (!response.ok || !Array.isArray(result.agendadas)) throw new Error(response.ok ? "Não foi possível confirmar os agendamentos recebidos." : result.error || "Não foi possível carregar os agendamentos.");
+      setScheduled(result.agendadas);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Não foi possível carregar os agendamentos.";
       setScheduledLoadError(message);

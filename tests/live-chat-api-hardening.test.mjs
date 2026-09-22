@@ -56,7 +56,7 @@ test("proposta parcial exige reconciliação em vez de falso fracasso total", ()
 test("interface não converte falha de agendamento em lista vazia ou cancelamento local", () => {
   assert.match(ui, /if \(!Array\.isArray\(result\.messages\)\) throw new Error\("Não foi possível confirmar as mensagens recebidas\."\)/);
   assert.match(ui, /messages\.length === 0 && scheduled\.length === 0 && !messageLoadError && !scheduledLoadError/);
-  assert.match(ui, /if \(!response\.ok\) throw new Error\(result\.error \|\| "Não foi possível carregar os agendamentos\."\)/);
+  assert.match(ui, /if \(!response\.ok \|\| !Array\.isArray\(result\.agendadas\)\) throw new Error\(/);
   assert.doesNotMatch(ui, /catch \{ setScheduled\(\[\]\); \}/);
   assert.match(ui, /if \(!response\.ok\) throw new Error\(result\.error \|\| "Não foi possível cancelar o agendamento\."\)/);
   assert.ok(ui.indexOf("if (!response.ok) throw new Error(result.error || \"Não foi possível cancelar o agendamento.\")") < ui.indexOf("setScheduled((prev) => prev.filter"));
@@ -87,6 +87,12 @@ test("Chat rejeita carga inicial parcial em vez de publicar estado inválido", (
   assert.match(ui, /const payloadChatValido = \(result: unknown\)/);
   assert.match(ui, /if \(!response\.ok \|\| !payloadChatValido\(result\)\) throw new Error\(/);
   assert.match(ui, /Não foi possível confirmar os dados do Chat ao Vivo/);
+});
+
+test("Chat não converte carga parcial de agendamentos em lista vazia", () => {
+  assert.match(ui, /if \(!response\.ok \|\| !Array\.isArray\(result\.agendadas\)\) throw new Error\(/);
+  assert.match(ui, /Não foi possível confirmar os agendamentos recebidos/);
+  assert.doesNotMatch(ui, /setScheduled\(result\.agendadas \?\? \[\]\)/);
 });
 
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {

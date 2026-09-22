@@ -64,6 +64,7 @@ const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
 const criacaoAgendaOffline = parametros.get("agendaCreate") === "offline";
 const visitaChatInvalida = parametros.get("chatVisit") === "invalido";
 const payloadChatInvalido = parametros.get("chatPayload") === "invalido";
+const agendamentosChatInvalidos = parametros.get("chatScheduled") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -174,6 +175,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
       return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });
     }
+    if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: [] });
     registro.blocked = true;
     sincronizarLogRede();
     return json({ error: "Harness visual: mutações são bloqueadas." }, 405);
