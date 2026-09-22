@@ -168,7 +168,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "salvarNota" && resultadoAcaoInvalido) return json({});
     if (method === "POST" && url.pathname === "/api/funil2" && corpo.action === "associarTag") return json(resultadoTagInvalido ? {} : { ok: true, resultado: { ok: true } });
     if (method === "PATCH" && url.pathname === "/api/funil2" && corpo.action === "atualizarTemperatura") return json(resultadoAtualizacaoInvalido ? {} : { ok: true, resultado: { ok: true } });
-    if (method === "PATCH" && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
+    if ((method === "PATCH" || method === "POST") && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
     if ((method === "PATCH" || method === "POST") && url.pathname === "/api/agenda" && corpo.action === "createVisit") {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
       return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });

@@ -77,6 +77,12 @@ test("visita criada pelo Chat exige confirmação canônica da Agenda", () => {
   assert.match(ui, /if \(endpoint === "\/api\/agenda" && result\.success !== true\) throw new Error\(result\.error \|\| "A Agenda não confirmou a visita\."\)/);
 });
 
+test("Chat não presume gerente livre quando a disponibilidade falha", () => {
+  assert.match(ui, /if \(!response\.ok \|\| !Array\.isArray\(result\.conflitos\)\) throw new Error\("disponibilidade_invalida"\)/);
+  assert.match(ui, /Não foi possível confirmar a agenda do gerente/);
+  assert.match(ui, /withManager && \(!disp \|\| disp\.loading \|\| disp\.error \|\| disp\.conflitos\.length > 0\)/);
+});
+
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
   assert.match(harness, /LiveChatWorkspace/);
   assert.match(harness, /liveChatHarness = "sanitizado"/);
