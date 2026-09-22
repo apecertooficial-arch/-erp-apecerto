@@ -63,10 +63,23 @@ function etapaMobileValida(valor: unknown): valor is EtapaConfigFunil2 {
     && (etapa.funil == null || typeof etapa.funil === "string");
 }
 
+function momentoMobileValido(valor: unknown): valor is MomentoFunil2 {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const momento = valor as Record<string, unknown>;
+  return typeof momento.codigo === "string"
+    && typeof momento.etapa === "string"
+    && typeof momento.rotulo === "string"
+    && typeof momento.descricao === "string"
+    && typeof momento.acao_rotulo === "string"
+    && typeof momento.prazo_rotulo === "string"
+    && (momento.ativo == null || typeof momento.ativo === "boolean");
+}
+
 function payloadMobileValido(payload: PayloadMobile) {
   return [payload.leads, payload.momentos, payload.eventos, payload.notas, payload.tagCatalogo, payload.etapas].every(Array.isArray)
     && payload.leads!.every(leadFunil2EssencialValido)
-    && payload.etapas!.every(etapaMobileValida);
+    && payload.etapas!.every(etapaMobileValida)
+    && payload.momentos!.every(momentoMobileValido);
 }
 
 type LeadCarteiraAntigaMobile = {
