@@ -47,18 +47,18 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 64,
   weeklyUsageCeilingPercent: 70,
-  currentTask: "Impedir telefone importado no título dos cartões do CRM",
-  lastCheckpoint: "Nome visível do cliente sanitizado uma vez na resposta canônica do Funil.",
-  lastCheckpointAt: "2026-09-22T14:17:14-03:00",
-  lastCommitSent: "46a8161567441cb71a34294c63c7ccb4a005fedf",
-  productionCommit: "46a8161567441cb71a34294c63c7ccb4a005fedf",
+  currentTask: "Sanitização do nome dos cartões confirmada em produção",
+  lastCheckpoint: "CRM desktop e móvel sem telefone importado no título ou nos rótulos acessíveis.",
+  lastCheckpointAt: "2026-09-22T14:23:40-03:00",
+  lastCommitSent: "2f4c9d9719a19946c2a657acf883c404caed3dea",
+  productionCommit: "2f4c9d9719a19946c2a657acf883c404caed3dea",
   latestDeliveries: [
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
   blockers: [],
-  nextStep: "Confirmar a sanitização no CRM desktop e móvel; depois seguir para a próxima falha comprovada.",
+  nextStep: "A reformulação visual e estrutural integral ainda não foi entregue; iniciar uma prova completa do CRM / Meu Dia antes de propagá-la.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
