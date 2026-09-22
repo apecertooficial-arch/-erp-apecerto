@@ -113,6 +113,13 @@ test("busca móvel não transforma carteira antiga incompleta em zero resultados
   assert.match(MOBILE, /erroCarteira \? "Indisponível" : `\$\{carteiraAntiga\.length\} encontrado\(s\)`/);
 });
 
+test("busca móvel não oferece resultado antigo sob um termo novo", () => {
+  const busca = MOBILE.slice(MOBILE.indexOf('<input type="search" value={busca}'), MOBILE.indexOf('placeholder="Buscar cliente ou telefone"'));
+  assert.match(busca, /setBusca\(valor\);\s*setCarteiraAntiga\(\[\]\);/);
+  assert.match(busca, /setBuscandoCarteira\(valor\.trim\(\)\.length >= 3\)/);
+  assert.match(MOBILE, /if \(!controle\.signal\.aborted\) setCarteiraAntiga\(json\.leads\)/);
+});
+
 test("WhatsApp continua nativo: a tela não chama endpoint de envio", () => {
   assert.doesNotMatch(MOBILE, /dapi-enviar|enviar-whatsapp|\/api\/crm\/chat|\/api\/live-chat/);
 });

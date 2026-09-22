@@ -900,9 +900,9 @@ export function Funil2Mobile({
         const json = await resposta.json().catch(() => ({})) as { leads?: LeadCarteiraAntigaMobile[]; error?: string };
         if (!resposta.ok) throw new Error(json.error || "Não foi possível pesquisar a carteira antiga.");
         if (!Array.isArray(json.leads) || !json.leads.every(leadCarteiraAntigaMobileValido)) throw new Error("Não foi possível pesquisar a carteira antiga.");
-        setCarteiraAntiga(json.leads);
+        if (!controle.signal.aborted) setCarteiraAntiga(json.leads);
       }).catch((falha: unknown) => {
-        if (falha instanceof DOMException && falha.name === "AbortError") return;
+        if (controle.signal.aborted || (falha instanceof DOMException && falha.name === "AbortError")) return;
         setCarteiraAntiga([]);
         setErroCarteira(falha instanceof Error ? falha.message : "Não foi possível pesquisar a carteira antiga.");
       }).finally(() => {
@@ -1062,11 +1062,9 @@ export function Funil2Mobile({
       <input type="search" value={busca} onChange={(evento) => {
         const valor = evento.target.value;
         setBusca(valor);
-        if (valor.trim().length < 3) {
-          setCarteiraAntiga([]);
-          setBuscandoCarteira(false);
-          setErroCarteira(null);
-        }
+        setCarteiraAntiga([]);
+        setBuscandoCarteira(valor.trim().length >= 3);
+        setErroCarteira(null);
       }} placeholder="Buscar cliente ou telefone" />
     </label>}
 
