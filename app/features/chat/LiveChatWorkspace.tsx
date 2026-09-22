@@ -174,6 +174,7 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
       const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string; scheduled?: number; message?: string };
       if (!response.ok) throw new Error(result.error || "Não foi possível concluir.");
       if (endpoint === "/api/agenda" && result.success !== true) throw new Error(result.error || "A Agenda não confirmou a visita.");
+      if (endpoint === "/api/live-chat" && result.success !== true) throw new Error(result.error || "O Chat não confirmou a ação.");
       const successMessage = result.message || (result.scheduled ? `${result.scheduled} mensagem(ns) programada(s).` : "Ação concluída e salva no Supabase.");
       try {
         await load();

@@ -95,6 +95,10 @@ test("Chat não converte carga parcial de agendamentos em lista vazia", () => {
   assert.doesNotMatch(ui, /setScheduled\(result\.agendadas \?\? \[\]\)/);
 });
 
+test("ações rápidas do Chat exigem confirmação explícita da API", () => {
+  assert.match(ui, /if \(endpoint === "\/api\/live-chat" && result\.success !== true\) throw new Error\(result\.error \|\| "O Chat não confirmou a ação\."\)/);
+});
+
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
   assert.match(harness, /LiveChatWorkspace/);
   assert.match(harness, /liveChatHarness = "sanitizado"/);

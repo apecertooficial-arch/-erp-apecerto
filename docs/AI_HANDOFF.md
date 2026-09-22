@@ -1,11 +1,11 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `8efd146d`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: o Chat não converte mais uma resposta HTTP 200 parcial de `listScheduled` em lista vazia.
-- Decisão: exigir `agendadas` como array antes de substituir o estado; em falha, preservar a distinção entre erro e vazio e oferecer nova tentativa.
+- Base: `origin/main` em `2b621f6a`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: ações rápidas do Chat não tratam mais HTTP 200 sem `success: true` como persistência confirmada.
+- Decisão: exigir a confirmação explícita já definida pelo contrato da API antes de fechar o modal e anunciar sucesso.
 - Arquivos: `app/features/chat/LiveChatWorkspace.tsx`, `tests/live-chat-api-hardening.test.mjs`, `tests/crm-visual-harness/main.tsx`.
-- Verificações: o harness reproduziu `{}` exibido como “Nenhuma mensagem”; o teste falhou primeiro; depois da correção, o erro mostra nova tentativa sem falso vazio, o fluxo válido segue carregando em viewport móvel, 38 testes dirigidos e lint passaram.
-- Produção: `8efd146d` publicado e confirmado; o Chat real carregou normalmente com a contagem de conversas, sem mutação.
+- Verificações: o harness reproduziu uma observação com `{}` fechando o modal e anunciando sucesso; o teste falhou primeiro; depois da correção, a falha mantém o modal com erro e `success: true` preserva o fluxo normal em viewport móvel, 39 testes dirigidos e lint passaram.
+- Produção: `2b621f6a` publicado e confirmado; o Chat real carregou conversas e agendamentos sem erro inesperado, sem mutação.
 - Risco: baixo; a escrita foi simulada somente no harness local.
 - Próximo passo: executar o build, publicar esta fatia, validar o Chat em produção e seguir para a próxima falha P0/P1 comprovada.
