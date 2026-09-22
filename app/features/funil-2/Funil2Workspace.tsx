@@ -483,6 +483,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           onAbrirSara={() => { setFiltrosQuadroAbertos(false); document.querySelector<HTMLButtonElement>("#sara-fab")?.click(); }}
           onBusca={(valor) => { setBuscaQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
           onFiltrosAbertos={setFiltrosQuadroAbertos}
+          onLimparFiltros={() => { setBuscaQuadro(""); setTemperaturaQuadro("todas"); setPeriodoQuadro("30"); }}
           onOrdenacao={(valor) => { setOrdenacaoQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
           onPeriodo={(valor) => { setPeriodoQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}
           onTemperatura={(valor) => { setTemperaturaQuadro(valor); setLimitesPorEtapa({}); setMenuCardId(null); }}

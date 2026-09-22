@@ -39,6 +39,14 @@ test("estados vazios explicam o recorte e oferecem recuperação", () => {
   assert.match(css, /\.funil-oficial \.f2-coluna-vazia/);
 });
 
+test("barra do Kanban permite limpar todo recorte ativo de uma vez", () => {
+  assert.match(toolbar, /onLimparFiltros: \(\) => void/);
+  assert.match(toolbar, /props\.busca \|\| props\.temperatura !== "todas" \|\| props\.periodo !== "30"/);
+  assert.match(toolbar, />Limpar filtros<\/button>/);
+  assert.match(workspace, /onLimparFiltros=\{\(\) => \{ setBuscaQuadro\(""\); setTemperaturaQuadro\("todas"\); setPeriodoQuadro\("30"\); \}\}/);
+  assert.match(css, /\.funil-oficial \.f2-v3-toolbar>\.f2-v3-limpar/);
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);
