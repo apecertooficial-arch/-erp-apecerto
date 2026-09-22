@@ -6,7 +6,7 @@
 - Decisão: consolidar azul, índigo, violeta, atmosfera e profundidade nas autoridades CSS existentes, mantendo laranja nas ações principais e sem dependência nova.
 - Arquivos: autoridades de identidade, shell, Funil desktop e aplicativo móvel; teste estrutural da direção visual e fonte do painel.
 - Verificações: CRM e Meu Dia com dados sanitizados no navegador real; desktop e 390×844; carregamento, vazio, erro e acesso negado sem overflow; redução de movimento; console sem warnings ou erros. Gates automatizados e build devem permanecer verdes antes da publicação.
-- Produção: `aaf507d3` é o checkpoint anterior confirmado por `/api/build`; a prova visual aguarda o commit desta fatia.
+- Produção: `361b5a16` e `591dd749` publicados e confirmados por `/api/build`. CRM desktop com 65 cartões, CRM móvel com 60, sem overflow; shell e sombras computadas ativos. Painel de Progresso com um único `main`, teto de 80% e hash atualizado.
 - Risco: baixo a moderado e restrito à apresentação; fluxos, dados e mutações não foram alterados.
 - Direção visual: a prova está completa, mas a reformulação visual e estrutural integral ainda **não foi entregue**. Propagação para os demais módulos depende da aprovação desta prova.
 - Progresso conservador publicado após esta entrega:
@@ -16,5 +16,5 @@
   - Meu Dia: `[██████████████░░░░░░] 72/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
   - Aplicativo móvel: `[██████████████░░░░░░] 70/100`
-- Próximo passo: publicar a prova e obter aprovação explícita antes de propagar a linguagem visual; a reformulação integral continua pendente.
-- Continuação: `361b5a16` foi enviado a `main`; aguardando a confirmação de `/api/build`. O teto semanal autorizado passou a 80%. O painel de Progresso foi ajustado para usar o marco principal do shell e o teste global de acessibilidade voltou a passar.
+- Próximo passo: investigar as 65 visitas pendentes de resultado vistas na Agenda e corrigir somente a próxima falha P0/P1 comprovada; a reformulação integral continua pendente.
+- Continuação: o teto semanal autorizado passou a 80%. O painel de Progresso usa o marco principal do shell e o teste global de acessibilidade voltou a passar.

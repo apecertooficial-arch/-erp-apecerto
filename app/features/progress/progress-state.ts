@@ -47,11 +47,11 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Prova visual do CRM e Meu Dia enviada; aguardando confirmação do deploy",
-  lastCheckpoint: "Prova desktop e móvel publicada em main após testes, lint e build; aguardando confirmação em produção.",
-  lastCheckpointAt: "2026-09-22T14:45:00-03:00",
-  lastCommitSent: "361b5a169b361d3bf12bcac149a72982e7090df1",
-  productionCommit: "aaf507d3750fad34ec963adb01d72d00f236f16a",
+  currentTask: "Prova CRM / Meu Dia validada em produção; investigação das próximas pendências P0/P1",
+  lastCheckpoint: "Prova visual confirmada no CRM desktop e móvel; painel de Progresso com marco único e teto de 80% confirmado em produção.",
+  lastCheckpointAt: "2026-09-22T16:45:06-03:00",
+  lastCommitSent: "591dd7499c7a72be49cbe5828648dee24c8d2692",
+  productionCommit: "591dd7499c7a72be49cbe5828648dee24c8d2692",
   latestDeliveries: [
     "Prova visual do CRM e Meu Dia consolidada no shell e nas autoridades CSS existentes.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
@@ -59,7 +59,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
   blockers: [],
-  nextStep: "Confirmar a prova visual em produção e seguir pelos P0/P1 comprovados; a reformulação integral ainda não foi entregue.",
+  nextStep: "Investigar as pendências reais de visitas e corrigir a próxima falha P0/P1 comprovada; a reformulação integral ainda não foi entregue.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
