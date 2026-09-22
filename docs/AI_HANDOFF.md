@@ -1,20 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+- Prioridade atual definida pelo usuário: funções observáveis primeiro. Interromper redesign, tokens, shell, gradientes e ajustes estéticos. Identidade visual somente na última fase, após nova conversa e aprovação.
+- Estado visual: a prova dos commits `361b5a16` e `591dd749` está em produção; o usuário a rejeitou como "horrível". Não houve reversão nem reset. Não propagar a linguagem visual para outras telas.
+- Próxima fatia funcional: rastrear captação e distribuição de um lead até sua presença na carteira do corretor e no Meu Dia; reproduzir uma falha real antes de editar. Depois seguir IA/momento/próxima ação, automações, visitas/feedback/cobrança, negociação/vendas/contratos, imóveis/proprietários, financeiro e app móvel.
+
 - Objetivo: seguir pelas falhas P0/P1 comprovadas do CRM, Meu Dia, Agenda e aplicativo.
-- Base: `origin/main` em `aaf507d3`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: prova visual operacional do CRM / Meu Dia em desktop e mobile, usando o shell, tokens e componentes reais; nenhuma interface paralela foi criada.
+- Base: `origin/main` em `5840dfc0`; branch `codex/agenda-hoje-sao-paulo`.
+- Histórico anterior: prova visual operacional do CRM / Meu Dia em desktop e mobile, usando o shell, tokens e componentes reais; nenhuma interface paralela foi criada. A prova foi rejeitada pelo usuário.
 - Decisão: consolidar azul, índigo, violeta, atmosfera e profundidade nas autoridades CSS existentes, mantendo laranja nas ações principais e sem dependência nova.
 - Arquivos: autoridades de identidade, shell, Funil desktop e aplicativo móvel; teste estrutural da direção visual e fonte do painel.
 - Verificações: CRM e Meu Dia com dados sanitizados no navegador real; desktop e 390×844; carregamento, vazio, erro e acesso negado sem overflow; redução de movimento; console sem warnings ou erros. Gates automatizados e build devem permanecer verdes antes da publicação.
-- Produção: `361b5a16` e `591dd749` publicados e confirmados por `/api/build`. CRM desktop com 65 cartões, CRM móvel com 60, sem overflow; shell e sombras computadas ativos. Painel de Progresso com um único `main`, teto de 80% e hash atualizado.
+- Produção: `361b5a16`, `591dd749` e `5840dfc0` publicados e confirmados por `/api/build`. CRM desktop com 65 cartões, CRM móvel com 60, sem overflow; shell e sombras computadas ativos. Painel de Progresso com um único `main`, teto de 80% e hash atualizado.
 - Risco: baixo a moderado e restrito à apresentação; fluxos, dados e mutações não foram alterados.
-- Direção visual: a prova está completa, mas a reformulação visual e estrutural integral ainda **não foi entregue**. Propagação para os demais módulos depende da aprovação desta prova.
+- Direção visual: prova rejeitada pelo usuário. Nenhuma nova mudança estética está autorizada nesta fase; a identidade fica por último.
 - Progresso conservador publicado após esta entrega:
-  - Transformação completa: `[██████████░░░░░░░░░░] 52/100`
-  - CRM / Kanban: `[███████████████░░░░░] 75/100`
-  - Identidade visual: `[██████████████░░░░░░] 70/100`
-  - Meu Dia: `[██████████████░░░░░░] 72/100`
+  - Transformação completa: `[██████████░░░░░░░░░░] 51/100`
+  - CRM / Kanban: `[███████████████░░░░░] 73/100`
+  - Identidade visual aprovada: `[░░░░░░░░░░░░░░░░░░░░] 0/100`
+  - Meu Dia: `[██████████████░░░░░░] 70/100`
   - Agenda / visitas: `[███████████████░░░░░] 75/100`
-  - Aplicativo móvel: `[██████████████░░░░░░] 70/100`
-- Próximo passo: investigar as 65 visitas pendentes de resultado vistas na Agenda e corrigir somente a próxima falha P0/P1 comprovada; a reformulação integral continua pendente.
+  - Aplicativo móvel: `[█████████████░░░░░░░] 66/100`
+- Próximo passo: verificar o caminho funcional captação → distribuição → carteira → Meu Dia e corrigir apenas falha reproduzida.
 - Continuação: o teto semanal autorizado passou a 80%. O painel de Progresso usa o marco principal do shell e o teste global de acessibilidade voltou a passar.

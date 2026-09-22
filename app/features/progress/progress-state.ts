@@ -37,29 +37,29 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 52,
+  overallPercent: 51,
   fronts: [
-    { name: "CRM / Kanban", percent: 75 },
-    { name: "Identidade visual", percent: 70 },
-    { name: "Meu Dia", percent: 72 },
+    { name: "CRM / Kanban", percent: 73 },
+    { name: "Identidade visual (fase final)", percent: 0 },
+    { name: "Meu Dia", percent: 70 },
     { name: "Agenda / visitas", percent: 75 },
-    { name: "Aplicativo móvel", percent: 70 },
+    { name: "Aplicativo móvel", percent: 66 },
   ],
   weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Prova CRM / Meu Dia validada em produção; investigação das próximas pendências P0/P1",
-  lastCheckpoint: "Prova visual confirmada no CRM desktop e móvel; painel de Progresso com marco único e teto de 80% confirmado em produção.",
-  lastCheckpointAt: "2026-09-22T16:45:06-03:00",
-  lastCommitSent: "591dd7499c7a72be49cbe5828648dee24c8d2692",
-  productionCommit: "591dd7499c7a72be49cbe5828648dee24c8d2692",
+  currentTask: "Prioridade funcional: captação e distribuição de leads, CRM e Meu Dia",
+  lastCheckpoint: "Usuário rejeitou a prova visual; identidade fica para a última fase. Execução volta às funções observáveis.",
+  lastCheckpointAt: "2026-09-22T16:51:46-03:00",
+  lastCommitSent: "5840dfc0928a79e7cb44e18ea920c00ebcacdcf6",
+  productionCommit: "5840dfc0928a79e7cb44e18ea920c00ebcacdcf6",
   latestDeliveries: [
-    "Prova visual do CRM e Meu Dia consolidada no shell e nas autoridades CSS existentes.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
+    "Resultado de visita só sai da fila após feedback persistido pelo corretor responsável.",
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
   blockers: [],
-  nextStep: "Investigar as pendências reais de visitas e corrigir a próxima falha P0/P1 comprovada; a reformulação integral ainda não foi entregue.",
+  nextStep: "Reproduzir a captação e a distribuição de um lead até aparecer na carteira e no Meu Dia; corrigir a primeira falha funcional comprovada. Identidade visual só na última fase, após nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
