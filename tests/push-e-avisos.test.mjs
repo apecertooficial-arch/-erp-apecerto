@@ -127,8 +127,13 @@ test("desktop e celular compartilham uma única tela e uma única fonte de aviso
 
 test("Avisos só remove o não lido depois de confirmação persistida", () => {
   assert.match(TELA_AVISOS, /const resposta = await fetch\("\/api\/notificacoes"/);
-  assert.match(TELA_AVISOS, /if \(resposta\.ok && resultado\.ok === true\) setAvisos/);
+  assert.match(TELA_AVISOS, /if \(resposta\.ok && resultado\.ok === true\) \{[\s\S]*?setAvisos\(atualizados\)/);
   assert.doesNotMatch(TELA_AVISOS, /setAvisos[\s\S]{0,300}void fetch\("\/api\/notificacoes"/);
+});
+
+test("Avisos publica no shell somente a contagem real de não lidos", () => {
+  assert.match(TELA_AVISOS, /const \{ publicarBadge \} = useErpSession\(\)/);
+  assert.match(TELA_AVISOS, /avisos !== null && !erro && !sessaoExpirada[\s\S]*publicarBadge\("Notificações", avisos\.filter\(\(aviso\) => !aviso\.vista_em\)\.length\)/);
 });
 
 /* ---------------- o toque no push ---------------- */

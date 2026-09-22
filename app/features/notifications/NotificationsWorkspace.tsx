@@ -22,6 +22,7 @@ import {
   type Aviso, type Faixa,
 } from "./telaAvisos.logica";
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
+import { useErpSession } from "../system/ErpSession";
 
 const POR_PAGINA = 20;
 
@@ -29,6 +30,7 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
   accessToken: string;
   onNavigate: (href: string) => void;
 }) {
+  const { publicarBadge } = useErpSession();
   const [avisos, setAvisos] = useState<Aviso[] | null>(null);
   const [erro, setErro] = useState(false);
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
@@ -64,6 +66,10 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
     return () => { vivo = false; ctrl.abort(); };
   }, [carregar, tentativa]);
 
+  useEffect(() => {
+    if (avisos !== null && !erro && !sessaoExpirada) publicarBadge("Notificações", avisos.filter((aviso) => !aviso.vista_em).length);
+  }, [avisos, erro, publicarBadge, sessaoExpirada]);
+
   const grupos = useMemo(() => agrupar(avisos ?? []), [avisos]);
   const base = grupos[faixa];
   const visiveis = useMemo(
@@ -84,13 +90,17 @@ export function NotificationsWorkspace({ accessToken, onNavigate }: {
           keepalive: true,
         });
         const resultado = await resposta.json().catch(() => ({})) as { ok?: boolean };
-        if (resposta.ok && resultado.ok === true) setAvisos((atuais) => (atuais ?? []).map((item) => item.id === aviso.id ? { ...item, vista_em: new Date().toISOString() } : item));
+        if (resposta.ok && resultado.ok === true) {
+          const atualizados = (avisos ?? []).map((item) => item.id === aviso.id ? { ...item, vista_em: new Date().toISOString() } : item);
+          setAvisos(atualizados);
+          publicarBadge("Notificações", atualizados.filter((item) => !item.vista_em).length);
+        }
       } catch {
         /* A ação continua abrindo; ao voltar, a API ainda mostrará o aviso não lido. */
       }
     }
     onNavigate(destino);
-  }, [accessToken, onNavigate]);
+  }, [accessToken, avisos, onNavigate, publicarBadge]);
 
   if (sessaoExpirada) return <AppMobileSessaoExpirada />;
 

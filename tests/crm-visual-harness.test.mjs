@@ -56,6 +56,10 @@ test("harness reproduz confirmação inválida de leitura de aviso", () => {
   assert.match(harness, /dataset\.avisoDestino = href/);
 });
 
+test("harness expõe o badge publicado pelos Avisos", () => {
+  assert.match(harness, /dataset\[`badge\$\{chave\}`\] = String\(valor\)/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

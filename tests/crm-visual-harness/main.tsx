@@ -311,7 +311,7 @@ const perfil: SessionProfile = {
 const contexto: ErpSessionValue = {
   accessToken: "harness-test-only", profile: perfil, perfilCarregado: true, estado: "live", role: papel,
   isManager: papel !== "corretor", permissoes: perfil.permissoes ?? null, badges: {},
-  publicarBadge: () => undefined, recarregarPerfil: async () => undefined,
+  publicarBadge: (chave, valor) => { document.documentElement.dataset[`badge${chave}`] = String(valor); }, recarregarPerfil: async () => undefined,
 };
 
 document.documentElement.dataset.crmHarness = "visual-sintetico";
