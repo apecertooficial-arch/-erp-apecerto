@@ -1,11 +1,18 @@
 # Checkpoint ERP ApeCerto
 
 - Objetivo: avançar pelas falhas P0/P1 comprovadas após concluir gerente → corretor → visita → feedback persistido → pendência encerrada.
-- Base: `origin/main` em `dc43daab`; branch `codex/agenda-hoje-sao-paulo`.
-- Concluído nesta fatia: “Adicionar cliente” rejeita identidade malformada tanto na consulta prévia de duplicidade quanto no conflito 409 da criação.
-- Decisão: um único validador confere apenas os quatro campos que o alerta renderiza, sem normalizar resposta corrompida nem duplicar guards.
-- Arquivos: `app/features/funil-2/AdicionarClienteModal.tsx`, `tests/crm-funcoes-canonicas.test.mjs`, `tests/crm-visual-harness/main.tsx`, `tests/crm-visual-harness.test.mjs`.
-- Verificações: antes da correção, `duplicado: true, lead: {}` exibia um falso cliente `#undefined`; o teste comportamental falhou; 52 testes dirigidos passaram e o lint ficou limpo; no navegador, a resposta inválida passou ao erro recuperável sem falso duplicado e a válida preservou o formulário sem erro.
-- Produção: `dc43daab` publicado e confirmado antes desta fatia; o CRM real estabilizou com o Funil e “Adicionar cliente”, sem retry ou erro.
-- Risco: baixo; resposta fora do contrato não é mais publicada no estado e nenhuma escrita é repetida automaticamente.
-- Próximo passo: publicar esta fatia, validar o CRM real em produção sem mutações e parar com margem antes de 66%.
+- Base: `origin/main` em `1594217f`; branch `codex/agenda-hoje-sao-paulo`.
+- Concluído nesta fatia: primeira readequação visível do CRM/Kanban — KPIs acionáveis no desktop e resumo real da carteira no app móvel, preservando o pipeline e as APIs existentes.
+- Decisão: reaproveitar contagens já calculadas (`negociosVisiveis`, ganhos, perdidos, triagem, carteira, recorte e prioridade) e os tokens oficiais, sem dashboard paralelo, endpoint ou schema novo.
+- Arquivos: `app/features/funil-2/Funil2BoardToolbar.tsx`, `app/features/funil-2/Funil2Mobile.tsx`, `app/styles/funil.css`, `tests/crm-correcao-6-2-para-10.test.mjs`, `tests/crm-p3-estrutura.test.mjs`, `tests/funil-2-mobile-operacional.test.mjs`.
+- Verificações: o contrato visual falhou antes da mudança; 31 testes dirigidos passaram e o lint ficou limpo; no navegador, desktop exibiu KPIs, pipeline e colunas reais, o móvel exibiu carteira/recorte/prioridade e preservou loading, vazio e erro com retry.
+- Produção: `1594217f` publicado e confirmado antes desta fatia; CRM real carregou cards e “Adicionar cliente” sem loading preso, retry ou erro.
+- Risco: baixo; apenas hierarquia e semântica visual mudam, com os mesmos dados, filtros e handlers.
+- Progresso conservador publicado após esta entrega:
+  - Transformação completa: `[████████░░░░░░░░░░░░] 40/100`
+  - CRM / Kanban: `[████████████░░░░░░░░] 60/100`
+  - Identidade visual: `[███████████░░░░░░░░░] 55/100`
+  - Meu Dia: `[██████████████░░░░░░] 70/100`
+  - Agenda / visitas: `[███████████████░░░░░] 75/100`
+  - Aplicativo móvel: `[████████████░░░░░░░░] 60/100`
+- Próximo passo: publicar esta fatia, validar desktop e móvel em produção sem mutações e parar com margem antes de 66%.

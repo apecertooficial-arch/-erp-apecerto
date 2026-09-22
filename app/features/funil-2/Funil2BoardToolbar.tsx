@@ -27,11 +27,11 @@ export function Funil2BoardToolbar(props: Props) {
   return <section className="f2-v3-toolbar" aria-label="Busca, filtros e ações do quadro">
     <label className="f2-v3-pipeline"><span>Pipeline</span><select aria-label="Pipeline" value="comercial" onChange={() => undefined}><option value="comercial">Comercial</option></select></label>
     <span className="f2-v3-separador" aria-hidden="true" />
-    <div className="f2-v3-visoes" role="group" aria-label="Situação dos negócios">
-      <button type="button" className={props.visao === "andamento" ? "ativo" : ""} onClick={() => props.onVisao("andamento")}>Em andamento <b>{props.negociosVisiveis}</b></button>
-      <button type="button" className={props.visao === "ganhos" ? "ativo" : ""} onClick={() => props.onVisao("ganhos")}>Ganhos <b>{props.ganhos}</b></button>
-      <button type="button" className={props.visao === "perdidos" ? "ativo" : ""} onClick={() => props.onVisao("perdidos")}>Perdidos <b>{props.perdidos}</b></button>
-      <button type="button" className={props.visao === "triagem" ? "ativo" : ""} onClick={() => props.onVisao("triagem")}>Triagem <b>{props.aquario}</b></button>
+    <div className="f2-v3-visoes" role="group" aria-label="Resumo acionável do pipeline">
+      <button type="button" className={props.visao === "andamento" ? "ativo" : ""} onClick={() => props.onVisao("andamento")}><span>Em andamento</span><b>{props.negociosVisiveis}</b><small>etapas visíveis</small></button>
+      <button type="button" className={props.visao === "ganhos" ? "ativo" : ""} onClick={() => props.onVisao("ganhos")}><span>Ganhos</span><b>{props.ganhos}</b><small>fechados</small></button>
+      <button type="button" className={props.visao === "perdidos" ? "ativo" : ""} onClick={() => props.onVisao("perdidos")}><span>Perdidos</span><b>{props.perdidos}</b><small>encerrados</small></button>
+      <button type="button" className={props.visao === "triagem" ? "ativo" : ""} onClick={() => props.onVisao("triagem")}><span>Triagem</span><b>{props.aquario}</b><small>aguardando análise</small></button>
     </div>
     <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={props.busca} onChange={(evento) => props.onBusca(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
     <details className="f2-v3-filtros" open={props.filtrosAbertos} onToggle={(evento) => props.onFiltrosAbertos(evento.currentTarget.open)}><summary>Filtros{props.temperatura !== "todas" ? " · 1" : ""}</summary>{props.filtrosAbertos && <div className="f2-v3-filtro-painel">

@@ -99,13 +99,16 @@ test("CRM móvel rejeita resposta 200 incompleta em vez de fingir carteira vazia
 });
 
 test("ficha móvel não transforma histórico incompleto em atualização vazia", () => {
-  assert.match(MOBILE, /if \(!Array\.isArray\(resposta\.json\.eventos\) \|\| !Array\.isArray\(resposta\.json\.notas\)\)/);
+  assert.match(MOBILE, /!Array\.isArray\(resposta\.json\.eventos\)/);
+  assert.match(MOBILE, /!Array\.isArray\(resposta\.json\.notas\)/);
+  assert.match(MOBILE, /!resposta\.json\.eventos\.every\(eventoMobileValido\)/);
+  assert.match(MOBILE, /!resposta\.json\.notas\.every\(notaMobileValida\)/);
   assert.match(MOBILE, /historicoErro \? <div className="ape-estado ruim" role="alert">/);
   assert.match(MOBILE, /onRecarregarHistorico=\{\(\) => setHistoricoTentativa\(\(atual\) => atual \+ 1\)\}/);
 });
 
 test("busca móvel não transforma carteira antiga incompleta em zero resultados", () => {
-  assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível pesquisar a carteira antiga\."\)/);
+  assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\) \|\| !json\.leads\.every\(leadCarteiraAntigaMobileValido\)\) throw new Error\("Não foi possível pesquisar a carteira antiga\."\)/);
   assert.match(MOBILE, /dados && !erro && !erroCarteira && modo === "crm"/);
   assert.match(MOBILE, /erroCarteira \? "Indisponível" : `\$\{carteiraAntiga\.length\} encontrado\(s\)`/);
 });

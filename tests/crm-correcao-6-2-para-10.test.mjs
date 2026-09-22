@@ -12,12 +12,22 @@ const css = read("../app/styles/funil.css");
 
 test("contagem do quadro corresponde somente às etapas realmente exibidas", () => {
   assert.match(workspace, /const leadsDoQuadro = leadsDoPeriodo\.filter/);
-  assert.match(toolbar, />Em andamento <b>\{props\.negociosVisiveis\}<\/b>/);
+  assert.match(toolbar, /<span>Em andamento<\/span><b>\{props\.negociosVisiveis\}<\/b><small>etapas visíveis<\/small>/);
   assert.match(workspace, /> Negócios <b>\{leadsDoQuadro\.length\}<\/b>/);
   assert.match(workspace, /foraDoQuadro > 0[\s\S]*fora das etapas visíveis/);
   /* Com as trilhas do funil (Alphaville), o contador de Leads acompanha a
      trilha em foco — o número precisa bater com a lista que a aba mostra. */
   assert.match(workspace, /Leads <b>\{leadsDoFunil\.length\}<\/b>/);
+});
+
+test("CRM publicado resume o pipeline com dados reais no desktop e no app", () => {
+  assert.match(toolbar, /aria-label="Resumo acionável do pipeline"/);
+  assert.match(toolbar, /<small>aguardando análise<\/small>/);
+  assert.match(mobile, /className="ape-crm-kpis" aria-label="Resumo da carteira"/);
+  assert.match(mobile, /<strong>\{leads\.length\}<\/strong><small>clientes ativos<\/small>/);
+  assert.match(mobile, /<strong>\{visiveis\.length\}<\/strong><small>neste recorte<\/small>/);
+  assert.match(mobile, /<strong>\{contagens\.agora\}<\/strong><small>aguardando agora<\/small>/);
+  assert.match(css, /\.funil-oficial \.ape-crm-kpis/);
 });
 
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {

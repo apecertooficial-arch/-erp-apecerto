@@ -1050,6 +1050,12 @@ export function Funil2Mobile({
 
     {modo === "crm" && <MobileCrmNavigation areaAtual="carteira" onIr={onIr} />}
 
+    {modo === "crm" && dados && !erro && <section className="ape-crm-kpis" aria-label="Resumo da carteira">
+      <article><span>Carteira</span><strong>{leads.length}</strong><small>clientes ativos</small></article>
+      <article><span>Visíveis</span><strong>{visiveis.length}</strong><small>neste recorte</small></article>
+      <article><span>Prioridade</span><strong>{contagens.agora}</strong><small>aguardando agora</small></article>
+    </section>}
+
     {modo === "crm" && <label className="ape-busca">
       <IconeBusca />
       <input type="search" value={busca} onChange={(evento) => {

@@ -43,7 +43,7 @@ test("responsabilidades extraídas preservam semântica operacional", () => {
   const toolbar = read("../app/features/funil-2/Funil2BoardToolbar.tsx");
   const primitivas = read("../app/features/funil-2/Funil2BoardPrimitives.tsx");
   assert.match(toolbar, /aria-label="Busca, filtros e ações do quadro"/);
-  assert.match(toolbar, /role="group" aria-label="Situação dos negócios"/);
+  assert.match(toolbar, /role="group" aria-label="Resumo acionável do pipeline"/);
   assert.match(primitivas, /role="group" aria-label="Filtrar por temperatura"/);
   // Funil2MobileChrome.tsx foi removido no revert 90b5bd8a (app mobile anterior ao CRM V3).
 });
