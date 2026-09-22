@@ -147,7 +147,10 @@ test("conversa do Funil 2 usa somente a API canônica e respeita o corte do pesc
 
 test("conversa não transforma resposta incompleta em histórico vazio", () => {
   const conversa = readFileSync(new URL("../app/features/funil-2/Funil2ConversationDrawer.tsx", import.meta.url), "utf8");
-  assert.match(conversa, /if \(!Array\.isArray\(payload\.mensagens\) \|\| !Array\.isArray\(payload\.instancias\)\)/);
+  assert.match(conversa, /!Array\.isArray\(payload\.mensagens\)/);
+  assert.match(conversa, /!Array\.isArray\(payload\.instancias\)/);
+  assert.match(conversa, /!payload\.mensagens\.every\(mensagemValida\)/);
+  assert.match(conversa, /!payload\.instancias\.every\(instanciaValida\)/);
   assert.match(conversa, /!instancias\.length && !carregando && !erro/);
   assert.match(conversa, /className="f2-conversa-erro" role="alert"/);
 });
