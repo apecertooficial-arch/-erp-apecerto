@@ -64,6 +64,12 @@ test("Todos os Leads não esconde falha da carteira antiga como busca vazia", ()
   assert.match(desktop, /!buscandoCarteira && !erroCarteira && carteira\.length === 0/);
 });
 
+test("busca desktop não oferece resultado antigo sob um termo novo", () => {
+  const entrada = desktop.slice(desktop.indexOf('<div className="f2-leads-busca"'), desktop.indexOf('placeholder="Nome ou telefone"'));
+  assert.match(entrada, /setBusca\(event\.target\.value\);\s*setCarteira\(\[\]\);/);
+  assert.match(entrada, /setBuscandoCarteira\(event\.target\.value\.trim\(\)\.length >= 3\)/);
+});
+
 test("conversa rejeita itens malformados antes de renderizar o histórico", () => {
   assert.match(conversa, /payload\.mensagens\.every\(mensagemValida\)/);
   assert.match(conversa, /payload\.instancias\.every\(instanciaValida\)/);
