@@ -48,10 +48,10 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   weeklyUsagePercent: 65,
   weeklyUsageCeilingPercent: 80,
   currentTask: "P0 funcional: dispatcher de automações com fila vencida",
-  lastCheckpoint: "Limite de espera do worker publicado; fila ainda sem claim novo, com 265 itens vencidos e um lease expirado.",
-  lastCheckpointAt: "2026-09-22T17:06:36-03:00",
-  lastCommitSent: "fcbbda5e55d4d397f04691236c0309478515c554",
-  productionCommit: "fcbbda5e55d4d397f04691236c0309478515c554",
+  lastCheckpoint: "Logs do Render mostram erro 23505 no claim: lease Sara expirado colide com outro lote pendente do mesmo card. Correção SQL preparada, não aplicada em produção.",
+  lastCheckpointAt: "2026-09-22T17:44:28-03:00",
+  lastCommitSent: "cf0527a0f5f365318e2167354eb762ff9dff290d",
+  productionCommit: "cf0527a0f5f365318e2167354eb762ff9dff290d",
   latestDeliveries: [
     "RPC de processamento do dispatcher agora tem limite de espera e cancelamento.",
     "Telefone importado deixa de aparecer no título e nos rótulos acessíveis dos cartões.",
@@ -59,8 +59,8 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Painel administrativo responsivo com atualização automática e estado de desatualização.",
     "Prioridade móvel acompanha o recorte filtrado.",
   ],
-  blockers: ["Dispatcher mantém heartbeat, mas não reivindica itens desde 21/09; há um lease expirado e 265 itens vencidos. Correção de código não recuperou a fila."],
-  nextStep: "Conferir o processo e logs do worker no Render; recuperar a fila com procedimento operacional controlado, sem presumir sucesso. Depois validar captação → distribuição → carteira → Meu Dia. Identidade visual fica para a última fase.",
+  blockers: ["Fila segue parada: erro 23505 na recuperação de lease Sara. Há 265 itens vencidos; a correção de banco ainda não foi aplicada nem validada em produção."],
+  nextStep: "Validar e aplicar a migração de recuperação em janela controlada quando houver autoridade para alterar schema de produção; confirmar claims e conclusões. Depois validar captação → distribuição → carteira → Meu Dia. Identidade visual fica para a última fase.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

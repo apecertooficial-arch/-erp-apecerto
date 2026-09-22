@@ -15,6 +15,13 @@ const infrastructureMigration = readFileSync(
   ),
   "utf8",
 );
+const expiredSaraBatchMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260922203000_dispatcher_recuperar_lote_sara_expirado.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const cutoverMigration = readFileSync(
   new URL(
     "../supabase/migrations/20260828215000_central_dispatcher_cutover_worker.sql",
@@ -123,6 +130,17 @@ test("configuracao exige somente segredo de backend e limites seguros", () => {
   assert.equal(config.leaseSeconds, 30);
   assert.equal(config.workerId, "worker-a");
   assert.ok(!JSON.stringify(config.public).includes("secret-value"));
+});
+
+test("lease Sara expirado consolida mensagens e auditoria sem violar lote pendente unico", () => {
+  assert.match(expiredSaraBatchMigration, /create or replace function private\.motor_dispatcher_recuperar_leases/);
+  assert.match(expiredSaraBatchMigration, /for update skip locked/);
+  assert.match(expiredSaraBatchMigration, /pg_try_advisory_xact_lock/);
+  assert.match(expiredSaraBatchMigration, /__sara_message_ids/);
+  assert.match(expiredSaraBatchMigration, /__sara_event_types/);
+  assert.match(expiredSaraBatchMigration, /update private\.sara_evento_mensagem[\s\S]*set fila_id=v_pendente\.id/);
+  assert.match(expiredSaraBatchMigration, /LEASE_EXPIRED_MERGED_INTO_PENDING_BATCH/);
+  assert.match(expiredSaraBatchMigration, /LEASE_EXPIRED_RECOVERED/);
 });
 
 test("worker em shadow envia heartbeat mas nao reivindica item", async () => {
