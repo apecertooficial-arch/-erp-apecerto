@@ -956,6 +956,7 @@ export function Funil2Mobile({
       return cabeNoDia && cabeNaEtapa && cabeNaTemperatura && cabeNaBusca;
     });
   }, [agora, busca, etapa, filtroDia, leads, temperatura]);
+  const prioridadeNoRecorte = visiveis.filter((lead) => leadOperacionalNoMeuDia(lead) && +new Date(lead.proxima_acao_em) <= agora).length;
 
   /* OS TRES GRUPOS DO MEU DIA, na ordem em que o corretor age.
      "Acabou de chegar" vem primeiro mesmo com prazo mais folgado: lead novo tem
@@ -1053,7 +1054,7 @@ export function Funil2Mobile({
     {modo === "crm" && dados && !erro && <section className="ape-crm-kpis" aria-label="Resumo da carteira">
       <article><span>Carteira</span><strong>{leads.length}</strong><small>clientes ativos</small></article>
       <article><span>Visíveis</span><strong>{visiveis.length}</strong><small>neste recorte</small></article>
-      <article><span>Prioridade</span><strong>{contagens.agora}</strong><small>aguardando agora</small></article>
+      <article><span>Prioridade</span><strong>{prioridadeNoRecorte}</strong><small>aguardando agora</small></article>
     </section>}
 
     {modo === "crm" && <label className="ape-busca">

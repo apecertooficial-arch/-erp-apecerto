@@ -29,7 +29,8 @@ test("CRM publicado resume o pipeline com dados reais no desktop e no app", () =
   assert.match(mobile, /className="ape-crm-kpis" aria-label="Resumo da carteira"/);
   assert.match(mobile, /<strong>\{leads\.length\}<\/strong><small>clientes ativos<\/small>/);
   assert.match(mobile, /<strong>\{visiveis\.length\}<\/strong><small>neste recorte<\/small>/);
-  assert.match(mobile, /<strong>\{contagens\.agora\}<\/strong><small>aguardando agora<\/small>/);
+  assert.match(mobile, /const prioridadeNoRecorte = visiveis\.filter\(\(lead\) => leadOperacionalNoMeuDia\(lead\) && \+new Date\(lead\.proxima_acao_em\) <= agora\)\.length/);
+  assert.match(mobile, /<strong>\{prioridadeNoRecorte\}<\/strong><small>aguardando agora<\/small>/);
   assert.match(css, /\.funil-oficial \.ape-crm-kpis/);
 });
 
