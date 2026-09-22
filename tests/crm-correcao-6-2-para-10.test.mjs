@@ -62,6 +62,12 @@ test("busca e filtros aparecem somente no recorte em andamento", () => {
   assert.match(toolbar, /\{props\.visao === "andamento" && <>[\s\S]*className="f2-v3-busca"[\s\S]*className="f2-v3-filtros"[\s\S]*<\/>\}/);
 });
 
+test("atalhos de visão expõem o estado selecionado", () => {
+  for (const visao of ["andamento", "ganhos", "perdidos", "triagem"]) {
+    assert.match(toolbar, new RegExp(`aria-pressed=\\{props\\.visao === "${visao}"\\}`));
+  }
+});
+
 test("Kanban monta cartões incrementalmente e menus somente sob demanda", () => {
   assert.match(workspace, /limitesPorEtapa/);
   assert.match(workspace, /daEtapa\.slice\(0, limiteDaEtapa\)/);

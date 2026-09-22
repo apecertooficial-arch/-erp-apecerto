@@ -30,10 +30,10 @@ export function Funil2BoardToolbar(props: Props) {
     <div className="f2-v3-pipeline"><span>Pipeline</span><strong>Comercial</strong></div>
     <span className="f2-v3-separador" aria-hidden="true" />
     <div className="f2-v3-visoes" role="group" aria-label="Resumo acionável do pipeline">
-      <button type="button" className={props.visao === "andamento" ? "ativo" : ""} onClick={() => props.onVisao("andamento")}><span>Em andamento</span><b>{props.negociosVisiveis}</b><small>etapas visíveis</small></button>
-      <button type="button" className={props.visao === "ganhos" ? "ativo" : ""} onClick={() => props.onVisao("ganhos")}><span>Ganhos</span><b>{props.ganhos}</b><small>fechados</small></button>
-      <button type="button" className={props.visao === "perdidos" ? "ativo" : ""} onClick={() => props.onVisao("perdidos")}><span>Perdidos</span><b>{props.perdidos}</b><small>encerrados</small></button>
-      <button type="button" className={props.visao === "triagem" ? "ativo" : ""} onClick={() => props.onVisao("triagem")}><span>Triagem</span><b>{props.aquario}</b><small>aguardando análise</small></button>
+      <button type="button" aria-pressed={props.visao === "andamento"} className={props.visao === "andamento" ? "ativo" : ""} onClick={() => props.onVisao("andamento")}><span>Em andamento</span><b>{props.negociosVisiveis}</b><small>etapas visíveis</small></button>
+      <button type="button" aria-pressed={props.visao === "ganhos"} className={props.visao === "ganhos" ? "ativo" : ""} onClick={() => props.onVisao("ganhos")}><span>Ganhos</span><b>{props.ganhos}</b><small>fechados</small></button>
+      <button type="button" aria-pressed={props.visao === "perdidos"} className={props.visao === "perdidos" ? "ativo" : ""} onClick={() => props.onVisao("perdidos")}><span>Perdidos</span><b>{props.perdidos}</b><small>encerrados</small></button>
+      <button type="button" aria-pressed={props.visao === "triagem"} className={props.visao === "triagem" ? "ativo" : ""} onClick={() => props.onVisao("triagem")}><span>Triagem</span><b>{props.aquario}</b><small>aguardando análise</small></button>
     </div>
     {props.visao === "andamento" && <>
       <label className="f2-v3-busca"><span>Buscar</span><input type="search" value={props.busca} onChange={(evento) => props.onBusca(evento.target.value)} placeholder="Lead, telefone, nº ou interesse" /></label>
