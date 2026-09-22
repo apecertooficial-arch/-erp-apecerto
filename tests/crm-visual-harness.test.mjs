@@ -58,6 +58,8 @@ test("harness reproduz confirmação inválida de leitura de aviso", () => {
 
 test("harness expõe o badge publicado pelos Avisos", () => {
   assert.match(harness, /dataset\[`badge\$\{chave\}`\] = String\(valor\)/);
+  assert.match(harness, /tela === "avisos-desktop"[\s\S]*<ErpShell><NotificationsWorkspace/);
+  assert.match(harness, /badges: tela === "avisos-desktop" \? \{ "Notificações": 1 \} : \{\}/);
 });
 
 test("interceptador sintético permite somente GETs locais inventariados", () => {

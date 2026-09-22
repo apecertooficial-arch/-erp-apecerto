@@ -310,7 +310,7 @@ const perfil: SessionProfile = {
 };
 const contexto: ErpSessionValue = {
   accessToken: "harness-test-only", profile: perfil, perfilCarregado: true, estado: "live", role: papel,
-  isManager: papel !== "corretor", permissoes: perfil.permissoes ?? null, badges: {},
+  isManager: papel !== "corretor", permissoes: perfil.permissoes ?? null, badges: tela === "avisos-desktop" ? { "Notificações": 1 } : {},
   publicarBadge: (chave, valor) => { document.documentElement.dataset[`badge${chave}`] = String(valor); }, recarregarPerfil: async () => undefined,
 };
 
@@ -348,6 +348,8 @@ const app = tela === "agenda-mobile"
     ? <ErpShell><SalesProcessView accessToken="harness-test-only" sessionRole={papel} /></ErpShell>
   : tela === "avisos-mobile"
     ? <NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} />
+  : tela === "avisos-desktop"
+    ? <ErpShell><NotificationsWorkspace accessToken="harness-test-only" onNavigate={(href) => { document.documentElement.dataset.avisoDestino = href; }} /></ErpShell>
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"

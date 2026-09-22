@@ -33,9 +33,11 @@ test("o cabeçalho mostra o dia operacional de São Paulo", () => {
 
 test("badge aparece somente com número real", () => {
   const shell = ler("../app/features/system/ErpShell.tsx");
+  const appShell = ler("../app/components/AppShell.tsx");
   assert.ok(/naoLidas > 0 && <b/.test(shell));
   assert.ok(/\(badges\[m\] \?\? 0\) > 0 &&/.test(shell));
   assert.ok(/badges\["Notificações"\] \?\? 0/.test(shell));
+  assert.match(appShell, /item === "Notificações" && badge > 0/);
 });
 
 test("sino e perfil mantêm alvo de toque e rótulo", () => {
