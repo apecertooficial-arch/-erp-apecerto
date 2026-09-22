@@ -52,6 +52,12 @@ test("contadores móveis usam a mesma fila operacional exibida", () => {
   assert.doesNotMatch(MOBILE, /setHours\(23, 59, 59, 999\)/);
 });
 
+test("Meu Dia mantém o relógio vivo enquanto a tela permanece aberta", () => {
+  assert.doesNotMatch(MOBILE, /const \[agora\] = useState\(\(\) => Date\.now\(\)\)/);
+  assert.match(MOBILE, /setInterval\(\(\) => setAgora\(Date\.now\(\)\), 30_000\)/);
+  assert.match(MOBILE, /clearInterval\(temporizador\)/);
+});
+
 test("a ação principal do aplicativo é verde e tem alvo de toque", () => {
   const inicio = CSS_APROVADO.indexOf(".ape-acoes .ncrm-wa-principal");
   const bloco = CSS_APROVADO.slice(inicio, CSS_APROVADO.indexOf("}", inicio));
@@ -87,7 +93,9 @@ test("CRM e Meu Dia recuperam sessão expirada pelo estado compartilhado do app"
 });
 
 test("CRM móvel rejeita resposta 200 incompleta em vez de fingir carteira vazia", () => {
-  assert.match(MOBILE, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
+  assert.match(MOBILE, /function payloadMobileValido\(payload: PayloadMobile\)/);
+  assert.match(MOBILE, /\[payload\.leads, payload\.momentos, payload\.eventos, payload\.notas, payload\.tagCatalogo, payload\.etapas\]\.every\(Array\.isArray\)/);
+  assert.match(MOBILE, /if \(!payloadMobileValido\(json\)\) throw new Error\("Não foi possível abrir o CRM\."\)/);
 });
 
 test("ficha móvel não transforma histórico incompleto em atualização vazia", () => {

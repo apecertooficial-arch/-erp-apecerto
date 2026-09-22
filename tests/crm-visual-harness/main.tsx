@@ -37,7 +37,7 @@ const parametros = new URLSearchParams(window.location.search);
 const papel = (parametros.get("role") ?? "corretor") as Papel;
 const estado = (parametros.get("state") ?? "normal") as Estado;
 const tela = parametros.get("screen") ?? "desktop-crm";
-if (tela === "crm-mobile" || tela === "agenda-mobile") {
+if (tela === "crm-mobile" || tela === "meu-dia-mobile" || tela === "agenda-mobile") {
   const estiloMobile = document.createElement("style");
   estiloMobile.textContent = ".ape-app,.ape-agenda{display:block!important}";
   document.head.append(estiloMobile);
@@ -74,6 +74,7 @@ const criacaoVendaInvalida = parametros.get("salesCreate") === "invalido";
 const movimentoVendaInvalido = parametros.get("salesMove") === "invalido";
 const escritaVendaInvalida = parametros.get("salesWrite") === "invalido";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
+const relogioNoLimite = parametros.get("clock") === "limite";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -99,6 +100,15 @@ const payloadSaraPendente = {
     payload: {},
     criado_em: "2026-09-20T12:00:00Z",
   }, ...payloadNormal.eventos],
+};
+const payloadRelogioNoLimite = {
+  ...payloadNormal,
+  leads: [{
+    ...payloadNormal.leads.find((lead) => lead.etapa === "em_atendimento")!,
+    id: "lead-relogio-teste",
+    nome: "Cliente relógio sanitizado",
+    proxima_acao_em: new Date(Date.now() + 5_000).toISOString(),
+  }],
 };
 const pendenciasAgenda = [
   { id: "10000000-0000-4000-8000-000000000001", data: "2026-08-17", hora: "10:00", tipo: "visita", cliente: "Cliente sanitizado 1", local: "Local sanitizado", produto: "Produto Alfa", negocio_id: 101, status: "realizada", corretor: "Corretora Alfa", corretor_id: 7, meu: papel === "corretor", faltam_min: -47_000, com_gerente: true, gerente_id: 1 },
@@ -228,7 +238,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
     if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
+    return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
   if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
@@ -305,6 +315,8 @@ document.body.append(transferenciaEvidencia);
 
 const app = tela === "agenda-mobile"
   ? <TelaAgendaMobile accessToken="harness-test-only" role={papel} corretorIdInicial={corretorEmFoco} />
+  : tela === "meu-dia-mobile"
+    ? <Funil2Mobile accessToken="harness-test-only" nome="Corretor teste" modo="inicio" onIr={() => undefined} />
   : tela === "crm-mobile"
     ? <Funil2Mobile accessToken="harness-test-only" nome="Corretor teste" modo="crm" onIr={() => undefined} />
   : tela === "chat"

@@ -789,7 +789,12 @@ export function Funil2Mobile({
   const [historicoErro, setHistoricoErro] = useState<string | null>(null);
   const [historicoTentativa, setHistoricoTentativa] = useState(0);
   const [pedidoUrl] = useState(lerLeadDaUrl);
-  const [agora] = useState(() => Date.now());
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    const temporizador = window.setInterval(() => setAgora(Date.now()), 30_000);
+    return () => window.clearInterval(temporizador);
+  }, []);
 
   const leads = useMemo(() => [...(dados?.leads ?? [])].sort((a, b) => +new Date(a.proxima_acao_em) - +new Date(b.proxima_acao_em)), [dados]);
   const momentos = dados?.momentos ?? [];

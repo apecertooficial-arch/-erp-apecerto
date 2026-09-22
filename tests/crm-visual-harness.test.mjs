@@ -36,6 +36,14 @@ test("harness exercita a cobrança real da Agenda sem dados pessoais nem mutaç�
   assert.doesNotMatch(harness, /@gmail\.|@hotmail\.|\+55 1[1-9]/);
 });
 
+test("harness reproduz prazo que vence com o Meu Dia aberto", () => {
+  assert.match(harness, /tela === "meu-dia-mobile"/);
+  assert.match(harness, /relogioNoLimite/);
+  assert.match(harness, /new Date\(Date\.now\(\) \+ 5_000\)\.toISOString\(\)/);
+  assert.match(harness, /modo="inicio"/);
+  assert.match(harness, /Cliente relógio sanitizado/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
