@@ -67,6 +67,7 @@ const payloadChatInvalido = parametros.get("chatPayload") === "invalido";
 const agendamentosChatInvalidos = parametros.get("chatScheduled") === "invalido";
 const resultadoAcaoChatInvalido = parametros.get("chatAction") === "invalido";
 const cancelamentoChatInvalido = parametros.get("chatCancel") === "invalido";
+const envioChatInvalido = parametros.get("chatSend") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -179,6 +180,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: parametros.has("chatCancel") ? [{ id: 701, texto: "Retorno sanitizado", tipo: "text", quando: "2026-09-22T15:00:00Z", status: "agendado" }] : [] });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
+    if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "send") return json(envioChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action) return json(resultadoAcaoChatInvalido ? {} : { success: true });
     registro.blocked = true;
     sincronizarLogRede();
@@ -224,7 +226,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     conversations: [{ id: "conversa-teste", contato_id: "contato-teste", instancia_id: "instancia-teste", status: "aberta", ultima_msg_em: "2026-09-21T12:00:00Z", origem: "WhatsApp" }],
     contacts: [{ id: "contato-teste", nome: "Cliente chat sanitizado", telefone: "5511999990000", lead_id: 501 }],
     instances: [{ id: "instancia-teste", session_id: "sessao-teste", rotulo: "WhatsApp teste", status: "conectada", corretor_id: 7 }],
-    dapi: [], latest: {}, leads: [{ id: 501, nome: "Cliente chat sanitizado", telefone: "5511999990000", email: null, corretor_id: 7, origem: "WhatsApp", tags: [] }],
+    dapi: [{ id: 901, instancia_dapi: "sessao-teste", nome: "WhatsApp teste", conectada: true }], latest: {}, leads: [{ id: 501, nome: "Cliente chat sanitizado", telefone: "5511999990000", email: null, corretor_id: 7, origem: "WhatsApp", tags: [] }],
     deals: [{ id: 601, lead_id: 501, corretor_id: 7, stage_id: 1, empreendimento_id: null, valor: null, status: "aberto" }],
     brokers: [{ id: 7, nome: "Corretor teste", usuario_id: null, online: true }], products: [], media: [], activities: [], approaches: [], stages: [],
   });

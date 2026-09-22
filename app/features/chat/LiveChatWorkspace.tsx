@@ -226,12 +226,12 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
     void (async () => {
       try {
         const response = await fetch("/api/live-chat", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", phone: contact.telefone, instanceId, content: text, mediaId, clientMessageId }) });
-        const result = await response.json() as { error?: string };
-        if (!response.ok) throw new Error(result.error || "Não foi possível enviar.");
+        const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string };
+        if (!response.ok || result.success !== true) throw new Error(result.error || "Não foi possível confirmar o envio.");
         void load().catch(() => setNotice("Mensagem enviada, mas o painel não pôde ser atualizado. Recarregue antes de repetir."));
       } catch (reason) {
         setNotice(reason instanceof Error ? reason.message : "Não foi possível enviar.");
-        setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, conteudo: `${m.conteudo || ""} ⚠️ (falha ao enviar)` } : m));
+        setMessages((prev) => prev.map((m) => m.id === tempId ? { ...m, status: "erro", status_detalhe: reason instanceof Error ? reason.message : "Não foi possível enviar." } : m));
       }
     })();
   };

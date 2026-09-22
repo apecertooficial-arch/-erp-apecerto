@@ -104,6 +104,11 @@ test("cancelamento só remove o agendamento após confirmação explícita", () 
   assert.ok(ui.indexOf("result.success !== true") < ui.indexOf("setScheduled((prev) => prev.filter"));
 });
 
+test("envio otimista vira erro quando a API não confirma a mensagem", () => {
+  assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "Não foi possível confirmar o envio\."\)/);
+  assert.match(ui, /status: "erro", status_detalhe: reason instanceof Error/);
+});
+
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
   assert.match(harness, /LiveChatWorkspace/);
   assert.match(harness, /liveChatHarness = "sanitizado"/);
