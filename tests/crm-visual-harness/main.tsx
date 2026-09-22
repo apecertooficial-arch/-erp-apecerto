@@ -24,6 +24,7 @@ import { LiveChatWorkspace } from "../../app/features/chat/LiveChatWorkspace";
 import { SalesProcessView } from "../../app/features/sales/SalesProcessWorkspace";
 import { AvisoNotificacoes } from "../../app/features/home/AvisoNotificacoes";
 import { RegistroPwa } from "../../app/components/RegistroPwa";
+import { CentralOperationsPanel } from "../../app/features/automations/CentralOperationsPanel";
 import { leads, payloadNormal, payloadVazio, vendasVazias } from "./fixtures";
 
 type Papel = "admin" | "gestor" | "corretor";
@@ -79,6 +80,7 @@ const leituraAvisoInvalida = parametros.get("notificationSeen") === "invalido";
 const registroPushInvalido = parametros.get("pushRegister") === "invalido";
 const escritaPermissoesInvalida = parametros.get("permissionsWrite") === "invalido";
 const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
+const operacaoCentralInvalida = parametros.get("centralWrite") === "invalido";
 const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
@@ -248,6 +250,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === "POST" && url.pathname === "/api/ncrm/push/registrar") return json(registroPushInvalido ? {} : { ok: true });
     if (method === "PATCH" && url.pathname === "/api/permissions") return json(escritaPermissoesInvalida ? {} : { success: true });
     if (method === "PATCH" && url.pathname === "/api/team") return json(escritaEquipeInvalida ? {} : { success: true });
+    if (method === "POST" && url.pathname === "/api/automacoes-operacao") return json(operacaoCentralInvalida ? {} : { ok: true });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "create") return json(criacaoVendaInvalida ? {} : { success: true, saleId: "venda-teste" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "move") return json(movimentoVendaInvalido ? {} : { success: true, stage: "doc_comp" });
     if (method === "PATCH" && url.pathname === "/api/crm/sales" && corpo.action === "addObs") return json(escritaVendaInvalida ? {} : { success: true });
@@ -294,6 +297,14 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });
   if (url.pathname === "/api/build") return json({ build: "harness-pwa-update" });
+  if (url.pathname === "/api/automacoes-operacao") return json({
+    agora: "2026-09-21T12:00:00Z", abordagem_automatica: false,
+    automacoes: { ativas: 1, invalidas: 0 }, fila: { pendentes: 0, quarentena: 1, mais_antiga: null },
+    sara: { fila_legada: 0, revisao_humana: 0, sem_evidencia: 0, qualidade_pendente: 0 },
+    integridade: { lead_recente_sem_negocio: 0, negocio_funil2_sem_card: 0 }, presenca: { elegiveis: 1, ativos: 1 },
+    contratos: [{ nome: "Contrato sanitizado", ok: true }],
+    quarentena: [{ id: 91, automacao: "Automação sanitizada", bloco_id: "bloco-1", tentativas: 2, erro: "Falha sanitizada", criado_em: "2026-09-21T11:00:00Z" }], revisoes: [],
+  });
   if (url.pathname === "/api/crm/sales") return json(payloadVendasInvalido ? {} : {
     sales: vendaEsteiraDetalhe ? [{ id: "venda-teste", created_at: "2026-09-21T12:00:00Z", data_venda: "2026-09-21", cliente_nome: "Cliente venda sanitizado", empreendimento_id: "produto-teste", empreendimento_nome: "Produto sanitizado", vgv: 350000, forma_pgto: null, status: "em_andamento", obs: null }] : [],
     processes: vendaEsteiraDetalhe ? [{ id: "processo-teste", venda_id: "venda-teste", negocio_id: 801, etapa: "inicio", tipo_venda: "construtora", responsavel_usuario_id: null, prazo_em: null, atualizado_em: "2026-09-21T12:00:00Z", aprovacao_status: "aprovada" }] : [],
@@ -391,6 +402,8 @@ const app = tela === "agenda-mobile"
     ? <AvisoNotificacoes accessToken="harness-test-only" />
   : tela === "pwa-update"
     ? <main style={{ padding: 24 }}><label>Rascunho inline<textarea aria-label="Rascunho inline" /></label><button type="button" onClick={dispararAtualizacaoPwa}>Simular versão nova</button><RegistroPwa /></main>
+  : tela === "central-exceptions"
+    ? <ErpShell><CentralOperationsPanel accessToken="harness-test-only" view="exceptions" /></ErpShell>
   : tela === "tarefas-mobile"
     ? <SaraTasksMobile accessToken="harness-test-only" />
   : tela === "agenda-manager"

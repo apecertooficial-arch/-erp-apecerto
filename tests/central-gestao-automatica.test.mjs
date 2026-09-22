@@ -81,6 +81,12 @@ test("fila futura não é exibida como pane operacional", () => {
   assert.doesNotMatch(panel, /totalCritico = numero\(saude\?\.automacoes\?\.invalidas\)[\s\S]{0,120}numero\(saude\?\.fila\?\.pendentes\)/);
 });
 
+test("painel só encerra comandos depois da confirmação explícita", () => {
+  assert.equal((panel.match(/payload\.ok !== true/g) ?? []).length, 2);
+  assert.match(panel, /A Central não confirmou a operação/);
+  assert.match(panel, /A Central não confirmou a decisão da Sara/);
+});
+
 test("autoteste prova os nove contratos sem criar lead real", () => {
   const contratos = migration.match(/'contratos',jsonb_build_array\([\s\S]*?\n    \)\n  \) into v_result/)?.[0] ?? "";
   assert.equal((contratos.match(/jsonb_build_object\('nome'/g) ?? []).length, 9);

@@ -87,6 +87,12 @@ test("harness reproduz confirmação inválida ao salvar equipe", () => {
   assert.match(harness, /usuario-equipe-teste/);
 });
 
+test("harness reproduz confirmação inválida ao reprocessar a Central", () => {
+  assert.match(harness, /centralWrite/);
+  assert.match(harness, /operacaoCentralInvalida \? \{\} : \{ ok: true \}/);
+  assert.match(harness, /<CentralOperationsPanel accessToken="harness-test-only" view="exceptions"/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

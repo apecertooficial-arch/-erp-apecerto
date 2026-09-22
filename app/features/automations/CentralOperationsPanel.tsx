@@ -67,8 +67,9 @@ export function CentralOperationsPanel({ accessToken, view = "overview" }: { acc
 
   const executar = useCallback(async (body: Record<string, unknown>) => {
     const response = await fetch("/api/automacoes-operacao", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const payload = await response.json().catch(() => ({})) as { error?: string };
+    const payload = await response.json().catch(() => ({})) as { error?: string; ok?: boolean };
     if (!response.ok) throw new Error(payload.error || "A operação não foi concluída.");
+    if (payload.ok !== true) throw new Error("A Central não confirmou a operação. Atualize antes de repetir.");
     await carregar();
   }, [accessToken, carregar]);
 
@@ -92,8 +93,9 @@ export function CentralOperationsPanel({ accessToken, view = "overview" }: { acc
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ action: "decidirSugestao", analiseId, decisao, motivo }),
       });
-      const payload = await response.json().catch(() => ({})) as { error?: string };
+      const payload = await response.json().catch(() => ({})) as { error?: string; ok?: boolean };
       if (!response.ok) throw new Error(payload.error || "Não foi possível decidir a revisão da Sara.");
+      if (payload.ok !== true) throw new Error("A Central não confirmou a decisão da Sara. Atualize antes de repetir.");
       await carregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível decidir a revisão da Sara.");
