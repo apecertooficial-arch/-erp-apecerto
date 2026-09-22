@@ -83,6 +83,7 @@ const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
 const operacaoCentralInvalida = parametros.get("centralWrite") === "invalido";
 const leituraCentralInvalida = parametros.get("centralRead") === "invalido";
 const escritaAgendaTruthy = parametros.get("agendaWrite") === "truthy";
+const tarefaMalformada = parametros.get("taskPayload") === "malformed";
 const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
@@ -295,7 +296,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if (estado === "sessao") return json({ error: "Sessão expirada." }, 401);
     if (estado === "invalido") return json({});
     if (url.searchParams.has("historicoLeadId")) return json(historicoInvalido ? {} : { eventos: saraPendente ? payloadSaraPendente.eventos : payloadNormal.eventos, notas: payloadNormal.notas });
-    return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
+    return json(tarefaMalformada ? { leads: [null] } : payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (relogioNoLimite ? payloadRelogioNoLimite : saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: parametros.has("notificationSeen") ? [{ id: 901, tipo: "acao_vencida", prioridade: 1, titulo: "Aviso sanitizado pendente", detalhe: "Ação sanitizada exige atenção.", negocio_id: 101, deep_link: "/crm", criada_em: "2026-09-21T18:00:00Z", vista_em: null, resolvida_em: null }] : [] });
   if (url.pathname === "/api/ncrm/push/chave") return json({ chave: "AQID" });

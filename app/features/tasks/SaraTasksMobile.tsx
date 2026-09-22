@@ -9,6 +9,20 @@ type Faixa = "atrasadas" | "agora" | "hoje" | "futuras";
 type Payload = { leads?: LeadFunil2[]; error?: string };
 type Tarefa = { lead: LeadFunil2; faixa: Faixa };
 
+function leadTarefaValido(valor: unknown): valor is LeadFunil2 {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return false;
+  const lead = valor as Record<string, unknown>;
+  return typeof lead.id === "string"
+    && typeof lead.nome === "string"
+    && typeof lead.etapa === "string"
+    && typeof lead.momento_codigo === "string"
+    && typeof lead.acao_rotulo === "string"
+    && typeof lead.proxima_acao_em === "string"
+    && typeof lead.cadencia_passo === "number"
+    && Number.isSafeInteger(lead.origem_negocio_id)
+    && (lead.telefone === null || typeof lead.telefone === "string");
+}
+
 function iniciais(nome: string) {
   return nome.split(/\s+/).filter(Boolean).slice(0, 2).map((parte) => parte[0]?.toUpperCase()).join("") || "?";
 }
@@ -46,9 +60,9 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   const carregar = useCallback(async (sinal?: AbortSignal) => {
     const resposta = await fetch("/api/funil2", { headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal });
     if (resposta.status === 401) throw new Error("sessao_expirada");
-    const json = await resposta.json().catch(() => ({})) as Payload;
+    const json = await resposta.json().catch(() => ({})) as { leads?: unknown; error?: string };
     if (!resposta.ok) throw new Error(json.error || "Não foi possível carregar suas tarefas.");
-    if (!Array.isArray(json.leads)) throw new Error("Não foi possível confirmar as tarefas recebidas.");
+    if (!Array.isArray(json.leads) || !json.leads.every(leadTarefaValido)) throw new Error("Não foi possível confirmar as tarefas recebidas.");
     setDados(json); setErro(""); setSessaoExpirada(false); setAtualizadoEm(new Date());
   }, [accessToken]);
 

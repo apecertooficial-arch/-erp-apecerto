@@ -103,6 +103,11 @@ test("harness reproduz success textual inválido na Agenda", () => {
   assert.match(harness, /escritaAgendaTruthy \? \{ success: "false" \} : \{ success: true \}/);
 });
 
+test("harness reproduz item malformado nas tarefas do Meu Dia", () => {
+  assert.match(harness, /taskPayload/);
+  assert.match(harness, /tarefaMalformada \? \{ leads: \[null\] \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);
