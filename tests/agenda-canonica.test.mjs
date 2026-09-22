@@ -56,6 +56,11 @@ test("nova visita desktop mostra falha de rede sem abandonar o formulário", () 
   assert.match(criar, /catch \{ mostrarAviso\("Não foi possível agendar\. Verifique a conexão e tente novamente\.", "error"\); \}/);
 });
 
+test("Agenda só confirma escrita com booleano success verdadeiro", () => {
+  assert.equal((desktop.match(/body\.success !== true/g) ?? []).length, 3);
+  assert.match(mobile, /j\.success !== true/);
+});
+
 test("Agenda do app fica visível no breakpoint mobile", () => {
   const inicioMobile = appMobileCss.indexOf("\n@media (max-width: 900px) {");
   const agendaVisivel = appMobileCss.indexOf(".ape-agenda {", inicioMobile);

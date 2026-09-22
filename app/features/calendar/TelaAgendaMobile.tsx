@@ -148,7 +148,7 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
       });
       if (r.status === 401) { setSessaoExpirada(true); return false; }
       const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
-      if (!r.ok || !j.success) {
+      if (!r.ok || j.success !== true) {
         /* A API da Agenda devolve mensagens operacionais já tratadas. Mostrar
            a causa evita que permissão, conflito de horário e dado inválido
            pareçam uma queda genérica de internet. */

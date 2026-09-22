@@ -98,6 +98,11 @@ test("harness reproduz leitura incompleta da saúde da Central", () => {
   assert.match(harness, /leituraCentralInvalida \? \{\} : \{/);
 });
 
+test("harness reproduz success textual inválido na Agenda", () => {
+  assert.match(harness, /agendaWrite/);
+  assert.match(harness, /escritaAgendaTruthy \? \{ success: "false" \} : \{ success: true \}/);
+});
+
 test("interceptador sintético permite somente GETs locais inventariados", () => {
   assert.match(harness, /if \(method !== "GET"\)/);
   assert.match(harness, /url\.origin !== window\.location\.origin/);

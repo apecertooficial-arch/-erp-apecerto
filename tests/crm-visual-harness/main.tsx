@@ -82,6 +82,7 @@ const escritaPermissoesInvalida = parametros.get("permissionsWrite") === "invali
 const escritaEquipeInvalida = parametros.get("teamWrite") === "invalido";
 const operacaoCentralInvalida = parametros.get("centralWrite") === "invalido";
 const leituraCentralInvalida = parametros.get("centralRead") === "invalido";
+const escritaAgendaTruthy = parametros.get("agendaWrite") === "truthy";
 const pushExistente = parametros.get("pushExisting") === "1";
 const vendaEsteiraDetalhe = parametros.has("salesMove") || parametros.has("salesWrite");
 const relogioNoLimite = parametros.get("clock") === "limite";
@@ -244,6 +245,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
       return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });
     }
+    if (method === "PATCH" && url.pathname === "/api/agenda") return json(escritaAgendaTruthy ? { success: "false" } : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "listScheduled") return json(agendamentosChatInvalidos ? {} : { agendadas: parametros.has("chatCancel") ? [{ id: 701, texto: "Retorno sanitizado", tipo: "text", quando: "2026-09-22T15:00:00Z", status: "agendado" }] : [] });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "cancelScheduled") return json(cancelamentoChatInvalido ? {} : { success: true });
     if (method === "POST" && url.pathname === "/api/live-chat" && corpo.action === "send") return json(envioChatInvalido ? {} : { success: true });

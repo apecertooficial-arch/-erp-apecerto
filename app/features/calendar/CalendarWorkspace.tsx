@@ -150,7 +150,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
     try {
       const response = await fetch("/api/agenda", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "updateVisit", visitId: editing.id, date: editForm.date, startTime: editForm.startTime, endTime: editForm.endTime, local: editForm.local, observations: editForm.observations, productId: editForm.productId, withManager: editForm.withManager, ...(isAdmin && editForm.withManager ? { gerenteId: editForm.gerenteId || geralGerenteId } : {}) }) });
       const body = await response.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
-      if (!response.ok || !body.success) {
+      if (!response.ok || body.success !== true) {
         mostrarAviso(body.error ?? "Não foi possível salvar a visita.", "error");
         return;
       }
@@ -173,7 +173,7 @@ export function CalendarWorkspace({ accessToken, corretorIdInicial = null }: { a
         body: JSON.stringify({ action: "registerVisitResult", visitId: resultadoPendente.id, ...dados }),
       });
       const body = await response.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string };
-      if (!response.ok || !body.success) { setErroResultado(body.error ?? "Não foi possível registrar o resultado."); return; }
+      if (!response.ok || body.success !== true) { setErroResultado(body.error ?? "Não foi possível registrar o resultado."); return; }
       setResultadoPendente(null); setSelected(null);
       mostrarAviso(body.message ?? "Resultado da visita registrado com sucesso.", "success");
       await load();
