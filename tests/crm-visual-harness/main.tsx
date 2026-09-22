@@ -63,6 +63,7 @@ const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
 const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
 const criacaoAgendaOffline = parametros.get("agendaCreate") === "offline";
 const visitaChatInvalida = parametros.get("chatVisit") === "invalido";
+const payloadChatInvalido = parametros.get("chatPayload") === "invalido";
 const payloadTarefas = tela === "tarefas-mobile" && parametros.get("volume") === "alto" ? {
   ...payloadNormal,
   leads: Array.from({ length: 32 }, (_, indice) => ({
@@ -213,7 +214,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     return json(payloadMobileInvalido ? { ...payloadNormal, momentos: undefined } : estado === "vazio" ? payloadVazio : payloadTarefas ?? (saraPendente ? payloadSaraPendente : payloadNormal));
   }
   if (url.pathname === "/api/notificacoes") return json(estado === "invalido" ? {} : { notificacoes: [] });
-  if (url.pathname === "/api/live-chat") return json(url.searchParams.has("conversationId") ? { messages: [] } : {
+  if (url.pathname === "/api/live-chat") return json(url.searchParams.has("conversationId") ? { messages: [] } : payloadChatInvalido ? {} : {
     conversations: [{ id: "conversa-teste", contato_id: "contato-teste", instancia_id: "instancia-teste", status: "aberta", ultima_msg_em: "2026-09-21T12:00:00Z", origem: "WhatsApp" }],
     contacts: [{ id: "contato-teste", nome: "Cliente chat sanitizado", telefone: "5511999990000", lead_id: 501 }],
     instances: [{ id: "instancia-teste", session_id: "sessao-teste", rotulo: "WhatsApp teste", status: "conectada", corretor_id: 7 }],

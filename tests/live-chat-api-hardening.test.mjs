@@ -83,6 +83,12 @@ test("Chat não presume gerente livre quando a disponibilidade falha", () => {
   assert.match(ui, /withManager && \(!disp \|\| disp\.loading \|\| disp\.error \|\| disp\.conflitos\.length > 0\)/);
 });
 
+test("Chat rejeita carga inicial parcial em vez de publicar estado inválido", () => {
+  assert.match(ui, /const payloadChatValido = \(result: unknown\)/);
+  assert.match(ui, /if \(!response\.ok \|\| !payloadChatValido\(result\)\) throw new Error\(/);
+  assert.match(ui, /Não foi possível confirmar os dados do Chat ao Vivo/);
+});
+
 test("harness visual usa a tela real, dados sanitizados e bloqueia mutações", () => {
   assert.match(harness, /LiveChatWorkspace/);
   assert.match(harness, /liveChatHarness = "sanitizado"/);

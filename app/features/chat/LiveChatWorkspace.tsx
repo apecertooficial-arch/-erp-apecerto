@@ -24,6 +24,12 @@ export type ChatData = {
   approaches: Array<{ id: number; nome: string; mensagens: unknown; produto_id: number | null }>;
   stages?: Array<{ id: number; nome: string; rotulo: string | null; ordem: number | null }>;
 };
+const payloadChatValido = (result: unknown): result is ChatData => {
+  if (!result || typeof result !== "object") return false;
+  const payload = result as Partial<ChatData>;
+  return [payload.conversations, payload.contacts, payload.instances, payload.dapi, payload.leads, payload.deals, payload.brokers, payload.products, payload.media, payload.activities, payload.approaches].every(Array.isArray)
+    && Boolean(payload.latest && typeof payload.latest === "object" && !Array.isArray(payload.latest));
+};
 type ChatFilter = "all" | "unanswered" | "critical";
 export type QuickAction = "callReminder" | "task" | "visit" | "proposal" | "financing" | "transfer" | "note";
 
@@ -67,8 +73,8 @@ export function LiveChatWorkspace({ accessToken, initialLeadId = null, onInitial
 
   const load = async () => {
     const response = await fetch("/api/live-chat", { headers: { Authorization: `Bearer ${accessToken}` } });
-    const result = await response.json() as ChatData & { error?: string };
-    if (!response.ok) throw new Error(result.error || "Não foi possível carregar o chat.");
+    const result = await response.json().catch(() => null) as (Partial<ChatData> & { error?: string }) | null;
+    if (!response.ok || !payloadChatValido(result)) throw new Error(response.ok ? "Não foi possível confirmar os dados do Chat ao Vivo." : result?.error || "Não foi possível carregar o chat.");
     setData(result);
     setSelectedId((current) => current || result.conversations[0]?.id || null);
   };
