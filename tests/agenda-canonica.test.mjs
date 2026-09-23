@@ -152,7 +152,7 @@ test("nova visita só aceita lead operável no Funil 2", () => {
 });
 
 test("status na Agenda e agendamento no CRM usam a visita canônica", () => {
-  const calls = agendaApi.match(/rpc\("f2_salvar_visita"/g) ?? [];
+  const calls = agendaApi.match(/rpc\("f2_salvar_visita(?:_local)?"/g) ?? [];
   assert.equal(calls.length, 3, "criação, edição e status devem passar pela mesma regra do Funil 2.0");
   assert.doesNotMatch(agendaApi, /from\("visitas"\)\.insert/);
   assert.match(agendaApi, /p_lead_id: card\.id/);
