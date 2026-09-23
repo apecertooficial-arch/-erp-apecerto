@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 16:26 BRT
+
+- PRs #255 e #256 integradas e publicadas no commit
+  `772710a61dfe5d4cbd45bef2369729ad6cbe7548`; `/api/build` confirmou o hash.
+- Decisão 10 entregue: produção desktop e viewport 390×844 carregaram 66 cards
+  visíveis com “Responsável”, além de etapa, momento, temperatura, próxima ação e
+  prazo. A ausência de leitura continua aparecendo honestamente como “Sem leitura”.
+- Decisão 12 entregue: a migração
+  `automacoes_exigem_pipeline_etapa_validos` está aplicada. Apenas `service_role`
+  executa o motor; funil/etapa ausentes ou incompatíveis geram erro explícito antes
+  de criar lead. A prova transacional foi revertida e não deixou dados artificiais.
+- A Central de Automações e o construtor publicado carregaram sem alerta. Uma ação
+  foi adicionada somente no estado local de um rascunho para inspeção; a navegação
+  descartou a alteração sem salvar ou publicar.
+- Branch atual `codex/execucao-30-decisoes-07`, limpa e baseada no `origin/main`
+  publicado. Próxima fatia: decisão 19, começando por reproduzir uma falha real no
+  ciclo agendar/reagendar/cancelar sem alterar visitas de clientes como teste.
+- Uso semanal: 73%; teto 90%; crédito de reset intacto. Sara segue bloqueada por
+  saldo externo. Identidade visual continua reservada para o fim e nova conversa.
+
 ## Estado verificado em 23/09/2026, 16:11 BRT
 
 - PRs #253 e #254 integradas e publicadas no commit

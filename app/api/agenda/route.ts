@@ -53,6 +53,7 @@ const mensagensVisita: Record<string, string> = {
   intervalo_visita_invalido: "O horário final precisa ser depois do horário inicial.",
   dados_invalidos: "Confira a data, o horário e o imóvel da visita.",
   sem_permissao: "Esta visita não pertence à sua agenda.",
+  visita_incompativel: "Esta visita não corresponde ao atendimento informado.",
 };
 
 function falhaDaVisita(error: { message?: string } | null, codigo: string | undefined, fallback: string) {
@@ -60,7 +61,7 @@ function falhaDaVisita(error: { message?: string } | null, codigo: string | unde
   const chave = codigo || Object.keys(mensagensVisita).find((item) => textoErro.includes(item));
   const mensagem = chave ? mensagensVisita[chave] : null;
   const status = chave === "sem_permissao" ? 403
-    : chave === "gerente_ocupado" || chave === "corretor_ocupado" ? 409
+    : chave === "gerente_ocupado" || chave === "corretor_ocupado" || chave === "visita_incompativel" ? 409
       : chave === "intervalo_visita_invalido" || chave === "dados_invalidos" ? 422 : 502;
   return Response.json({ error: mensagem ?? fallback }, { status });
 }
