@@ -47,11 +47,11 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 67,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Fatia funcional: seletor paginado de cliente no CRM",
-  lastCheckpoint: "Seletor de novo negócio limpa opções antigas ao mudar busca; navegador reproduziu 20 opções obsoletas antes e zero após deploy 208f1785. Paginação usa nome + ID, com 29 nomes repetidos na carteira ativa. 35 testes dirigidos, lint e build passaram.",
-  lastCheckpointAt: "2026-09-22T21:08:00-03:00",
-  lastCommitSent: "208f17855f3a5074fbcd2b83748b62b4b5dbf36a",
-  productionCommit: "208f17855f3a5074fbcd2b83748b62b4b5dbf36a",
+  currentTask: "Fatia funcional: prazos do Meu Dia e implantação pendente",
+  lastCheckpoint: "Meu Dia desktop passou a atualizar prazos e visitas a cada minuto; 56 testes dirigidos, lint e build passaram. O commit 0508204a foi enviado ao branch remoto, mas /api/build ainda apontou 8667778d em produção: não declarar esta correção implantada.",
+  lastCheckpointAt: "2026-09-22T21:19:00-03:00",
+  lastCommitSent: "0508204a",
+  productionCommit: "8667778de339bff41ac52adae36d1b75d7603fa7",
   latestDeliveries: [
     "Seletor de novo negócio remove opções antigas ao trocar busca e pagina nomes empatados por ID estável.",
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
@@ -60,7 +60,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Agendamento sem gerente explícito usa o gerente vinculado ao corretor, igual à consulta de conflitos; produção confirmou bloqueio diante de conflito.",
   ],
   blockers: ["Fila segue parada: erro 23505 na recuperação de lease Sara; a migração está preparada, mas não aplicada em produção.", "As 39 falhas recentes da Sara na API de IA retornaram credit_balance_exhausted; saldo da API é separado do teto de uso do Codex.", "O Local digitado na visita não é persistido pela RPC canônica; corrigir exige schema de produção.", "A RPC gerente_conflitos aceita chamada autenticada direta e retorna nomes de clientes sem escopo de usuário; correção exige gate de schema de produção."],
-  nextStep: "Seguir pelas fatias funcionais sem dependência da Sara; preservar o gate de schema de produção e não declarar a fila recuperada sem novos claims. Identidade visual fica para a última fase.",
+  nextStep: "Confirmar o caminho autorizado de implantação do branch funcional antes do smoke em produção; seguir pelas falhas independentes da Sara e preservar o gate de schema. Identidade visual fica para a última fase.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
