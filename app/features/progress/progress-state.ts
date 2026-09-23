@@ -37,23 +37,24 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 63,
+  overallPercent: 65,
   fronts: [
-    { name: "CRM / Kanban", percent: 84 },
+    { name: "CRM / Kanban", percent: 86 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 70 },
-    { name: "Agenda / visitas", percent: 92 },
-    { name: "Aplicativo móvel", percent: 72 },
+    { name: "Agenda / visitas", percent: 94 },
+    { name: "Aplicativo móvel", percent: 74 },
   ],
   weeklyUsagePercent: 73,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar próxima ação explícita nos cards pós-visita",
-  lastCheckpoint: "Item 23 reproduzido: 37 cards pós-visita usam uma ação genérica. A correção recupera 4 ações comprovadas, deixa 33 legados explicitamente pendentes de registro e preserva a frase digitada nos novos feedbacks. Prova produtiva revertida, 1.148 testes, TypeScript, lint e build passaram.",
-  lastCheckpointAt: "2026-09-23T17:19:16-03:00",
-  lastCommitSent: "607766a4",
-  productionCommit: "607766a4228f571bc149b2d7088b1f1e86539e59",
+  currentTask: "Publicar métricas baseadas em eventos confirmados com recorte e denominador visíveis",
+  lastCheckpoint: "Item 23 entregue no build bea893a. Item 24 reproduzido e corrigido: o placar preparado usa o último evento confirmado por visita e mostra período, 5/74 avaliados e fração no prazo. Prova produtiva revertida, mobile 390×844, desktop 1440×900, 1.151 testes, TypeScript, lint e build passaram.",
+  lastCheckpointAt: "2026-09-23T17:46:39-03:00",
+  lastCommitSent: "bea893a3",
+  productionCommit: "bea893a3adf6973cbf4531b20f63f8cf23cf856e",
   latestDeliveries: [
-    "Item 23 preparado: próxima ação pós-visita deixa de ser categoria genérica; dados estruturados são recuperados e histórico sem fonte pede registro humano.",
+    "Item 24 preparado: desempenho parte do último evento confirmado por visita e expõe período, total confirmado, base avaliada e fração absoluta no prazo.",
+    "PR #258 publicada: os 37 cards pós-visita deixaram a ação ambígua; 4 ações comprovadas foram recuperadas e 33 históricos pedem registro humano.",
     "Decisão 22 aceita: cobrança de feedback visível para corretor e gestão, idempotente e encerrada somente por resultado válido do dono; nenhum envio externo foi ativado.",
     "Decisão 21 aceita: formulário real em mobile e desktop, nota 10/10, persistência estruturada, autoria, espelho da Agenda e próxima ação em 24 h.",
     "Feedback textual estruturado provado em produção: campos versionados, nota 10/10, autoria, espelho, auditoria e atualização do card passaram com rollback confirmado.",
@@ -80,7 +81,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; ativar o rascunho deixaria uploads sem processamento.",
   ],
-  nextStep: "Publicar a correção do item 23, aplicar a migration, confirmar os 37 cards e aceitar a ação explícita em mobile antes do desktop. Depois avançar no item 24. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a correção do item 24, aplicar a migration e aceitar período e denominadores em produção no mobile antes do desktop. Depois avançar no item 25. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
