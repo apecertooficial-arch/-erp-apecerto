@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../supabase/migrations/20260923170000_transferencias_auditaveis.sql");
 const api = read("../app/api/live-chat/route.ts");
 const workspace = read("../app/features/chat/LiveChatWorkspace.tsx");
+const styles = read("../app/globals.css");
 
 test("transferência canônica atualiza lead, negócio e card na mesma função", () => {
   assert.match(migration, /update public\.negocios n[\s\S]*set corretor_id = v_transferencia\.para_corretor_id/);
@@ -38,4 +39,9 @@ test("API e interface usam o contrato auditável e oferecem aceite ou recusa", (
   assert.match(workspace, /Fit comercial/);
   assert.match(workspace, /Aceitar/);
   assert.match(workspace, /Recusar/);
+});
+
+test("transferência continua acessível quando a lateral some em telas compactas", () => {
+  assert.match(workspace, /className="chat-thread-actions"[\s\S]{0,240}openQuickAction\("transfer"\)/);
+  assert.match(styles, /@media \(max-width:1240px\)\{\.chat-sidebar\{display:none\}\.chat-thread-actions>button\{display:inline-flex/);
 });

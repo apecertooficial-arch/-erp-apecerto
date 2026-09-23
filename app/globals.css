@@ -458,6 +458,8 @@ button { cursor:pointer; }
 .chat-thread>header small { display:block; color:var(--muted); letter-spacing:.04em; }
 .chat-connection { font-weight:600; color:var(--muted); }
 .chat-connection.connected { color:var(--green); }
+.chat-thread-actions { display:flex; align-items:center; gap:10px; }
+.chat-thread-actions>button { display:none; min-height:36px; border:1px solid var(--line); border-radius:10px; padding:0 12px; background:var(--surface); color:var(--ink-soft); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
 .history-instance { color:var(--faint); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
 .history-instance select { margin-top:4px; min-height:34px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:var(--surface); }
 .message-stream { display:flex; flex-direction:column; gap:8px; padding:20px 24px; overflow:auto; }
@@ -550,7 +552,7 @@ button { cursor:pointer; }
 .bulk-arrow, .bulk-move-grid .bulk-arrow { display:grid; place-items:center; color:var(--faint); font-size:18px; }
 
 /* chat responsivo */
-@media (max-width:1240px){.chat-sidebar{display:none}}
+@media (max-width:1240px){.chat-sidebar{display:none}.chat-thread-actions>button{display:inline-flex;align-items:center}}
 @media (max-width:820px){.conversation-list{display:none}}
 
 
