@@ -115,7 +115,7 @@ export function LeadSearchPicker({ accessToken, value, onChange, rotulo = "Busca
         aria-selected={false}
         onClick={() => { setEscolhido(lead); onChange(lead.id); }}
       ><strong>{lead.nome}</strong><small>{lead.telefoneMascarado ?? "Sem telefone"} · #{lead.negocioId}{lead.corretorNome ? ` · ${lead.corretorNome}` : ""}</small></button>)}
-      {temMais && <button type="button" className="f2-lead-mais" disabled={carregando} onClick={() => setPagina((atual) => atual + 1)}>Mostrar mais resultados</button>}
+      {temMais && <button type="button" className="f2-lead-mais" disabled={carregando} onClick={() => { setCarregando(true); setPagina((atual) => atual + 1); }}>Mostrar mais resultados</button>}
     </div>}
   </div>;
 }
