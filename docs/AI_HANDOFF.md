@@ -1,5 +1,83 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 17:19 BRT
+
+- Decisão 23 reproduzida: os 1.136 cards ativos têm etapa, momento, dono, ação e
+  prazo, porém 37 cards em `ACOMPANHAMENTO_POS_VISITA` mostram a categoria ambígua
+  “Definir o próximo avanço”.
+- Somente 4 desses 37 têm `FEEDBACK_VISITA_V1` com próxima ação extraível. A
+  migration preparada recupera exatamente essas 4; os 33 históricos sem fonte
+  passam a “Registrar a próxima ação pós-visita”, sem inferência. Novos resultados
+  gravam no card a frase exata informada e a repetem no payload auditável.
+- A migration inteira passou em produção dentro de transação revertida: categoria
+  antiga zerou, 4 ações foram recuperadas, 37 auditorias nasceram e um feedback
+  novo persistiu a ação exata. Rollback restaurou função, cards e auditorias e não
+  deixou visita artificial.
+- Gates verdes: 1.148 testes, TypeScript, lint sem erros (9 avisos preexistentes) e
+  build Vinext completo. Falta commit, PR, CI, migration definitiva, confirmação da
+  build e aceite visual mobile→desktop.
+- Uso semanal: 73%; teto 90%; crédito de reset intacto. O áudio e a Sara seguem
+  bloqueados pelo saldo externo; identidade visual continua reservada para o fim.
+
+## Estado verificado em 23/09/2026, 17:07 BRT
+
+- Decisão 21 entregue no build produtivo `607766a`: a prova transacional obteve
+  nota 10/10, persistiu acompanhantes, alternativas/produtos, objeções, intenção e
+  próxima ação com autoria; visita canônica, espelho, evento, auditoria e prazo de
+  24 h passaram. O rollback não deixou dados artificiais.
+- O formulário real foi renderizado com os estilos publicados em Chrome, 390×844
+  e desktop: todos os campos ficaram acessíveis, sem overflow horizontal; após o
+  preenchimento a nota foi 10/10 e Salvar resultado ficou habilitado. Nada foi
+  enviado. O controle de áudio permaneceu oculto/fail-closed.
+- Decisão 22 entregue: o reconciliador criou exatamente um aviso por público
+  (corretor e gestão), ambos apareceram nas respectivas RPCs e a segunda execução
+  preservou os IDs. Gestão não pôde responder pelo corretor; feedback inválido não
+  encerrou a cobrança; feedback válido do dono resolveu os dois avisos. Push e
+  WhatsApp permaneceram desligados. Rollback confirmado.
+- Próxima fatia: decisão 23, definição explícita de estado, responsável e motivo
+  da próxima ação em cada card de acompanhamento.
+- Uso semanal: 73%; teto 90%; crédito de reset intacto. O áudio e a Sara seguem
+  bloqueados pelo saldo externo; identidade visual continua reservada para o fim.
+
+## Estado verificado em 23/09/2026, 16:54 BRT
+
+- Decisão 21 passou na prova produtiva transacional com `ROLLBACK`: uma visita
+  temporária recebeu feedback realizado com nota 10/10, autoria do corretor,
+  acompanhantes, alternativas/produtos, objeções, intenção e próxima ação no
+  envelope `FEEDBACK_VISITA_V1`. A visita canônica e o espelho da Agenda ficaram
+  alinhados; evento, auditoria e prazo de 24 h no card foram confirmados.
+- Consulta posterior confirmou ausência da visita, espelho, evento e auditoria
+  artificiais. Falta somente aceitar visualmente o formulário publicado antes de
+  marcar a decisão 21 como entregue.
+- Decisão 20 está objetivamente bloqueada no áudio: produção não possui tabela,
+  bucket privado, RPC, Edge Function, cron ou segredos de transcrição, e a API de
+  IA está sem saldo. O controle continua oculto/fail-closed; não aplicar o rascunho
+  enquanto ele puder aceitar uploads que ficariam sem processamento.
+- Próxima fatia: concluir o aceite visual da decisão 21 e provar a cobrança
+  persistente gerente→corretor da decisão 22 sem alterar visitas reais.
+- Uso semanal: 73%; teto 90%; crédito de reset intacto. Identidade visual continua
+  reservada para o fim e nova conversa.
+
+## Estado verificado em 23/09/2026, 16:46 BRT
+
+- PR #257 integrada e publicada no commit
+  `607766a4228f571bc149b2d7088b1f1e86539e59`; CI e `/api/build` confirmaram.
+  A migração `visita_exige_card_original` está aplicada.
+- A falha reproduzida permitia combinar o ID de uma visita com outro card do
+  mesmo corretor: a RPC declarava sucesso e avançava o card errado embora a visita
+  não mudasse. A prova foi revertida e não deixou eventos nem auditoria artificiais.
+- A guarda publicada exige que a visita pertença ao card informado, retorna
+  `visita_incompativel` e preserva o card. `anon` continua sem execução; o usuário
+  autenticado só opera a própria carteira pela guarda já existente.
+- Decisão 19 entregue: prova integral com `ROLLBACK` agendou, reagendou e cancelou,
+  confirmando visita canônica, espelho da Agenda, estado do CRM, três eventos e
+  três auditorias. Nenhum registro de prova persistiu.
+- Produção em 390×844 e desktop carregou a Agenda sem alerta; criação de visita,
+  campos de horário/local e opção de gerente ficaram acessíveis. Próxima fatia:
+  decisão 20, feedback por texto e áudio sem fabricar visita ou mídia.
+- Uso semanal: 73%; teto 90%; crédito de reset intacto. Sara segue bloqueada por
+  saldo externo. Identidade visual continua reservada para o fim e nova conversa.
+
 ## Estado verificado em 23/09/2026, 16:26 BRT
 
 - PRs #255 e #256 integradas e publicadas no commit

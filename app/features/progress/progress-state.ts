@@ -37,22 +37,27 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 56,
+  overallPercent: 63,
   fronts: [
-    { name: "CRM / Kanban", percent: 82 },
+    { name: "CRM / Kanban", percent: 84 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 70 },
-    { name: "Agenda / visitas", percent: 75 },
-    { name: "Aplicativo móvel", percent: 66 },
+    { name: "Agenda / visitas", percent: 92 },
+    { name: "Aplicativo móvel", percent: 72 },
   ],
   weeklyUsagePercent: 73,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Agenda completa: agendar, reagendar e cancelar com conflito e permissão",
-  lastCheckpoint: "PRs #255/#256 estão publicadas no hash 772710a. O CRM explicita o responsável nos cards em desktop e 390×844. Automações recusam funil ou etapa inválidos com erro explícito e sem criar lead; migração, permissões, ensaio transacional e construtor publicado foram aceitos.",
-  lastCheckpointAt: "2026-09-23T16:25:54-03:00",
-  lastCommitSent: "772710a6",
-  productionCommit: "772710a61dfe5d4cbd45bef2369729ad6cbe7548",
+  currentTask: "Publicar próxima ação explícita nos cards pós-visita",
+  lastCheckpoint: "Item 23 reproduzido: 37 cards pós-visita usam uma ação genérica. A correção recupera 4 ações comprovadas, deixa 33 legados explicitamente pendentes de registro e preserva a frase digitada nos novos feedbacks. Prova produtiva revertida, 1.148 testes, TypeScript, lint e build passaram.",
+  lastCheckpointAt: "2026-09-23T17:19:16-03:00",
+  lastCommitSent: "607766a4",
+  productionCommit: "607766a4228f571bc149b2d7088b1f1e86539e59",
   latestDeliveries: [
+    "Item 23 preparado: próxima ação pós-visita deixa de ser categoria genérica; dados estruturados são recuperados e histórico sem fonte pede registro humano.",
+    "Decisão 22 aceita: cobrança de feedback visível para corretor e gestão, idempotente e encerrada somente por resultado válido do dono; nenhum envio externo foi ativado.",
+    "Decisão 21 aceita: formulário real em mobile e desktop, nota 10/10, persistência estruturada, autoria, espelho da Agenda e próxima ação em 24 h.",
+    "Feedback textual estruturado provado em produção: campos versionados, nota 10/10, autoria, espelho, auditoria e atualização do card passaram com rollback confirmado.",
+    "PR #257 publicada: uma visita só pode ser editada no card original; ciclo agendar, reagendar e cancelar aceito com sincronização e auditoria.",
     "PR #256 publicada: ações de criar ou mover negócio exigem funil e etapa compatíveis; referência inválida falha explicitamente e não cria lead.",
     "PR #255 publicada: todos os perfis veem o responsável nos cards do CRM; desktop e 390×844 aceitos no build 772710a.",
     "PRs #253/#254 publicadas: transferências exigem dono/escopo, aceite do destino e sincronizam negócio, lead e card; mobile mantém o atalho quando a lateral some.",
@@ -71,8 +76,11 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Seletor de novo negócio remove opções antigas ao trocar busca e pagina nomes empatados por ID estável.",
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
-  blockers: ["Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex."],
-  nextStep: "Avançar na decisão 19 pela Agenda: reproduzir uma falha concreta no ciclo agendar, reagendar e cancelar, corrigir somente o comportamento comprovado e aceitar mobile antes do desktop. Não alterar visitas reais como teste. Identidade visual fica por último e exige nova conversa.",
+  blockers: [
+    "Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex.",
+    "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; ativar o rascunho deixaria uploads sem processamento.",
+  ],
+  nextStep: "Publicar a correção do item 23, aplicar a migration, confirmar os 37 cards e aceitar a ação explícita em mobile antes do desktop. Depois avançar no item 24. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
