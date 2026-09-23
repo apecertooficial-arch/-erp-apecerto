@@ -1,5 +1,17 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 12:13 BRT
+
+- Objetivo: concluir fatias funcionais P0/P1 do ERP com teste, CI e validação em produção; manter identidade visual para a última fase. Teto semanal de uso: 80%; última leitura: 70%.
+- Repositório: `apecertooficial-arch/-erp-apecerto`. Base `origin/main` em `2b9fd1e5`; branch atual `codex/sara-lease-migration-20260923`. Nenhum arquivo alheio foi alterado.
+- Concluído: PRs [#246](https://github.com/apecertooficial-arch/-erp-apecerto/pull/246), [#247](https://github.com/apecertooficial-arch/-erp-apecerto/pull/247) e [#248](https://github.com/apecertooficial-arch/-erp-apecerto/pull/248) integradas; `/api/build` confirmou `2b9fd1e542c2e1f7c1a716005eb7fe7d49776dc2`. Agenda móvel carregou com 66 cobranças e qualidade; Local da visita passou a persistir; conflitos do gerente não expõem dados de clientes alheios.
+- Sara: migração remota `20260923151146_dispatcher_recuperar_lote_sara_expirado` aplicada após ensaio de recuperação com rollback. Um lease colidente foi consolidado; vencidos caíram de 273 para 180 e 129 itens tiveram status `ok` na primeira janela. Há 8 itens novos com erro genérico `P0001`; não declarar toda a fila concluída.
+- Arquivos desta branch: migração renomeada para `supabase/migrations/20260923151146_dispatcher_recuperar_lote_sara_expirado.sql` (mesma versão remota), `tests/automations-dispatcher.test.mjs`, `app/features/progress/progress-state.ts` e este checkpoint. Migração já aplicada; não reaplicar.
+- Verificações: 41 testes dirigidos, TypeScript, lint e build passaram. Pendentes: PR/CI, merge e `/api/build` para o alinhamento do repositório. Próximo passo exato: concluir esses gates e classificar os 8 erros `P0001` sem consultar nem expor conteúdo pessoal.
+- Risco: saldo da API de IA da Sara já retornou `credit_balance_exhausted`; isso é separado do uso de Codex. Não houve pagamento, rotação de credencial ou criação de visita fictícia em produção.
+
+## Histórico anterior
+
 - Prioridade atual definida pelo usuário: funções observáveis primeiro. Interromper redesign, tokens, shell, gradientes e ajustes estéticos. Identidade visual somente na última fase, após nova conversa e aprovação.
 - Estado visual: a prova dos commits `361b5a16` e `591dd749` está em produção; o usuário a rejeitou como "horrível". Não houve reversão nem reset. Não propagar a linguagem visual para outras telas.
 - Próxima fatia funcional: rastrear captação e distribuição de um lead até sua presença na carteira do corretor e no Meu Dia; reproduzir uma falha real antes de editar. Depois seguir IA/momento/próxima ação, automações, visitas/feedback/cobrança, negociação/vendas/contratos, imóveis/proprietários, financeiro e app móvel.

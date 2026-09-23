@@ -17,7 +17,7 @@ const infrastructureMigration = readFileSync(
 );
 const expiredSaraBatchMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260922203000_dispatcher_recuperar_lote_sara_expirado.sql",
+    "../supabase/migrations/20260923151146_dispatcher_recuperar_lote_sara_expirado.sql",
     import.meta.url,
   ),
   "utf8",
