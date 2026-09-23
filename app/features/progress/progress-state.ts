@@ -45,14 +45,15 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     { name: "Agenda / visitas", percent: 75 },
     { name: "Aplicativo móvel", percent: 66 },
   ],
-  weeklyUsagePercent: 70,
-  weeklyUsageCeilingPercent: 80,
-  currentTask: "Sara: avaliar duas falhas de IA sem reprocessar cards descartados",
-  lastCheckpoint: "Em 23/09, as PRs #246–#249 foram integradas e confirmadas em /api/build. A Agenda móvel carregou, o Local persiste e conflitos de gerente não expõem clientes alheios. A recuperação Sara consolidou o lease colidente; a fila passou de 273 itens vencidos a zero, com 159 processamentos ok e zero leases expirados. Dos 17 erros após a migração, 15 eram de cards descartados protegidos pela regra atual e 2 eram AI_UNAVAILABLE; nenhuma análise foi simulada.",
-  lastCheckpointAt: "2026-09-23T12:23:00-03:00",
-  lastCommitSent: "d510adb9",
-  productionCommit: "43d8496d5ba4c4964b9472f49cfc04e2b6d06898",
+  weeklyUsagePercent: 71,
+  weeklyUsageCeilingPercent: 90,
+  currentTask: "Entrada e primeira abordagem: tornar o monitor honesto sem alterar o envio",
+  lastCheckpoint: "Em 23/09, um evento real recente comprovou webhook, distribuição, negócio/card, dono consistente, entrada no Meu Dia e abordagem aceita, confirmada e entregue pela instância do corretor. O monitor ainda chamava o aceite HTTP inicial de sucesso; a correção local passa a identificá-lo como aceite D-API. A Sara continua bloqueada apenas pelo saldo externo da API de IA.",
+  lastCheckpointAt: "2026-09-23T13:25:00-03:00",
+  lastCommitSent: "89dfbb0d",
+  productionCommit: "098bc5c603c88b97a954e081302940766ea36c7e",
   latestDeliveries: [
+    "Entrada Autoral comprovada ponta a ponta com evento real recente: distribuição, card ativo, dono consistente, Meu Dia e abordagem entregue.",
     "Fila Sara voltou a escoar: zero itens vencidos e zero leases expirados na última consulta; 159 itens concluídos após a migração.",
     "Recuperação de lease Sara aplicada: lote colidente fundido e dispatcher voltou a concluir itens; migração alinhada ao histórico remoto.",
     "Consulta de conflitos de gerente protege nomes, IDs de visita e corretor de carteiras alheias; teste com usuários reais simulados em transação passou.",
@@ -66,7 +67,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: ["Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex."],
-  nextStep: "Diagnosticar as duas falhas de IA sem pagamento ou troca de credenciais; seguir pelas próximas falhas P0/P1 reproduzíveis. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
+  nextStep: "Publicar e validar no mobile e desktop o rótulo Aceites D-API; depois avançar para a próxima falha funcional independente da Sara. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

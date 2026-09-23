@@ -514,6 +514,8 @@ test('mensagem só libera a próxima parte após confirmação real da D-API', (
   assert.match(confirmedMessageContinuation, /__motor_next_block_id/);
   assert.match(confirmedMessageContinuation, /aguardando confirmacao da mensagem/);
   assert.match(confirmedMessageContinuation, /v_ultima\.continuacao_em is not null/);
+  assert.match(builder, /n\.type==='send-approach'\?'Aceites D-API':'Sucesso'/);
+  assert.match(builder, /n\.type==='send-approach'\?'Aceites D-API':'Sucessos'/);
 });
 
 test('entrada materializa o contato e operações de campos não criam lead', () => {

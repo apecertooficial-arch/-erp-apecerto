@@ -442,7 +442,7 @@ function renderNodes(){
    ${expanded?'':`<button type="button" class="node-summary" data-node-toggle><span>${esc(nodeSummary(n))}</span><b>Editar</b></button>`}
    <div class="ne ${expanded?'open':''}" data-body></div>
    ${expanded?'':`<div class="compact-ports">${compactPorts(n)}</div>`}
-   <div class="node-counter-period">Últimos 200 eventos</div><div class="foot" data-foot title="Contadores dos últimos 200 eventos carregados desta automação"><button type="button" class="st ok" aria-label="Ver sucessos deste bloco nos últimos 200 eventos"><b data-c="ok">0</b><span>Sucesso</span></button><button type="button" class="st warning" aria-label="Ver alertas deste bloco nos últimos 200 eventos"><b data-c="alerta">0</b><span>Alerta</span></button><button type="button" class="st error" aria-label="Ver erros deste bloco nos últimos 200 eventos"><b data-c="erro">0</b><span>Erro</span></button></div>`;
+   <div class="node-counter-period">Últimos 200 eventos</div><div class="foot" data-foot title="Contadores dos últimos 200 eventos carregados desta automação"><button type="button" class="st ok" aria-label="${n.type==='send-approach'?'Ver aceites da D-API':'Ver sucessos'} deste bloco nos últimos 200 eventos"><b data-c="ok">0</b><span>${n.type==='send-approach'?'Aceites D-API':'Sucesso'}</span></button><button type="button" class="st warning" aria-label="Ver alertas deste bloco nos últimos 200 eventos"><b data-c="alerta">0</b><span>Alerta</span></button><button type="button" class="st error" aria-label="Ver erros deste bloco nos últimos 200 eventos"><b data-c="erro">0</b><span>Erro</span></button></div>`;
   el.querySelector('[data-body]').innerHTML=selectedId===n.id?bodyHtml(n):'';
   worldEl.appendChild(el);
   el.querySelectorAll('[data-node-toggle]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();selectedId=selectedId===n.id?null:n.id;renderNodes();}));
@@ -455,8 +455,8 @@ function renderNodes(){
  });
  applyCounts();drawEdges();
 }
-/* ---- Logs do bloco (Entraram / Sucessos / Alertas / Erros) ---- */
-const _LOGTABS=[['entrou','Entraram'],['ok','Sucessos'],['alerta','Alertas'],['erro','Erros']];
+/* ---- Logs do bloco (Entraram / resultado técnico / Alertas / Erros) ---- */
+const _logTabs=n=>[['entrou','Entraram'],['ok',n.type==='send-approach'?'Aceites D-API':'Sucessos'],['alerta','Alertas'],['erro','Erros']];
 function _logMatch(r,tab){const s=String(r.status||'').toLowerCase();if(tab==='entrou')return s==='entrou'||s==='in'||s==='iniciado'||s==='started'||r.evento==='entrou';if(tab==='ok')return s==='ok'||s==='sucesso'||s==='success'||s==='concluido';if(tab==='alerta')return s==='alerta'||s==='warning'||s==='warn';if(tab==='erro')return s==='erro'||s==='error'||s==='failed'||s==='falha';return false;}
 async function openBlockLogs(n,tab){
  tab=tab||'ok';
@@ -465,7 +465,7 @@ async function openBlockLogs(n,tab){
  try{ rows=await sbGet('/motor_execucoes?bloco_id=eq.'+encodeURIComponent(n.id)+'&select=*&order=criado_em.desc&limit=200'); }
  catch(e){ showPanel('Logs do bloco',`<div style="color:var(--err);font-size:12.5px;padding:6px 0">Erro ao carregar logs: ${esc(e.message)}</div>`); return; }
  function paint(active){
-  const tabsH=_LOGTABS.map(([k,l])=>{const cnt=rows.filter(r=>_logMatch(r,k)).length;const on=k===active;return `<button data-logtab="${k}" style="border:0;background:${on?'var(--brand-soft)':'transparent'};color:${on?'var(--brand)':'var(--ink-soft)'};font-weight:${on?700:500};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">${l}${cnt?` <span style="font-size:10px;opacity:.7">(${cnt})</span>`:''}</button>`;}).join('');
+  const tabsH=_logTabs(n).map(([k,l])=>{const cnt=rows.filter(r=>_logMatch(r,k)).length;const on=k===active;return `<button data-logtab="${k}" style="border:0;background:${on?'var(--brand-soft)':'transparent'};color:${on?'var(--brand)':'var(--ink-soft)'};font-weight:${on?700:500};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">${l}${cnt?` <span style="font-size:10px;opacity:.7">(${cnt})</span>`:''}</button>`;}).join('');
   const list=rows.filter(r=>_logMatch(r,active));
   const cor=active==='erro'?'var(--err)':(active==='alerta'?'var(--warn)':(active==='entrou'?'var(--ink-faint)':'var(--ok)'));
   const item=r=>{const dt=r.criado_em?new Date(r.criado_em).toLocaleString('pt-BR'):'';const lead=r.lead_nome||r.lead||r.contato_nome||'';const tel=r.lead_telefone||r.telefone||r.contato_telefone||'';const neg=r.negocio||r.negocio_nome||'';const det=r.detalhe||r.mensagem||r.descricao||'';
