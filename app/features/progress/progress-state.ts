@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 71,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Entrada e primeira abordagem: tornar o monitor honesto sem alterar o envio",
-  lastCheckpoint: "Em 23/09, um evento real recente comprovou webhook, distribuição, negócio/card, dono consistente, entrada no Meu Dia e abordagem aceita, confirmada e entregue pela instância do corretor. O monitor ainda chamava o aceite HTTP inicial de sucesso; a correção local passa a identificá-lo como aceite D-API. A Sara continua bloqueada apenas pelo saldo externo da API de IA.",
-  lastCheckpointAt: "2026-09-23T13:25:00-03:00",
-  lastCommitSent: "89dfbb0d",
-  productionCommit: "098bc5c603c88b97a954e081302940766ea36c7e",
+  currentTask: "Proteção do dono: considerar somente visita ou negociação ativas",
+  lastCheckpoint: "Em 23/09, a PR #251 entrou em produção no hash b560fff: mobile e desktop agora distinguem Aceites D-API da confirmação messages.sent. No recorte seguinte, uma consulta agregada encontrou cinco cards bloqueados apenas por visita encerrada; a correção transacional com rollback libera esses históricos e preserva visita/negociação ativas.",
+  lastCheckpointAt: "2026-09-23T13:56:00-03:00",
+  lastCommitSent: "b560fff8",
+  productionCommit: "b560fff861ac0046433c1d95e01e25395d62d524",
   latestDeliveries: [
+    "PR #251 publicada: contador e logs da primeira abordagem dizem Aceites D-API no mobile e desktop, sem alterar o envio.",
     "Entrada Autoral comprovada ponta a ponta com evento real recente: distribuição, card ativo, dono consistente, Meu Dia e abordagem entregue.",
     "Fila Sara voltou a escoar: zero itens vencidos e zero leases expirados na última consulta; 159 itens concluídos após a migração.",
     "Recuperação de lease Sara aplicada: lote colidente fundido e dispatcher voltou a concluir itens; migração alinhada ao histórico remoto.",
@@ -67,7 +68,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: ["Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex."],
-  nextStep: "Publicar e validar no mobile e desktop o rótulo Aceites D-API; depois avançar para a próxima falha funcional independente da Sara. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
+  nextStep: "Publicar a proteção do dono pelo estado atual, validar a migração e o construtor em produção e então avançar para transferências auditáveis. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
