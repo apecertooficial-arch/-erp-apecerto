@@ -8,6 +8,7 @@ dist/
 .next/
 build/
 *.tsbuildinfo
+public/media/abordagens/autoral-moema/autoral-moema-original-02.mp4
 
 # Ambiente
 .env
