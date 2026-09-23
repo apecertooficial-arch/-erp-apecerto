@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 70,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Sara: investigar oito erros P0001 após a retomada da fila",
-  lastCheckpoint: "Em 23/09, as PRs #246–#248 foram integradas e confirmadas em /api/build. Agenda móvel abriu com cobrança e qualidade; Local da visita persiste; conflitos de gerente não expõem clientes alheios. A migração de recuperação Sara foi aplicada no banco após ensaio com rollback: um lease foi consolidado, itens vencidos caíram de 273 para 180 e 129 processamentos terminaram com status ok na primeira janela. Oito itens ficaram em erro P0001; ainda exigem diagnóstico.",
-  lastCheckpointAt: "2026-09-23T12:13:00-03:00",
-  lastCommitSent: "954cefc7",
-  productionCommit: "2b9fd1e542c2e1f7c1a716005eb7fe7d49776dc2",
+  currentTask: "Sara: avaliar duas falhas de IA sem reprocessar cards descartados",
+  lastCheckpoint: "Em 23/09, as PRs #246–#249 foram integradas e confirmadas em /api/build. A Agenda móvel carregou, o Local persiste e conflitos de gerente não expõem clientes alheios. A recuperação Sara consolidou o lease colidente; a fila passou de 273 itens vencidos a zero, com 159 processamentos ok e zero leases expirados. Dos 17 erros após a migração, 15 eram de cards descartados protegidos pela regra atual e 2 eram AI_UNAVAILABLE; nenhuma análise foi simulada.",
+  lastCheckpointAt: "2026-09-23T12:23:00-03:00",
+  lastCommitSent: "d510adb9",
+  productionCommit: "43d8496d5ba4c4964b9472f49cfc04e2b6d06898",
   latestDeliveries: [
+    "Fila Sara voltou a escoar: zero itens vencidos e zero leases expirados na última consulta; 159 itens concluídos após a migração.",
     "Recuperação de lease Sara aplicada: lote colidente fundido e dispatcher voltou a concluir itens; migração alinhada ao histórico remoto.",
     "Consulta de conflitos de gerente protege nomes, IDs de visita e corretor de carteiras alheias; teste com usuários reais simulados em transação passou.",
     "Local da visita persistido no Funil 2 e no espelho da Agenda; edição preserva ou limpa o valor na mesma transação. PR #247 publicada.",
@@ -64,8 +65,8 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Seletor de novo negócio remove opções antigas ao trocar busca e pagina nomes empatados por ID estável.",
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
-  blockers: ["Oito itens da Sara entraram em erro P0001 após a retomada; causa ainda não classificada.", "A API de IA da Sara retornou credit_balance_exhausted; saldo da API é separado do teto de uso do Codex."],
-  nextStep: "Publicar o alinhamento da migração Sara no repositório; investigar os oito erros P0001 sem expor dados de clientes. Identidade visual fica por último e exige conversa com o usuário.",
+  blockers: ["Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex."],
+  nextStep: "Diagnosticar as duas falhas de IA sem pagamento ou troca de credenciais; seguir pelas próximas falhas P0/P1 reproduzíveis. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
