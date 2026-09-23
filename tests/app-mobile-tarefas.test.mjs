@@ -38,6 +38,13 @@ test("fila móvel abre nas tarefas atrasadas antes das próximas", () => {
   assert.match(harness, /tela === "tarefas-mobile"[\s\S]*?<SaraTasksMobile/);
 });
 
+test("tarefas mudam de faixa quando o prazo vence com a tela aberta", () => {
+  assert.match(tela, /setInterval\(\(\) => setAgora\(Date\.now\(\)\), 30_000\)/);
+  assert.match(tela, /const instante = new Date\(agora\)/);
+  assert.match(tela, /faixaDaTarefa\(lead, instante\)/);
+  assert.match(tela, /\}, \[dados, agora\]\)/);
+});
+
 test("fila extensa não monta todos os cards de uma vez no celular", () => {
   assert.match(tela, /useState\(25\)/);
   assert.match(tela, /visiveis\.slice\(0, limite\)\.map/);

@@ -42,6 +42,12 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    const relogio = window.setInterval(() => setAgora(Date.now()), 30_000);
+    return () => window.clearInterval(relogio);
+  }, []);
 
   const carregar = useCallback(async (sinal?: AbortSignal) => {
     const resposta = await fetch("/api/funil2", { headers: { Authorization: `Bearer ${accessToken}` }, signal: sinal });
@@ -68,15 +74,15 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
   }, [carregar, tentativa]);
 
   const estrutura = useMemo(() => {
-    const agora = new Date();
+    const instante = new Date(agora);
     const tarefas: Tarefa[] = [];
     for (const lead of dados?.leads ?? []) {
       if (!leadOperacionalNoMeuDia(lead) || lead.etapa === "pescado" || semPrazo(lead.proxima_acao_em)) continue;
-      tarefas.push({ lead, faixa: faixaDaTarefa(lead, agora) });
+      tarefas.push({ lead, faixa: faixaDaTarefa(lead, instante) });
     }
     tarefas.sort((a, b) => new Date(a.lead.proxima_acao_em).getTime() - new Date(b.lead.proxima_acao_em).getTime());
     return tarefas;
-  }, [dados]);
+  }, [dados, agora]);
 
   const contagens = useMemo(() => ({
     atrasadas: estrutura.filter((t) => t.faixa === "atrasadas").length,

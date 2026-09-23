@@ -448,9 +448,11 @@ export function venceHoje(lead: Pick<LeadFunil2, "proxima_acao_em">, agora = Dat
 
 export function situacaoPrazo(data: string, agora = Date.now()) {
   if (semPrazo(data)) return { classe: "sem-prazo", rotulo: "Sem prazo" };
-  const minutos = Math.round((new Date(data).getTime() - agora) / 60000);
-  if (minutos < 0) return { classe: "atrasado", rotulo: `Atrasado há ${duracao(-minutos)}` };
-  if (minutos <= 120) return { classe: "urgente", rotulo: `Vence em ${duracao(minutos)}` };
+  const diferenca = new Date(data).getTime() - agora;
+  if (!Number.isFinite(diferenca)) return { classe: "sem-prazo", rotulo: "Sem prazo" };
+  if (diferenca < 0) return { classe: "atrasado", rotulo: `Atrasado há ${duracao(Math.ceil(-diferenca / 60000))}` };
+  const minutos = Math.ceil(diferenca / 60000);
+  if (diferenca <= 120 * 60000) return { classe: "urgente", rotulo: `Vence em ${duracao(minutos)}` };
   return { classe: "no-prazo", rotulo: `No prazo · faltam ${duracao(minutos)}` };
 }
 
