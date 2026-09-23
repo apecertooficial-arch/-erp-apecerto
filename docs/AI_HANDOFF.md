@@ -1,5 +1,27 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 13:56 BRT
+
+- PR #251 integrada por squash no commit `b560fff861ac0046433c1d95e01e25395d62d524`;
+  CI “Frontend — validação” passou e `/api/build` confirmou o mesmo hash.
+- Item 5 entregue: em produção mobile 390×844 e desktop 1440×900, o bloco e a
+  aba de logs dizem “Aceites D-API”; a própria linha continua informando que
+  aguarda `messages.sent`. O envio e o banco não foram alterados nesse recorte.
+- Item 6 reproduzido com consultas agregadas sem PII: os seis blocos de
+  distribuição ativos carregam a proteção histórica de visita realizada; cinco
+  cards estão bloqueados somente por visita encerrada. Um sexto caso permanece
+  corretamente protegido porque o pipeline atual está em visita/negociação.
+- Correção local na branch `codex/execucao-30-decisoes-02`: a regra central e o
+  SLA passam a proteger apenas visita agendada/confirmada ou negociação ativa; o
+  construtor mostra a regra como fixa e deixa de publicar “visita realizada” ou
+  “sempre”. Nenhum mapa publicado nem cliente foi alterado.
+- A migração completa passou duas vezes em transação real com `ROLLBACK`, inclusive
+  nos asserts de hash/permissão e na prova agregada acima. 60 testes dirigidos,
+  lint dos arquivos tocados, build completo e `git diff --check` passaram.
+  Falta CI, publicação, confirmação da build e aceite mobile/desktop.
+- Uso semanal continua em 71%; teto 90%; crédito de reset intacto. Sara segue
+  bloqueada por saldo externo. Identidade visual continua reservada para o fim.
+
 ## Estado verificado em 23/09/2026, 13:25 BRT
 
 - Objetivo persistente ativo na nova tarefa: executar as decisões funcionais das
