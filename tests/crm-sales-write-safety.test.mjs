@@ -5,6 +5,8 @@ import test from "node:test";
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const harness = readFileSync(new URL("./crm-visual-harness/main.tsx", import.meta.url), "utf8");
+const salesHarness = readFileSync(new URL("./sales-mobile-visual-harness/main.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 test("observação comprova acesso ao processo antes de inserir", () => {
   const comando = api.match(/if \(action === "addObs"\)[\s\S]*?return error \?/)?.[0] ?? "";
@@ -22,6 +24,50 @@ test("movimentação usa revisão otimista e comprova a linha alterada", () => {
   assert.match(move, /\.update\(update\)\.eq\("id", processId\)\.eq\("etapa", ctx\.proc\.etapa\)\.select\("id,etapa"\)\.maybeSingle\(\)/);
   assert.match(move, /if \(!movido\) return Response\.json\(\{ error: "Esta venda mudou de etapa enquanto você trabalhava\. Recarregue e tente novamente\." \}, \{ status: 409 \}\)/);
   assert.match(move, /return Response\.json\(\{ success: true, stage: movido\.etapa \}\)/);
+});
+
+test("avanço da Esteira não pula etapas nem aceita verificação como atalho", () => {
+  const move = api.match(/if \(action === "move"\)[\s\S]*?if \(action === "addAnexo"/)?.[0] ?? "";
+  assert.match(move, /if \(!podeEditarEtapa\(ctx\.role, ctx\.atual\)\)/);
+  assert.match(move, /const proxima = proximaEtapa\(ctx\)/);
+  assert.match(move, /if \(avancando && destino\.slug !== proxima\?\.slug\)/);
+  assert.match(move, /const pendencias = pendenciasDoContexto\(ctx\)/);
+  assert.doesNotMatch(move, /if \(!verif\)/);
+});
+
+test("verificação gerencial só vale para a etapa atual completa e aprovada", () => {
+  const verify = api.match(/if \(action === "verifyStage" \|\| action === "unverifyStage"\)[\s\S]*?if \(\["docCreate"/)?.[0] ?? "";
+  assert.match(verify, /const ctx = await contexto\(auth, processId\)/);
+  assert.match(verify, /etapaSlug !== ctx\.atual\?\.slug/);
+  assert.match(verify, /const pendencias = pendenciasDoContexto\(ctx\)/);
+  assert.match(api, /anexo\.status === "aprovado"/);
+});
+
+test("documento de marco pertence à etapa atual e pode existir sem grupo de parte", () => {
+  const attachments = api.match(/if \(action === "addAnexo" \|\| action === "removeAnexo"\)[\s\S]*?if \(action === "verifyStage"/)?.[0] ?? "";
+  assert.match(attachments, /etapa_slug/);
+  assert.match(attachments, /guardDocumentoEtapa/);
+  assert.match(api, /function guardDocumentoEtapa[\s\S]*?etapaSlug !== ctx\.atual\?\.slug/);
+  assert.match(attachments, /grupo: grupoAlvo \|\| null/);
+});
+
+test("movimentação em massa é recusada para preservar pré-condições por venda", () => {
+  const bulk = api.match(/if \(action === "bulkMoveStage"\)[\s\S]*?\/\/ deleteStage/)?.[0] ?? "";
+  assert.match(bulk, /movida individualmente/);
+  assert.doesNotMatch(bulk, /venda_processos"\)\.update/);
+  assert.doesNotMatch(ui, /bulkMoveStage|Mover todas as vendas desta etapa/);
+});
+
+test("interface mostra comprovação da etapa e só oferece o próximo avanço", () => {
+  assert.match(ui, /etapaDocs=\{data\.etapaDocs \?\? \[\]\}/);
+  assert.match(ui, /Comprovação da etapa/);
+  assert.match(ui, /docsEtapaAtual/);
+  assert.match(ui, /opcoesDeMovimento/);
+  assert.match(ui, /podeMoverProcesso\(stageList, item, sessionRole\)/);
+  assert.match(ui, /_etapa\/\$\{process\.etapa\}/);
+  assert.match(salesHarness, /Minuta do contrato/);
+  assert.match(css, /@media\(max-width:720px\)\{\.sale-full\{overflow-y:auto\}/);
+  assert.match(css, /grid-template-columns:auto minmax\(0,1fr\)/);
 });
 
 test("Esteira rejeita carga parcial em vez de publicar falso vazio", () => {

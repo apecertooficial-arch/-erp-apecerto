@@ -30,7 +30,7 @@ export const BLOCO_LABEL: Record<BlocoEsteira, string> = {
 export const PAPEIS_COMPRA = ["comprador", "conjuge_comprador"] as const;
 export const PAPEIS_VENDA = ["vendedor", "conjuge_vendedor"] as const;
 
-export type EtapaRegra = { slug: string; nome: string; ordem: number; libera?: string[] | null; restrito_a?: string[] | null };
+export type EtapaRegra = { slug: string; nome: string; ordem: number; libera?: string[] | null; restrito_a?: string[] | null; resale?: boolean | null; sla_dias?: number | null };
 
 /** Etapa que abre determinado bloco (a primeira na ordem, se houver mais de uma). */
 export function etapaDoBloco(etapas: EtapaRegra[], bloco: BlocoEsteira): EtapaRegra | null {
@@ -76,7 +76,7 @@ export type DadosCompletude = {
   comissao?: { percentual_total?: number | string | null; valor_total?: number | string | null } | null;
   partes: Array<{ papel: string; nome?: string | null; telefone?: string | null; email?: string | null }>;
   modelo: Array<{ grupo: string; nome: string; obrigatorio: boolean; condicao?: string | null }>;
-  anexos: Array<{ grupo?: string | null; doc_nome?: string | null; status?: string | null; obrigatorio?: boolean | null }>;
+  anexos: Array<{ grupo?: string | null; etapa_slug?: string | null; doc_nome?: string | null; status?: string | null; obrigatorio?: boolean | null }>;
   temConjugeComprador: boolean;
   temConjugeVendedor: boolean;
 };

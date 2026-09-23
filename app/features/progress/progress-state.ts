@@ -37,22 +37,23 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 72,
+  overallPercent: 74,
   fronts: [
-    { name: "CRM / Kanban", percent: 92 },
+    { name: "CRM / Kanban", percent: 95 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 86 },
     { name: "Agenda / visitas", percent: 96 },
-    { name: "Aplicativo móvel", percent: 78 },
+    { name: "Aplicativo móvel", percent: 81 },
   ],
   weeklyUsagePercent: 75,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Provar a esteira de proposta, documentos, contrato, assinatura e pagamento",
-  lastCheckpoint: "Itens 13–18 entregues após a retomada do crédito: 122 contratos passaram e duas provas produtivas sintéticas confirmaram análise, aplicação explícita, prazo no Meu Dia, fila idempotente e reavaliação após ação humana, com resíduo zero. Item 24 está publicado no build 27502c03 e aceito em mobile e desktop.",
-  lastCheckpointAt: "2026-09-23T18:22:57-03:00",
+  currentTask: "Publicar e aceitar a esteira sem atalhos; depois vincular captação ao proprietário",
+  lastCheckpoint: "Item 25 em prova: o servidor exige o papel configurado, só avança uma etapa e bloqueia enquanto conteúdo ou comprovação obrigatória não estiver aprovado; movimento em lote foi recusado. Harness sanitizado passou em 390×844 e 1440×900 sem pagamento nem mutação produtiva. Falta CI, publicação e aceite produtivo.",
+  lastCheckpointAt: "2026-09-23T19:00:50-03:00",
   lastCommitSent: "27502c03",
   productionCommit: "27502c03aa223e635b01a725db02d8286d7ef657",
   latestDeliveries: [
+    "Item 25 preparado para publicação: avanço unitário e autorizado, comprovação configurada por etapa, documentos aprovados e movimento em lote recusado; validação visual mobile primeiro e desktop concluída.",
     "Itens 13–18 aceitos: Sara classificou evidência sintética, aplicou ação/prazo no Meu Dia, deduplicou evento e reavaliou após ação do corretor sem executar por ele; toda fixture foi removida.",
     "PR #259 publicada: desempenho parte do último evento confirmado por visita e produção expõe período, 5/74 avaliados e fração absoluta no prazo.",
     "PR #258 publicada: os 37 cards pós-visita deixaram a ação ambígua; 4 ações comprovadas foram recuperadas e 33 históricos pedem registro humano.",
@@ -81,7 +82,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   blockers: [
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Avançar no item 25 com inspeção da esteira atual e provas reversíveis de pré-condições, persistência e autorização. Não criar pagamento artificial. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar o item 25, confirmar a build e fazer aceite produtivo somente de leitura. Depois avançar no item 26. Não criar pagamento artificial. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

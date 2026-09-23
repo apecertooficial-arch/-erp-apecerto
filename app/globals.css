@@ -2412,6 +2412,13 @@ body { overflow:hidden; background:#eee8e2; }
 .docx-add{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .docx-add>input{flex:1;min-width:140px;border:1px solid #e3dcd7;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit}
 .docx-add-obrig{display:flex;align-items:center;gap:5px;font-size:12px;color:#5f5752;white-space:nowrap}
+.etapa-proof{margin:18px 0;padding:14px;border:1px solid #eadfd7;border-radius:12px;background:#fffaf6}
+.etapa-proof>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.etapa-proof>header h3{margin:0 0 3px;font-size:15px;color:#2f2a26}
+.etapa-proof>header p{margin:0;color:#81766f;font-size:11px}
+.etapa-proof>header>span{flex:none;border-radius:999px;background:#fff0e5;color:#c9570c;padding:4px 9px;font-size:10px;font-weight:800}
+@media(max-width:720px){.etapa-proof{padding:11px}.etapa-proof>header{flex-direction:column}.etapa-proof .docx-row{align-items:flex-start;flex-wrap:wrap}.etapa-proof .docx-main{flex-basis:calc(100% - 85px)}.etapa-proof .docx-actions{width:100%;justify-content:flex-end}}
+@media(max-width:720px){.sale-full{overflow-y:auto}.sale-full-body{flex:none;overflow:visible;padding:0 12px 18px}.sale-full-foot{position:sticky;bottom:0;z-index:4;align-items:stretch;flex-direction:column;padding:9px 12px;gap:8px}.sale-full-foot-left{justify-content:space-between;gap:8px}.sale-full-foot-left>button{flex:1;min-width:0}.sale-full-foot-right{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.sale-full-foot-block{align-self:center}.sale-detail-move{min-width:0}.sale-detail-move select{width:100%;min-width:0}}
 /* condições / comissão */
 .condx h3{font-size:14px;margin:18px 0 10px;color:#2f2a26}
 .condx h3:first-child{margin-top:0}

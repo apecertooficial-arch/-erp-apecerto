@@ -115,7 +115,7 @@ const saleStages = [
 /* Exportada para que o Funil 2.0 monte SO a esteira, sem arrastar junto o
    cabecalho, a barra de visoes e os filtros do CRM antigo. */
 export function SalesProcessView({ accessToken, initialCreate = false, sessionRole = "corretor" }: { accessToken: string; initialCreate?: boolean; sessionRole?: string }) {
-  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [bulkFrom, setBulkFrom] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
+  const [data, setData] = useState<SalesData | null>(null); const [error, setError] = useState<string | null>(null); const [filter, setFilter] = useState("all"); const [creating, setCreating] = useState(initialCreate); const [busy, setBusy] = useState(false); const [detailItem, setDetailItem] = useState<SalesData["processes"][number] | null>(null); const [menuStage, setMenuStage] = useState<string | null>(null); const [addingStage, setAddingStage] = useState(false); const [newStageName, setNewStageName] = useState("");
   const [initialLoadSettled, setInitialLoadSettled] = useState(false);
   const canManageStages = sessionRole !== "corretor";
   const [renderedAt] = useState(() => Date.now());
@@ -166,12 +166,11 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
       const configurable = canManageStages && Boolean(stage.dbId);
       const orderableIndex = stageList.filter((s) => s.dbId).findIndex((s) => s.dbId === stage.dbId);
       const orderableTotal = stageList.filter((s) => s.dbId).length;
-      return <article className="sales-stage" style={{ "--sale-stage": stage.color } as CSSProperties} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("text/process-id"); if (id && !busy) void move(id, stage.id); }} key={stage.id}>
+      return <article className="sales-stage" style={{ "--sale-stage": stage.color } as CSSProperties} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("text/process-id"); const item = visible.find((row) => row.id === id); if (!item || busy) return; if (!opcoesDeMovimento(stageList, item).some((alvo) => alvo.id === stage.id)) { setError("Avance uma etapa por vez; retornos para etapas anteriores continuam disponíveis."); return; } void move(id, stage.id); }} key={stage.id}>
         <header><i /><strong>{stage.name}</strong><div className="crm-stage-head-right"><span>{items.length}</span>{configurable && <button type="button" className="crm-stage-cog" title="Opções da etapa" onClick={() => setMenuStage(menuStage === stage.id ? null : stage.id)}>⋯</button>}</div></header><small>{stage.role} · SLA {stage.days ? `${stage.days}d` : "concluído"}</small>
         {configurable && menuStage === stage.id && <div className="crm-stage-menu">
           <div className="crm-stage-menu-row"><label className="crm-stage-color">Cor da etapa<input type="color" value={stage.color} onChange={(event) => void mutateStages({ action: "updateStage", stageId: stage.dbId, cor: event.target.value })} /></label></div>
           <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={busy || orderableIndex <= 0} onClick={() => reorderStage(orderableIndex, -1)}>◀ Trás</button><button type="button" disabled={busy || orderableIndex < 0 || orderableIndex >= orderableTotal - 1} onClick={() => reorderStage(orderableIndex, 1)}>Frente ▶</button></div>
-          <button type="button" className="crm-stage-bulk" onClick={() => { setMenuStage(null); setBulkFrom(stage.id); }}>⇄ Mover todas as vendas desta etapa</button>
           <div className="crm-stage-menu-row crm-stage-reorder"><button type="button" disabled={busy} onClick={() => { const nome = window.prompt("Novo nome da etapa:", stage.name); if (nome && nome.trim() && nome.trim() !== stage.name) void mutateStages({ action: "updateStage", stageId: stage.dbId, nome: nome.trim() }); }}>✎ Renomear</button><button type="button" className="crm-stage-danger" disabled={busy || items.length > 0} title={items.length > 0 ? "Mova as vendas antes de excluir" : "Excluir etapa"} onClick={() => { if (window.confirm(`Excluir a etapa "${stage.name}"?`)) void mutateStages({ action: "deleteStage", stageId: stage.dbId }); }}>🗑 Excluir</button></div>
         </div>}
         <div className="sales-stage-body">{items.map((item) => {
@@ -195,18 +194,26 @@ export function SalesProcessView({ accessToken, initialCreate = false, sessionRo
               {tags.length > 0 && <div className="card-tags" aria-label="Tags do lead">{tags.map((tagItem) => <span key={tagItem}>{tagItem}</span>)}</div>}
               <small className="sale-kind">{item.tipo_venda === "revenda" ? "Revenda" : "Construtora"}</small>
             </div>
-            <div className="sale-card-controls" onClick={(event) => event.stopPropagation()}><select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{stageList.filter((target) => !target.resale || item.tipo_venda === "revenda").map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
+            <div className="sale-card-controls" onClick={(event) => event.stopPropagation()}><select aria-label={`Mover ${lead?.nome || "venda"} para outra etapa`} disabled={busy || !podeMoverProcesso(stageList, item, sessionRole)} value={item.etapa} onChange={(event) => void move(item.id, event.target.value)}>{opcoesDeMovimento(stageList, item).map((target) => <option value={target.id} key={target.id}>{target.name}</option>)}</select></div>
           </article>;
         })}{items.length === 0 && <div className="sales-drop">Solte uma venda aqui</div>}</div>
       </article>;
     })}</div>
     {creating && <CreateSaleModal data={data} accessToken={accessToken} onClose={() => setCreating(false)} onDone={async () => { setCreating(false); await load(); }} />}
-    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer renderedAt={renderedAt} accessToken={accessToken} canApprove={canManageStages} sessionRole={sessionRole} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} partes={(data.partes ?? []).filter((p) => p.processo_ref === detailItem.id)} anexoEventos={(data.anexoEventos ?? []).filter((e) => e.processo_ref === detailItem.id)} users={data.users ?? []} pipelines={data.pipelines ?? []} pipelineStages={data.pipelineStages ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { if (await move(detailItem.id, stage)) setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onClose={() => setDetailItem(null)} />; })()}
-    {bulkFrom && <div className="crm-center-modal"><form onSubmit={(event) => event.preventDefault()}><header><div><span>AÇÃO EM MASSA</span><h2>Mover uma etapa inteira</h2><p>Todas as vendas de <b>{stageList.find((s) => s.id === bulkFrom)?.name}</b> serão enviadas para o destino escolhido.</p></div><button type="button" onClick={() => setBulkFrom(null)}>×</button></header><div className="bulk-move-grid"><label>Etapa de destino<select id="bulk-to" defaultValue=""><option value="">Selecione</option>{stageList.filter((s) => s.id !== bulkFrom).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label></div><footer><button type="button" onClick={() => setBulkFrom(null)}>Cancelar</button><button className="crm-primary" type="button" disabled={busy} onClick={() => { const to = (document.getElementById("bulk-to") as HTMLSelectElement | null)?.value; if (!to) { setError("Selecione a etapa de destino."); return; } void mutateStages({ action: "bulkMoveStage", fromSlug: bulkFrom, toSlug: to }); setBulkFrom(null); }}>Mover vendas</button></footer></form></div>}
+    {detailItem && (() => { const sale = saleById.get(detailItem.venda_id); const deal = dealBySale.get(detailItem.venda_id); const lead = deal ? leadById.get(deal.lead_id) : null; const broker = brokerById.get(deal?.corretor_id ?? lead?.corretor_id ?? -1); return <SaleDetailDrawer renderedAt={renderedAt} accessToken={accessToken} canApprove={canManageStages} sessionRole={sessionRole} process={detailItem} sale={sale} lead={lead} broker={broker} stageList={stageList} etapaDocs={data.etapaDocs ?? []} docModelo={data.docModelo ?? []} anexos={(data.anexos ?? []).filter((a) => a.processo_ref === detailItem.id)} condicao={(data.condicoes ?? []).find((c) => c.processo_ref === detailItem.id)} comissao={(data.comissao ?? []).find((c) => c.processo_ref === detailItem.id)} comissaoParcelas={(data.comissaoParcelas ?? []).filter((p) => p.processo_ref === detailItem.id)} observacoes={(data.observacoes ?? []).filter((o) => o.processo_ref === detailItem.id)} partes={(data.partes ?? []).filter((p) => p.processo_ref === detailItem.id)} anexoEventos={(data.anexoEventos ?? []).filter((e) => e.processo_ref === detailItem.id)} users={data.users ?? []} pipelines={data.pipelines ?? []} pipelineStages={data.pipelineStages ?? []} history={(data.history ?? []).filter((h) => h.processo_id === detailItem.id)} busy={busy} onReload={load} onMove={async (stage) => { if (await move(detailItem.id, stage)) setDetailItem((cur) => cur ? { ...cur, etapa: stage } : cur); }} onClose={() => setDetailItem(null)} />; })()}
   </section>;
 }
 
 type SaleStageItem = { id: string; dbId: string | null; name: string; color: string; role: string; days: number; resale: boolean; ordem?: number; libera?: string[] | null; restritoA?: string[] | null };
+function opcoesDeMovimento(stageList: SaleStageItem[], process: Pick<SalesData["processes"][number], "etapa" | "tipo_venda">) {
+  const track = stageList.filter((stage) => !stage.resale || process.tipo_venda === "revenda");
+  const atual = track.findIndex((stage) => stage.id === process.etapa);
+  return atual < 0 ? [] : track.slice(0, atual + 2);
+}
+function podeMoverProcesso(stageList: SaleStageItem[], process: Pick<SalesData["processes"][number], "etapa">, role: string) {
+  const atual = stageList.find((stage) => stage.id === process.etapa);
+  return podeEditarEtapa(role, atual ? { slug: atual.id, nome: atual.name, ordem: atual.ordem ?? 0, restrito_a: atual.restritoA ?? null } : null);
+}
 const DOC_GRUPOS = [
   { key: "comprador", label: "Documentação do comprador", conjugeFlag: "comprador_tem_conjuge" as const, conjugeGrupo: "conjuge_comprador", bloco: "docs_comprador" as const },
   { key: "vendedor", label: "Documentação do vendedor", conjugeFlag: "vendedor_tem_conjuge" as const, conjugeGrupo: "conjuge_vendedor", bloco: "docs_vendedor" as const },
@@ -232,7 +239,7 @@ const ORIGEM_OPCOES = ["Recursos próprios", "Financiamento bancário", "FGTS", 
 const COMISSAO_GATILHOS = ["Na entrada", "Na primeira parcela", "Na segunda parcela", "Na assinatura", "Na liberação do financiamento", "Na entrega das chaves", "Outra condição"];
 const PARCELA_STATUS = ["previsto", "recebido", "atrasado", "cancelado"];
 
-function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "corretor", process, sale, lead, broker, stageList, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, partes = [], anexoEventos = [], users, pipelines, pipelineStages, history = [], busy, onReload, onMove, onClose }: { renderedAt: number; accessToken: string; canApprove?: boolean; sessionRole?: string; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; partes?: NonNullable<SalesData["partes"]>; anexoEventos?: NonNullable<SalesData["anexoEventos"]>; users: NonNullable<SalesData["users"]>; pipelines: NonNullable<SalesData["pipelines"]>; pipelineStages: NonNullable<SalesData["pipelineStages"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onClose: () => void }) {
+function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "corretor", process, sale, lead, broker, stageList, etapaDocs, docModelo, anexos, condicao, comissao, comissaoParcelas, observacoes, partes = [], anexoEventos = [], users, pipelines, pipelineStages, history = [], busy, onReload, onMove, onClose }: { renderedAt: number; accessToken: string; canApprove?: boolean; sessionRole?: string; process: SalesData["processes"][number]; sale?: SalesData["sales"][number]; lead?: SalesData["leads"][number] | null; broker?: SalesData["brokers"][number]; stageList: SaleStageItem[]; etapaDocs: NonNullable<SalesData["etapaDocs"]>; docModelo: NonNullable<SalesData["docModelo"]>; anexos: NonNullable<SalesData["anexos"]>; condicao?: NonNullable<SalesData["condicoes"]>[number]; comissao?: NonNullable<SalesData["comissao"]>[number]; comissaoParcelas: NonNullable<SalesData["comissaoParcelas"]>; observacoes: NonNullable<SalesData["observacoes"]>; partes?: NonNullable<SalesData["partes"]>; anexoEventos?: NonNullable<SalesData["anexoEventos"]>; users: NonNullable<SalesData["users"]>; pipelines: NonNullable<SalesData["pipelines"]>; pipelineStages: NonNullable<SalesData["pipelineStages"]>; history?: NonNullable<SalesData["history"]>; busy?: boolean; onReload: () => Promise<void>; onMove: (stage: string) => Promise<void>; onClose: () => void }) {
   const stageName = (slug: string) => stageList.find((s) => s.id === slug)?.name || slug;
   const enteredAt = (slug: string) => { const rows = history.filter((h) => h.etapa_para === slug); return rows.length ? rows[rows.length - 1].movido_em : null; };
   const currentIndex = stageList.findIndex((s) => s.id === process.etapa);
@@ -290,6 +297,14 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
     if (upErr) throw new Error(upErr.message);
     await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, grupo, docNome, obrigatorio, observacao, nome: file.name, path, mime: file.type, tamanho: file.size });
+  });
+  const uploadEtapa = (file: File, docNome: string, obrigatorio: boolean) => run(async () => {
+    const supabase = getBrowserSupabaseClient();
+    const safe = file.name.replace(/[^\w.\-]+/g, "_");
+    const path = `esteira/${process.id}/_etapa/${process.etapa}/${Date.now()}_${safe}`;
+    const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
+    if (upErr) throw new Error(upErr.message);
+    await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: process.etapa, docNome, obrigatorio, nome: file.name, path, mime: file.type, tamanho: file.size });
   });
   const removeAnexo = (id: string) => run(() => api({ action: "removeAnexo", anexoId: id }));
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } void run(() => api({ action: "docStatus", anexoId: a.id, status, motivo })); };
@@ -378,6 +393,9 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const etapasRegra: EtapaRegra[] = stageList.map((s2, i) => ({ slug: s2.id, nome: s2.name, ordem: s2.ordem ?? i + 1, libera: s2.libera ?? [], restrito_a: s2.restritoA ?? null }));
   const etapaAtual = etapasRegra.find((e) => e.slug === process.etapa) ?? null;
   const temPapel = podeEditarEtapa(sessionRole, etapaAtual);
+  const usaChecklistDePartes = (etapaAtual?.libera ?? []).some((bloco) => bloco.startsWith("docs_"));
+  const docsEtapaAtual = usaChecklistDePartes ? [] : etapaDocs.filter((doc) => doc.etapa_slug === process.etapa);
+  const anexoDaEtapa = (nome: string) => anexos.find((anexo) => !anexo.grupo && anexo.etapa_slug === process.etapa && anexo.doc_nome === nome);
   const aberto = (bloco: BlocoEsteira) => blocoAberto(etapaAtual, bloco) && temPapel;
   const travaDe = (bloco: BlocoEsteira): string | null => {
     if (blocoAberto(etapaAtual, bloco)) {
@@ -419,10 +437,13 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const blockReasons: string[] = ((etapaAtual?.libera ?? []) as BlocoEsteira[])
     .map((bloco) => { const r = statusBloco(bloco); return r.completo ? null : `${BLOCO_LABEL[bloco]}: ${r.faltas.join(", ")}`; })
     .filter(Boolean) as string[];
-  const avulsosFalt = anexos.filter((a) => a.obrigatorio && a.status !== "aprovado" && a.status !== "triagem").length;
+  const modelados = new Set(docModelo.map((doc) => `${doc.grupo}::${doc.nome}`));
+  const avulsosFalt = anexos.filter((a) => a.obrigatorio && !a.etapa_slug && !modelados.has(`${a.grupo}::${a.doc_nome}`) && a.status !== "aprovado" && a.status !== "triagem").length;
   if (avulsosFalt) blockReasons.push(`${avulsosFalt} documento(s) adicional(is) obrigatório(s) sem aprovação`);
+  const docsEtapaPendentes = docsEtapaAtual.filter((doc) => doc.obrigatorio && anexoDaEtapa(doc.nome)?.status !== "aprovado");
+  if (docsEtapaPendentes.length) blockReasons.push(`comprovação da etapa: ${docsEtapaPendentes.map((doc) => doc.nome).join(", ")} sem aprovação`);
   const docsAnexados = anexos.length;
-  const docsPendentes = gruposAtivos.reduce((acc, g) => acc + docModelo.filter((d) => d.grupo === g && d.obrigatorio && docExigido(d.condicao) && anexoDe(g, d.nome)?.status !== "aprovado").length, 0) + avulsosFalt;
+  const docsPendentes = gruposAtivos.reduce((acc, g) => acc + docModelo.filter((d) => d.grupo === g && d.obrigatorio && docExigido(d.condicao) && anexoDe(g, d.nome)?.status !== "aprovado").length, 0) + avulsosFalt + docsEtapaPendentes.length;
 
   const somaOrigem = cond.origem_recursos.reduce((sum, o) => sum + (Number(o.valor) || 0), 0);
   const totalCond = Number(cond.valor_total) || 0;
@@ -487,6 +508,16 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     </div>;
   };
 
+  const EtapaDocRow = ({ nome, obrigatorio }: { nome: string; obrigatorio: boolean }) => {
+    const anexo = anexoDaEtapa(nome);
+    const bloqueado = busyAll || !temPapel;
+    return <div className={`docx-row ${anexo ? `st-${anexo.status}` : "st-pendente"}`}>
+      <div className="docx-main"><strong>{nome}</strong><small>{obrigatorio ? "Obrigatório" : "Opcional"}{anexo ? ` · ${anexo.nome} · ${userName(anexo.enviado_por)} · ${dateTime.format(new Date(anexo.criado_em))}` : ""}</small>{anexo?.status_motivo && <em className="docx-motivo">⚠ {anexo.status_motivo}</em>}</div>
+      <span className={`docx-status st-${anexo?.status || "pendente"}`}>{anexo ? DOC_STATUS_LABEL[anexo.status || "anexado"] : "Pendente"}</span>
+      <div className="docx-actions">{anexo ? <><button type="button" title="Abrir" onClick={() => void abrir(anexo.path)}>👁</button><button type="button" title="Baixar" onClick={() => void baixar(anexo.path, anexo.nome)}>⬇</button><button type="button" title="Excluir" className="docx-del" disabled={bloqueado} onClick={() => removeAnexo(anexo.id)}>🗑</button>{canApprove && <select className="docx-statussel" value={anexo.status || "anexado"} disabled={busyAll} onChange={(e) => setStatus(anexo, e.target.value)} title="Alterar status">{["anexado", "em_analise", "aprovado", "recusado", "correcao"].map((status) => <option value={status} key={status}>{DOC_STATUS_LABEL[status]}</option>)}</select>}</> : <label className="docx-up">📎 Anexar<input type="file" hidden disabled={bloqueado} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadEtapa(file, nome, obrigatorio); e.target.value = ""; }} /></label>}</div>
+    </div>;
+  };
+
   return <div className="sale-full-layer" onMouseDown={(e) => { if (e.target === e.currentTarget) fecharComAviso(); }}>
     <div className="sale-full">
       <header className="sale-full-top">
@@ -530,6 +561,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
             <div><small>RESPONSÁVEL</small><strong>{broker?.nome || "Não definido"}</strong></div>
           </div>
           <div className="sale-detail-progress big"><i style={{ width: `${pct}%`, background: stage?.color || "#7c3aed" }} /></div>
+          {docsEtapaAtual.length > 0 && <section className="etapa-proof"><header><div><h3>Comprovação da etapa</h3><p>O avanço só libera depois que os documentos obrigatórios forem aprovados.</p></div><span>{docsEtapaPendentes.length ? `${docsEtapaPendentes.length} pendente(s)` : "✓ completa"}</span></header>{!temPapel && <div className="bloqx">🔒 Você não pode preencher esta etapa.</div>}{docsEtapaAtual.map((doc) => <EtapaDocRow key={doc.id} nome={doc.nome} obrigatorio={doc.obrigatorio} />)}</section>}
           <ol className="sale-timeline">{track.map((s, i) => { const state = trackCurrent < 0 ? "todo" : i < trackCurrent ? "done" : i === trackCurrent ? "current" : "todo"; const ent = enteredAt(s.id); return <li className={`sale-tl ${state}`} style={{ "--tl": s.color } as CSSProperties} key={s.id}><i />{i < track.length - 1 && <u />}<div><strong>{s.name}</strong><small>{s.role}{s.days ? ` · SLA ${s.days}d` : " · conclusão"}{ent ? ` · ${state === "current" ? "desde" : "entrou"} ${shortDate.format(new Date(ent))}` : ""}</small></div>{i === trackCurrent && <em>Aqui</em>}{state === "done" && <b>✓</b>}</li>; })}</ol>
           {history.length > 0 && <><h4>HISTÓRICO DE MOVIMENTAÇÕES</h4><ul className="sale-moves">{history.slice().reverse().map((h, i) => <li key={i}><b>{dateTime.format(new Date(h.movido_em))}</b><span>{h.etapa_de ? `${stageName(h.etapa_de)} → ${stageName(h.etapa_para)}` : `Entrou em ${stageName(h.etapa_para)}`}{h.movido_por ? ` · ${userName(h.movido_por)}` : ""}</span></li>)}</ul></>}
         </div>}
@@ -725,7 +757,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
         </div>
         <div className="sale-full-foot-right">
           {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
-          {canApprove && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{track.map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
+          {canApprove && temPapel && <label className="sale-detail-move"><span>Mover etapa</span><select value={process.etapa} disabled={busyAll} onChange={(event) => void onMove(event.target.value)}>{opcoesDeMovimento(stageList, process).map((s) => <option value={s.id} key={s.id}>{s.name}</option>)}</select></label>}
         </div>
       </footer>
     </div>
