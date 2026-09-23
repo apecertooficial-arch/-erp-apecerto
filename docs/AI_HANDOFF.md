@@ -1,5 +1,36 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 13:25 BRT
+
+- Objetivo persistente ativo na nova tarefa: executar as decisões funcionais das
+  “30 perguntas” em fatias observáveis, com Ponytail full. Uso semanal no início:
+  71%; pausar em 90%, sem consumir o crédito de reset.
+- Base canônica: remoto `apecertooficial-arch/-erp-apecerto`, branch
+  `codex/execucao-30-decisoes-20260923`, criada limpa em `origin/main`
+  `098bc5c603c88b97a954e081302940766ea36c7e`. `/api/build` confirmou o mesmo
+  hash. A PR #250 superou o hash `43d8496d` apenas com o checkpoint da recuperação
+  Sara. O worktree anterior foi preservado e não foi editado.
+- Checklist rastreável consolidado em
+  `docs/erp-reestruturacao/EXECUCAO_30_DECISOES.md`. O documento original das 30
+  perguntas não foi localizado; não inventar requisitos para preencher lacunas.
+- Primeira fatia, mobile primeiro, comprovada com um evento real recente e consultas
+  agregadas sem PII: webhook/automação 73 → distribuição → negócio/card → abordagem
+  pela instância do dono. A parte mais recente foi aceita, confirmada e entregue;
+  lead, negócio e card mantêm o mesmo corretor; o card está ativo e entra no Meu Dia.
+- Falha reproduzida e corrigida localmente: o monitor mantinha como “sucesso” a
+  linha de aceite HTTP que diz “aguardando confirmação messages.sent”, embora o
+  estado canônico depois evolua em `motor_mensagem_partes`. O bloco e seus logs
+  agora dizem “Aceites D-API”; o envio não foi alterado. 58 testes dirigidos, lint
+  dos arquivos tocados e build completo passaram. Falta publicar e validar o rótulo
+  em produção móvel e desktop.
+- Produção móvel: Meu Dia carregou com gestão da equipe; CRM carregou 1.136 cards
+  ativos e 666 no recorte, sem erro de console. O carregamento inicial levou cerca
+  de 16 segundos e merece medição posterior, mas não foi chamado de defeito sem
+  orçamento/critério de desempenho acordado.
+- IA/Sara continua bloqueada por saldo externo (`credit_balance_exhausted`). Avançar
+  nas fatias independentes; não pagar nem alterar credenciais.
+- Identidade visual permanece por último e depende de nova conversa com o usuário.
+
 ## Estado verificado em 23/09/2026, 12:23 BRT
 
 - Objetivo: concluir fatias funcionais P0/P1 do ERP com teste, CI e validação em produção; manter identidade visual para a última fase. Teto semanal de uso: 80%; última leitura: 70%.
