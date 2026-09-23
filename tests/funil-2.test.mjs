@@ -4,6 +4,13 @@ import test from "node:test";
 import { leadOperacionalNoMeuDia } from "../app/features/funil-2/modelo.ts";
 
 const ui = `${readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/Funil2BoardToolbar.tsx", import.meta.url), "utf8")}`;
+
+test("Meu Dia atualiza prazos e visitas enquanto permanece aberto", () => {
+  assert.match(ui, /setInterval\(\(\) => setAgoraQuadro\(Date\.now\(\)\), 60_000\)/);
+  assert.match(ui, /situacaoPrazo\(l\.proxima_acao_em, agoraQuadro\)/);
+  assert.match(ui, /venceHoje\(l, agoraQuadro\)/);
+  assert.match(ui, /dataIsoSaoPaulo\(new Date\(agoraQuadro\)\)/);
+});
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");
