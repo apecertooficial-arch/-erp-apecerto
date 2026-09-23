@@ -1,13 +1,13 @@
 # Checkpoint ERP ApeCerto
 
-## Estado verificado em 23/09/2026, 12:13 BRT
+## Estado verificado em 23/09/2026, 12:23 BRT
 
 - Objetivo: concluir fatias funcionais P0/P1 do ERP com teste, CI e validação em produção; manter identidade visual para a última fase. Teto semanal de uso: 80%; última leitura: 70%.
-- Repositório: `apecertooficial-arch/-erp-apecerto`. Base `origin/main` em `2b9fd1e5`; branch atual `codex/sara-lease-migration-20260923`. Nenhum arquivo alheio foi alterado.
-- Concluído: PRs [#246](https://github.com/apecertooficial-arch/-erp-apecerto/pull/246), [#247](https://github.com/apecertooficial-arch/-erp-apecerto/pull/247) e [#248](https://github.com/apecertooficial-arch/-erp-apecerto/pull/248) integradas; `/api/build` confirmou `2b9fd1e542c2e1f7c1a716005eb7fe7d49776dc2`. Agenda móvel carregou com 66 cobranças e qualidade; Local da visita passou a persistir; conflitos do gerente não expõem dados de clientes alheios.
-- Sara: migração remota `20260923151146_dispatcher_recuperar_lote_sara_expirado` aplicada após ensaio de recuperação com rollback. Um lease colidente foi consolidado; vencidos caíram de 273 para 180 e 129 itens tiveram status `ok` na primeira janela. Há 8 itens novos com erro genérico `P0001`; não declarar toda a fila concluída.
-- Arquivos desta branch: migração renomeada para `supabase/migrations/20260923151146_dispatcher_recuperar_lote_sara_expirado.sql` (mesma versão remota), `tests/automations-dispatcher.test.mjs`, `app/features/progress/progress-state.ts` e este checkpoint. Migração já aplicada; não reaplicar.
-- Verificações: 41 testes dirigidos, TypeScript, lint e build passaram. Pendentes: PR/CI, merge e `/api/build` para o alinhamento do repositório. Próximo passo exato: concluir esses gates e classificar os 8 erros `P0001` sem consultar nem expor conteúdo pessoal.
+- Repositório: `apecertooficial-arch/-erp-apecerto`. Base `origin/main` em `43d8496d`; branch atual `codex/progresso-sara-recuperada-20260923`. Nenhum arquivo alheio foi alterado.
+- Concluído: PRs [#246](https://github.com/apecertooficial-arch/-erp-apecerto/pull/246) a [#249](https://github.com/apecertooficial-arch/-erp-apecerto/pull/249) integradas; `/api/build` confirmou `43d8496d5ba4c4964b9472f49cfc04e2b6d06898`. Agenda móvel carregou com 66 cobranças e qualidade; Local da visita persiste; conflitos do gerente não expõem dados de clientes alheios.
+- Sara: migração remota `20260923151146_dispatcher_recuperar_lote_sara_expirado` aplicada após ensaio com rollback e alinhada no repositório. Um lease colidente foi consolidado; vencidos caíram de 273 para zero, sem leases expirados, e 159 itens tiveram status `ok`. Dos 17 erros novos, 15 vieram de cards já descartados e foram rejeitados pela regra de segurança; 2 são `AI_UNAVAILABLE`. Não reprocessar cards descartados.
+- Arquivos desta branch: apenas `app/features/progress/progress-state.ts` e este checkpoint para registrar o estado final verificado. Migração já aplicada; não reaplicar.
+- Verificações pendentes: testes da fonte de progresso, TypeScript, lint, build, PR/CI, merge e `/api/build`. Próximo passo exato: fechar esses gates e diagnosticar as duas falhas de IA sem consultar ou expor conteúdo pessoal.
 - Risco: saldo da API de IA da Sara já retornou `credit_balance_exhausted`; isso é separado do uso de Codex. Não houve pagamento, rotação de credencial ou criação de visita fictícia em produção.
 
 ## Histórico anterior
