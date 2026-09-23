@@ -46,11 +46,10 @@ test("geometria vertical mostra informações completas e conversa ocupa o rodap
   assert.match(css, /f2-card-chat[^}]*min-height:44px/);
 });
 
-test("contexto secundário é role-aware, discreto e não usa elipse", () => {
-  assert.match(card, /const papel = profile\.role\.toLowerCase\(\)/);
-  assert.match(card, /papel === "corretor"/);
-  assert.match(card, /item\.interesse \?\? "Interesse ainda não informado"/);
-  assert.match(card, /item\.corretor_nome \? `Corretor · \$\{item\.corretor_nome\}`/);
+test("contexto secundário sempre explicita o responsável e mantém o interesse", () => {
+  assert.match(card, /`Responsável · \$\{item\.corretor_nome \?\? "Não definido"\}/);
+  assert.match(card, /item\.interesse \? ` · \$\{item\.interesse\}` : ""/);
+  assert.doesNotMatch(card, /papel === "corretor"/);
   assert.doesNotMatch(card, /f2-card-meta/);
 
   const regraContexto = css.match(/\.funil-oficial \.f2-card-contexto\{[^}]+\}/)?.[0] ?? "";
