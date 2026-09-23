@@ -49,7 +49,8 @@ test("exclusão de mídia confirma metadado antes do Storage e sinaliza limpeza 
 test("edições e decisões confirmam a linha realmente afetada", () => {
   assert.match(patchBlock, /const \{ data: updatedProduct, error: productUpdateError \}[^;]*\.update\(update\)[^;]*\.select\("id"\)\.maybeSingle\(\)/s);
   assert.match(patchBlock, /PRODUCT_UPDATE_NOT_CONFIRMED/);
-  assert.match(patchBlock, /const \{ data: rejectedUnit, error: rejectError \}[^;]*\.update\(patch as never\)[^;]*\.select\("id"\)\.maybeSingle\(\)/s);
+  assert.match(patchBlock, /rpc\("produto_decidir_captacao"/);
+  assert.doesNotMatch(patchBlock.match(/if \(body\.action === "decideUnit"\)[\s\S]*?if \(body\.action === "toggleFavorite"\)/)?.[0] ?? "", /from\("unidades"\)\.update/);
   assert.match(patchBlock, /UNIT_DECISION_NOT_CONFIRMED/);
   assert.match(patchBlock, /const \{ data: requestedProduct, error: requestError \}[^;]*\.update\([^;]*\.select\("id"\)\.maybeSingle\(\)/s);
   assert.match(patchBlock, /PRODUCT_REQUEST_NOT_CONFIRMED/);

@@ -65,6 +65,15 @@ type FuncoesDeCaptacao = {
     Args: { p_empreendimento_id: string }
     Returns: Json
   }
+  produto_decidir_captacao: {
+    Args: {
+      p_empreendimento_id: string
+      p_unidade_id: string
+      p_aprovar: boolean
+      p_motivo?: string | null
+    }
+    Returns: Json
+  }
 };
 
 export type Database = Omit<DatabaseGerado, "public"> & {

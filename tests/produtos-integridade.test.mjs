@@ -19,6 +19,7 @@ const unitMediaMigration = await readFile("supabase/migrations/20260820220000_ca
 const captorIntegrityMigration = await readFile("supabase/migrations/20260820223000_produtos_captador_unidade_obrigatorio.sql", "utf8");
 const editorialMigration = await readFile("supabase/migrations/20260826193000_produtos_editorial_midias_rascunhos.sql", "utf8");
 const atomicCaptureMigration = await readFile("supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", "utf8");
+const captureDecisionMigration = await readFile("supabase/migrations/20260923195500_produto_decisao_captacao_atomica.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
@@ -70,8 +71,8 @@ test("apartamento pode ser cadastrado sem associação falsa a condomínio", () 
   assert.match(captureWizard, /unidade_id: standalone \? created\.unidadeId : null/);
   assert.match(catalog, /standalone = item\.origem === "terceiros" && !item\.condominio_id/);
   assert.match(catalog, /if \(p\.standalone\)/);
-  assert.match(productApi, /definePublication\(true, unidadeId\)/);
-  assert.match(productApi, /produto_definir_publicacao/);
+  assert.match(productApi, /rpc\("produto_decidir_captacao"/);
+  assert.match(captureDecisionMigration, /produto_definir_publicacao\(p_empreendimento_id, true, p_unidade_id\)/);
 });
 
 test("central de decisões reúne aprovação e mantém filtros avançados recolhidos", () => {
