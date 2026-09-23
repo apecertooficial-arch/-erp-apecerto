@@ -189,7 +189,7 @@ export async function GET(request: Request) {
       .eq("conversa_id", conversationId).order("criado_em").limit(600);
     return error ? falhaLiveChat(error, "carregar_mensagens") : Response.json({ messages: data ?? [] });
   }
-  const [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages] = await Promise.all([
+  const [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages, pendingTransfers] = await Promise.all([
     auth.supabase.from("wa_conversas").select("id,contato_id,instancia_id,status,ultima_msg_em,origem").order("ultima_msg_em", { ascending: false, nullsFirst: false }).limit(800),
     auth.supabase.from("wa_contatos").select("id,nome,telefone,lead_id"),
     auth.supabase.from("wa_instancias").select("id,session_id,rotulo,status,corretor_id"),
@@ -202,8 +202,9 @@ export async function GET(request: Request) {
     auth.supabase.from("crm_atividades").select("id,lead_id,tipo,texto,criado_em").eq("tipo", "observacao").order("criado_em", { ascending: false }).limit(500),
     auth.supabase.from("abordagens").select("id,nome,mensagens,produto_id").eq("ativo", true).order("ordem"),
     auth.supabase.from("pipeline_stages").select("id,nome,rotulo,ordem").order("ordem"),
+    auth.supabase.rpc("crm_transferencias_pendentes"),
   ]);
-  const all = [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages];
+  const all = [conversations, contacts, instances, messages, leads, deals, brokers, products, media, activities, approaches, stages, pendingTransfers];
   const error = all.find((item) => item.error)?.error;
   if (error) return falhaLiveChat(error, "carregar_painel");
   const leadIds = new Map((leads.data ?? []).map((lead) => [idKey(lead.id), lead.id]));
@@ -225,7 +226,7 @@ export async function GET(request: Request) {
   const sessions = [...new Set((instances.data ?? []).map((instance) => instance.session_id))];
   const dapi = sessions.length ? await auth.supabase.from("instancias").select("id,instancia_dapi,nome,conectada").in("instancia_dapi", sessions) : { data: [], error: null };
   if (dapi.error) return falhaLiveChat(dapi.error, "carregar_instancias_dapi");
-  return Response.json({ conversations: crmConversations, contacts: crmContacts, instances: instances.data ?? [], dapi: dapi.data ?? [], latest: Object.fromEntries(latest), leads: leads.data ?? [], deals: deals.data ?? [], brokers: brokers.data ?? [], products: products.data ?? [], media: media.data ?? [], activities: activities.data ?? [], approaches: approaches.data ?? [], stages: stages.data ?? [] });
+  return Response.json({ conversations: crmConversations, contacts: crmContacts, instances: instances.data ?? [], dapi: dapi.data ?? [], latest: Object.fromEntries(latest), leads: leads.data ?? [], deals: deals.data ?? [], brokers: brokers.data ?? [], products: products.data ?? [], media: media.data ?? [], activities: activities.data ?? [], approaches: approaches.data ?? [], stages: stages.data ?? [], pendingTransfers: pendingTransfers.data ?? [] });
 }
 
 async function uploadAndSend(request: Request, auth: NonNullable<Awaited<ReturnType<typeof authClient>>>) {
@@ -430,7 +431,13 @@ export async function POST(request: Request) {
   }
   if (action === "transfer") {
     const brokerId = Number(body.brokerId);
+    const transferType = text(body.transferType, 40);
+    const reason = text(body.reason, 500);
+    const commercialFit = text(body.commercialFit, 500) || null;
     if (!Number.isSafeInteger(dealId) || dealId < 1 || !Number.isSafeInteger(brokerId) || brokerId < 1) return Response.json({ error: "Escolha um corretor válido." }, { status: 422 });
+    if (!["voluntaria", "fit_comercial"].includes(transferType) || reason.length < 3 || (transferType === "fit_comercial" && (!commercialFit || commercialFit.length < 3))) {
+      return Response.json({ error: "Informe o tipo, o motivo e, quando aplicável, o fit comercial da transferência." }, { status: 422 });
+    }
     // A consulta passa pelo RLS: corretor só enxerga negócio próprio; gestão
     // enxerga o escopo permitido pelo banco. Não confie apenas na RPC legada,
     // porque SECURITY DEFINER ignora as policies da tabela que ela altera.
@@ -451,14 +458,17 @@ export async function POST(request: Request) {
     // Gestão transfere de forma explícita. O corretor oferece ao colega, que
     // deve aceitar; assim a posse não muda silenciosamente entre corretores.
     const direct = papelNoGrupo(access.role, "gestao");
-    const command = direct ? "transferir_negocio" : "transferir_com_aceite";
+    const command = direct ? "crm_transferir_gestao" : "crm_solicitar_transferencia";
     const args = direct
-      ? { p_negocio_id: dealId, p_corretor_id: brokerId }
-      : { p_negocio: dealId, p_corretor: brokerId };
+      ? { p_negocio_id: dealId, p_corretor_id: brokerId, p_tipo: transferType === "fit_comercial" ? "fit_comercial" : "gestao", p_motivo: reason, p_fit_comercial: commercialFit }
+      : { p_negocio_id: dealId, p_corretor_id: brokerId, p_tipo: transferType, p_motivo: reason, p_fit_comercial: commercialFit };
     const { data, error } = await auth.supabase.rpc(command, args);
     const result = data && typeof data === "object" ? data as Record<string, unknown> : null;
     if (error) return falhaLiveChat(error, "executar_transferencia");
-    if (result?.ok === false) return Response.json({ error: "A transferência foi recusada pelo estado atual do negócio.", erro: "transferencia_recusada" }, { status: 409 });
+    if (result?.ok === false) {
+      const denied = result.error === "sem_permissao" || result.error === "nao_e_dono_do_negocio";
+      return Response.json({ error: denied ? "Você não tem permissão para transferir este atendimento." : "A transferência foi recusada pelo estado atual do negócio.", erro: denied ? "sem_permissao" : "transferencia_recusada" }, { status: denied ? 403 : 409 });
+    }
     return Response.json({
         success: true,
         transferStatus: direct ? "transferred" : "pending_acceptance",
@@ -466,6 +476,21 @@ export async function POST(request: Request) {
           ? "Atendimento transferido e registrado no histórico."
           : "Transferência oferecida. O novo corretor precisa aceitar para assumir o atendimento.",
       });
+  }
+  if (action === "decideTransfer") {
+    const transferId = Number(body.transferId);
+    const accept = body.accept === true;
+    if (!Number.isSafeInteger(transferId) || transferId < 1 || typeof body.accept !== "boolean") {
+      return Response.json({ error: "Informe uma transferência e uma decisão válidas." }, { status: 422 });
+    }
+    const { data, error } = await auth.supabase.rpc("crm_aceitar_transferencia", { p_transferencia_id: transferId, p_aceitar: accept });
+    const result = data && typeof data === "object" ? data as Record<string, unknown> : null;
+    if (error) return falhaLiveChat(error, "decidir_transferencia");
+    if (result?.ok !== true) {
+      const denied = result?.error === "nao_e_o_destino";
+      return Response.json({ error: denied ? "Esta transferência não foi destinada à sua carteira." : "A transferência já foi decidida ou deixou de estar disponível.", erro: denied ? "sem_permissao" : "transferencia_indisponivel" }, { status: denied ? 403 : 409 });
+    }
+    return Response.json({ success: true, message: accept ? "Transferência aceita; lead, negócio e card agora têm o mesmo responsável." : "Transferência recusada e registrada no histórico." });
   }
   if (action === "proposal") {
     const value = Number(body.value);

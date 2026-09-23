@@ -16,10 +16,10 @@ checks do projeto, publicação e confirmação da build.
 | 3 | Automações comerciais são configuráveis e publicadas com versão. | Rascunho não executa; publicação válida executa exatamente o mapa publicado. | não iniciado | — |
 | 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | em prova | O evento real mais recente da automação 73 terminou com dono consistente nas três entidades. |
 | 5 | A primeira abordagem sai somente pela instância do corretor dono. | Aceite do provedor não conta como envio; `messages.sent` confirma e entrega é rastreada. | entregue | PR #251 publicada no hash `b560fff`; mobile e desktop mostram “Aceites D-API”, e o evento real mais recente foi aceito, confirmado e entregue pela instância do dono. |
-| 6 | A proteção do dono só vale em visita ou negociação. | Fora desses estados a redistribuição autorizada não é bloqueada por histórico antigo. | em prova | Cinco cards ativos estavam protegidos apenas por visita encerrada. A correção passou em transação com rollback: os cinco ficam livres e o caso com pipeline atual de visita/negociação continua protegido. Falta CI, publicação e aceite em produção. |
-| 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | não iniciado | — |
-| 8 | A gestão pode transferir clientes. | Perfil autorizado transfere; corretor comum não usa a função gerencial. | não iniciado | — |
-| 9 | Transferência por fit comercial é permitida e auditada. | Motivo/fit ficam registrados sem quebrar continuidade de visita/negociação. | não iniciado | — |
+| 6 | A proteção do dono só vale em visita ou negociação. | Fora desses estados a redistribuição autorizada não é bloqueada por histórico antigo. | entregue | PR #252 publicada no hash `5e1555c`: a regra nova preserva o único estado ativo e libera cinco históricos encerrados; migração, permissões, mobile 390×844 e desktop 1440×900 foram aceitos em produção. |
+| 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | em prova | Correção local exige negócio próprio e aceite do destino; prova transacional alinhou negócio, lead e card. Falta publicação e aceite real autorizado. |
+| 8 | A gestão pode transferir clientes. | Perfil autorizado transfere; corretor comum não usa a função gerencial. | em prova | RPC gerencial exige grupo `gestao` e escopo sobre o dono atual; funções legadas passam pela mesma guarda. Falta publicação e aceite por perfil. |
+| 9 | Transferência por fit comercial é permitida e auditada. | Motivo/fit ficam registrados sem quebrar continuidade de visita/negociação. | em prova | Migração e interface exigem motivo/fit e registram solicitante/decisor. Rollback confirmou etapa, momento e visitas preservados. Falta publicação e aceite real autorizado. |
 | 10 | CRM/Kanban mostra carteira clara e acionável. | Card exibe dono, etapa, momento, temperatura, próxima ação e prazo coerentes. | em prova | O card do evento real mais recente está ativo na carteira; aceite integral ainda pendente. |
 | 11 | Pipelines e etapas são configuráveis. | Gestão altera configuração válida sem editar código nem corromper cards existentes. | não iniciado | — |
 | 12 | Pipelines se conectam às automações. | Ação de criar/mover negócio usa pipeline/etapa publicados e falha de modo explícito. | não iniciado | — |
@@ -53,11 +53,9 @@ checks do projeto, publicação e confirmação da build.
 - Não marcar uma decisão como entregue por existência de rota, botão ou teste
   estrutural.
 
-## Correção pronta para publicação
+## Próxima fatia funcional
 
-O monitor da automação classifica a resposta HTTP “aceita pela D-API; aguardando
-confirmação `messages.sent`” como sucesso. O estado canônico em
-`motor_mensagem_partes` evolui corretamente para `entregue`, mas a linha inicial
-de `motor_execucoes` permanece `ok`. A correção local torna o monitor honesto sem
-alterar o envio nem expor dados de clientes; falta publicar e validar no mobile e
-no desktop.
+Publicar a operação auditável das decisões 7–9, aplicar a migração após o merge e
+aceitar o fluxo em produção sem criar cliente fictício. Não reconciliar
+automaticamente as 101 divergências legadas entre lead/negócio nem as 18 entre
+card/negócio: elas precisam de triagem humana antes de qualquer correção em massa.

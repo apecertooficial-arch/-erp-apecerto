@@ -12442,6 +12442,44 @@ export type Database = {
         Args: { p_empreendimento_id?: string; p_id?: number; p_nome?: string }
         Returns: number
       }
+      crm_aceitar_transferencia: {
+        Args: { p_aceitar: boolean; p_transferencia_id: number }
+        Returns: Json
+      }
+      crm_solicitar_transferencia: {
+        Args: {
+          p_corretor_id: number
+          p_fit_comercial?: string | null
+          p_motivo: string
+          p_negocio_id: number
+          p_tipo: string
+        }
+        Returns: Json
+      }
+      crm_transferencias_pendentes: {
+        Args: never
+        Returns: {
+          cliente: string | null
+          corretor_origem: string | null
+          criado_em: string
+          fit_comercial: string | null
+          id: number
+          lead_id: number
+          motivo: string
+          negocio_id: number
+          tipo: string
+        }[]
+      }
+      crm_transferir_gestao: {
+        Args: {
+          p_corretor_id: number
+          p_fit_comercial?: string | null
+          p_motivo: string
+          p_negocio_id: number
+          p_tipo: string
+        }
+        Returns: Json
+      }
       current_broker_id: { Args: never; Returns: number }
       dapi_backfill_historico: { Args: { p_dias?: number }; Returns: Json }
       dapi_habilitar_eventos: { Args: never; Returns: Json }
