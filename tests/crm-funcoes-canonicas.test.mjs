@@ -85,7 +85,7 @@ test("Adicionar cliente rejeita identidade malformada nas duas respostas de dupl
 test("Adicionar cliente não fecha com identidade malformada", () => {
   assert.match(addClient, /function idFunilValido\(valor: unknown\): valor is string/);
   assert.match(addClient, /if \(idFunilValido\(result\.funilLeadId\)\) \{ onCreated\(result\.funilLeadId\); return; \}/);
-  assert.match(addClient, /if \(result\.funilLeadId \|\| !Number\.isSafeInteger\(result\.leadId\) \|\| result\.leadId <= 0\) throw new Error\("O servidor não confirmou a identidade criada\."\)/);
+  assert.match(addClient, /if \(result\.funilLeadId \|\| typeof result\.leadId !== "number" \|\| !Number\.isSafeInteger\(result\.leadId\) \|\| result\.leadId <= 0\) throw new Error\("O servidor não confirmou a identidade criada\."\)/);
 });
 
 test("negócio novo do Funil 2 cria o card visível na mesma transação", () => {
