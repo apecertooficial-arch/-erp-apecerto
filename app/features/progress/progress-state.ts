@@ -37,23 +37,24 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 65,
+  overallPercent: 72,
   fronts: [
-    { name: "CRM / Kanban", percent: 86 },
+    { name: "CRM / Kanban", percent: 92 },
     { name: "Identidade visual (fase final)", percent: 0 },
-    { name: "Meu Dia", percent: 70 },
-    { name: "Agenda / visitas", percent: 94 },
-    { name: "Aplicativo móvel", percent: 74 },
+    { name: "Meu Dia", percent: 86 },
+    { name: "Agenda / visitas", percent: 96 },
+    { name: "Aplicativo móvel", percent: 78 },
   ],
-  weeklyUsagePercent: 73,
+  weeklyUsagePercent: 75,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar métricas baseadas em eventos confirmados com recorte e denominador visíveis",
-  lastCheckpoint: "Item 23 entregue no build bea893a. Item 24 reproduzido e corrigido: o placar preparado usa o último evento confirmado por visita e mostra período, 5/74 avaliados e fração no prazo. Prova produtiva revertida, mobile 390×844, desktop 1440×900, 1.151 testes, TypeScript, lint e build passaram.",
-  lastCheckpointAt: "2026-09-23T17:46:39-03:00",
-  lastCommitSent: "bea893a3",
-  productionCommit: "bea893a3adf6973cbf4531b20f63f8cf23cf856e",
+  currentTask: "Provar a esteira de proposta, documentos, contrato, assinatura e pagamento",
+  lastCheckpoint: "Itens 13–18 entregues após a retomada do crédito: 122 contratos passaram e duas provas produtivas sintéticas confirmaram análise, aplicação explícita, prazo no Meu Dia, fila idempotente e reavaliação após ação humana, com resíduo zero. Item 24 está publicado no build 27502c03 e aceito em mobile e desktop.",
+  lastCheckpointAt: "2026-09-23T18:22:57-03:00",
+  lastCommitSent: "27502c03",
+  productionCommit: "27502c03aa223e635b01a725db02d8286d7ef657",
   latestDeliveries: [
-    "Item 24 preparado: desempenho parte do último evento confirmado por visita e expõe período, total confirmado, base avaliada e fração absoluta no prazo.",
+    "Itens 13–18 aceitos: Sara classificou evidência sintética, aplicou ação/prazo no Meu Dia, deduplicou evento e reavaliou após ação do corretor sem executar por ele; toda fixture foi removida.",
+    "PR #259 publicada: desempenho parte do último evento confirmado por visita e produção expõe período, 5/74 avaliados e fração absoluta no prazo.",
     "PR #258 publicada: os 37 cards pós-visita deixaram a ação ambígua; 4 ações comprovadas foram recuperadas e 33 históricos pedem registro humano.",
     "Decisão 22 aceita: cobrança de feedback visível para corretor e gestão, idempotente e encerrada somente por resultado válido do dono; nenhum envio externo foi ativado.",
     "Decisão 21 aceita: formulário real em mobile e desktop, nota 10/10, persistência estruturada, autoria, espelho da Agenda e próxima ação em 24 h.",
@@ -78,10 +79,9 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: [
-    "Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex.",
-    "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; ativar o rascunho deixaria uploads sem processamento.",
+    "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a correção do item 24, aplicar a migration e aceitar período e denominadores em produção no mobile antes do desktop. Depois avançar no item 25. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Avançar no item 25 com inspeção da esteira atual e provas reversíveis de pré-condições, persistência e autorização. Não criar pagamento artificial. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

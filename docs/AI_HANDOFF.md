@@ -1,5 +1,33 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 18:22 BRT
+
+- Decisão 24 entregue no build produtivo `27502c03aa223e635b01a725db02d8286d7ef657`:
+  PR #259, migration `metricas_feedback_eventos_confirmados` e `/api/build`
+  confirmados. A RPC retorna 74 eventos confirmados, 5 feedbacks estruturados e
+  69 legados; mobile 390×844 e desktop 1440×900 mostram recorte, base 5/74 e
+  frações absolutas sem overflow.
+- O saldo externo de IA voltou. O teste mínimo sanitizado do Laboratório respondeu
+  `OK` sem ferramenta nem dado real. Em seguida, 122 contratos dirigidos de Sara,
+  automações e Meu Dia passaram.
+- Prova produtiva sintética 1: a Sara real usou `gpt-5.6-luna`, evidência literal,
+  temperatura e qualidade; duas aplicações explícitas levaram o card de versão 1
+  a 3. A segunda mensagem pediu retorno em 30 minutos e produziu
+  `RETORNO_PROGRAMADO`/`RETOMAR_NO_COMBINADO`, prazo no mesmo dia e dentro da
+  janela de duas horas do Meu Dia. Houve um checkpoint pendente e o anterior foi
+  cancelado; nenhuma mensagem ou notificação foi gerada.
+- Prova produtiva sintética 2: o enfileirador recebeu a mesma mensagem duas vezes
+  e registrou uma execução e uma duplicata, sem segunda fila. Após uma saída
+  sintética do corretor, o dispatcher reavaliou, aplicou como `mantida`, incrementou
+  a versão e renovou um único checkpoint, sem a IA executar ação humana.
+- As duas fixtures foram removidas por IDs e marcadores exatos. Consultas finais
+  retornaram zero para leads, cards, mensagens, conversas, análises, execuções de
+  IA, filas, eventos, notificações e logs sintéticos. Decisões 13–18 estão
+  entregues; a decisão 20 continua bloqueada somente pela infraestrutura de áudio
+  ausente, não mais por crédito.
+- Uso semanal: 75%; teto 90%; crédito de reset intacto. Próxima fatia: decisão 25,
+  sem criar pagamento artificial. Identidade visual permanece por último.
+
 ## Estado verificado em 23/09/2026, 17:46 BRT
 
 - Decisão 23 entregue no build produtivo `bea893a`: os 37 cards pós-visita
