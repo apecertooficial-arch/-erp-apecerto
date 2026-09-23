@@ -164,7 +164,7 @@ export async function GET(request: Request) {
       const detalhes = await auth.supabase.from("visitas").select("id,com_gerente,gerente_id").in("id", ids);
       if (detalhes.error) return Response.json({ ok: false, error: "Falha ao carregar o acompanhamento das visitas." }, { status: 502 });
       const porId = new Map((detalhes.data ?? []).map((item) => [String(item.id), item]));
-      result.itens = itens.map((item) => ({ ...item, ...(porId.get(String(item.id)) ?? { com_gerente: false, gerente_id: null }) }));
+      result.itens = itens.map((item) => ({ ...item, meu: item.meu === true, ...(porId.get(String(item.id)) ?? { com_gerente: false, gerente_id: null }) }));
     }
     return Response.json(result);
   }

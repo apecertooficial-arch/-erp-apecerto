@@ -1,9 +1,23 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { leadOperacionalNoMeuDia } from "../app/features/funil-2/modelo.ts";
+import { leadOperacionalNoMeuDia, situacaoPrazo } from "../app/features/funil-2/modelo.ts";
 
 const ui = `${readFileSync(new URL("../app/features/funil-2/Funil2Workspace.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/Funil2BoardToolbar.tsx", import.meta.url), "utf8")}`;
+
+test("Meu Dia atualiza prazos e visitas enquanto permanece aberto", () => {
+  assert.match(ui, /setInterval\(\(\) => setAgoraQuadro\(Date\.now\(\)\), 60_000\)/);
+  assert.match(ui, /situacaoPrazo\(l\.proxima_acao_em, agoraQuadro\)/);
+  assert.match(ui, /venceHoje\(l, agoraQuadro\)/);
+  assert.match(ui, /dataIsoSaoPaulo\(new Date\(agoraQuadro\)\)/);
+});
+
+test("prazo vence no instante exato, sem arredondar a classificação", () => {
+  const agora = Date.parse("2026-09-22T15:00:00.000Z");
+  assert.deepEqual(situacaoPrazo(new Date(agora - 1).toISOString(), agora), { classe: "atrasado", rotulo: "Atrasado há 1 min" });
+  assert.deepEqual(situacaoPrazo(new Date(agora + 1).toISOString(), agora), { classe: "urgente", rotulo: "Vence em 1 min" });
+  assert.equal(situacaoPrazo(new Date(agora + 120 * 60_000 + 1).toISOString(), agora).classe, "no-prazo");
+});
 const esteira = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const entradaCrm = `${readFileSync(new URL("../app/(erp)/crm/page.tsx", import.meta.url), "utf8")}\n${readFileSync(new URL("../app/features/funil-2/FunilEntry.tsx", import.meta.url), "utf8")}`;
 const migration = readFileSync(new URL("../supabase/migrations/20260810150000_funil_2_isolado.sql", import.meta.url), "utf8");

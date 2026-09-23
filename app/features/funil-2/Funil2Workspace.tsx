@@ -134,7 +134,11 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [ordenacaoQuadro, setOrdenacaoQuadro] = useState<"urgente" | "nome">("urgente");
   const [visaoQuadro, setVisaoQuadro] = useState<"andamento" | "ganhos" | "perdidos" | "triagem">("andamento");
   const [periodoQuadro, setPeriodoQuadro] = useState<"30" | "90" | "todos">("30");
-  const [agoraQuadro] = useState(() => Date.now());
+  const [agoraQuadro, setAgoraQuadro] = useState(() => Date.now());
+  useEffect(() => {
+    const relogio = window.setInterval(() => setAgoraQuadro(Date.now()), 60_000);
+    return () => window.clearInterval(relogio);
+  }, []);
   const [limitesPorEtapa, setLimitesPorEtapa] = useState<Record<string, number>>({});
   const [menuCardId, setMenuCardId] = useState<string | null>(null);
   const [filtrosQuadroAbertos, setFiltrosQuadroAbertos] = useState(false);
@@ -255,11 +259,11 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const eventosLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.eventos : eventos.filter((e) => e.funil_lead_id === lead.id)) : [];
   const notasLead = lead ? (historicoDetalhe?.leadId === lead.id ? historicoDetalhe.notas : notas.filter((n) => n.funil_lead_id === lead.id)) : [];
   const leadsOperacionais = leads.filter(leadOperacionalNoMeuDia);
-  const atrasados = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado").length;
-  const urgentes = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em).classe === "urgente").length;
-  const vencemHoje = leadsOperacionais.filter((l) => venceHoje(l)).length;
+  const atrasados = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em, agoraQuadro).classe === "atrasado").length;
+  const urgentes = leadsOperacionais.filter((l) => situacaoPrazo(l.proxima_acao_em, agoraQuadro).classe === "urgente").length;
+  const vencemHoje = leadsOperacionais.filter((l) => venceHoje(l, agoraQuadro)).length;
   const leadsNovos = leadsOperacionais.filter((l) => esperandoPrimeiraChamada(l)).length;
-  const hojeSaoPaulo = dataIsoSaoPaulo(new Date());
+  const hojeSaoPaulo = dataIsoSaoPaulo(new Date(agoraQuadro));
   const visitasDoDia = visitas
     .filter((v) => {
       const aindaExigeAtencao = v.status === "agendada" || v.status === "confirmada";
@@ -280,9 +284,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
      tudo. O número grande e o "primeiro da fila" acompanham o filtro ativo,
      senão o cabeçalho contaria uma história e a lista, outra. */
   const FILTROS_DIA = {
-    atrasadas: { rotulo: "atrasadas", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em).classe === "atrasado", vazio: "Nenhuma ação atrasada. É esse o objetivo." },
-    urgentes: { rotulo: "que vencem em até 2h", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em).classe === "urgente", vazio: "Nada vencendo nas próximas duas horas." },
-    hoje: { rotulo: "para fazer hoje", teste: (l: LeadFunil2) => venceHoje(l), vazio: "Nada com prazo para hoje." },
+    atrasadas: { rotulo: "atrasadas", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em, agoraQuadro).classe === "atrasado", vazio: "Nenhuma ação atrasada. É esse o objetivo." },
+    urgentes: { rotulo: "que vencem em até 2h", teste: (l: LeadFunil2) => situacaoPrazo(l.proxima_acao_em, agoraQuadro).classe === "urgente", vazio: "Nada vencendo nas próximas duas horas." },
+    hoje: { rotulo: "para fazer hoje", teste: (l: LeadFunil2) => venceHoje(l, agoraQuadro), vazio: "Nada com prazo para hoje." },
     /* Inclui o pescado que ainda não foi chamado: a coluna dele continua sendo
        Pescado, mas o atalho para chamar mora aqui. Ver esperandoPrimeiraChamada. */
     novos: { rotulo: "leads para chamar", teste: (l: LeadFunil2) => esperandoPrimeiraChamada(l), vazio: "Nenhum lead esperando a primeira chamada." },

@@ -19,13 +19,13 @@ test("tarefas usam somente dados reais do Funil 2", () => {
   assert.match(tela, /fetch\("\/api\/funil2"/);
   assert.match(tela, /dados\?\.leads/);
   assert.doesNotMatch(tela, /const\s+(tasks|tarefas)\s*=\s*\[/i);
-  assert.match(tela, /if \(!Array\.isArray\(json\.leads\)/);
+  assert.match(tela, /if \(!Array\.isArray\(leads\)/);
   assert.match(harness, /"invalido"/);
 });
 
 test("tarefas rejeitam item malformado antes de montar a fila", () => {
   assert.match(tela, /leadFunil2EssencialValido/);
-  assert.match(tela, /json\.leads\.every\(leadFunil2EssencialValido\)/);
+  assert.match(tela, /leads\.every\(leadFunil2EssencialValido\)/);
 });
 
 test("tarefas não recolocam histórico, atualização manual ou pescado na fila operacional", () => {
@@ -36,6 +36,13 @@ test("tarefas não recolocam histórico, atualização manual ou pescado na fila
 test("fila móvel abre nas tarefas atrasadas antes das próximas", () => {
   assert.match(tela, /useState<Faixa>\("atrasadas"\)/);
   assert.match(harness, /tela === "tarefas-mobile"[\s\S]*?<SaraTasksMobile/);
+});
+
+test("tarefas mudam de faixa quando o prazo vence com a tela aberta", () => {
+  assert.match(tela, /setInterval\(\(\) => setAgora\(Date\.now\(\)\), 30_000\)/);
+  assert.match(tela, /const instante = new Date\(agora\)/);
+  assert.match(tela, /faixaDaTarefa\(lead, instante\)/);
+  assert.match(tela, /\}, \[dados, agora\]\)/);
 });
 
 test("fila extensa não monta todos os cards de uma vez no celular", () => {

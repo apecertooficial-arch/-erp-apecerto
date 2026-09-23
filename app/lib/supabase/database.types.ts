@@ -12996,7 +12996,7 @@ export type Database = {
         Args: {
           p_data: string
           p_exclude?: string
-          p_fim: string
+          p_fim: string | null
           p_gerente: number
           p_inicio: string
         }
