@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 70,
   weeklyUsageCeilingPercent: 80,
-  currentTask: "Sara: reproduzir e corrigir a recuperação de lease que retorna 23505",
-  lastCheckpoint: "Em 23/09, as PRs #246 e #247 passaram no CI, foram integradas e apareceram em /api/build. Agenda móvel abriu com 66 cobranças e série de qualidade; o Local passou a persistir no modelo canônico. A RPC de conflitos de gerente foi restringida no banco: corretor consulta o próprio gerente sem dados de outros clientes; a gestão mantém a visão completa. Testes transacionais e permissões passaram; código dessa última correção aguarda PR.",
-  lastCheckpointAt: "2026-09-23T12:05:00-03:00",
-  lastCommitSent: "b471bbd5",
-  productionCommit: "8f1d9062492ddb47f145fd7dab2c7484bd4cf8c8",
+  currentTask: "Sara: investigar oito erros P0001 após a retomada da fila",
+  lastCheckpoint: "Em 23/09, as PRs #246–#248 foram integradas e confirmadas em /api/build. Agenda móvel abriu com cobrança e qualidade; Local da visita persiste; conflitos de gerente não expõem clientes alheios. A migração de recuperação Sara foi aplicada no banco após ensaio com rollback: um lease foi consolidado, itens vencidos caíram de 273 para 180 e 129 processamentos terminaram com status ok na primeira janela. Oito itens ficaram em erro P0001; ainda exigem diagnóstico.",
+  lastCheckpointAt: "2026-09-23T12:13:00-03:00",
+  lastCommitSent: "954cefc7",
+  productionCommit: "2b9fd1e542c2e1f7c1a716005eb7fe7d49776dc2",
   latestDeliveries: [
+    "Recuperação de lease Sara aplicada: lote colidente fundido e dispatcher voltou a concluir itens; migração alinhada ao histórico remoto.",
     "Consulta de conflitos de gerente protege nomes, IDs de visita e corretor de carteiras alheias; teste com usuários reais simulados em transação passou.",
     "Local da visita persistido no Funil 2 e no espelho da Agenda; edição preserva ou limpa o valor na mesma transação. PR #247 publicada.",
     "Agenda móvel valida o campo meu como booleano e abriu em produção com 66 cobranças e série de qualidade. PR #246 publicada.",
@@ -63,8 +64,8 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Seletor de novo negócio remove opções antigas ao trocar busca e pagina nomes empatados por ID estável.",
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
-  blockers: ["Fila Sara segue parada por erro 23505 na recuperação de lease; migração preparada, não aplicada.", "A API de IA da Sara retornou credit_balance_exhausted; saldo da API é separado do teto de uso do Codex."],
-  nextStep: "Publicar a correção de privacidade da Agenda após CI; depois reproduzir o erro 23505 da Sara e avaliar a menor correção. Identidade visual fica por último e exige conversa com o usuário.",
+  blockers: ["Oito itens da Sara entraram em erro P0001 após a retomada; causa ainda não classificada.", "A API de IA da Sara retornou credit_balance_exhausted; saldo da API é separado do teto de uso do Codex."],
+  nextStep: "Publicar o alinhamento da migração Sara no repositório; investigar os oito erros P0001 sem expor dados de clientes. Identidade visual fica por último e exige conversa com o usuário.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
