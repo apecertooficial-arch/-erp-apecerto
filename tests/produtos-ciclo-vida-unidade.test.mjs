@@ -7,12 +7,14 @@ const productApi = readFileSync("app/api/product/route.ts", "utf8");
 const detail = readFileSync("app/features/products/ProductDetail.tsx", "utf8");
 const unitWizard = readFileSync("app/features/products/UnitWizard.tsx", "utf8");
 const captureApi = readFileSync("app/api/capture/route.ts", "utf8");
+const atomicCaptureMigration = readFileSync("supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", "utf8");
 
 test("unidade guarda condição de locação e custos próprios", () => {
   assert.match(migration, /add column if not exists compre_ja_alugado boolean not null default false/);
   assert.match(migration, /add column if not exists condominio_valor numeric/);
   assert.doesNotMatch(migration, /create or replace view public\.site_produtos/);
-  assert.match(captureApi, /compre_ja_alugado: unit\.alreadyRented === true/);
+  assert.match(captureApi, /rpc\("produto_captacao_criar_atomica"/);
+  assert.match(atomicCaptureMigration, /compre_ja_alugado[\s\S]*coalesce\(\(v_unit->>'alreadyRented'\)::boolean, false\)/);
   assert.match(detail, /Compre já alugado/);
   assert.match(detail, /unit\.condominio_valor \?\? currentProduct\.condominio_valor/);
   assert.doesNotMatch(detail, /focusedUnitStandalone \? "—" : currentProduct\.condominio_valor/);

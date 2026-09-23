@@ -18,6 +18,7 @@ const unpublishMigration = await readFile("supabase/migrations/20260820193000_pr
 const unitMediaMigration = await readFile("supabase/migrations/20260820220000_captador_exclui_midia_da_propria_unidade.sql", "utf8");
 const captorIntegrityMigration = await readFile("supabase/migrations/20260820223000_produtos_captador_unidade_obrigatorio.sql", "utf8");
 const editorialMigration = await readFile("supabase/migrations/20260826193000_produtos_editorial_midias_rascunhos.sql", "utf8");
+const atomicCaptureMigration = await readFile("supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", "utf8");
 
 test("catálogo separa contagem de empreendimentos e imóveis", () => {
   assert.match(catalog, /buildingCount: visible\.filter\(\(product\) => !product\.standalone\)\.length/);
@@ -225,7 +226,8 @@ test("captador da unidade é obrigatório, preservado e visível em todas as sit
   assert.match(captorIntegrityMigration, /unidades_terceiros_exige_captador_check/);
   assert.match(captorIntegrityMigration, /captador_corretor_id is not null/);
   assert.match(captureWizard, /action: "finalize"/);
-  assert.match(captureApi, /Esta captação pertence a outro corretor e não pode ser reassociada/);
+  assert.match(captureApi, /CAPTURE_FORBIDDEN/);
+  assert.match(atomicCaptureMigration, /CAPTURE_FORBIDDEN: captação pertence a outro corretor\./);
   assert.doesNotMatch(catalog, /\.in\("aprovacao", \["pendente", "reprovado"\]\)/);
   assert.match(productsUi, /Minhas captações/);
   assert.match(productsUi, /Captador: <b>\{product\.capturedBy \|\| "não identificado"\}<\/b>/);

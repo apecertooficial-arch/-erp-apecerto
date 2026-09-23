@@ -10,6 +10,7 @@ const detail = await readFile("app/features/products/ProductDetail.tsx", "utf8")
 const productApi = await readFile("app/api/product/route.ts", "utf8");
 const classifier = await readFile("app/features/products/PendingMediaClassifier.tsx", "utf8");
 const ownerHardening = await readFile("supabase/hardening/produtos_proprietarios_pos_deploy.sql", "utf8");
+const atomicCapture = await readFile("supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", "utf8");
 
 test("valor completo colado no modo milhares nunca vira mil vezes maior", () => {
   assert.deepEqual(interpretMoneyInput("710", "milhares", "venda"), { value: 710_000, mode: "milhares", inferredFullValue: false });
@@ -52,7 +53,8 @@ test("proprietário é liberado somente ao captador ou à gestão ativa", () => 
   assert.doesNotMatch(productApi, /proprietarios \(\*\)/);
   assert.match(productApi, /rpc\("produto_proprietario_ler"/);
   assert.match(productApi, /rpc\("produto_proprietario_salvar"/);
-  assert.match(captureApi, /rpc\("produto_proprietario_captacao_resolver"/);
+  assert.match(captureApi, /rpc\("produto_captacao_criar_atomica"/);
+  assert.match(atomicCapture, /produto_proprietario_captacao_resolver/);
   assert.doesNotMatch(productApi, /from\("proprietarios"\)/);
   assert.doesNotMatch(captureApi, /from\("proprietarios"\)/);
   assert.match(productApi, /isManager: gerenciaProdutosGet/);
