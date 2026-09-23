@@ -4094,6 +4094,7 @@ export type Database = {
           id: string
           imovel: string
           inicio_em: string
+          local: string | null
           observacao: string | null
           origem_visita_id: string | null
           resultado_codigo: string | null
@@ -4117,6 +4118,7 @@ export type Database = {
           id?: string
           imovel: string
           inicio_em: string
+          local?: string | null
           observacao?: string | null
           origem_visita_id?: string | null
           resultado_codigo?: string | null
@@ -4140,6 +4142,7 @@ export type Database = {
           id?: string
           imovel?: string
           inicio_em?: string
+          local?: string | null
           observacao?: string | null
           origem_visita_id?: string | null
           resultado_codigo?: string | null
@@ -12825,6 +12828,23 @@ export type Database = {
           p_observacao?: string
           p_status?: string
           p_unidade?: string
+        }
+        Returns: Json
+      }
+      f2_salvar_visita_local: {
+        Args: {
+          p_com_gerente: boolean
+          p_empreendimento_id: string | null
+          p_fim_em: string | null
+          p_gerente_id: number | null
+          p_id: string | null
+          p_imovel: string
+          p_inicio_em: string
+          p_lead_id: string
+          p_local: string | null
+          p_observacao: string | null
+          p_status: string
+          p_unidade: string | null
         }
         Returns: Json
       }

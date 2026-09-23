@@ -373,12 +373,13 @@ export async function PATCH(request: Request) {
     if (!inicioEm) return Response.json({ error: "Data ou horário inválido." }, { status: 422 });
     const endTime = texto(body.endTime, 8);
     const fimEm = endTime ? instanteSaoPaulo(date, endTime) : null;
-    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
+    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita_local", {
       p_id: null, p_lead_id: card.id, p_inicio_em: inicioEm,
       p_imovel: product?.nome ?? (texto(body.productName, 180) || local || "Visita"),
       p_status: "agendada", p_observacao: texto(body.observations, 500) || null,
       p_empreendimento_id: product?.id ?? null, p_unidade: null,
       p_com_gerente: comGerente, p_gerente_id: gerenteId, p_fim_em: fimEm,
+      p_local: local,
     } as never);
     const outcome = result as { ok?: boolean; id?: string; erro?: string; gerente_removido?: boolean } | null;
     if (error || !outcome?.ok) return falhaDaVisita(error, outcome?.erro, "Não foi possível agendar a visita.");
@@ -398,8 +399,10 @@ export async function PATCH(request: Request) {
     if (!visitId) return Response.json({ error: "Visita inválida." }, { status: 400 });
     const denied = guard("editar", "Você não tem permissão para editar visitas.");
     if (denied) return denied;
-    const { data: current } = await auth.supabase.from("visitas").select("id,negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,observacoes,status,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
+    const { data: current } = await auth.supabase.from("visitas").select("id,negocio_id,data,hora_inicio,hora_fim,produto,empreendimento_id,unidade,local,observacoes,status,com_gerente,gerente_id").eq("id", visitId).maybeSingle();
     if (!current) return Response.json({ error: "Visita não encontrada." }, { status: 404 });
+    const { data: canonical, error: canonicalError } = await auth.supabase.from("f2_visita").select("local").eq("id", visitId).maybeSingle();
+    if (canonicalError) return Response.json({ error: "Não foi possível consultar o Local desta visita." }, { status: 502 });
 
     const isManager = access.role === "admin" || access.role === "gestor";
     const patch: TablesUpdate<"visitas"> = { atualizado_em: new Date().toISOString() };
@@ -442,14 +445,14 @@ export async function PATCH(request: Request) {
     const { data: card } = await auth.supabase.from("f2_lead").select("id").eq("origem_negocio_id", current.negocio_id).is("descartado_em", null).maybeSingle();
     if (!card) return Response.json({ error: "A visita não está ligada a um negócio ativo no Funil 2.0." }, { status: 409 });
     const merged = { ...current, ...patch };
-    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita", {
+    const { data: result, error } = await auth.supabase.rpc("f2_salvar_visita_local", {
       p_id: visitId, p_lead_id: card.id,
       p_inicio_em: merged.hora_inicio ? instanteSaoPaulo(String(merged.data), String(merged.hora_inicio)) : null,
       p_fim_em: merged.hora_fim ? instanteSaoPaulo(String(merged.data), String(merged.hora_fim)) : null,
       p_imovel: merged.produto || "Visita", p_status: merged.status || "agendada",
       p_observacao: merged.observacoes, p_empreendimento_id: merged.empreendimento_id,
       p_unidade: merged.unidade, p_com_gerente: merged.com_gerente === true,
-      p_gerente_id: merged.gerente_id,
+      p_gerente_id: merged.gerente_id, p_local: patch.local !== undefined ? patch.local : canonical?.local ?? null,
     } as never);
     const outcome = result as { ok?: boolean; erro?: string; gerente_removido?: boolean } | null;
     const semGerente = outcome?.gerente_removido === true;
