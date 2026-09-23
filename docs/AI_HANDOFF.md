@@ -1,5 +1,46 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 19:40 BRT
+
+- Decisão 26 em prova local. `produto_captacao_criar_atomica` agora persiste
+  condomínio, proprietário, imóvel, unidades, autoria e captador na mesma
+  transação; `produto_captacao_finalizar_atomica` confirma foto e vínculos antes
+  de retirar o rascunho. A API deixou de encadear gravações parciais.
+- A identidade de duplicidade é normalizada sem depender de extensão, tolera
+  acentos e serializa os critérios nome+bairro e endereço+número com dois locks
+  transacionais em ordem estável. Uma repetição equivalente retoma somente o
+  rascunho completo do mesmo captador.
+- A migração e o fluxo sintético foram executados em produção dentro de
+  `BEGIN … ROLLBACK`: proprietário privado, produto, unidade, autoria e captador
+  foram confirmados; a repetição sem acentos retornou os mesmos IDs; finalizar
+  sem foto foi recusado e o rascunho permaneceu intacto. Resíduo sintético: zero.
+- Verificações locais: 1.157/1.157 testes, TypeScript, lint com 0 erros e os 9
+  avisos preexistentes, build Vinext e `git diff --check` passaram.
+- Diagnóstico produtivo somente de leitura encontrou 12 unidades captadas sem
+  proprietário completo: 11 aprovadas e 10 publicadas. Esses vínculos exigem
+  identificação humana; nenhum proprietário foi inferido nem nenhum registro
+  legado foi alterado. Próximo passo: CI, publicação, migração aditiva e aceite.
+
+## Estado verificado em 23/09/2026, 19:12 BRT
+
+- Decisão 25 entregue pela PR #261 no build produtivo
+  `77aa25eece289339f8c6812930a5ca7f681c5214`. O CI integral passou em testes,
+  contratos de privacidade, TypeScript, lint e build.
+- A Esteira exige o papel configurado da etapa, limita o avanço ao próximo marco
+  do track e bloqueia enquanto blocos, documentos avulsos ou comprovações
+  obrigatórias não estiverem aprovados. Verificação gerencial não ignora mais
+  pendências e movimento em lote foi recusado.
+- Harness sanitizado aceito primeiro em 390×844 e depois em 1440×900, com
+  comprovação, bloqueio e seletor inteiro sem overflow. Em produção, a leitura
+  autenticada carregou 22 processos e as etapas de proposta, documentos, contrato,
+  assinatura, pagamento e registro; um processo concluído mostrou timeline,
+  histórico e bloqueios coerentes. Nenhuma venda foi movida e nenhum pagamento,
+  upload ou dado produtivo foi criado.
+- Uso semanal: 75%; teto 90%; crédito de reset intacto. Próxima fatia: decisão 26,
+  vínculo canônico entre imóvel e proprietário com autoria e privacidade. Decisão
+  20 continua bloqueada pela infraestrutura de áudio ausente; identidade visual
+  permanece por último.
+
 ## Estado verificado em 23/09/2026, 19:00 BRT
 
 - Decisão 25 em prova local. A API da Esteira agora exige o papel configurado da

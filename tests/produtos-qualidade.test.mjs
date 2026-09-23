@@ -125,7 +125,7 @@ test("imóvel avulso não valida a unidade vazia escondida como preço zero", ()
   const capture = read("app/api/capture/route.ts");
   assert.match(wizard, /units: propertyType === "construtora" \? units\.map/);
   assert.match(wizard, /: \[\],/);
-  const unitValidation = capture.match(/if \(payload\.propertyType === "construtora"\) \{[\s\S]*?\/\/ Evita imóveis repetidos/)?.[0] ?? "";
+  const unitValidation = capture.match(/if \(payload\.propertyType === "construtora"\) \{[\s\S]*?const \{ data, error \} = await supabase\.rpc\("produto_captacao_criar_atomica"/)?.[0] ?? "";
   assert.match(unitValidation, /for \(const unit of units\)/);
   assert.match(unitValidation, /Preço da unidade/);
   assert.doesNotMatch(capture.match(/const propertyPriceCheck[\s\S]*?if \(payload\.propertyType === "construtora"\)/)?.[0] ?? "", /for \(const unit of units\)/);

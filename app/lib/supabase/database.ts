@@ -16,7 +16,7 @@
  * `pnpm exec tsc --noEmit --incremental false`. Mantenha o ajuste de
  * p_proprietario_id enquanto o gerador tipar o argumento como `string`.
  */
-import type { Database as DatabaseGerado } from "./database.types";
+import type { Database as DatabaseGerado, Json } from "./database.types";
 
 type Publico = DatabaseGerado["public"];
 
@@ -56,8 +56,19 @@ type FuncoesDeProprietario = {
   }
 };
 
+type FuncoesDeCaptacao = {
+  produto_captacao_criar_atomica: {
+    Args: { p_payload: Json }
+    Returns: Json
+  }
+  produto_captacao_finalizar_atomica: {
+    Args: { p_empreendimento_id: string }
+    Returns: Json
+  }
+};
+
 export type Database = Omit<DatabaseGerado, "public"> & {
   public: Omit<Publico, "Functions"> & {
-    Functions: Publico["Functions"] & FuncoesDeProprietario
+    Functions: Publico["Functions"] & FuncoesDeProprietario & FuncoesDeCaptacao
   }
 };

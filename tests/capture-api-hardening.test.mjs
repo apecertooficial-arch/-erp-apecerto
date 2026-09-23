@@ -6,6 +6,7 @@ const route = readFileSync(new URL("../app/api/capture/route.ts", import.meta.ur
 const wizard = readFileSync(new URL("../app/features/products/CaptureWizard.tsx", import.meta.url), "utf8");
 const detail = readFileSync(new URL("../app/features/products/ProductDetail.tsx", import.meta.url), "utf8");
 const client = readFileSync(new URL("../app/features/products/capture-client.ts", import.meta.url), "utf8");
+const atomicMigration = readFileSync(new URL("../supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", import.meta.url), "utf8");
 
 test("Captação não devolve nem registra detalhes brutos de banco, Storage ou RPC", () => {
   assert.match(route, /function falhaCaptacao\(/);
@@ -23,26 +24,35 @@ test("autenticação, papel e vínculo do corretor falham fechados", () => {
   assert.match(route, /if \(brokerError\) return falhaCaptacao\(brokerError, "carregar_corretor"\)/);
 });
 
-test("leituras de duplicidade, condomínio, mídia e ownership não viram decisão falsa", () => {
+test("leituras usadas na aprovação não viram decisão falsa", () => {
   for (const operacao of [
     "carregar_produto_aprovacao",
-    "carregar_captacao",
-    "carregar_midias_captacao",
-    "buscar_produto_duplicado",
-    "buscar_condominio_existente",
   ]) assert.match(route, new RegExp(`falhaCaptacao\\([^\\n]+, "${operacao}"\\)`));
 });
 
-test("gravações comprovam o efeito e parcialidade exige reconciliação", () => {
-  assert.match(route, /function falhaCaptacaoParcial\(/);
-  assert.match(route, /code:\s*"RECONCILIATION_REQUIRED"/);
-  assert.match(route, /finalizar_empreendimento/);
-  assert.match(route, /reparar_captador_unidades/);
-  assert.match(route, /criar_empreendimento/);
-  assert.match(route, /criar_unidades/);
-  assert.match(route, /\.select\("id"\)/);
-  assert.match(route, /if \(!development\?\.id\)/);
-  assert.match(route, /createdUnits\?\.length !== unitRows\.length/);
+test("criação e finalização da captação usam uma única operação transacional", () => {
+  assert.match(route, /rpc\("produto_captacao_criar_atomica"/);
+  assert.match(route, /rpc\("produto_captacao_finalizar_atomica"/);
+  const createBlock = route.match(/if \(payload\.action !== "create"\)[\s\S]*?return Response\.json\(result\);/)?.[0] ?? "";
+  assert.doesNotMatch(createBlock, /from\("(?:condominios|proprietarios|empreendimentos|unidades)"\)\.(?:insert|update)/);
+  const finalizeBlock = route.match(/if \(payload\.action === "finalize"\)[\s\S]*?^  \}/m)?.[0] ?? "";
+  assert.doesNotMatch(finalizeBlock, /from\("(?:empreendimentos|unidades)"\)\.update/);
+});
+
+test("RPC atômica fixa autoria, proprietário e captador antes de devolver sucesso", () => {
+  assert.match(atomicMigration, /create or replace function public\.produto_captacao_criar_atomica\(p_payload jsonb\)/i);
+  assert.match(atomicMigration, /perform pg_catalog\.pg_advisory_xact_lock/);
+  assert.equal((atomicMigration.match(/perform pg_catalog\.pg_advisory_xact_lock/g) ?? []).length, 2);
+  assert.match(atomicMigration, /v_lock_a := 'capture-address\|'/);
+  assert.match(atomicMigration, /v_lock_b := 'capture-name\|'/);
+  assert.match(atomicMigration, /pg_catalog\.translate[\s\S]*áàâãä/);
+  assert.match(atomicMigration, /produto_proprietario_captacao_resolver/);
+  assert.match(atomicMigration, /captado_por_usuario[\s\S]*v_uid/);
+  assert.match(atomicMigration, /captador_corretor_id[\s\S]*v_corretor_id/);
+  assert.match(atomicMigration, /create or replace function public\.produto_captacao_finalizar_atomica\(p_empreendimento_id uuid\)/i);
+  assert.match(atomicMigration, /CAPTURE_OWNER_REQUIRED/);
+  assert.match(atomicMigration, /revoke all on function public\.produto_captacao_criar_atomica\(jsonb\)/i);
+  assert.match(atomicMigration, /grant execute on function public\.produto_captacao_criar_atomica\(jsonb\) to authenticated/i);
 });
 
 test("interface da captação trata resposta inválida e não exibe falha técnica arbitrária", () => {

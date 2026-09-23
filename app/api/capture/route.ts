@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
-import { assessProductQuality, isPlausibleProductPrice, normalizedKey, validateProductPrice } from "../../features/products/quality";
+import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
 import { isProductManagerRole } from "../../features/products/access";
 import type { Json } from "../../lib/supabase/database.types";
 
@@ -19,14 +19,6 @@ function falhaCaptacao(error: CaptureDbError, operacao: string, status = 502) {
   }, { status });
 }
 
-function falhaCaptacaoParcial(error: CaptureDbError, operacao: string) {
-  console.error("captacao_operacao_falhou", { operacao, codigo: captureErrorCode(error) });
-  return Response.json({
-    error: "A captação foi aplicada apenas em parte. Não repita a operação; a gestão precisa reconciliar o cadastro.",
-    code: "RECONCILIATION_REQUIRED",
-  }, { status: 502 });
-}
-
 const PUBLICATION_RULES: Record<string, { status: number; message: string }> = {
   PRODUCT_NOT_READY: { status: 422, message: "O imóvel precisa ser completado antes da aprovação." },
   READY_PRODUCT_WITHOUT_APPROVED_UNIT: { status: 422, message: "Produto pronto precisa ter ao menos uma unidade aprovada e disponível para aparecer no site." },
@@ -35,6 +27,24 @@ const PUBLICATION_RULES: Record<string, { status: number; message: string }> = {
   PRODUCT_NOT_FOUND: { status: 404, message: "Produto não encontrado." },
   SITE_PUBLICATION_NOT_CONFIRMED: { status: 502, message: "A aprovação foi processada, mas a publicação no site precisa ser reconciliada." },
 };
+
+const CAPTURE_RULES: Record<string, { status: number; message: string }> = {
+  CAPTURE_FORBIDDEN: { status: 403, message: "Você não tem permissão para alterar esta captação." },
+  CAPTURE_CAPTOR_REQUIRED: { status: 422, message: "Seu usuário ainda não está vinculado a um corretor. Peça à gestão para corrigir o cadastro." },
+  CAPTURE_OWNER_REQUIRED: { status: 422, message: "Informe e confirme o proprietário antes de continuar." },
+  CAPTURE_PHOTO_REQUIRED: { status: 422, message: "Envie pelo menos 1 foto do imóvel." },
+  CAPTURE_DUPLICATE: { status: 409, message: "Já existe um imóvel semelhante. Abra o cadastro existente em vez de criar outro." },
+  CAPTURE_NOT_FOUND: { status: 404, message: "Captação não encontrada." },
+  CAPTURE_INVALID: { status: 422, message: "Revise os dados obrigatórios da captação." },
+  CAPTURE_CONFLICT: { status: 409, message: "A captação mudou enquanto era salva. Recarregue antes de tentar novamente." },
+};
+
+function falhaRegraCaptacao(error: CaptureDbError, operacao: string) {
+  const code = error?.message?.match(/(?:^|\b)(CAPTURE_[A-Z_]+)(?::|\b)/)?.[1];
+  const rule = code ? CAPTURE_RULES[code] : null;
+  if (rule) return Response.json({ error: rule.message, code }, { status: rule.status });
+  return falhaCaptacao(error, operacao);
+}
 
 function publicationRuleCode(error: CaptureDbError, result: Record<string, unknown>) {
   if (error?.code === "42501") return "PRODUCT_PUBLICATION_FORBIDDEN";
@@ -252,55 +262,11 @@ export async function POST(request: Request) {
 
   if (payload.action === "finalize") {
     if (!payload.id) return Response.json({ error: "Captação inválida." }, { status: 422 });
-    if (!broker?.id) {
-      return Response.json({ error: "Seu usuário ainda não está vinculado a um corretor. Peça à gestão para corrigir o cadastro antes de publicar uma captação." }, { status: 422 });
-    }
-    const { data: capture, error: captureError } = await supabase
-      .from("empreendimentos")
-      .select("aprovacao,rascunho,captado_por_usuario,captador_corretor_id")
-      .eq("id", payload.id)
-      .maybeSingle();
-    if (captureError) return falhaCaptacao(captureError, "carregar_captacao");
-    if (!capture) return Response.json({ error: "Captação não encontrada." }, { status: 404 });
-    if ((capture.captado_por_usuario && capture.captado_por_usuario !== authData.user.id)
-      || (capture.captador_corretor_id && capture.captador_corretor_id !== broker.id)) {
-      return Response.json({ error: "Esta captação pertence a outro corretor e não pode ser reassociada ao finalizar." }, { status: 403 });
-    }
-
-    const { data: media, error: mediaError } = await supabase
-      .from("midias")
-      .select("tipo,is_capa")
-      .eq("empreendimento_id", payload.id);
-    if (mediaError) return falhaCaptacao(mediaError, "carregar_midias_captacao");
-
-    const photos = media.filter((item) => item.tipo === "foto").length;
-    if (photos < 1) {
-      return Response.json({ error: "Envie pelo menos 1 foto do imóvel." }, { status: 422 });
-    }
-
-    // Ao publicar (finalizar a captação), o empreendimento entra na fila de aprovação do gestor.
-    // Se já estava aprovado (edição de algo publicado), mantém aprovado — não re-gateia edições.
-    const patch = capture.aprovacao === "aprovado"
-      ? { rascunho: false, captado_por_usuario: authData.user.id, captador_corretor_id: broker.id }
-      : { rascunho: false, aprovacao: "pendente", reprovacao_motivo: null, captado_por_usuario: authData.user.id, captador_corretor_id: broker.id };
-    const { data: finalized, error } = await supabase
-      .from("empreendimentos")
-      .update(patch)
-      .eq("id", payload.id)
-      .select("id")
-      .maybeSingle();
-    if (error) return falhaCaptacao(error, "finalizar_empreendimento");
-    if (!finalized?.id) return Response.json({ error: "A captação mudou enquanto era finalizada. Recarregue antes de tentar novamente.", code: "CAPTURE_CONFLICT" }, { status: 409 });
-    // Repara somente unidades ainda sem responsável dentro da captação que este
-    // usuário acabou de finalizar; um vínculo existente nunca é sobrescrito.
-    const { error: unitCaptorError } = await supabase
-      .from("unidades")
-      .update({ captador_corretor_id: broker.id })
-      .eq("empreendimento_id", payload.id)
-      .is("captador_corretor_id", null)
-      .select("id");
-    if (unitCaptorError) return falhaCaptacaoParcial(unitCaptorError, "reparar_captador_unidades");
-    return Response.json({ ok: true, id: payload.id, aprovacao: (patch as { aprovacao?: string }).aprovacao ?? "aprovado" });
+    const { data, error } = await supabase.rpc("produto_captacao_finalizar_atomica", { p_empreendimento_id: payload.id });
+    if (error) return falhaRegraCaptacao(error, "finalizar_captacao_atomica");
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+    if (result?.ok !== true || result.id !== payload.id) return falhaCaptacao(undefined, "confirmar_finalizacao_atomica");
+    return Response.json(result);
   }
 
   if (payload.action !== "create") return Response.json({ error: "Ação de captação inválida." }, { status: 422 });
@@ -344,130 +310,9 @@ export async function POST(request: Request) {
     }
   }
 
-  // Evita imóveis repetidos antes de criar qualquer registro auxiliar.
-  const { data: possibleDuplicates, error: duplicatesError } = await supabase
-    .from("empreendimentos")
-    .select("id,nome,endereco,numero,bairro,cidade,captado_por_usuario,captador_corretor_id,rascunho,aprovacao,unidades(id,de_terceiros,captador_corretor_id)")
-    .ilike("cidade", condominium.city.trim())
-    .limit(80);
-  if (duplicatesError) return falhaCaptacao(duplicatesError, "buscar_produto_duplicado");
-  const duplicate = (possibleDuplicates ?? []).find((item) => {
-    const sameName = normalizedKey(item.nome) === normalizedKey(property.name);
-    const sameAddress = normalizedKey(item.endereco) === normalizedKey(condominium.address)
-      && normalizedKey(item.numero) === normalizedKey(condominium.number);
-    const sameNeighborhood = normalizedKey(item.bairro) === normalizedKey(condominium.neighborhood);
-    return (sameName && sameNeighborhood) || sameAddress;
-  });
-  if (duplicate) {
-    const sameCaptor = duplicate.captado_por_usuario === authData.user.id
-      || (broker?.id != null && duplicate.captador_corretor_id === broker.id);
-    if (sameCaptor && (duplicate.rascunho === true || duplicate.aprovacao !== "aprovado")) {
-      const resumableUnit = payload.propertyType === "terceiro"
-        ? (duplicate.unidades ?? []).find((unit) => unit.de_terceiros === true && unit.captador_corretor_id === broker?.id)
-        : null;
-      return Response.json({
-        ok: true,
-        id: duplicate.id,
-        unidadeId: resumableUnit?.id ?? null,
-        userId: authData.user.id,
-        draft: duplicate.rascunho === true,
-        resumed: true,
-      });
-    }
-    return Response.json({
-      error: `Já existe um produto semelhante: ${duplicate.nome}. Abra o cadastro existente em vez de criar outro.`,
-      code: "DUPLICATE_PRODUCT",
-      existingProductId: duplicate.id,
-      existingName: duplicate.nome,
-    }, { status: 409 });
-  }
-
-  let condominiumId = condominium.id;
-  let supportRecordCreated = false;
-  if (semCondominio) condominiumId = null;
-  if (!condominiumId && !semCondominio) {
-    // Anti-duplicata: reaproveita um condomínio com o mesmo nome + endereço + cidade (case-insensitive).
-    // Evita a enxurrada de repetidos que acontecia quando um cadastro falhava e era refeito.
-    const nomeN = condominium.name.trim();
-    const endN = condominium.address.trim();
-    const cidN = condominium.city.trim();
-    const { data: existingCond, error: existingCondError } = await supabase.from("condominios").select("id").ilike("nome", nomeN).ilike("endereco", endN).ilike("cidade", cidN).limit(1).maybeSingle();
-    if (existingCondError) return falhaCaptacao(existingCondError, "buscar_condominio_existente");
-    if (existingCond?.id) {
-      condominiumId = existingCond.id;
-    } else {
-      const { data, error } = await supabase.from("condominios").insert({
-        nome: nomeN, cep: condominium.zipCode.trim() || null,
-        endereco: endN, numero: condominium.number.trim() || null,
-        complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
-        cidade: cidN, uf: condominium.state.trim() || "SP", created_by: authData.user.id,
-      }).select("id").single();
-      if (error) return falhaCaptacao(error, "criar_condominio");
-      condominiumId = data.id;
-      supportRecordCreated = true;
-    }
-  }
-
-  let ownerId = owner?.id ?? null;
-  if (payload.propertyType === "terceiro" && owner) {
-    const { data, error } = await supabase.rpc("produto_proprietario_captacao_resolver", {
-      p_proprietario_id: ownerId,
-      p_nome: owner.name.trim(),
-      p_email: owner.email.trim().toLowerCase(),
-      p_telefone: owner.phone.trim(),
-    });
-    if (error?.code === "42501") return Response.json({ error: "Você não tem permissão para vincular este proprietário.", code: "CAPTURE_FORBIDDEN" }, { status: 403 });
-    if (error) return supportRecordCreated
-      ? falhaCaptacaoParcial(error, "resolver_proprietario")
-      : falhaCaptacao(error, "resolver_proprietario");
-    ownerId = data;
-    if (!owner.id) supportRecordCreated = true;
-  }
-
-  const { data: development, error: developmentError } = await supabase.from("empreendimentos").insert({
-    nome: property.name.trim(), titulo: property.title?.trim() || property.name.trim(), slogan: property.slogan?.trim() || null,
-    descricao: property.description?.trim() || null, finalidade: property.purpose?.trim() || null,
-    lazer: property.amenities?.map((item) => item.trim()).filter(Boolean) || [],
-    diferenciais: property.differentiators?.map((item) => item.trim()).filter(Boolean) || [],
-    incorporadora: property.developer.trim() || null,
-    status: property.status, origem: payload.propertyType === "terceiro" ? "terceiros" : "predio",
-    condominio_id: condominiumId || null, proprietario_id: ownerId,
-    cep: condominium.zipCode.trim() || null, endereco: condominium.address.trim(), numero: condominium.number.trim() || null,
-    complemento: condominium.complement.trim() || null, bairro: condominium.neighborhood.trim() || null,
-    cidade: condominium.city.trim(), uf: condominium.state.trim() || "SP",
-    preco: propertyPriceCheck.value, condominio_valor: property.condominiumFee, iptu: property.propertyTax, outros_custos: property.otherCosts,
-    area_util: property.area, dormitorios: property.bedrooms, suites: property.suites, banheiros: property.bathrooms, vagas: property.parking,
-    acesso_tipo: access.type, acesso_codigo: access.type === "chave_digital" ? access.code.trim() : null,
-    acesso_instrucoes: access.instructions.trim(), captado_por_usuario: authData.user.id,
-    captador_corretor_id: broker?.id ?? null, captacao_habilitada: true, rascunho: true, publicado: false,
-  }).select("id").single();
-  if (developmentError) return supportRecordCreated
-    ? falhaCaptacaoParcial(developmentError, "criar_empreendimento")
-    : falhaCaptacao(developmentError, "criar_empreendimento");
-  if (!development?.id) return supportRecordCreated
-    ? falhaCaptacaoParcial(undefined, "criar_empreendimento")
-    : falhaCaptacao(undefined, "criar_empreendimento");
-
-  const unitRows = payload.propertyType === "construtora" ? units : [{
-    number: semCondominio ? "Imóvel único" : condominium.number || "Única", type: `${property.bedrooms} dorm.`, area: property.area,
-    parking: property.parking, price: property.price, promotionalPrice: null, alreadyRented: property.alreadyRented === true,
-  }];
-  const { data: createdUnits, error: unitsError } = await supabase.from("unidades").insert(unitRows.map((unit) => ({
-    empreendimento_id: development.id, numero: unit.number.trim(), area_m2: unit.area,
-    tipologia: unit.type.trim(), vagas: unit.parking, valor_tabela: unit.price,
-    valor_promo: unit.promotionalPrice, valor_m2: unit.area > 0 ? (unit.promotionalPrice ?? unit.price) / unit.area : null,
-    compre_ja_alugado: unit.alreadyRented === true,
-    condominio_valor: property.condominiumFee,
-    iptu: property.propertyTax,
-    outros_custos: property.otherCosts,
-    disponivel: true, de_terceiros: payload.propertyType === "terceiro", captador_corretor_id: broker?.id ?? null,
-    aprovacao: payload.propertyType === "terceiro" ? "pendente" : "aprovado",
-    proprietario_nome: owner?.name.trim() || null, proprietario_contato: owner?.phone.trim() || null,
-    acesso_tipo: access.type, acesso_codigo: access.type === "chave_digital" ? access.code.trim() : null,
-    acesso_instrucoes: access.instructions.trim(),
-  }))).select("id");
-  if (unitsError) return falhaCaptacaoParcial(unitsError, "criar_unidades");
-  if (createdUnits?.length !== unitRows.length) return falhaCaptacaoParcial(undefined, "criar_unidades");
-
-  return Response.json({ ok: true, id: development.id, unidadeId: payload.propertyType === "terceiro" ? createdUnits?.[0]?.id ?? null : null, userId: authData.user.id, draft: true });
+  const { data, error } = await supabase.rpc("produto_captacao_criar_atomica", { p_payload: payload });
+  if (error) return falhaRegraCaptacao(error, "criar_captacao_atomica");
+  const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+  if (result?.ok !== true || typeof result.id !== "string") return falhaCaptacao(undefined, "confirmar_criacao_atomica");
+  return Response.json(result);
 }

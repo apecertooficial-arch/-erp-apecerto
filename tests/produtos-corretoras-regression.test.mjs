@@ -10,10 +10,12 @@ const productAccess = await readFile("app/features/products/access.ts", "utf8");
 const sessionApi = await readFile("app/api/session/route.ts", "utf8");
 const papeis = await readFile("app/lib/papeis.ts", "utf8");
 const managerMigration = await readFile("supabase/migrations/20260901173000_produtos_gerente_permissao.sql", "utf8");
+const atomicCapture = await readFile("supabase/migrations/20260923193000_captacao_proprietario_atomica.sql", "utf8");
 
 test("cadastro e edição de imóvel usam somente RPCs protegidas para proprietários", () => {
   assert.match(captureWizard, /rpc\("produto_proprietarios_meus"\)/);
-  assert.match(captureApi, /rpc\("produto_proprietario_captacao_resolver"/);
+  assert.match(captureApi, /rpc\("produto_captacao_criar_atomica"/);
+  assert.match(atomicCapture, /produto_proprietario_captacao_resolver/);
   assert.match(productApi, /rpc\("produto_proprietario_ler"/);
   assert.match(productApi, /rpc\("produto_proprietario_salvar"/);
   assert.doesNotMatch(captureWizard, /from\("proprietarios"\)/);

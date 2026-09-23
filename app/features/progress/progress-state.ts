@@ -37,23 +37,24 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 74,
+  overallPercent: 75,
   fronts: [
-    { name: "CRM / Kanban", percent: 95 },
+    { name: "CRM / Kanban", percent: 96 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 86 },
     { name: "Agenda / visitas", percent: 96 },
-    { name: "Aplicativo móvel", percent: 81 },
+    { name: "Aplicativo móvel", percent: 82 },
   ],
   weeklyUsagePercent: 75,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar a esteira sem atalhos; depois vincular captação ao proprietário",
-  lastCheckpoint: "Item 25 em prova: o servidor exige o papel configurado, só avança uma etapa e bloqueia enquanto conteúdo ou comprovação obrigatória não estiver aprovado; movimento em lote foi recusado. Harness sanitizado passou em 390×844 e 1440×900 sem pagamento nem mutação produtiva. Falta CI, publicação e aceite produtivo.",
-  lastCheckpointAt: "2026-09-23T19:00:50-03:00",
-  lastCommitSent: "27502c03",
-  productionCommit: "27502c03aa223e635b01a725db02d8286d7ef657",
+  currentTask: "Publicar e aceitar a captação atômica vinculada ao proprietário",
+  lastCheckpoint: "Item 26 em prova: criação e finalização são atômicas; a transação confirma proprietário, imóvel, unidade, autoria e captador, retoma repetição equivalente e preserva privacidade. Prova produtiva com rollback, 1.157 testes, TypeScript, lint e build passaram sem resíduo. Os 12 vínculos legados incompletos exigem correção humana e não foram inferidos.",
+  lastCheckpointAt: "2026-09-23T19:40:00-03:00",
+  lastCommitSent: "77aa25ee",
+  productionCommit: "77aa25eece289339f8c6812930a5ca7f681c5214",
   latestDeliveries: [
-    "Item 25 preparado para publicação: avanço unitário e autorizado, comprovação configurada por etapa, documentos aprovados e movimento em lote recusado; validação visual mobile primeiro e desktop concluída.",
+    "Item 26 preparado para publicação: captação e finalização atômicas vinculam proprietário, autoria e captador; idempotência tolera acentos e dados privados continuam restritos.",
+    "PR #261 publicada: Esteira só avança uma etapa com papel e pré-condições válidos, exige comprovações aprovadas e recusa movimento em lote; mobile e desktop aceitos sem efeito financeiro.",
     "Itens 13–18 aceitos: Sara classificou evidência sintética, aplicou ação/prazo no Meu Dia, deduplicou evento e reavaliou após ação do corretor sem executar por ele; toda fixture foi removida.",
     "PR #259 publicada: desempenho parte do último evento confirmado por visita e produção expõe período, 5/74 avaliados e fração absoluta no prazo.",
     "PR #258 publicada: os 37 cards pós-visita deixaram a ação ambígua; 4 ações comprovadas foram recuperadas e 33 históricos pedem registro humano.",
@@ -80,9 +81,10 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: [
+    "Produção possui 12 unidades captadas sem proprietário completo; 11 estão aprovadas e 10 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar o item 25, confirmar a build e fazer aceite produtivo somente de leitura. Depois avançar no item 26. Não criar pagamento artificial. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar o item 26, aplicar a migração aditiva, confirmar a build e repetir a prova transacional com rollback. Não inferir os 12 proprietários históricos. Depois avançar no item 27; identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
