@@ -1,5 +1,38 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 20:37 BRT
+
+- Decisão 28 em prova sem portal especulativo. O contrato futuro registra a
+  identidade canônica do proprietário, vínculo do imóvel, dados privados de
+  unidade, não objetivos desta fase e o gate de identidade/consentimento/RLS.
+- A migração `portal_proprietario_futuro_fronteira` somente torna reproduzível a
+  contração já ativa: RLS nas duas tabelas de PII e nenhum grant direto para
+  `public`, `anon` ou `authenticated`. Não cria tabela, função, policy, usuário,
+  convite, rota ou tela de portal.
+- Produção confirmou RLS e zero leitura direta para `anon`/`authenticated`;
+  3/3 produtos de terceiros têm `proprietario_id`, sem vínculo órfão. Das 40
+  unidades captadas, 28 têm dado privado e 12 permanecem legadas sem inferência.
+- A migração passou em `BEGIN … ROLLBACK`; 40 testes focados passaram. Próximo
+  passo: suíte integral, CI, publicação, migração idempotente e aceite final.
+
+## Estado verificado em 23/09/2026, 20:32 BRT
+
+- Decisão 27 entregue pela PR #263 no build produtivo
+  `a3d08072d130d66f6929b372552628cec5d1113c`; o CI integral passou.
+- A migração `produto_decisao_captacao_atomica` está aplicada. A RPC existe,
+  `authenticated` pode executá-la, `anon` não e o trigger impede decisão direta.
+  O aviso do advisor sobre `SECURITY DEFINER` é intencional: a função exige
+  `auth.uid()`, usuário ativo e papel gerencial internamente; não houve alerta de
+  performance referente à mudança.
+- A prova pós-deploy com `ROLLBACK` bloqueou o corretor e a RPC antiga, aprovou e
+  publicou uma única vez, repetiu sem nova auditoria, reprovou com motivo fora do
+  site e repetiu com o mesmo ID. Depois: 4 pendentes, 0 reprovadas publicadas,
+  29 aprovadas publicadas, 7 aprovadas offline e 0 auditorias sintéticas.
+- A fila autenticada em produção carregou 6 requisições, mostrou 5 aprovações
+  bloqueadas e as ações “Devolver com motivo”/“Aprovar”; o prompt obrigatório foi
+  cancelado e nenhuma decisão real foi executada. Próxima fatia: decisão 28,
+  preservar contrato e acesso de um portal futuro sem construí-lo.
+
 ## Estado verificado em 23/09/2026, 20:13 BRT
 
 - Decisão 27 em prova. Aprovação e reprovação de captação usam a mesma RPC
