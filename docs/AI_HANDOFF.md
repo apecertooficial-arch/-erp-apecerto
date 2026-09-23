@@ -1,5 +1,35 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 21:00 BRT
+
+- Decisão 29 em prova. Diagnóstico agregado de produção: 368 lançamentos de caixa,
+  16 ligados a recebimentos e 3 repasses pagos; não há recebimento/repasse divergente
+  do lançamento vinculado nos casos verificados. Nenhum valor histórico foi alterado.
+- Lacuna reproduzida no código: `settlePayout` fazia caixa e status em chamadas REST
+  separadas e sem auditoria. A nova `financeiro_decidir_repasse` usa uma transação,
+  trava o repasse e o caixa, preserva RLS por `SECURITY INVOKER`, é idempotente e
+  grava uma auditoria somente quando o estado muda.
+- Prova produtiva pré-migration executada com o papel `authenticated` dentro de
+  `BEGIN/ROLLBACK`: reabrir, repetir, baixar e repetir preservaram a reconciliação e
+  produziram exatamente duas auditorias transitórias. Nada permaneceu gravado.
+- 1.168 testes, TypeScript, lint (0 erros; 9 avisos preexistentes) e build passaram.
+  Próximo passo: commit/PR/CI/merge, aplicar a migration e repetir o aceite pós-deploy.
+
+## Estado verificado em 23/09/2026, 20:47 BRT
+
+- Decisão 28 entregue pela PR #264 no build produtivo
+  `dab1a1c98e07e5e515694b8c18c9e009da7ac236`; o CI integral passou.
+- A migração `portal_proprietario_futuro_fronteira` está aplicada. RLS permanece
+  ativa e `anon`/`authenticated` não leem `public.proprietarios` nem
+  `private.unidade_proprietarios` diretamente. O advisor registra a ausência de
+  policy na tabela privada como bloqueio intencional; não surgiu nova exposição.
+- O contrato futuro existe, mas não há rota, API, conta, convite, associação a
+  `auth.users` ou policy de proprietário. Produção confirmou 3/3 produtos de
+  terceiros com vínculo canônico, nenhum órfão e 12 unidades legadas sem dado
+  privado que continuam sem inferência automática.
+- Uso semanal: 77%; teto 90%; crédito de reset intacto. Próxima fatia: decisão 29,
+  diagnóstico financeiro agregado e somente de leitura antes de qualquer edição.
+
 ## Estado verificado em 23/09/2026, 20:37 BRT
 
 - Decisão 28 em prova sem portal especulativo. O contrato futuro registra a
