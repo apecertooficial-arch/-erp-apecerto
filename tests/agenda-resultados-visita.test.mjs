@@ -71,6 +71,12 @@ test("falha da fila de cobrança nunca vira zero pendências silencioso", () => 
   assert.match(agendaApp, /pendencias_resultado_erro/);
 });
 
+test("agenda móvel recebe meu booleano mesmo quando a RPC gerencial devolve null", () => {
+  assert.match(apiAgenda, /result\.itens\s*=\s*itens\.map/);
+  assert.match(apiAgenda, /meu:\s*item\.meu\s*===\s*true/);
+  assert.match(agendaApp, /typeof compromisso\.meu === "boolean"/);
+});
+
 test("gestão enxerga atraso e responsável de cada cobrança", () => {
   assert.equal(rotuloAtrasoResultado("2026-09-19", "2026-09-19"), "hoje");
   assert.equal(rotuloAtrasoResultado("2026-09-18", "2026-09-19"), "há 1 dia");
