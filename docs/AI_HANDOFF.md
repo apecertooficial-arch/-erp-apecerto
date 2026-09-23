@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 17:46 BRT
+
+- Decisão 23 entregue no build produtivo `bea893a`: os 37 cards pós-visita
+  deixaram “Definir o próximo avanço”; 4 ações comprovadas foram recuperadas e
+  33 históricos passaram a pedir registro humano. Mobile 390×844 e desktop
+  foram aceitos sem overflow, e novos resultados preservam a frase exata.
+- Decisão 24 reproduzida: o placar de qualidade escondia o recorte de 90 dias e
+  o denominador e consultava o estado mutável da visita. Em produção existem
+  74 resultados com evento confirmado no recorte, 5 estruturados e 69 legados;
+  os 5 estruturados têm evento único e autoria de corretor confirmada.
+- A correção preparada deduplica o último evento confirmado por visita, mede o
+  tempo a partir desse evento e expõe período, fonte, total confirmado, base
+  avaliada e a fração absoluta no prazo. O ensaio produtivo com `ROLLBACK`
+  retornou 74/5/69 e a soma por corretor fechou nos 5 avaliados; nada persistiu.
+- O painel real passou no harness em 390×844 e 1440×900: período, base 14/14 e
+  frações 7/8 e 4/6 ficaram visíveis sem overflow. Gates verdes: 1.151 testes,
+  TypeScript, lint sem erros (9 avisos preexistentes) e build Vinext completo.
+  Falta commit, PR, CI, migration definitiva, build e aceite produtivos.
+- Próxima fatia: publicar a decisão 24 e depois iniciar a decisão 25. Áudio e
+  Sara continuam bloqueados pelo saldo externo; identidade visual fica no fim.
+
 ## Estado verificado em 23/09/2026, 17:19 BRT
 
 - Decisão 23 reproduzida: os 1.136 cards ativos têm etapa, momento, dono, ação e

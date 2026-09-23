@@ -160,12 +160,12 @@ const payloadAgenda = {
   total: 0, itens: [], pendencias_resultado: pendenciasAgenda,
   resumo_resultados: { total: 3, pendentes: 3, passadas_sem_desfecho: 1, realizadas_sem_feedback: 1, canceladas_sem_motivo: 1, justificadas: 0, futuras: 0 },
   performance_feedback: papel === "corretor" ? { status: "restrito", itens: [] } : qualidadeExemplo ? {
-    status: "ok", historico_total: 14, estruturados_total: 14, legados_total: 0, feedback_visita_min: 120,
+    status: "ok", inicio: "2026-06-22", fim: "2026-09-19", historico_total: 14, estruturados_total: 14, legados_total: 0, feedback_visita_min: 120,
     itens: [
-      { corretor_id: 7, corretor: "Corretora Alfa", feedbacks: 8, nota_media: 9.4, resposta_media_min: 74, abaixo_minimo: 0, dentro_prazo_percentual: 87.5 },
-      { corretor_id: 8, corretor: "Corretor Beta", feedbacks: 6, nota_media: 9.0, resposta_media_min: 138, abaixo_minimo: 0, dentro_prazo_percentual: 66.7 },
+      { corretor_id: 7, corretor: "Corretora Alfa", feedbacks: 8, nota_media: 9.4, resposta_media_min: 74, abaixo_minimo: 0, dentro_prazo_total: 7, dentro_prazo_percentual: 87.5 },
+      { corretor_id: 8, corretor: "Corretor Beta", feedbacks: 6, nota_media: 9.0, resposta_media_min: 138, abaixo_minimo: 0, dentro_prazo_total: 4, dentro_prazo_percentual: 66.7 },
     ],
-  } : { status: "ok", historico_total: 94, estruturados_total: 0, legados_total: 94, feedback_visita_min: 120, itens: [] },
+  } : { status: "ok", inicio: "2026-06-22", fim: "2026-09-19", historico_total: 94, estruturados_total: 0, legados_total: 94, feedback_visita_min: 120, itens: [] },
   brokers: [{ id: 7, nome: "Corretora Alfa" }, { id: 8, nome: "Corretor Beta" }],
   leads: [{ id: 501, nome: "Cliente agenda sanitizado" }], deals: [{ id: 601, lead_id: 501, corretor_id: 7 }], cards: [], products: [{ id: "produto-agenda", nome: "Produto Alfa" }], visits: [{
     id: "30000000-0000-4000-8000-000000000001", lead_id: 1, negocio_id: 101, corretor_id: 7,

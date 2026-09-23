@@ -29,6 +29,7 @@ import {
 import { AppMobileOffline, AppMobileSessaoExpirada } from "../system/AppMobileSystem";
 import { HorariosVisita } from "../funil-2/HorariosVisita";
 import { ResultadoVisitaForm } from "./ResultadoVisitaForm";
+import { formatarRecorteFeedback } from "./feedbackVisita";
 import { rotuloAtrasoResultado, type StatusResultadoVisita } from "./resultadoVisita";
 
 type PeriodoAgenda = "dia" | "semana" | "mes";
@@ -37,8 +38,8 @@ type NegocioAgenda = { id: number; lead_id: number };
 type CardAgenda = { id: string; origem_negocio_id: number };
 type ProdutoAgenda = { id: string; nome: string };
 type Catalogo = { leads: LeadAgenda[]; deals: NegocioAgenda[]; cards: CardAgenda[]; products: ProdutoAgenda[] };
-type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_percentual: number };
-type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
+type PerformanceFeedbackItem = { corretor_id: number | null; corretor: string; feedbacks: number; nota_media: number; resposta_media_min: number; abaixo_minimo: number; dentro_prazo_total: number; dentro_prazo_percentual: number };
+type PerformanceFeedback = { status?: "ok" | "restrito" | "indisponivel"; inicio?: string; fim?: string; historico_total?: number; estruturados_total?: number; legados_total?: number; feedback_visita_min?: number; itens?: PerformanceFeedbackItem[] };
 
 const registro = (valor: unknown): valor is Record<string, unknown> => Boolean(valor) && typeof valor === "object" && !Array.isArray(valor);
 const leadAgendaValido = (valor: unknown): valor is LeadAgenda => registro(valor) && Number.isSafeInteger(valor.id) && typeof valor.nome === "string";
@@ -293,9 +294,9 @@ export function TelaAgendaMobile({ accessToken, role, corretorIdInicial = null }
           : <div>{pendenciasResultadoVisiveis.map((item) => item.meu ? <button type="button" key={item.id} onClick={() => { setErroEscrita(""); setResultadoPendente(item); }}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"}</small></span><strong>Responder</strong></button> : <div className="ape-agenda-cobranca" key={item.id}><span><b>{item.cliente}</b><small>{diaPorExtenso(item.data)} · {horaCurta(item.hora)} · {rotuloAtrasoResultado(item.data)}</small><small>{item.produto || item.local || "Imóvel não informado"} · Responsável: {item.corretor}</small></span><strong>Aguardando corretor</strong></div>)}</div>}
       </section>}
       {(role === "admin" || role === "gestor") && <section className="ape-agenda-feedback-performance" aria-label="Qualidade dos feedbacks de visita">
-        <header><div><small>QUALIDADE DOS FEEDBACKS</small><h2>Série 0–10</h2></div>{performanceFeedback.status === "ok" && <strong>{performanceFeedback.estruturados_total ?? 0} avaliados</strong>}</header>
+        <header><div><small>QUALIDADE DOS FEEDBACKS</small><h2>Série 0–10</h2><p>{performanceFeedback.status === "ok" ? `${formatarRecorteFeedback(performanceFeedback.inicio, performanceFeedback.fim)} · ${performanceFeedback.estruturados_total ?? 0} de ${performanceFeedback.historico_total ?? 0} resultados confirmados avaliados` : "Somente resultados estruturados e confirmados recebem nota."}</p></div>{performanceFeedback.status === "ok" && <strong>{performanceFeedback.estruturados_total ?? 0}/{performanceFeedback.historico_total ?? 0}</strong>}</header>
         {performanceFeedback.status === "ok" && (performanceFeedback.estruturados_total ?? 0) > 0
-          ? <div>{(performanceFeedback.itens ?? []).map((item) => <article key={item.corretor_id ?? item.corretor}><span><b>{item.corretor}</b><small>{item.feedbacks} feedback{item.feedbacks === 1 ? "" : "s"} · {item.dentro_prazo_percentual.toFixed(0)}% no prazo</small></span><strong>{item.nota_media.toFixed(1)}<small>/10</small></strong></article>)}</div>
+          ? <div>{(performanceFeedback.itens ?? []).map((item) => <article key={item.corretor_id ?? item.corretor}><span><b>{item.corretor}</b><small>{item.feedbacks} feedback{item.feedbacks === 1 ? "" : "s"} · {item.dentro_prazo_total}/{item.feedbacks} no prazo ({item.dentro_prazo_percentual.toFixed(0)}%)</small></span><strong>{item.nota_media.toFixed(1)}<small>/10</small></strong></article>)}</div>
           : <p><strong>Baseline ainda indisponível.</strong> {performanceFeedback.status === "ok" ? `${performanceFeedback.legados_total ?? 0} resultados legados foram preservados sem nota retroativa.` : "O contrato estruturado ainda não está ativo no banco; nenhum texto antigo será pontuado por estimativa."}</p>}
       </section>}
       {prox ? (

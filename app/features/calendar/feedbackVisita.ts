@@ -40,6 +40,17 @@ export type FeedbackVisitaDetalhado = {
 
 export const NOTA_MINIMA_FEEDBACK_VISITA = 9;
 
+export function formatarRecorteFeedback(inicio?: string, fim?: string) {
+  const data = (valor?: string) => valor && /^\d{4}-\d{2}-\d{2}$/.test(valor)
+    ? new Date(`${valor}T12:00:00Z`)
+    : null;
+  const de = data(inicio);
+  const ate = data(fim);
+  if (!de || !ate || Number.isNaN(de.getTime()) || Number.isNaN(ate.getTime())) return "Período não informado";
+  const formato = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
+  return `${formato.format(de)} a ${formato.format(ate)}`;
+}
+
 export type AvaliacaoQualidadeFeedbackVisita = {
   nota: number;
   pendencias: string[];
