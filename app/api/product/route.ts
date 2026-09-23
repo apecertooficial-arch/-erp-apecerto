@@ -29,6 +29,8 @@ const PUBLICATION_RULE_CODES = new Set([
   "UNIT_PRICE_REQUIRED",
   "UNIT_OWN_PHOTO_REQUIRED",
   "MEDIA_ORDER_INVALID",
+  "CAPTURE_DECISION_INVALID",
+  "CAPTURE_DECISION_REASON_REQUIRED",
   "INVALID_PRODUCT",
   "INVALID_UNIT",
   "INVALID_PRICE",
@@ -64,6 +66,13 @@ const PUBLICATION_MESSAGES: Record<string, string> = {
   MEDIA_ORDER_FORBIDDEN: "Você não tem permissão para ordenar esta galeria.",
   MEDIA_ORDER_INVALID: "A ordem enviada não corresponde à galeria atual.",
   MEDIA_ORDER_NOT_FOUND: "Uma das mídias da galeria não foi encontrada.",
+  CAPTURE_DECISION_INVALID: "A decisão da captação é inválida.",
+  CAPTURE_DECISION_REASON_REQUIRED: "Informe o motivo da reprovação.",
+  CAPTURE_DECISION_FORBIDDEN: "Apenas a gestão de Produtos pode decidir captações.",
+  CAPTURE_DECISION_NOT_FOUND: "Captação não encontrada.",
+  CAPTURE_DECISION_CONFLICT: "A captação já recebeu outra decisão. Atualize a tela antes de continuar.",
+  CAPTURE_DECISION_AUDIT_MISSING: "A decisão não possui o registro de auditoria esperado.",
+  CAPTURE_DECISION_NOT_CONFIRMED: "A decisão não foi confirmada pelo banco.",
 };
 
 function publicationErrorResponse(error: { code?: string; message?: string }) {
@@ -77,6 +86,7 @@ function publicationErrorResponse(error: { code?: string; message?: string }) {
       ? 404
       : businessCode === "PRODUCT_HAS_LINKS" || businessCode === "UNIT_HAS_LINKS"
         || businessCode === "PRODUCT_DELETE_RACE" || businessCode === "UNIT_DELETE_RACE"
+        || businessCode === "CAPTURE_DECISION_CONFLICT"
         ? 409
       : PUBLICATION_RULE_CODES.has(businessCode) || error.code === "P0001"
         ? 422
@@ -608,6 +618,8 @@ export async function PATCH(request: Request) {
     const unidadeId = typeof body.unidadeId === "string" ? body.unidadeId : "";
     if (!UUID.test(unidadeId)) return Response.json({ error: "Unidade inválida." }, { status: 400 });
     const approve = body.approve === true;
+    const motivo = typeof body.motivo === "string" ? body.motivo.trim().slice(0, 300) : "";
+    if (!approve && !motivo) return Response.json({ error: "Informe o motivo da reprovação.", code: "CAPTURE_DECISION_REASON_REQUIRED" }, { status: 422 });
     if (approve) {
       const [{ data: unitToApprove, error: unitReadError }, mediaCount, ownerStatus] = await Promise.all([
         auth.supabase.from("unidades").select("numero,tipologia,area_m2,valor_tabela,valor_promo,proprietario_nome,proprietario_contato,acesso_tipo,acesso_codigo,acesso_instrucoes,titulo_comercial,descricao_comercial,seo_titulo,seo_descricao").eq("id", unidadeId).eq("empreendimento_id", id).maybeSingle(),
@@ -633,15 +645,27 @@ export async function PATCH(request: Request) {
       if ((mediaCount.count ?? 0) < 1) blocking.push("Ao menos uma foto da unidade");
       if ((unitToApprove.descricao_comercial || productContext.descricao || "").trim().length < 80) blocking.push("Descrição comercial com pelo menos 80 caracteres");
       if (blocking.length) return Response.json({ error: `Complete a unidade antes de aprovar: ${blocking.join("; ")}.`, code: "UNIT_NOT_READY", blocking }, { status: 422 });
-      const result = await definePublication(true, unidadeId);
-      if ("response" in result) return result.response;
-      return Response.json({ success: true, aprovacao: "aprovado", publicado: true, publication: result.publication });
     }
-    const patch = { aprovacao: "reprovado", publicado: false, reprovacao_motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 300) : null };
-    const { data: rejectedUnit, error: rejectError } = await auth.supabase.from("unidades").update(patch as never).eq("id", unidadeId).eq("empreendimento_id", id).select("id").maybeSingle();
-    if (rejectError) return productTechnicalFailure("reject_unit", rejectError, "Não foi possível reprovar a unidade.");
-    if (!rejectedUnit) return Response.json({ error: "A unidade não foi alterada. Atualize a tela e tente novamente.", code: "UNIT_DECISION_NOT_CONFIRMED" }, { status: 409 });
-    return Response.json({ success: true, aprovacao: patch.aprovacao });
+    const { data, error } = await auth.supabase.rpc("produto_decidir_captacao", {
+      p_empreendimento_id: id,
+      p_unidade_id: unidadeId,
+      p_aprovar: approve,
+      p_motivo: approve ? null : motivo,
+    });
+    if (error) return publicationErrorResponse(error);
+    const result = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : null;
+    if (!result || result.ok !== true || result.unidade_id !== unidadeId || result.auditoria_id == null
+      || result.aprovacao !== (approve ? "aprovado" : "reprovado") || result.publicado !== approve) {
+      return Response.json({ error: "A decisão da unidade não foi confirmada.", code: "UNIT_DECISION_NOT_CONFIRMED" }, { status: 502 });
+    }
+    return Response.json({
+      success: true,
+      aprovacao: result.aprovacao,
+      publicado: result.publicado,
+      replayed: result.replayed === true,
+      auditoriaId: result.auditoria_id,
+      publication: result.publication ?? null,
+    });
   }
 
   if (body.action === "toggleFavorite") {

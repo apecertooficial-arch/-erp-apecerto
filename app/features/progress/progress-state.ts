@@ -37,7 +37,7 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 75,
+  overallPercent: 76,
   fronts: [
     { name: "CRM / Kanban", percent: 96 },
     { name: "Identidade visual (fase final)", percent: 0 },
@@ -47,13 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 75,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar a captação atômica vinculada ao proprietário",
-  lastCheckpoint: "Item 26 em prova: criação e finalização são atômicas; a transação confirma proprietário, imóvel, unidade, autoria e captador, retoma repetição equivalente e preserva privacidade. Prova produtiva com rollback, 1.157 testes, TypeScript, lint e build passaram sem resíduo. Os 12 vínculos legados incompletos exigem correção humana e não foram inferidos.",
-  lastCheckpointAt: "2026-09-23T19:40:00-03:00",
-  lastCommitSent: "77aa25ee",
-  productionCommit: "77aa25eece289339f8c6812930a5ca7f681c5214",
+  currentTask: "Provar que só a gestão aprova e publica captações uma única vez",
+  lastCheckpoint: "Item 27 em prova: aprovação e reprovação de captação passam por uma única RPC gerencial transacional, com motivo obrigatório na reprovação, publicação única e auditoria canônica. Tentativas diretas pelo corretor e pela RPC antiga foram bloqueadas; retries devolveram a mesma decisão. O ensaio produtivo terminou em rollback, preservando 4 pendentes, 0 reprovadas publicadas, 29 aprovadas publicadas e 7 aprovadas offline.",
+  lastCheckpointAt: "2026-09-23T20:13:55-03:00",
+  lastCommitSent: "3866113e",
+  productionCommit: "3866113eae6e27b4bab9842cc385952fd81159fb",
   latestDeliveries: [
-    "Item 26 preparado para publicação: captação e finalização atômicas vinculam proprietário, autoria e captador; idempotência tolera acentos e dados privados continuam restritos.",
+    "PR #262 publicada: captação e finalização atômicas vinculam proprietário, autoria e captador; idempotência tolera acentos, anon não executa as RPCs e a prova produtiva terminou sem resíduo.",
     "PR #261 publicada: Esteira só avança uma etapa com papel e pré-condições válidos, exige comprovações aprovadas e recusa movimento em lote; mobile e desktop aceitos sem efeito financeiro.",
     "Itens 13–18 aceitos: Sara classificou evidência sintética, aplicou ação/prazo no Meu Dia, deduplicou evento e reavaliou após ação do corretor sem executar por ele; toda fixture foi removida.",
     "PR #259 publicada: desempenho parte do último evento confirmado por visita e produção expõe período, 5/74 avaliados e fração absoluta no prazo.",
@@ -81,10 +81,10 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: [
-    "Produção possui 12 unidades captadas sem proprietário completo; 11 estão aprovadas e 10 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
+    "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar o item 26, aplicar a migração aditiva, confirmar a build e repetir a prova transacional com rollback. Não inferir os 12 proprietários históricos. Depois avançar no item 27; identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar o item 27, aplicar a migração aditiva e repetir o aceite transacional e visual em produção. Não inferir os 12 proprietários históricos. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

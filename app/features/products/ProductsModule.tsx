@@ -258,7 +258,10 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   }, [openMenuId]);
 
   const decideUnitFromList = useCallback(async (empId: string, unidadeId: string, approve: boolean) => {
-    const motivo = approve ? "" : (window.prompt("Motivo da reprovação (opcional):", "") ?? "");
+    const reasonInput = approve ? "" : window.prompt("Motivo da reprovação (obrigatório):", "");
+    if (reasonInput === null) return;
+    const motivo = reasonInput.trim();
+    if (!motivo && !approve) { window.alert("Informe o motivo da reprovação."); return; }
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: empId, action: "decideUnit", unidadeId, approve, motivo }) });
       await productResponse(response, "Não foi possível concluir a decisão.");

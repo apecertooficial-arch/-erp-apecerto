@@ -1,5 +1,40 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 20:13 BRT
+
+- Decisão 27 em prova. Aprovação e reprovação de captação usam a mesma RPC
+  gerencial transacional; reprovação exige motivo, aprovação delega à publicação
+  canônica e a repetição devolve a auditoria existente sem publicar novamente.
+- Um trigger impede mudar a decisão diretamente. O ensaio com `ROLLBACK` confirmou
+  que tanto um corretor quanto a RPC antiga não aprovam/reprovam uma captação
+  pendente fora do novo caminho oficial.
+- A prova gerencial aprovou e publicou uma vez, repetiu a aprovação sem nova
+  auditoria, reprovou com motivo mantendo fora do site e repetiu a reprovação com
+  o mesmo ID de auditoria. Após o rollback: 4 pendentes, 0 reprovadas publicadas,
+  29 aprovadas publicadas, 7 aprovadas offline e 0 auditorias sintéticas.
+- Os 36 testes focados e `git diff --check` passaram. Próximo passo: suíte integral,
+  CI, publicação, migração aditiva e repetição do aceite em produção.
+
+## Estado verificado em 23/09/2026, 19:50 BRT
+
+- Decisão 26 entregue pela PR #262 no build produtivo
+  `3866113eae6e27b4bab9842cc385952fd81159fb`. O CI #1118 concluiu testes,
+  contratos de privacidade, TypeScript, lint e build.
+- A migração `captacao_proprietario_atomica` está aplicada. As duas RPCs existem,
+  `authenticated` pode executá-las e `anon` não. O aviso do advisor sobre
+  `SECURITY DEFINER` é intencional: ambas validam `auth.uid()`, usuário ativo,
+  captador e ownership internamente; não surgiu alerta de performance específico.
+- A prova pós-deploy criou proprietário, imóvel e unidade dentro de transação,
+  confirmou autoria, captador e vínculo privado, retomou a mesma captação sem
+  acentos, recusou finalização sem foto e preservou o rascunho. O rollback passou
+  e a consulta posterior confirmou zero resíduo sintético.
+- O inventário legado permaneceu intacto: 40 unidades captadas, nenhuma sem
+  captador e 12 sem vínculo privado de proprietário; todas as 12 estão aprovadas
+  e 11 publicadas. A correção depende de identificação humana e não foi inferida.
+- Próxima fatia: decisão 27, aprovação gerencial única antes da publicação e
+  registro auditável da decisão. Decisão 20 continua bloqueada; identidade visual
+  permanece por último.
+
 ## Estado verificado em 23/09/2026, 19:40 BRT
 
 - Decisão 26 em prova local. `produto_captacao_criar_atomica` agora persiste

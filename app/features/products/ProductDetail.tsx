@@ -351,8 +351,10 @@ export function ProductDetail({ productId, accessToken, sessionRole = "corretor"
     } catch (error) { setMessage(productFailureMessage(error, "Erro ao publicar.")); } finally { setBusy(false); }
   }
   async function decideUnit(unidadeId: string, approve: boolean) {
-    let motivo: string | null = null;
-    if (!approve) { motivo = window.prompt("Motivo da reprovação (opcional):", "") ?? ""; }
+    const reasonInput = approve ? "" : window.prompt("Motivo da reprovação (obrigatório):", "");
+    if (reasonInput === null) return;
+    const motivo = reasonInput.trim();
+    if (!motivo && !approve) { setMessage("Informe o motivo da reprovação."); return; }
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/product", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ id: productId, action: "decideUnit", unidadeId, approve, motivo }) });
