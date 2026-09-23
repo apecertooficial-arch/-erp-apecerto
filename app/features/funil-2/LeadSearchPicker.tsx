@@ -88,12 +88,12 @@ export function LeadSearchPicker({ accessToken, value, onChange, rotulo = "Busca
       value={busca}
       onChange={(evento) => {
         const proxima = evento.target.value;
-        setBusca(proxima); setPagina(1);
-        if (proxima.trim().length < MINIMO_BUSCA) { setResultados([]); setTemMais(false); setErro(null); setCarregando(false); }
+        setBusca(proxima); setPagina(1); setResultados([]); setTemMais(false); setErro(null);
+        setCarregando(proxima.trim().length >= MINIMO_BUSCA);
       }}
       onKeyDown={(evento) => {
         if (evento.key === "ArrowDown" && resultados.length > 0) { evento.preventDefault(); primeiroResultadoRef.current?.focus(); }
-        if (evento.key === "Escape") { setBusca(""); setResultados([]); setErro(null); }
+        if (evento.key === "Escape") { setBusca(""); setResultados([]); setTemMais(false); setErro(null); setCarregando(false); }
       }}
       placeholder="Nome, telefone ou nº do negócio"
       autoComplete="off"

@@ -41,7 +41,7 @@ test("estados vazios explicam o recorte e oferecem recuperação", () => {
   assert.match(workspace, /termoQuadro \|\| temperaturaQuadro !== "todas"/);
   assert.match(workspace, /Ajuste a busca ou os filtros para ver outros negócios\./);
   assert.match(mobile, />Limpar filtros<\/button>/);
-  assert.match(mobile, /setBusca\(""\); setEtapa\("ativos"\); setTemperatura\("todas"\)/);
+  assert.match(mobile, /setBusca\(""\); setCarteiraAntiga\(\[\]\); setBuscandoCarteira\(false\); setErroCarteira\(null\); setEtapa\("ativos"\); setTemperatura\("todas"\)/);
   assert.match(mobile, /modo === "crm" && \(busca\.trim\(\) \|\| etapa !== "ativos" \|\| temperatura !== "todas"\)/);
   assert.match(mobile, /className="ape-limpar-filtros"/);
   assert.match(css, /\.funil-oficial \.f2-coluna-vazia/);
@@ -111,6 +111,11 @@ test("novo negócio usa pesquisa remota paginada, acessível e sem 699 options",
 test("novo negócio não transforma resposta incompleta em nenhum cliente", () => {
   assert.match(picker, /if \(!Array\.isArray\(json\.leads\)\) throw new Error\("payload_invalido"\)/);
   assert.match(picker, /setErro\(navigator\.onLine \? "Não foi possível pesquisar os clientes\."/);
+});
+
+test("seletor de cliente invalida resultados antigos e pagina com ordem estável", () => {
+  assert.match(picker, /setBusca\(proxima\); setPagina\(1\); setResultados\(\[\]\); setTemMais\(false\);/);
+  assert.match(carteira, /\.order\("nome", \{ ascending: true \}\)\s*\.order\("id", \{ ascending: true \}\)/);
 });
 
 test("pesquisa do Funil preserva autenticação, RLS e minimização de dados", () => {

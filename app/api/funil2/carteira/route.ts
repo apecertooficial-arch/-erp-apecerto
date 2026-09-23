@@ -81,6 +81,7 @@ export async function GET(request: Request) {
       .is("descartado_em", null)
       .or(filtros.join(","))
       .order("nome", { ascending: true })
+      .order("id", { ascending: true })
       .range(inicio, inicio + TAMANHO_PAGINA_FUNIL - 1);
     if (error) {
       return falhaCarteira(error, "buscar_funil");
