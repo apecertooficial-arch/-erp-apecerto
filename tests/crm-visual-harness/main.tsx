@@ -72,6 +72,7 @@ const disponibilidadeGerenteInvalida = parametros.get("managerAvailability") ===
 const resultadoTagInvalido = parametros.get("tagResult") === "invalido";
 const criacaoClienteInvalida = parametros.get("clientCreate") === "invalido";
 const criacaoAgendaOffline = parametros.get("agendaCreate") === "offline";
+const criacaoAgendaLenta = parametros.get("agendaCreate") === "lenta";
 const visitaChatInvalida = parametros.get("chatVisit") === "invalido";
 const payloadChatInvalido = parametros.get("chatPayload") === "invalido";
 const agendamentosChatInvalidos = parametros.get("chatScheduled") === "invalido";
@@ -252,6 +253,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     if ((method === "PATCH" || method === "POST") && url.pathname === "/api/agenda" && corpo.action === "gerenteDisponibilidade") return json(disponibilidadeGerenteInvalida ? {} : { conflitos: [], gerente_id: 1 });
     if ((method === "PATCH" || method === "POST") && url.pathname === "/api/agenda" && corpo.action === "createVisit") {
       if (criacaoAgendaOffline) throw new TypeError("Sem conexão no harness visual.");
+      if (criacaoAgendaLenta) await new Promise((resolve) => window.setTimeout(resolve, 1_500));
       return json(visitaChatInvalida ? {} : { success: true, message: "Visita agendada com sucesso." });
     }
     if (method === "PATCH" && url.pathname === "/api/agenda") return json(escritaAgendaTruthy ? { success: "false" } : { success: true });
