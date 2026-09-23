@@ -1,6 +1,6 @@
 -- Feedback de visita: dono da carteira, qualidade estruturada e cobranca in-app.
 -- Push/WhatsApp permanecem desligados; o cron chama apenas sincronizar(false).
--- Revisado contra o schema de producao em 2026-09-23; aplicacao pendente do gate de seguranca.
+-- Aplicada em producao via Supabase MCP em 2026-09-23 (versao 20260923133937).
 
 set local lock_timeout = '5s';
 set local statement_timeout = '120s';
@@ -536,5 +536,4 @@ begin
   end if;
 end
 $verify$;
-
 

@@ -3,14 +3,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const sql = readFileSync(
-  new URL("../supabase/migrations/20260923132610_visita_feedback_cobranca_canonica.sql", import.meta.url),
+  new URL("../supabase/migrations/20260923133937_visita_feedback_cobranca_canonica.sql", import.meta.url),
+  "utf8",
+);
+const ativacao = readFileSync(
+  new URL("../supabase/migrations/20260923134414_ativar_tipo_feedback_visita.sql", import.meta.url),
   "utf8",
 );
 
-test("migration versionada preserva gate de seguranca e push desligado", () => {
-  assert.match(sql, /aplicacao pendente do gate de seguranca/);
+test("migration versionada preserva push desligado", () => {
   assert.match(sql, /sincronizar\(false\)/);
   assert.doesNotMatch(sql, /^commit;$/m);
+});
+
+test("tipo de cobranca passa pelo filtro de notificacoes existente", () => {
+  assert.match(ativacao, /insert into public\.ncrm_notificacao_tipos_ativos/);
+  assert.match(ativacao, /visita_feedback_pendente/);
 });
 
 test("a RPC exige o corretor atual como dono da carteira", () => {

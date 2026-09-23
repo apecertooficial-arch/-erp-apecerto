@@ -112,7 +112,7 @@ test("desktop, aplicativo e CRM usam o mesmo formulário estruturado", () => {
 test("API e contrato de banco rejeitam atalho textual em visita realizada", async () => {
   const apiAgenda = await readFile(new URL("../app/api/agenda/route.ts", import.meta.url), "utf8");
   const apiFunil = await readFile(new URL("../app/api/funil2/route.ts", import.meta.url), "utf8");
-  const draft = await readFile(new URL("../supabase/migrations/20260923132610_visita_feedback_cobranca_canonica.sql", import.meta.url), "utf8");
+  const draft = await readFile(new URL("../supabase/migrations/20260923133937_visita_feedback_cobranca_canonica.sql", import.meta.url), "utf8");
   assert.match(apiAgenda, /validarEnvelopeFeedbackVisita/);
   assert.match(apiFunil, /validarEnvelopeFeedbackVisita/);
   assert.match(draft, /FEEDBACK_VISITA_V1/);
