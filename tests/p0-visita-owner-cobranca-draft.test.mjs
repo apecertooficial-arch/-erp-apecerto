@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const sql = readFileSync(
-  new URL("../docs/erp-reestruturacao/P0_VISITA_OWNER_COBRANCA_DRAFT.sql", import.meta.url),
+  new URL("../supabase/migrations/20260923132610_visita_feedback_cobranca_canonica.sql", import.meta.url),
   "utf8",
 );
 
-test("o contrato fica fora de producao e exige CLI", () => {
-  assert.match(sql, /DRAFT NAO EXECUTAVEL \/ NAO APLICADO EM PRODUCAO/);
-  assert.match(sql, /supabase migration new/);
+test("migration versionada preserva gate de seguranca e push desligado", () => {
+  assert.match(sql, /aplicacao pendente do gate de seguranca/);
+  assert.match(sql, /sincronizar\(false\)/);
+  assert.doesNotMatch(sql, /^commit;$/m);
 });
 
 test("a RPC exige o corretor atual como dono da carteira", () => {
