@@ -20,9 +20,9 @@ checks do projeto, publicação e confirmação da build.
 | 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | em prova | PRs #253/#254 publicadas no hash `b0ade7d`; negócio próprio, aceite do destino, auditoria e alinhamento negócio/lead/card foram provados em transação. Falta uma transferência operacional real autorizada. |
 | 8 | A gestão pode transferir clientes. | Perfil autorizado transfere; corretor comum não usa a função gerencial. | em prova | RPC gerencial publicada exige grupo `gestao` e escopo sobre o dono atual; funções legadas passam pela mesma guarda. Falta uma transferência operacional por gestor. |
 | 9 | Transferência por fit comercial é permitida e auditada. | Motivo/fit ficam registrados sem quebrar continuidade de visita/negociação. | em prova | Produção mobile e desktop exige motivo/fit e avisa que preserva etapa, momento, negociação e visitas; a prova com rollback confirmou o contrato. Falta operação real autorizada. |
-| 10 | CRM/Kanban mostra carteira clara e acionável. | Card exibe dono, etapa, momento, temperatura, próxima ação e prazo coerentes. | em prova | PR #255 integrada no hash `9638493`; 1.136 cards ativos têm dono, etapa, momento, ação e prazo, e ausência de temperatura aparece como “Aguardando leitura”. Falta confirmação do novo build em produção. |
+| 10 | CRM/Kanban mostra carteira clara e acionável. | Card exibe dono, etapa, momento, temperatura, próxima ação e prazo coerentes. | entregue | PR #255 publicada no hash `772710a`; 1.136 cards ativos têm dono, etapa, momento, ação e prazo. Produção desktop e 390×844 exibiu “Responsável” em todos os 66 cards carregados, e ausência de temperatura permanece honesta como “Sem leitura”. |
 | 11 | Pipelines e etapas são configuráveis. | Gestão altera configuração válida sem editar código nem corromper cards existentes. | em prova | Tela gerencial publicada expõe etapas, momentos e regras. Prova transacional recusou perfil comum, criou etapa/momento com duas auditorias, preservou 1.136 cards e reverteu tudo. Falta uma alteração operacional real autorizada. |
-| 12 | Pipelines se conectam às automações. | Ação de criar/mover negócio usa pipeline/etapa publicados e falha de modo explícito. | em prova | Correção local rejeita no runtime funil/etapa ausentes ou incompatíveis com erro explícito e sem criar lead; teste comportamental e ensaio com rollback passaram. Falta PR, migração e aceite em produção. |
+| 12 | Pipelines se conectam às automações. | Ação de criar/mover negócio usa pipeline/etapa publicados e falha de modo explícito. | entregue | PR #256 e migração `automacoes_exigem_pipeline_etapa_validos` publicadas no hash `772710a`. Runtime rejeitou funil/etapa ausentes ou incompatíveis com erro explícito e sem criar lead; ensaio real com `ROLLBACK`, permissões e construtor publicado passaram. |
 | 13 | Sara retorna o momento do cliente. | Resultado persistido aponta evidência real e não regride estado protegido. | bloqueado | Saldo externo da API de IA está esgotado; não pagar nem trocar credencial. |
 | 14 | Sara retorna a etapa operacional. | Etapa persistida segue whitelist e autorização do CRM. | bloqueado | Mesmo bloqueio externo do item 13. |
 | 15 | Sara retorna a próxima ação. | Próxima ação e prazo chegam ao card e ao Meu Dia no momento correto. | bloqueado | Mesmo bloqueio externo do item 13. |
@@ -55,7 +55,8 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Confirmar o deploy da PR #255; publicar a guarda de funil/etapa da decisão 12,
-aplicar a migração após o merge e aceitar a falha explícita em produção sem criar
-cliente fictício. Não reconciliar automaticamente as 101 divergências legadas
-entre lead/negócio nem as 18 entre card/negócio: elas precisam de triagem humana.
+Avançar na decisão 19 pela Agenda já publicada: reproduzir primeiro qualquer falha
+de agendamento, reagendamento ou cancelamento, corrigir somente o comportamento
+comprovado e aceitar mobile antes do desktop. Não reconciliar automaticamente as
+101 divergências legadas entre lead/negócio nem as 18 entre card/negócio: elas
+precisam de triagem humana.
