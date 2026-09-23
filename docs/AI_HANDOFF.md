@@ -1,5 +1,32 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 16:11 BRT
+
+- PRs #253 e #254 integradas e publicadas no commit
+  `b0ade7d3e0de5cb586d2bd6bced4d5aacd66f0f2`; CI passou e `/api/build` confirmou.
+  A migração `transferencias_auditaveis` está aplicada. `anon` não executa as RPCs,
+  a tabela de auditoria não tem acesso direto e continua sem linhas artificiais.
+- Mobile e desktop abriram o mesmo modal publicado com tipo, motivo, fit e aviso
+  de preservação. A prova transacional anterior confirmou aceite exclusivo do
+  destino e alinhamento negócio/lead/card sem alterar etapa, momento ou visitas.
+  As 101 divergências lead/negócio e 18 card/negócio permanecem intactas para
+  triagem humana.
+- PR #255 integrada no commit `9638493ea2430024dbf207a77e4867c094fda810`;
+  CI verde. Ela torna o responsável explícito nos cards para todos os perfis.
+  O deploy ainda não havia substituído `b0ade7d` na última consulta.
+- Produção tem 1.136 cards ativos: todos têm dono, etapa, momento, próxima ação e
+  prazo; 613 sem leitura de temperatura aparecem honestamente como “Aguardando
+  leitura”. Harness sanitizado da PR #255 passou em 390×844 e 1440×900.
+- Decisão 11: a tela gerencial publicada oferece etapas, momentos e regras. Uma
+  prova com `ROLLBACK` recusou perfil comum, permitiu gestão, criou etapa e momento,
+  gravou duas auditorias e preservou todos os cards; nenhum registro de prova ficou.
+- Branch atual `codex/execucao-30-decisoes-06`: a decisão 12 corrige o runtime para
+  recusar funil/etapa ausentes ou incompatíveis antes de criar/mover negócio. 48
+  testes e ensaio real com `ROLLBACK` passaram; a falha foi explícita e nenhum lead
+  foi criado. Falta build, PR, CI, migração e aceite em produção.
+- Uso semanal: 72%; teto 90%; crédito de reset intacto. Sara segue bloqueada por
+  saldo externo. Identidade visual continua reservada para o fim e nova conversa.
+
 ## Estado verificado em 23/09/2026, 14:40 BRT
 
 - PR #252 integrada por squash no commit `5e1555c0689fc3979896965651d956385d8f0956`;
