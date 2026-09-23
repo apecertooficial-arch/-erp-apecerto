@@ -151,7 +151,7 @@ test("leitura da Esteira falha se qualquer conjunto obrigatório falhar", () => 
 test("movimentação e blocos nunca usam contexto parcial da venda", () => {
   const carregarContexto = salesApi.slice(salesApi.indexOf("async function contexto"), salesApi.indexOf("function blocoDocsAberto"));
   assert.match(carregarContexto, /find\(\(item\) => item\.error\)\?\.error \?\? null/);
-  assert.match(carregarContexto, /return \{ proc, etapas, atual, dados,[\s\S]*error \}/);
+  assert.match(carregarContexto, /return \{ proc, etapas, etapaDocs, atual, dados,[\s\S]*error \}/);
   assert.match(salesApi, /ctx\.error[\s\S]*carregar_contexto_movimentacao/);
   assert.match(salesApi, /ctxLote\.error[\s\S]*carregar_contexto_lote/);
   assert.match(salesApi, /ctx\.error[\s\S]*carregar_contexto_venda/);

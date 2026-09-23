@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 19:00 BRT
+
+- Decisão 25 em prova local. A API da Esteira agora exige o papel configurado da
+  etapa, limita o avanço à próxima etapa do track da venda e valida blocos,
+  documentos avulsos obrigatórios e comprovações de marco aprovadas. A verificação
+  gerencial deixou de ser atalho e só vale na etapa atual completa; movimento em
+  lote foi recusado porque não valida cada venda.
+- A interface só oferece etapas anteriores, a atual e o próximo avanço, mostra a
+  “Comprovação da etapa” configurada e permite anexar/remover apenas no marco atual.
+  No harness sanitizado, mobile 390×844 e desktop 1440×900 mostraram a minuta
+  pendente, o bloqueio e o seletor inteiro sem overflow. Nenhum pagamento, upload
+  ou dado produtivo foi criado.
+- Gates locais após a última correção: 29 contratos dirigidos, TypeScript e
+  `git diff --check` passaram. A bateria completa de 810 testes, lint sem erros
+  (9 avisos preexistentes) e build Vinext já havia passado antes do reforço final
+  de autorização; CI fará a confirmação integral. Falta commit, PR, CI, merge,
+  `/api/build` e aceite produtivo somente de leitura.
+- Uso semanal: 75%; teto 90%; crédito de reset intacto. Depois da publicação,
+  avançar na decisão 26. A decisão 20 continua bloqueada pela infraestrutura de
+  áudio ausente; identidade visual permanece por último.
+
 ## Estado verificado em 23/09/2026, 18:22 BRT
 
 - Decisão 24 entregue no build produtivo `27502c03aa223e635b01a725db02d8286d7ef657`:
