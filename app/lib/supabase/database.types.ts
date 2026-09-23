@@ -13021,11 +13021,11 @@ export type Database = {
           p_inicio: string
         }
         Returns: {
-          cliente_nome: string
-          corretor_id: number
-          hora_fim: string
+          cliente_nome: string | null
+          corretor_id: number | null
+          hora_fim: string | null
           hora_inicio: string
-          id: string
+          id: string | null
         }[]
       }
       gerente_disponibilidade: {
