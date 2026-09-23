@@ -34,6 +34,13 @@ test("web, app e Funil usam a mesma RPC estruturada", () => {
   assert.doesNotMatch(agendaApp, /action: "updateVisitStatus"/);
 });
 
+test("agenda desktop impede dois envios da mesma visita enquanto aguarda a API", () => {
+  assert.match(agendaWeb, /if \(creatingVisitRef\.current\) return;/);
+  assert.match(agendaWeb, /creatingVisitRef\.current = true;[\s\S]*fetch\("\/api\/agenda"/);
+  assert.match(agendaWeb, /finally \{ creatingVisitRef\.current = false; setCreatingVisit\(false\); \}/);
+  assert.match(agendaWeb, /type="submit" disabled=\{creatingVisit\}/);
+});
+
 test("fila mensal considera visita passada e qualquer encerramento incompleto", () => {
   assert.match(migration, /f2_visitas_resultado_pendente/);
   assert.match(migration, /status IN \('agendada','confirmada'\)[\s\S]*fim_em/);
