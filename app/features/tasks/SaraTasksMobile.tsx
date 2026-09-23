@@ -48,8 +48,9 @@ export function SaraTasksMobile({ accessToken }: { accessToken: string }) {
     if (resposta.status === 401) throw new Error("sessao_expirada");
     const json = await resposta.json().catch(() => ({})) as { leads?: unknown; error?: string };
     if (!resposta.ok) throw new Error(json.error || "Não foi possível carregar suas tarefas.");
-    if (!Array.isArray(json.leads) || !json.leads.every(leadFunil2EssencialValido)) throw new Error("Não foi possível confirmar as tarefas recebidas.");
-    setDados(json); setErro(""); setSessaoExpirada(false); setAtualizadoEm(new Date());
+    const leads = json.leads;
+    if (!Array.isArray(leads) || !leads.every(leadFunil2EssencialValido)) throw new Error("Não foi possível confirmar as tarefas recebidas.");
+    setDados({ leads }); setErro(""); setSessaoExpirada(false); setAtualizadoEm(new Date());
   }, [accessToken]);
 
   useEffect(() => {

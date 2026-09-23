@@ -134,7 +134,7 @@ export function AdicionarClienteModal({ accessToken, onClose, onCreated }: {
       }
       if (!response.ok && response.status !== 202) throw new Error(result.error || "Não foi possível adicionar o cliente.");
       if (idFunilValido(result.funilLeadId)) { onCreated(result.funilLeadId); return; }
-      if (result.funilLeadId || !Number.isSafeInteger(result.leadId) || result.leadId <= 0) throw new Error("O servidor não confirmou a identidade criada.");
+      if (result.funilLeadId || typeof result.leadId !== "number" || !Number.isSafeInteger(result.leadId) || result.leadId <= 0) throw new Error("O servidor não confirmou a identidade criada.");
       await aguardarCard(result.leadId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível adicionar o cliente.");

@@ -112,7 +112,7 @@ if (tela === "push-register") {
   Object.defineProperty(window, "Notification", { configurable: true, value: { permission: pushExistente ? "granted" : "default", requestPermission: async () => "granted" } });
   Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: { ready: Promise.resolve({ pushManager: { getSubscription: async () => pushExistente ? inscricao : null, subscribe: async () => inscricao } }) } });
 }
-let dispararAtualizacaoPwa = () => undefined;
+let dispararAtualizacaoPwa: () => void = () => undefined;
 if (tela === "pwa-update") {
   const ouvintes = new Map<string, EventListener>();
   Object.defineProperty(window.navigator, "serviceWorker", { configurable: true, value: {
