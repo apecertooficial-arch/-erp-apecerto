@@ -37,9 +37,9 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 51,
+  overallPercent: 52,
   fronts: [
-    { name: "CRM / Kanban", percent: 73 },
+    { name: "CRM / Kanban", percent: 74 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 70 },
     { name: "Agenda / visitas", percent: 75 },
@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 71,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Proteção do dono: considerar somente visita ou negociação ativas",
-  lastCheckpoint: "Em 23/09, a PR #251 entrou em produção no hash b560fff: mobile e desktop agora distinguem Aceites D-API da confirmação messages.sent. No recorte seguinte, uma consulta agregada encontrou cinco cards bloqueados apenas por visita encerrada; a correção transacional com rollback libera esses históricos e preserva visita/negociação ativas.",
-  lastCheckpointAt: "2026-09-23T13:56:00-03:00",
-  lastCommitSent: "b560fff8",
-  productionCommit: "b560fff861ac0046433c1d95e01e25395d62d524",
+  currentTask: "Transferências auditáveis: voluntária, gerencial e por fit comercial",
+  lastCheckpoint: "Em 23/09, a PR #252 entrou em produção no hash 5e1555c: a proteção do dono agora depende somente de visita ou negociação ativas. A prova agregada preservou um estado ativo e deixou de bloquear cinco históricos encerrados; migração, permissões, mobile e desktop foram aceitos.",
+  lastCheckpointAt: "2026-09-23T14:15:00-03:00",
+  lastCommitSent: "5e1555c0",
+  productionCommit: "5e1555c0689fc3979896965651d956385d8f0956",
   latestDeliveries: [
+    "PR #252 publicada: proteção do dono considera somente visita ou negociação ativas; cinco históricos encerrados deixam de bloquear redistribuição autorizada.",
     "PR #251 publicada: contador e logs da primeira abordagem dizem Aceites D-API no mobile e desktop, sem alterar o envio.",
     "Entrada Autoral comprovada ponta a ponta com evento real recente: distribuição, card ativo, dono consistente, Meu Dia e abordagem entregue.",
     "Fila Sara voltou a escoar: zero itens vencidos e zero leases expirados na última consulta; 159 itens concluídos após a migração.",
@@ -68,7 +69,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: ["Duas tentativas de IA falharam com AI_UNAVAILABLE após a retomada; a API já havia retornado credit_balance_exhausted e seu saldo é separado do teto de uso do Codex."],
-  nextStep: "Publicar a proteção do dono pelo estado atual, validar a migração e o construtor em produção e então avançar para transferências auditáveis. Não reprocessar cards descartados. Identidade visual fica por último e exige conversa com o usuário.",
+  nextStep: "Publicar as transferências auditáveis, aplicar a migração após o merge e validar autorização, aceite e consistência em produção sem criar cliente fictício. Não corrigir divergências legadas em massa. Identidade visual fica por último e exige conversa com o usuário.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

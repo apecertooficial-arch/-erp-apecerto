@@ -1,5 +1,34 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 14:40 BRT
+
+- PR #252 integrada por squash no commit `5e1555c0689fc3979896965651d956385d8f0956`;
+  CI “Frontend — validação” passou e `/api/build` confirmou o mesmo hash.
+- Item 6 entregue: a migração `dono_protegido_so_estado_atual` está aplicada em
+  produção. A prova agregada preserva o único card em visita/negociação ativa e
+  deixa de bloquear cinco cards protegidos apenas por visita encerrada, sem mover
+  ou editar os cards.
+- `motor_roleta` e o SLA usam a regra nova. As funções auxiliares não podem ser
+  executadas por `anon` ou `authenticated`; `service_role` mantém a permissão.
+- No construtor publicado, mobile 390×844 e desktop 1440×900 mostram a regra fixa
+  de visita/negociação ativas; “visita realizada” e “sempre manter” não aparecem.
+- Branch `codex/execucao-30-decisoes-03`, baseada no `origin/main` publicado:
+  decisões 7–9 implementadas localmente. O contrato anterior permitia que RPCs
+  `SECURITY DEFINER` fossem chamadas sem validar dono/escopo, não validava o
+  destinatário no aceite e deixava o card do Funil 2 com o dono antigo.
+- A migração nova registra tipo, motivo, fit, solicitante e decisor; corretor
+  oferece apenas negócio próprio, gestão exige papel/escopo e somente o destino
+  aceita ou recusa. Aplicação alinha negócio, lead e card na mesma transação sem
+  alterar etapa, momento, negociação ou visita existente.
+- Prova real com `ROLLBACK` passou em sete asserts: terceiro e destino errado
+  bloqueados, oferta pendente, aceite correto, três entidades alinhadas, contexto
+  preservado e auditoria completa. Nenhuma transferência de teste persistiu.
+- 57 testes dirigidos, TypeScript, lint, build e `git diff --check` passaram. Harness
+  sanitizado aceito em mobile 390×844 e desktop 1440×900. Falta PR, CI, aplicação
+  da migração, confirmação da build e aceite em produção.
+- Uso semanal continua em 71%; teto 90%; crédito de reset intacto. Sara segue
+  bloqueada por saldo externo. Identidade visual continua reservada para o fim.
+
 ## Estado verificado em 23/09/2026, 13:56 BRT
 
 - PR #251 integrada por squash no commit `b560fff861ac0046433c1d95e01e25395d62d524`;

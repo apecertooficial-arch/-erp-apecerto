@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "../../app/globals.css";
 import { LiveChatWorkspace, type ChatData } from "../../app/features/chat/LiveChatWorkspace";
 
-type Estado = "normal" | "vazio" | "erro" | "agendamentos-erro" | "mensagens-invalido";
+type Estado = "normal" | "vazio" | "erro" | "agendamentos-erro" | "mensagens-invalido" | "transferencia";
 const estado = (new URLSearchParams(window.location.search).get("state") ?? "normal") as Estado;
 const agora = "2026-09-20T14:00:00Z";
 const payload: ChatData = {
@@ -20,6 +20,7 @@ const payload: ChatData = {
   activities: [{ id: 901, lead_id: 701, tipo: "observacao", texto: "Retornar com opções de horários.", criado_em: agora }],
   approaches: [{ id: 31, nome: "Primeiro contato", mensagens: [], produto_id: null }],
   stages: [{ id: 3, nome: "visita", rotulo: "Visita", ordem: 3 }],
+  pendingTransfers: estado === "transferencia" ? [{ id: 41, negocio_id: 801, lead_id: 701, cliente: "Cliente Demonstração", corretor_origem: "Corretora Origem", tipo: "fit_comercial", motivo: "Especialidade aderente ao atendimento.", fit_comercial: "Perfil compatível com a busca apresentada.", criado_em: agora }] : [],
 };
 const mensagens = [
   { id: "mensagem-sanitizada-1", conversa_id: "conversa-sanitizada-1", direcao: "saida", tipo: "texto", conteudo: "Olá! Como posso ajudar?", criado_em: "2026-09-20T13:58:00Z", status: "entregue" },
