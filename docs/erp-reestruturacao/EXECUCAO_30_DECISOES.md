@@ -17,12 +17,12 @@ checks do projeto, publicação e confirmação da build.
 | 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | em prova | O evento real mais recente da automação 73 terminou com dono consistente nas três entidades. |
 | 5 | A primeira abordagem sai somente pela instância do corretor dono. | Aceite do provedor não conta como envio; `messages.sent` confirma e entrega é rastreada. | entregue | PR #251 publicada no hash `b560fff`; mobile e desktop mostram “Aceites D-API”, e o evento real mais recente foi aceito, confirmado e entregue pela instância do dono. |
 | 6 | A proteção do dono só vale em visita ou negociação. | Fora desses estados a redistribuição autorizada não é bloqueada por histórico antigo. | entregue | PR #252 publicada no hash `5e1555c`: a regra nova preserva o único estado ativo e libera cinco históricos encerrados; migração, permissões, mobile 390×844 e desktop 1440×900 foram aceitos em produção. |
-| 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | em prova | Correção local exige negócio próprio e aceite do destino; prova transacional alinhou negócio, lead e card. Falta publicação e aceite real autorizado. |
-| 8 | A gestão pode transferir clientes. | Perfil autorizado transfere; corretor comum não usa a função gerencial. | em prova | RPC gerencial exige grupo `gestao` e escopo sobre o dono atual; funções legadas passam pela mesma guarda. Falta publicação e aceite por perfil. |
-| 9 | Transferência por fit comercial é permitida e auditada. | Motivo/fit ficam registrados sem quebrar continuidade de visita/negociação. | em prova | Migração e interface exigem motivo/fit e registram solicitante/decisor. Rollback confirmou etapa, momento e visitas preservados. Falta publicação e aceite real autorizado. |
-| 10 | CRM/Kanban mostra carteira clara e acionável. | Card exibe dono, etapa, momento, temperatura, próxima ação e prazo coerentes. | em prova | O card do evento real mais recente está ativo na carteira; aceite integral ainda pendente. |
-| 11 | Pipelines e etapas são configuráveis. | Gestão altera configuração válida sem editar código nem corromper cards existentes. | não iniciado | — |
-| 12 | Pipelines se conectam às automações. | Ação de criar/mover negócio usa pipeline/etapa publicados e falha de modo explícito. | não iniciado | — |
+| 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | em prova | PRs #253/#254 publicadas no hash `b0ade7d`; negócio próprio, aceite do destino, auditoria e alinhamento negócio/lead/card foram provados em transação. Falta uma transferência operacional real autorizada. |
+| 8 | A gestão pode transferir clientes. | Perfil autorizado transfere; corretor comum não usa a função gerencial. | em prova | RPC gerencial publicada exige grupo `gestao` e escopo sobre o dono atual; funções legadas passam pela mesma guarda. Falta uma transferência operacional por gestor. |
+| 9 | Transferência por fit comercial é permitida e auditada. | Motivo/fit ficam registrados sem quebrar continuidade de visita/negociação. | em prova | Produção mobile e desktop exige motivo/fit e avisa que preserva etapa, momento, negociação e visitas; a prova com rollback confirmou o contrato. Falta operação real autorizada. |
+| 10 | CRM/Kanban mostra carteira clara e acionável. | Card exibe dono, etapa, momento, temperatura, próxima ação e prazo coerentes. | em prova | PR #255 integrada no hash `9638493`; 1.136 cards ativos têm dono, etapa, momento, ação e prazo, e ausência de temperatura aparece como “Aguardando leitura”. Falta confirmação do novo build em produção. |
+| 11 | Pipelines e etapas são configuráveis. | Gestão altera configuração válida sem editar código nem corromper cards existentes. | em prova | Tela gerencial publicada expõe etapas, momentos e regras. Prova transacional recusou perfil comum, criou etapa/momento com duas auditorias, preservou 1.136 cards e reverteu tudo. Falta uma alteração operacional real autorizada. |
+| 12 | Pipelines se conectam às automações. | Ação de criar/mover negócio usa pipeline/etapa publicados e falha de modo explícito. | em prova | Correção local rejeita no runtime funil/etapa ausentes ou incompatíveis com erro explícito e sem criar lead; teste comportamental e ensaio com rollback passaram. Falta PR, migração e aceite em produção. |
 | 13 | Sara retorna o momento do cliente. | Resultado persistido aponta evidência real e não regride estado protegido. | bloqueado | Saldo externo da API de IA está esgotado; não pagar nem trocar credencial. |
 | 14 | Sara retorna a etapa operacional. | Etapa persistida segue whitelist e autorização do CRM. | bloqueado | Mesmo bloqueio externo do item 13. |
 | 15 | Sara retorna a próxima ação. | Próxima ação e prazo chegam ao card e ao Meu Dia no momento correto. | bloqueado | Mesmo bloqueio externo do item 13. |
@@ -55,7 +55,7 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Publicar a operação auditável das decisões 7–9, aplicar a migração após o merge e
-aceitar o fluxo em produção sem criar cliente fictício. Não reconciliar
-automaticamente as 101 divergências legadas entre lead/negócio nem as 18 entre
-card/negócio: elas precisam de triagem humana antes de qualquer correção em massa.
+Confirmar o deploy da PR #255; publicar a guarda de funil/etapa da decisão 12,
+aplicar a migração após o merge e aceitar a falha explícita em produção sem criar
+cliente fictício. Não reconciliar automaticamente as 101 divergências legadas
+entre lead/negócio nem as 18 entre card/negócio: elas precisam de triagem humana.
