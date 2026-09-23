@@ -509,10 +509,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
                   const momento = momentosAtivos.find((m) => m.codigo === item.momento_codigo);
                   const prazo = prazoDaAcao(item);
                   const proximaAcao = item.acao_rotulo || "Sem próxima atividade";
-                  const papel = profile.role.toLowerCase();
-                  const contexto = papel === "corretor"
-                    ? item.interesse ?? "Interesse ainda não informado"
-                    : item.corretor_nome ? `Corretor · ${item.corretor_nome}` : item.interesse ?? "Corretor ainda não atribuído";
+                  const contexto = `Responsável · ${item.corretor_nome ?? "Não definido"}${item.interesse ? ` · ${item.interesse}` : ""}`;
                   return <article key={item.id} draggable tabIndex={0} aria-label={`Abrir ficha de ${item.nome}. Temperatura ${rotuloTemperatura(item.temperatura)}. Próxima ação: ${proximaAcao}. ${prazo.rotulo}.`} className={`f2-card ${selecionado === item.id ? "selecionado" : ""}`} onClick={(evento) => { if ((evento.target as HTMLElement).closest("button,a,input,select,textarea")) return; setSelecionado(item.id); }} onKeyDown={(evento) => { if (evento.target !== evento.currentTarget || !["Enter", " "].includes(evento.key)) return; evento.preventDefault(); setSelecionado(item.id); }} onDragStart={(evento) => { evento.dataTransfer.setData("text/funil2-lead", item.id); evento.dataTransfer.effectAllowed = "move"; }}>
                     <div className="f2-card-ident">
                       <i className="f2-card-avatar" aria-hidden="true">{iniciais(item.nome)}</i>
