@@ -37,7 +37,7 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 76,
+  overallPercent: 79,
   fronts: [
     { name: "CRM / Kanban", percent: 96 },
     { name: "Identidade visual (fase final)", percent: 0 },
@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 75,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Provar que só a gestão aprova e publica captações uma única vez",
-  lastCheckpoint: "Item 27 em prova: aprovação e reprovação de captação passam por uma única RPC gerencial transacional, com motivo obrigatório na reprovação, publicação única e auditoria canônica. Tentativas diretas pelo corretor e pela RPC antiga foram bloqueadas; retries devolveram a mesma decisão. O ensaio produtivo terminou em rollback, preservando 4 pendentes, 0 reprovadas publicadas, 29 aprovadas publicadas e 7 aprovadas offline.",
-  lastCheckpointAt: "2026-09-23T20:13:55-03:00",
-  lastCommitSent: "3866113e",
-  productionCommit: "3866113eae6e27b4bab9842cc385952fd81159fb",
+  currentTask: "Publicar a fronteira segura do portal futuro sem criar o portal",
+  lastCheckpoint: "Item 28 em prova: o contrato futuro preserva proprietário canônico, vínculo do imóvel e PII privada, mas não cria conta, convite, rota, policy ou grant especulativo. A nova migração apenas torna reproduzível o bloqueio direto já ativo. Produção confirmou RLS e zero leitura de proprietários para anon/authenticated; 3/3 produtos de terceiros têm vínculo e nenhum está órfão. Os 12 vínculos privados de unidade legados continuam sem inferência.",
+  lastCheckpointAt: "2026-09-23T20:37:01-03:00",
+  lastCommitSent: "a3d08072",
+  productionCommit: "a3d08072d130d66f6929b372552628cec5d1113c",
   latestDeliveries: [
+    "PR #263 publicada: só a gestão decide captações pela RPC atômica; reprovação exige motivo, aprovação publica uma vez e retries reutilizam a auditoria canônica.",
     "PR #262 publicada: captação e finalização atômicas vinculam proprietário, autoria e captador; idempotência tolera acentos, anon não executa as RPCs e a prova produtiva terminou sem resíduo.",
     "PR #261 publicada: Esteira só avança uma etapa com papel e pré-condições válidos, exige comprovações aprovadas e recusa movimento em lote; mobile e desktop aceitos sem efeito financeiro.",
     "Itens 13–18 aceitos: Sara classificou evidência sintética, aplicou ação/prazo no Meu Dia, deduplicou evento e reavaliou após ação do corretor sem executar por ele; toda fixture foi removida.",
@@ -84,7 +85,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar o item 27, aplicar a migração aditiva e repetir o aceite transacional e visual em produção. Não inferir os 12 proprietários históricos. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar o item 28, aplicar a migração idempotente e repetir o aceite de privilégios em produção. Depois avançar no item 29 sem reconciliar valores legados automaticamente. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
