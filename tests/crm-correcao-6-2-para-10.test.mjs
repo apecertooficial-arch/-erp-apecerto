@@ -118,6 +118,10 @@ test("seletor de cliente invalida resultados antigos e pagina com ordem estável
   assert.match(carteira, /\.order\("nome", \{ ascending: true \}\)\s*\.order\("id", \{ ascending: true \}\)/);
 });
 
+test("clique duplo em Mostrar mais não salta páginas da busca", () => {
+  assert.match(picker, /onClick=\{\(\) => \{ setCarregando\(true\); setPagina\(\(atual\) => atual \+ 1\); \}\}/);
+});
+
 test("pesquisa do Funil preserva autenticação, RLS e minimização de dados", () => {
   assert.match(carteira, /db\.auth\.getUser\(token\)/);
   assert.match(carteira, /from\("f2_lead"\)/);
