@@ -402,6 +402,7 @@ function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceDat
   const [msg, setMsg] = useState<string | null>(null);
   const [metasStatus, setMetasStatus] = useState<"loading" | "ready" | "error">("loading");
   const [metasLoadError, setMetasLoadError] = useState<string | null>(null);
+  const mutationRequests = useRef(new Map<string, string>());
   const brokerById = new Map(data.brokers.map((b) => [b.id, b]));
   const saleCorretor = new Map(data.deals.filter((d) => d.venda_id).map((d) => [d.venda_id as string, d.corretor_id]));
   const load = async () => {
@@ -427,13 +428,18 @@ function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceDat
     setBusy(true);
     setMsg(null);
     try {
+      const mutationPayload = { action: "save", corretorId: form.corretorId, periodoTipo: form.periodoTipo, ano: Number(form.ano), periodo: form.periodoTipo === "anual" ? 0 : Number(form.periodo), metaVgv: form.metaVgv, metaVendas: form.metaVendas };
+      const mutationKey = JSON.stringify(mutationPayload);
+      const requestId = mutationRequests.current.get(mutationKey) ?? crypto.randomUUID();
+      mutationRequests.current.set(mutationKey, requestId);
       const response = await fetch("/api/metas", {
         method: "PATCH",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save", corretorId: form.corretorId, periodoTipo: form.periodoTipo, ano: Number(form.ano), periodo: form.periodoTipo === "anual" ? 0 : Number(form.periodo), metaVgv: form.metaVgv, metaVendas: form.metaVendas }),
+        body: JSON.stringify({ ...mutationPayload, requestId }),
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Não foi possível salvar a meta.");
+      mutationRequests.current.delete(mutationKey);
       const successMessage = editingId ? "Meta atualizada." : "Meta salva.";
       setForm({ ...form, metaVgv: "", metaVendas: "" });
       setEditingId(null);
@@ -455,9 +461,13 @@ function MetasTab({ accessToken, data }: { accessToken: string; data: FinanceDat
     setBusy(true);
     setMsg(null);
     try {
-      const response = await fetch("/api/metas", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+      const mutationKey = `delete:${id}`;
+      const requestId = mutationRequests.current.get(mutationKey) ?? crypto.randomUUID();
+      mutationRequests.current.set(mutationKey, requestId);
+      const response = await fetch("/api/metas", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id, requestId }) });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Não foi possível apagar a meta.");
+      mutationRequests.current.delete(mutationKey);
       if (editingId === id) setEditingId(null);
       try {
         await load();

@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { papelNoGrupo } from "../../lib/papeis";
+import { mutateMetaAtomic, type MetasRpcClient } from "./mutation-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export async function PATCH(request: Request) {
   if (!auth) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
   const action = clean(body.action, 40);
+  const requestId = clean(body.requestId, 60);
 
   const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
   if (meError) return falhaMetas(meError, "autorizar_alteracao");
@@ -71,29 +73,23 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Preencha período, ano e valores válidos." }, { status: 422 });
     }
     if (corretorId !== null && (!Number.isSafeInteger(corretorId) || corretorId <= 0)) return Response.json({ error: "Corretor inválido." }, { status: 422 });
-    let existQ = auth.supabase.from("metas").select("id").eq("periodo_tipo", periodoTipo).eq("ano", ano).eq("periodo", periodo);
-    existQ = corretorId === null ? existQ.is("corretor_id", null) : existQ.eq("corretor_id", corretorId);
-    const { data: existing, error: existingError } = await existQ.maybeSingle();
-    if (existingError) return falhaMetas(existingError, "localizar_meta");
-    if (existing) {
-      const { data: updated, error } = await auth.supabase.from("metas").update({ meta_vgv: metaVgv, meta_vendas: metaVendas, updated_at: new Date().toISOString() }).eq("id", existing.id).select("id").maybeSingle();
-      if (error) return falhaMetas(error, "atualizar_meta");
-      if (!updated) return Response.json({ error: "A meta deixou de existir antes da atualização.", erro: "meta_conflito" }, { status: 409 });
-    } else {
-      const { data: created, error } = await auth.supabase.from("metas").insert({ corretor_id: corretorId, periodo_tipo: periodoTipo, ano, periodo, meta_vgv: metaVgv, meta_vendas: metaVendas, criado_por: auth.user.id }).select("id").maybeSingle();
-      if (error) return falhaMetas(error, "criar_meta");
-      if (!created) return falhaMetas(null, "confirmar_criacao_meta");
-    }
-    return Response.json({ success: true });
+    if (!requestId) return Response.json({ error: "A solicitação da meta é inválida. Atualize a tela e tente novamente." }, { status: 422 });
+    const result = await mutateMetaAtomic(auth.supabase as unknown as MetasRpcClient, {
+      operation: "salvar",
+      metaId: null,
+      requestId,
+      payload: { corretor_id: corretorId, periodo_tipo: periodoTipo, ano, periodo, meta_vgv: metaVgv, meta_vendas: metaVendas },
+    });
+    if ("internalError" in result && result.internalError && result.status >= 500) console.error("metas_rpc_falhou", { operacao: "salvar", codigo: result.internalError.code ?? "desconhecido" });
+    return Response.json(result.body, { status: result.status });
   }
 
   if (action === "delete") {
     const id = clean(body.id, 50);
-    if (!id) return Response.json({ error: "Meta inválida." }, { status: 422 });
-    const { data: deleted, error } = await auth.supabase.from("metas").delete().eq("id", id).select("id").maybeSingle();
-    if (error) return falhaMetas(error, "apagar_meta");
-    if (!deleted) return Response.json({ error: "Meta não encontrada.", erro: "meta_nao_encontrada" }, { status: 404 });
-    return Response.json({ success: true });
+    if (!id || !requestId) return Response.json({ error: "Meta ou solicitação inválida." }, { status: 422 });
+    const result = await mutateMetaAtomic(auth.supabase as unknown as MetasRpcClient, { operation: "remover", metaId: id, requestId, payload: {} });
+    if ("internalError" in result && result.internalError && result.status >= 500) console.error("metas_rpc_falhou", { operacao: "remover", codigo: result.internalError.code ?? "desconhecido" });
+    return Response.json(result.body, { status: result.status });
   }
 
   return Response.json({ error: "Ação de metas desconhecida." }, { status: 400 });
