@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 23:23 BRT
+
+- Nona fatia da decisão 29 entregue pela PR #273 no build
+  `2f59b3144f1eaa7824db0bf5dfc4e692b9634617`. Produção autenticada confirmou
+  os dois repasses pagos da VD-EA33 com destinatário, papel e valor desabilitados.
+- Décima lacuna reproduzida: conciliar extrato ainda criava/vinculava o caixa e
+  só depois resolvia a linha. Uma falha intermediária devolvia estado parcial;
+  “aceitar todas” também confirmava apenas parte do lote.
+- A migration `financeiro_extrato_resolucao_atomica` está aplicada. As funções
+  individuais e de lote são `SECURITY INVOKER`; `authenticated` executa,
+  `anon` não. A linha é a chave idempotente e um caixa não pode reconciliar duas
+  linhas bancárias diferentes.
+- Provas pré e pós-migration lançaram, repetiram, bloquearam decisão conflitante,
+  ignoraram, vincularam e aceitaram lote; cinco auditorias foram verificadas na
+  prova integral. Tudo terminou em `ROLLBACK`.
+- Produção permaneceu com 1 importação, 36 linhas já lançadas, 0 pendentes e 368
+  caixas, sem fixture nem auditoria residual. Os advisors não apontaram a nova
+  migration. Os 1.188 testes, TypeScript, lint sem erros e build Vinext passaram.
+  Próximo passo: PR/CI, merge e aceite pós-deploy somente de leitura.
+
 ## Estado verificado em 23/09/2026, 23:04 BRT
 
 - Oitava fatia da decisão 29 entregue pela PR #272 no build

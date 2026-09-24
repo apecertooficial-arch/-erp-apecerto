@@ -8,6 +8,7 @@ import { decidirRepasseAtomico, excluirRepasseAtomico, salvarRepasseAtomico } fr
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimento-rpc";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "./comissao-rpc";
+import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "./extrato-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -531,95 +532,24 @@ export async function PATCH(request: Request) {
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "criar"]], "Voce nao tem permissao para conciliar o extrato.");
     if (denied) return denied;
 
-    const emLote = action === "resolverLoteExtrato";
-    let alvos: Array<Record<string, unknown>> = [];
-    if (emLote) {
+    if (action === "resolverLoteExtrato") {
       const importacaoId = clean(body.importacaoId, 50);
-      const consulta = semTipos(auth.supabase).from("extrato_linha").select("*").eq("situacao", "pendente");
-      const { data, error } = importacaoId ? await consulta.eq("importacao_id", importacaoId) : await consulta;
-      if (error) return falhaFinanceiro(error, "consultar_lote_extrato");
-      alvos = (data ?? []) as Array<Record<string, unknown>>;
-    } else {
-      const linhaId = clean(body.linhaId, 50);
-      if (!linhaId) return Response.json({ error: "Linha invalida." }, { status: 422 });
-      const { data, error } = await semTipos(auth.supabase).from("extrato_linha").select("*").eq("id", linhaId).maybeSingle();
-      if (error) return falhaFinanceiro(error, "consultar_linha_extrato");
-      if (!data) return Response.json({ error: "Linha nao encontrada." }, { status: 404 });
-      alvos = [data as Record<string, unknown>];
+      if (!importacaoId) return Response.json({ error: "Importação inválida." }, { status: 422 });
+      const resultado = await resolverLoteExtratoAtomico(semTipos(auth.supabase), importacaoId);
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_extrato_rpc_falhou", { operacao: "lote", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
-
-    let lancadas = 0, vinculadas = 0, ignoradas = 0, pulou = 0;
-    const houveMudanca = () => lancadas + vinculadas + ignoradas > 0;
-    for (const linha of alvos) {
-      const decisaoPedida = clean(body.decisao, 20);
-      const decisao = emLote
-        ? (linha.sugestao === "vincular" ? "vincular" : linha.sugestao === "transferencia" ? "ignorar" : "lancar")
-        : (["lancar", "vincular", "ignorar"].includes(decisaoPedida) ? decisaoPedida : "lancar");
-
-      if (decisao === "ignorar") {
-        const { error: ignoreError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "ignorado", resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
-        if (ignoreError) return falhaFinanceiro(ignoreError, "ignorar_linha_extrato", { parcial: houveMudanca() });
-        ignoradas++;
-        continue;
-      }
-      if (decisao === "vincular" && linha.sugestao_lancamento_id) {
-        const { error: vinculoError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "vinculado", lancamento_id: linha.sugestao_lancamento_id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
-        if (vinculoError) return falhaFinanceiro(vinculoError, "vincular_linha_extrato", { parcial: houveMudanca() });
-        vinculadas++;
-        continue;
-      }
-
-      const valor = Number(linha.valor);
-      const categoria = (emLote ? "" : clean(body.categoria, 80)) || String(linha.categoria_sugerida || "") || "Outros";
-      const descricao = (emLote ? "" : clean(body.descricao, 400)) || String(linha.descricao || "");
-
-      /* Categoria de comissao carrega vinculo, igual ao lancamento manual: sem
-         venda (e sem a parte, quando e comissao paga) o dinheiro entra no caixa
-         solto e nao aparece no repasse da venda. No lote, linha assim fica
-         PENDENTE em vez de virar lancamento incompleto. */
-      const { data: catInfo, error: categoriaError } = await auth.supabase.from("categorias_caixa").select("natureza").eq("nome", categoria).maybeSingle();
-      if (categoriaError) return falhaFinanceiro(categoriaError, "consultar_categoria_extrato", { parcial: houveMudanca() });
-      const natureza = String(catInfo?.natureza || "normal");
-      const ehComissao = natureza === "comissao_paga" || natureza === "comissao_recebida";
-      const vendaId = emLote ? "" : clean(body.saleId, 60);
-      const comissaoId = emLote ? "" : clean(body.commissionId, 60);
-      if (ehComissao && !vendaId) {
-        if (emLote) { pulou++; continue; }
-        return Response.json({ error: "Categoria de comissao exige a venda relacionada." }, { status: 422 });
-      }
-      let beneficiarioId: string | null = null;
-      let papel: string | null = null;
-      if (comissaoId) {
-        const { data: comissao, error: comissaoError } = await auth.supabase.from("comissoes").select("beneficiario_id,papel").eq("id", comissaoId).maybeSingle();
-        if (comissaoError) return falhaFinanceiro(comissaoError, "consultar_comissao_extrato", { parcial: houveMudanca() });
-        beneficiarioId = (comissao?.beneficiario_id as string) ?? null;
-        papel = (comissao?.papel as string) ?? null;
-      }
-      if (natureza === "comissao_paga" && vendaId && !comissaoId) {
-        const { count, error: countError } = await auth.supabase.from("comissoes").select("id", { count: "exact", head: true }).eq("venda_id", vendaId);
-        if (countError) return falhaFinanceiro(countError, "contar_comissoes_extrato", { parcial: houveMudanca() });
-        if ((count ?? 0) > 0) return Response.json({ error: "Escolha qual comissao / corretor esta sendo pago." }, { status: 422 });
-      }
-
-      const { data: criado, error: caixaError } = await auth.supabase.from("lancamentos_caixa").insert({
-        tipo: valor < 0 ? "saida" : "entrada",
-        categoria,
-        data: linha.data,
-        valor: Math.abs(valor),
-        descricao,
-        origem: "extrato",
-        natureza,
-        venda_id: vendaId || null,
-        comissao_id: comissaoId || null,
-        beneficiario_id: beneficiarioId,
-        papel,
-      } as never).select("id").single();
-      if (caixaError || !criado) return falhaFinanceiro(caixaError, "lancar_caixa_extrato", { parcial: houveMudanca() });
-      const { error: linhaUpdateError } = await semTipos(auth.supabase).from("extrato_linha").update({ situacao: "lancado", lancamento_id: criado.id, resolvido_por: auth.user.id, resolvido_em: new Date().toISOString() } as never).eq("id", linha.id as string);
-      if (linhaUpdateError) return falhaFinanceiro(linhaUpdateError, "marcar_linha_extrato", { parcial: true });
-      lancadas++;
-    }
-    return Response.json({ success: true, lancadas, vinculadas, ignoradas, pulou });
+    const linhaId = clean(body.linhaId, 50);
+    const decisao = clean(body.decisao, 20);
+    if (!linhaId || !["lancar", "vincular", "ignorar"].includes(decisao)) return Response.json({ error: "Linha ou decisão inválida." }, { status: 422 });
+    const resultado = await resolverLinhaExtratoAtomica(semTipos(auth.supabase), linhaId, decisao as "lancar" | "vincular" | "ignorar", {
+      categoria: clean(body.categoria, 80) || null,
+      descricao: clean(body.descricao, 400) || null,
+      venda_id: clean(body.saleId, 60) || null,
+      comissao_id: clean(body.commissionId, 60) || null,
+    });
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_extrato_rpc_falhou", { operacao: "linha", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "deleteSale") {

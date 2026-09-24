@@ -15,6 +15,7 @@ import { decidirRepasseAtomico, excluirRepasseAtomico, salvarRepasseAtomico } fr
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/finance/recebimento-rpc.ts";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "../app/api/finance/comissao-rpc.ts";
+import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "../app/api/finance/extrato-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -681,6 +682,48 @@ test("modal mantém requestId da comissão e trava linhas com repasse ou caixa",
   assert.match(modal, /\.then\(\(ok\) => \{ if \(ok\) setCommissions/);
 });
 
+test("decisão individual e lote do extrato usam somente RPCs atômicas", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "resolverLinhaExtrato" || action === "resolverLoteExtrato")');
+  const fim = rota.indexOf('if (action === "deleteSale")', inicio);
+  const resolver = rota.slice(inicio, fim);
+  assert.match(resolver, /resolverLinhaExtratoAtomica/);
+  assert.match(resolver, /resolverLoteExtratoAtomico/);
+  assert.doesNotMatch(resolver, /\.from\("(?:extrato_linha|lancamentos_caixa)"\)\.(?:insert|update|delete)/);
+  assert.doesNotMatch(resolver, /parcial/);
+
+  const payload = { categoria: "Outros", descricao: "Teste", venda_id: null, comissao_id: null };
+  const individual = clienteFalso({ data: { linha_id: "l-1", lancamento_id: "c-1", situacao: "lancado", idempotente: false }, error: null });
+  const resposta = await resolverLinhaExtratoAtomica(individual, "l-1", "lancar", payload);
+  assert.deepEqual(individual.chamadas, [{ fn: "financeiro_extrato_resolver", args: { p_linha_id: "l-1", p_decisao: "lancar", payload } }]);
+  assert.deepEqual(resposta.body, { success: true, lineId: "l-1", cashId: "c-1", status: "lancado", idempotente: false });
+
+  const lote = clienteFalso({ data: { importacao_id: "i-1", lancadas: 2, vinculadas: 1, ignoradas: 1, pulou: 1, idempotente: false }, error: null });
+  const loteResposta = await resolverLoteExtratoAtomico(lote, "i-1");
+  assert.deepEqual(lote.chamadas, [{ fn: "financeiro_extrato_resolver_lote", args: { p_importacao_id: "i-1" } }]);
+  assert.equal(loteResposta.body.lancadas, 2);
+  assert.equal(loteResposta.body.pulou, 1);
+});
+
+test("migration resolve extrato, caixa, lote e auditoria em transações únicas", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924003000_financeiro_extrato_resolucao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.financeiro_extrato_resolver\(/);
+  assert.match(sql, /create or replace function public\.financeiro_extrato_resolver_lote\(/);
+  assert.match(sql, /create unique index if not exists extrato_linha_lancamento_id_uidx/);
+  assert.equal((sql.match(/language plpgsql\s+security invoker/g) ?? []).length, 2);
+  assert.match(sql, /from public\.extrato_linha where id=p_linha_id for update/);
+  assert.match(sql, /insert into public\.lancamentos_caixa/);
+  assert.match(sql, /update public\.extrato_linha set situacao='lancado'/);
+  assert.match(sql, /EXTRATO_JA_RESOLVIDO:/);
+  assert.match(sql, /Este lançamento já está conciliado com outra linha bancária/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /where importacao_id=p_importacao_id and situacao='pendente'[\s\S]+for update/);
+  assert.match(sql, /perform public\.financeiro_extrato_resolver/);
+  assert.match(sql, /revoke all on function public\.financeiro_extrato_resolver\(uuid,text,jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_extrato_resolver_lote\(uuid\) to authenticated,service_role/);
+});
+
 test("painel do corretor separa comissão a receber de repasse já pago", () => {
   const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /const brokerReceived = brokerPayouts\.filter\(\(item\) => item\.status === "pago"\)/);
@@ -726,10 +769,7 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
   assert.deepEqual(gravacoesIgnoradas, []);
-  for (const operacao of [
-    "gravar_linhas_extrato",
-    "marcar_linha_extrato",
-  ]) {
+  for (const operacao of ["gravar_linhas_extrato"]) {
     assert.match(rota, new RegExp(`falhaFinanceiro\\([^\\n]+"${operacao}"[^\\n]+parcial`), `${operacao} não sinaliza estado parcial`);
   }
 });
