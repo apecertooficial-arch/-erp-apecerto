@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 00:55 BRT
+
+- Devolução ao atendimento entregue pela PR #279 no build
+  `f89c24f4ed949483b52d41892fe808d9408fb649`. O modal autenticado exibiu funil,
+  etapa e motivo; foi fechado sem envio. Produção preservou 22 processos, 2
+  negócios vinculados, zero divergência e zero auditoria da prova.
+- A próxima lacuna reproduzida estava em “Salvar comissão”: o cabeçalho era
+  confirmado antes de apagar/recriar parcelas. A prova controlada atingiu
+  `cabecalho=1, parcelas=0` e a exceção reverteu tudo; produção voltou a zero
+  comissões e zero parcelas.
+- A migration `esteira_comissao_atomica` está aplicada. A função é `SECURITY
+  INVOKER`; `authenticated` executa e `anon` não. Cabeçalho, parcelas e auditoria
+  agora são uma transação, com ordem única e UUID estável até confirmação.
+- A prova pós-migration gravou 1 cabeçalho e 2 parcelas, repetiu sem duplicar,
+  manteve uma auditoria e bloqueou reuso conflitante do request. O `ROLLBACK`
+  restaurou zero comissões, zero parcelas e zero auditoria de prova. Advisors não
+  citam os objetos novos. Testes dirigidos e TypeScript passaram; faltam suíte
+  integral, lint, build, PR/CI, deploy e aceite produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 00:40 BRT
 
 - Metas atômicas entregues pela PR #278 no build

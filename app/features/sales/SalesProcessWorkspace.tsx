@@ -282,6 +282,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     parcelas: comissaoParcelas.map((p) => ({ valor: p.valor ?? "", gatilho: p.gatilho ?? "", data_prevista: (p.data_prevista ?? "")?.toString().slice(0, 10), data_efetiva: (p.data_efetiva ?? "")?.toString().slice(0, 10), responsavel: p.responsavel ?? "", status: p.status ?? "previsto" })),
   });
   const [com, setCom] = useState(comDoBanco);
+  const [comRequestId, setComRequestId] = useState(() => crypto.randomUUID());
   // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
   const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
   const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
@@ -312,7 +313,12 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
   const baixar = async (path: string, nome: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300, { download: nome }); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
   const saveCondicoes = () => run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); });
-  const saveComissao = () => run(async () => { await api({ action: "salvarComissao", processId: process.id, ...com }); setComRef(JSON.stringify(com)); });
+  const persistComissao = async () => {
+    await api({ action: "salvarComissao", processId: process.id, requestId: comRequestId, ...com });
+    setComRef(JSON.stringify(com));
+    setComRequestId(crypto.randomUUID());
+  };
+  const saveComissao = () => run(persistComissao);
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
   const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo, requestId: devRequestId }); onClose(); });
 
@@ -462,7 +468,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   ].filter(Boolean).join(" · ");
   const salvarTudo = () => run(async () => {
     if (condSujo) { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); }
-    if (comSujo) { await api({ action: "salvarComissao", processId: process.id, ...com }); setComRef(JSON.stringify(com)); }
+    if (comSujo) await persistComissao();
     for (const k of sujasPartes) {
       const [papel, ordem] = k.split("#");
       await api({ action: "salvarParte", processId: process.id, papel, ordem: Number(ordem), ...parteEdit[k] });

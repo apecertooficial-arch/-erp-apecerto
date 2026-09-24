@@ -159,7 +159,7 @@ test("movimentação e blocos nunca usam contexto parcial da venda", () => {
 
 test("escritas auxiliares da venda não fingem sucesso quando falham", () => {
   assert.match(salesApi, /reabrirError[\s\S]*reabrir_negocio_recusado/);
-  assert.match(salesApi, /limparParcelasError[\s\S]*limpar_parcelas_comissao/);
+  assert.match(salesApi, /saveSalesCommissionAtomic[\s\S]*resultado\.body/);
   assert.match(salesApi, /sincronizarConjuge[\s\S]*syncError[\s\S]*sincronizar_conjuge/);
 });
 

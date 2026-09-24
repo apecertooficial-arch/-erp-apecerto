@@ -37,22 +37,23 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 84,
+  overallPercent: 85,
   fronts: [
-    { name: "CRM / Kanban", percent: 96 },
+    { name: "CRM / Kanban", percent: 97 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 86 },
     { name: "Agenda / visitas", percent: 96 },
     { name: "Aplicativo móvel", percent: 82 },
   ],
-  weeklyUsagePercent: 79,
+  weeklyUsagePercent: 80,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar a devolução atômica da venda ao Funil no item 25",
-  lastCheckpoint: "PR #278 entregue no build 025db11: salvar, editar e excluir metas agora passam por uma transação auditada e idempotente; a aba produtiva confirmou 13 metas sem mutação. Nova fatia em prova: devolver uma venda atualiza negócio, processo e auditoria numa RPC com request estável. Migration, permissões e provas authenticated com rollback passaram sem resíduo.",
-  lastCheckpointAt: "2026-09-24T00:40:00-03:00",
-  lastCommitSent: "025db11",
-  productionCommit: "025db11cf1004d0df9c54bf6e229eb91c1e1bcfd",
+  currentTask: "Publicar e aceitar a gravação atômica da comissão da Esteira no item 25",
+  lastCheckpoint: "PR #279 entregue no build f89c24f: devolver ao atendimento agora atualiza negócio, processo e auditoria numa transação idempotente; o modal produtivo abriu e fechou sem envio. Nova fatia em prova: cabeçalho e parcelas da comissão da Esteira passam por uma única RPC auditada com request estável. Migration, permissões e prova authenticated com rollback passaram sem resíduo.",
+  lastCheckpointAt: "2026-09-24T00:55:00-03:00",
+  lastCommitSent: "f89c24f",
+  productionCommit: "f89c24f4ed949483b52d41892fe808d9408fb649",
   latestDeliveries: [
+    "PR #279 publicada: devolver uma venda ao atendimento agora atualiza negócio, processo e auditoria juntos; retry é idempotente e o modal foi aceito sem executar devolução real.",
     "PR #278 publicada: criação, edição e exclusão de metas passaram a ser atômicas e auditadas, com request estável e replay seguro mesmo após apagar.",
     "PR #277 publicada: venda, negócio, processo aprovado e auditoria passaram a nascer juntos, com request idempotente e unicidade do negócio na Esteira.",
     "PR #276 publicada: categorias do caixa passaram a usar mutação atômica e auditada; Comissão Paga e Comissão Recebida são únicas e não podem ser removidas ou convertidas.",
@@ -101,7 +102,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a devolução atômica da venda ao Funil, acompanhar CI/deploy e aceitar o modal e a integridade produtiva somente de leitura. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a comissão atômica da Esteira, acompanhar CI/deploy e aceitar a aba somente de leitura, sem salvar valores reais. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

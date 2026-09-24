@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
+import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 
 export const dynamic = "force-dynamic";
@@ -658,30 +659,33 @@ export async function PATCH(request: Request) {
 
   if (action === "salvarComissao") {
     const processId = clean(body.processId, 60);
-    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !requestId) return Response.json({ error: "Venda ou solicitação inválida." }, { status: 422 });
     const g = await guardBloco(auth, processId, "comissao");
     if (g.deny) return g.deny;
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
-    const row: Record<string, unknown> = {
-      processo_ref: processId,
+    const participantInputs = Array.isArray(body.participantes) ? body.participantes : [];
+    const installmentInputs = Array.isArray(body.parcelas) ? body.parcelas : null;
+    const registro = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+    if (participantInputs.length > 50 || participantInputs.some((p) => !registro(p))
+       || (installmentInputs && (installmentInputs.length > 60 || installmentInputs.some((p) => !registro(p))))) {
+      return Response.json({ error: "Participantes ou parcelas inválidos ou acima do limite permitido." }, { status: 422 });
+    }
+    const commission: Record<string, unknown> = {
       percentual_total: num(body.percentual_total), valor_total: num(body.valor_total),
       imobiliaria: clean(body.imobiliaria, 160) || null, forma_pgto: clean(body.forma_pgto, 80) || null,
-      participantes: Array.isArray(body.participantes) ? body.participantes : [],
-      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
+      participantes: participantInputs.map((p) => ({
+        nome: clean(p.nome, 160), papel: clean(p.papel, 80), percentual: num(p.percentual), valor: num(p.valor),
+      })),
     };
-    const { error } = await auth.supabase.from("venda_comissao").upsert(row as never, { onConflict: "processo_ref" });
-    if (error) return falhaEsteira(error, "salvar_comissao");
-    if (Array.isArray(body.parcelas)) {
-      const { error: limparParcelasError } = await auth.supabase.from("venda_comissao_parcelas").delete().eq("processo_ref", processId);
-      if (limparParcelasError) return falhaEsteira(limparParcelasError, "limpar_parcelas_comissao");
-      const parcelas = (body.parcelas as Array<Record<string, unknown>>).map((p, i) => ({
-        processo_ref: processId, valor: num(p.valor), gatilho: clean(p.gatilho, 80) || null,
+    const installments = installmentInputs ? installmentInputs.map((p) => ({
+        valor: num(p.valor), gatilho: clean(p.gatilho, 80) || null,
         data_prevista: clean(p.data_prevista, 10) || null, data_efetiva: clean(p.data_efetiva, 10) || null,
-        responsavel: clean(p.responsavel, 120) || null, status: clean(p.status, 20) || "previsto", ordem: i + 1,
-      }));
-      if (parcelas.length) { const { error: pe } = await auth.supabase.from("venda_comissao_parcelas").insert(parcelas as never); if (pe) return falhaEsteira(pe, "salvar_parcelas_comissao"); }
-    }
-    return Response.json({ success: true });
+        responsavel: clean(p.responsavel, 120) || null, status: clean(p.status, 20) || "previsto",
+      })) : null;
+    const resultado = await saveSalesCommissionAtomic(auth.supabase as unknown as SalesCommissionRpcClient, { processId, commission, installments, requestId });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_comissao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   // ===== Partes da negociação: nome, telefone e e-mail de comprador, vendedor e cônjuges =====
