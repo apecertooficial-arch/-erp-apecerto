@@ -263,6 +263,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const [devPipe, setDevPipe] = useState<number | "">("");
   const [devStage, setDevStage] = useState<number | "">("");
   const [devMotivo, setDevMotivo] = useState("");
+  const [devRequestId, setDevRequestId] = useState("");
   const [novoDoc, setNovoDoc] = useState<Record<string, { nome: string; obrig: boolean; obs: string }>>({});
   const condDoBanco = () => ({
     forma_pagamento: condicao?.forma_pagamento ?? "",
@@ -313,7 +314,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const saveCondicoes = () => run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); });
   const saveComissao = () => run(async () => { await api({ action: "salvarComissao", processId: process.id, ...com }); setComRef(JSON.stringify(com)); });
   const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
-  const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo }); onClose(); });
+  const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo, requestId: devRequestId }); onClose(); });
 
   // ===== Exclusão definitiva (admin e diretor) =====
   const podeExcluir = sessionRole === "admin" || sessionRole === "diretor";
@@ -752,7 +753,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
       <footer className="sale-full-foot">
         <div className="sale-full-foot-left">
           
-          {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={() => { setDevMotivo(""); setDevPipe(""); setDevStage(""); setDevolverOpen(true); }}>↩ Devolver ao atendimento</button>}
+          {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={() => { setDevMotivo(""); setDevPipe(""); setDevStage(""); setDevRequestId(crypto.randomUUID()); setDevolverOpen(true); }}>↩ Devolver ao atendimento</button>}
           {podeExcluir && <button type="button" className="sale-full-excluir" disabled={busyAll} onClick={() => { setExcMotivo(""); setExcDescartar(false); setExcConfirma(""); setExcBloqueios(null); setExcluirOpen(true); }}>🗑 Excluir venda</button>}
         </div>
         <div className="sale-full-foot-right">
