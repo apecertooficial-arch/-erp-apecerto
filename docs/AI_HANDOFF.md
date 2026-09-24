@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 22:27 BRT
+
+- Sexta fatia da decisão 29 entregue pela PR #270 no build
+  `bea9f7e24d0b1fa472a12c1494b5407889afef6c`. A migration está aplicada;
+  `authenticated` executa, `anon` não e a função preserva RLS como invoker.
+  Delete/replay pós-deploy auditaram uma vez em rollback e a divergência histórica
+  foi bloqueada, preservando 3 repasses, 368 caixas e zero auditorias residuais.
+- O Financeiro autenticado carregou sem alerta; security/performance advisors não
+  mencionam `financeiro_excluir_repasse`. Uso semanal em 78% do teto de 90%.
+- Sétima lacuna reproduzida: editar parcela recebida deixava o caixa antigo e
+  excluir usava FK `SET NULL`, soltando o caixa. As novas RPCs só editam/excluem
+  parcelas pendentes, auditam, deduplicam criação por `request_id` e impedem
+  aumentar o total acima da comissão bruta sem bloquear redução do legado.
+- Prova pré-migration `authenticated` criou/editou/excluiu com retries, gerou
+  exatamente três auditorias transitórias e bloqueou total excessivo e duas
+  mutações sobre parcela baixada. O rollback restaurou 18 recebimentos, 368 caixas,
+  a parcela pendente original e a parcela recebida com seu caixa.
+- 1.179 testes, TypeScript, lint (0 erros; 9 avisos antigos), build e diff check
+  passaram. Próximo passo: PR/CI/merge, migration e aceite pós-deploy com rollback.
+
 ## Estado verificado em 23/09/2026, 22:11 BRT
 
 - Quinta fatia da decisão 29 entregue pela PR #269 no build

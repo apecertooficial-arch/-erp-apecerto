@@ -13,6 +13,7 @@ import {
 } from "../app/api/finance/venda-rpc.ts";
 import { decidirRepasseAtomico, excluirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
+import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/finance/recebimento-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -236,6 +237,33 @@ test("baixa e reabertura de recebimento usam uma única RPC atômica", async () 
   assert.equal(reabrir.chamadas[0].args.p_data_recebimento, null);
 });
 
+test("criação, edição e exclusão da agenda de recebimentos usam somente RPCs", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const criar = rota.slice(rota.indexOf('if (action === "createReceipt")'), rota.indexOf('if (action === "settleReceipt")'));
+  const salvar = rota.slice(rota.indexOf('if (action === "saveReceipt")'), rota.indexOf('/* IMPORTACAO DE EXTRATO'));
+  assert.match(criar, /salvarRecebimentoAtomico\(semTipos\(auth\.supabase\), null,/);
+  assert.doesNotMatch(criar, /\.from\("recebimentos"\)\.(?:insert|update|delete)/);
+  assert.match(salvar, /salvarRecebimentoAtomico\(semTipos\(auth\.supabase\), receiptId, linha\)/);
+  assert.match(salvar, /excluirRecebimentoAtomico\(semTipos\(auth\.supabase\), receiptId\)/);
+  assert.doesNotMatch(salvar, /\.from\("recebimentos"\)\.(?:insert|update|delete)/);
+
+  const cliente = clienteFalso({ data: { ok: true, recebimento_id: "r-1", criado: true, idempotente: false }, error: null });
+  const resposta = await salvarRecebimentoAtomico(cliente, null, { venda_id: "v-1", request_id: "req-1", numero_parcela: 1, valor_total: 100, data_prevista: "2026-10-01" });
+  assert.deepEqual(cliente.chamadas, [{
+    fn: "financeiro_recebimento_salvar",
+    args: { p_recebimento_id: null, payload: { venda_id: "v-1", request_id: "req-1", numero_parcela: 1, valor_total: 100, data_prevista: "2026-10-01" } },
+  }]);
+  assert.deepEqual(resposta.body, { success: true, receiptId: "r-1", created: true, idempotente: false });
+
+  const excluir = clienteFalso({ data: { ok: true, recebimento_id: "r-1", idempotente: true }, error: null });
+  assert.deepEqual((await excluirRecebimentoAtomico(excluir, "r-1")).body, { success: true, receiptId: "r-1", idempotente: true });
+
+  const ativo = clienteFalso({ data: null, error: { code: "P0001", message: "RECEBIMENTO_MOVIMENTO_ATIVO: Desfaça a baixa antes de editar a parcela." } });
+  const bloqueado = await salvarRecebimentoAtomico(ativo, "r-1", { numero_parcela: 1, valor_total: 100 });
+  assert.equal(bloqueado.status, 409);
+  assert.ok(!("parcial" in bloqueado.body));
+});
+
 test("edição e exclusão de caixa usam somente RPCs atômicas", async () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const inicio = rota.indexOf('if (action === "updateCash" || action === "deleteCash")');
@@ -322,6 +350,39 @@ test("migration da baixa direta trava linhas, sincroniza caixa e audita sem back
   assert.match(sql, /sem backfill automático/i);
   assert.match(sql, /revoke all on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) from public,anon/);
   assert.match(sql, /grant execute on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) to authenticated,service_role/);
+});
+
+test("migration da agenda preserva caixa baixado, legado e retries", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923224500_financeiro_recebimento_agenda_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists request_id uuid/);
+  assert.match(sql, /create unique index if not exists recebimentos_request_id_uidx/);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtextextended\(v_request_id::text,0\)\)/);
+  assert.equal((sql.match(/security invoker/g) ?? []).length, 2);
+  assert.match(sql, /create or replace function public\.financeiro_recebimento_salvar/);
+  assert.match(sql, /create or replace function public\.financeiro_recebimento_excluir/);
+  assert.match(sql, /from public\.recebimentos where id=p_recebimento_id for update/);
+  assert.match(sql, /RECEBIMENTO_MOVIMENTO_ATIVO:[\s\S]+Desfaça a baixa/);
+  assert.match(sql, /exists\(select 1 from public\.lancamentos_caixa l where l\.recebimento_id=p_recebimento_id\)/);
+  assert.match(sql, /v_soma_depois>v_bruta and v_soma_depois>v_soma_antes/);
+  assert.match(sql, /RECEBIMENTO_PARCELA_DUPLICADA/);
+  assert.match(sql, /v_parcela_num<>trunc\(v_parcela_num\)/);
+  assert.match(sql, /insert into public\.erp_auditoria/g);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_recebimento_salvar\(uuid,jsonb\),public\.financeiro_recebimento_excluir\(uuid\) from public,anon/);
+});
+
+test("modal de recebimento mantém requestId estável durante retry", () => {
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const inicio = workspace.indexOf("function ReceiptModal(");
+  const fim = workspace.indexOf("function MoneyInput(", inicio);
+  const modal = workspace.slice(inicio, fim);
+  assert.match(modal, /const \[requestId\] = useState\(\(\) => crypto\.randomUUID\(\)\)/);
+  assert.match(modal, /onSave\(\{ action: "createReceipt", requestId,/);
+
+  const ficha = readFileSync(new URL("../app/features/finance/VendaModal.tsx", import.meta.url), "utf8");
+  assert.match(ficha, /disabled=\{somenteLeitura \|\| linha\.recebido\} type="number"/);
+  assert.match(ficha, /disabled=\{busy \|\| linha\.recebido\} title=\{linha\.recebido \? "Desfaça a baixa para editar"/);
+  assert.match(ficha, /disabled=\{busy \|\| linha\.recebido\} title=\{linha\.recebido \? "Desfaça a baixa para remover"/);
 });
 
 test("migration da edição de venda protege dependentes e preserva o legado", () => {

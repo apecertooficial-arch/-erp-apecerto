@@ -295,13 +295,13 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
           <div className="comm-head"><h3>Recebimentos — o que a construtora paga à imobiliária</h3></div>
           {receipts.map((linha, indice) => <div className="comm-row venda-receipt-row" key={linha.id ?? `nova-${indice}`}>
             <span className="venda-parcela">Parcela {linha.numeroParcela}</span>
-            <input disabled={somenteLeitura} type="number" step="0.01" placeholder="Valor" value={linha.valor} onChange={(e) => setReceipts((l) => l.map((r, i) => i === indice ? { ...r, valor: e.target.value } : r))} />
-            <input disabled={somenteLeitura} type="date" value={linha.dataPrevista} onChange={(e) => setReceipts((l) => l.map((r, i) => i === indice ? { ...r, dataPrevista: e.target.value } : r))} />
+            <input disabled={somenteLeitura || linha.recebido} type="number" step="0.01" placeholder="Valor" value={linha.valor} onChange={(e) => setReceipts((l) => l.map((r, i) => i === indice ? { ...r, valor: e.target.value } : r))} />
+            <input disabled={somenteLeitura || linha.recebido} type="date" value={linha.dataPrevista} onChange={(e) => setReceipts((l) => l.map((r, i) => i === indice ? { ...r, dataPrevista: e.target.value } : r))} />
             <em className={linha.recebido ? "venda-tag ok" : "venda-tag"}>{linha.recebido ? "Recebido" : "A receber"}</em>
             {!somenteLeitura && editando && linha.id && <>
-              <button disabled={busy} title="Salvar" type="button" onClick={() => void executar({ action: "saveReceipt", receiptId: linha.id, valor: Number(linha.valor), numeroParcela: Number(linha.numeroParcela), dataPrevista: linha.dataPrevista }, "Recebimento salvo.")}>✓</button>
+              <button disabled={busy || linha.recebido} title={linha.recebido ? "Desfaça a baixa para editar" : "Salvar"} type="button" onClick={() => void executar({ action: "saveReceipt", receiptId: linha.id, valor: Number(linha.valor), numeroParcela: Number(linha.numeroParcela), dataPrevista: linha.dataPrevista }, "Recebimento salvo.")}>✓</button>
               <button disabled={busy} title={linha.recebido ? "Desfazer baixa" : "Marcar como recebido"} type="button" onClick={() => void executar({ action: "settleReceipt", receiptId: linha.id, received: !linha.recebido }, linha.recebido ? "Baixa desfeita." : "Recebimento baixado.")}>{linha.recebido ? "↺" : "✓ baixar"}</button>
-              <button className="comm-del" disabled={busy} title="Remover" type="button" onClick={() => void executar({ action: "deleteReceipt", receiptId: linha.id }, "Recebimento removido.")}>×</button>
+              <button className="comm-del" disabled={busy || linha.recebido} title={linha.recebido ? "Desfaça a baixa para remover" : "Remover"} type="button" onClick={() => void executar({ action: "deleteReceipt", receiptId: linha.id }, "Recebimento removido.")}>×</button>
             </>}
             {!somenteLeitura && !editando && <button className="comm-del" title="Remover" type="button" onClick={() => setReceipts((l) => l.filter((_, i) => i !== indice))}>×</button>}
           </div>)}
