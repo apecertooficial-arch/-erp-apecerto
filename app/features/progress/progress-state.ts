@@ -45,14 +45,15 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     { name: "Agenda / visitas", percent: 96 },
     { name: "Aplicativo móvel", percent: 82 },
   ],
-  weeklyUsagePercent: 77,
+  weeklyUsagePercent: 78,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar exclusão atômica de repasse e caixa do item 29",
-  lastCheckpoint: "PR #269 entregue no build da5d1603: edição de venda agora é idempotente, não baixa parcelas lateralmente e bloqueia status/valores incompatíveis sem corrigir os 2 legados. Sexta fatia em prova: exclusão de repasse e caixa virou uma RPC auditada; delete/replay authenticated passaram em rollback e restauraram 3 repasses e 368 caixas. Uma divergência histórica entre repasse e comissão do caixa foi preservada e será bloqueada, não corrigida automaticamente.",
-  lastCheckpointAt: "2026-09-23T22:11:34-03:00",
-  lastCommitSent: "da5d1603",
-  productionCommit: "da5d16031edd00a55e3c2cf65e48eadfeef7816b",
+  currentTask: "Publicar e aceitar agenda atômica de recebimentos do item 29",
+  lastCheckpoint: "PR #270 entregue no build bea9f7e2: exclusão de repasse e caixa é transacional, auditada e idempotente; a prova pós-deploy preservou 3 repasses e 368 caixas e bloqueou a divergência histórica. Sétima fatia em prova: criação/edição/exclusão de parcelas pendentes usam RPCs auditadas, retries não duplicam e parcelas baixadas exigem reabertura para manter o caixa reconciliado. Prova authenticated terminou em rollback.",
+  lastCheckpointAt: "2026-09-23T22:27:12-03:00",
+  lastCommitSent: "bea9f7e2",
+  productionCommit: "bea9f7e24d0b1fa472a12c1494b5407889afef6c",
   latestDeliveries: [
+    "PR #270 publicada: exclusão de repasse valida e remove agenda e caixa numa transação auditada; retry é idempotente e vínculo divergente fica bloqueado para conferência humana.",
     "PR #269 publicada: edição de venda passou a ser transacional e idempotente, preserva o trigger canônico e recusa status ou valores incompatíveis com recebimentos, repasses e comissões.",
     "PR #268 publicada: baixa e reabertura direta de recebimento passaram a sincronizar parcela, caixa e auditoria, com retry idempotente e sem backfill do legado.",
     "PR #267 publicada: edição e exclusão de caixa passaram a ser atômicas e auditadas, sincronizam ou reabrem a parcela e bloqueiam alteração lateral de caixa derivado de repasse.",
@@ -92,7 +93,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a sexta fatia do item 29, aplicar a migration e repetir exclusão/replay/bloqueio da divergência com rollback no build produtivo. Depois diagnosticar as mutações auxiliares de comissão e parcela. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a sétima fatia do item 29, aplicar a migration e repetir criação/edição/exclusão/retries e bloqueios com rollback no build produtivo. Depois diagnosticar as mutações auxiliares de comissão. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

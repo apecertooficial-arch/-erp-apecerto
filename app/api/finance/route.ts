@@ -6,6 +6,7 @@ import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, editarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 import { decidirRepasseAtomico, excluirRepasseAtomico } from "./repasse-rpc";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
+import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimento-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -288,12 +289,13 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "createReceipt") {
-    const saleId = clean(body.saleId, 50); const value = Number(body.value); const due = clean(body.due, 10); const installment = Number(body.installment);
-    if (!saleId || !Number.isFinite(value) || value <= 0 || !due || !Number.isSafeInteger(installment) || installment < 1) return Response.json({ error: "Informe venda, parcela, vencimento e valor." }, { status: 422 });
+    const saleId = clean(body.saleId, 50); const value = Number(body.value); const due = clean(body.due, 10); const installment = Number(body.installment); const requestId = clean(body.requestId, 60);
+    if (!saleId || !requestId || !Number.isFinite(value) || value <= 0 || !due || !Number.isSafeInteger(installment) || installment < 1) return Response.json({ error: "Informe venda, parcela, vencimento e valor." }, { status: 422 });
     const denied = guard([["financeiro", "criar"], ["fluxo_caixa", "criar"]], "Você não tem permissão para lançar recebimentos.");
     if (denied) return denied;
-    const { error } = await auth.supabase.from("recebimentos").insert({ venda_id: saleId, numero_parcela: installment, valor_total: value, data_prevista: due, status: "pendente" });
-    return error ? falhaFinanceiro(error, "criar_recebimento") : Response.json({ success: true });
+    const resultado = await salvarRecebimentoAtomico(semTipos(auth.supabase), null, { venda_id: saleId, numero_parcela: installment, valor_total: value, data_prevista: due, request_id: requestId });
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_recebimento_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "settleReceipt") {
@@ -400,14 +402,16 @@ export async function PATCH(request: Request) {
       data_prevista: clean(body.dataPrevista, 10) || null,
     };
     if (receiptId) {
-      const { error } = await auth.supabase.from("recebimentos").update(linha as never).eq("id", receiptId);
-      return error ? falhaFinanceiro(error, "atualizar_recebimento") : Response.json({ success: true });
+      const resultado = await salvarRecebimentoAtomico(semTipos(auth.supabase), receiptId, linha);
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_recebimento_rpc_falhou", { operacao: "editar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     if (!saleId) return Response.json({ error: "Venda invalida." }, { status: 422 });
-    linha.venda_id = saleId;
-    linha.status = "pendente";
-    const { error } = await auth.supabase.from("recebimentos").insert(linha as never);
-    return error ? falhaFinanceiro(error, "criar_recebimento_venda") : Response.json({ success: true });
+    const requestId = clean(body.requestId, 60);
+    if (!requestId) return Response.json({ error: "Identificador da solicitação inválido." }, { status: 422 });
+    const resultado = await salvarRecebimentoAtomico(semTipos(auth.supabase), null, { ...linha, venda_id: saleId, request_id: requestId });
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_recebimento_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "deleteReceipt") {
@@ -415,8 +419,9 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const receiptId = clean(body.receiptId, 50);
     if (!receiptId) return Response.json({ error: "Recebimento invalido." }, { status: 422 });
-    const { error } = await auth.supabase.from("recebimentos").delete().eq("id", receiptId);
-    return error ? falhaFinanceiro(error, "excluir_recebimento") : Response.json({ success: true });
+    const resultado = await excluirRecebimentoAtomico(semTipos(auth.supabase), receiptId);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_recebimento_rpc_falhou", { operacao: "excluir", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   /* IMPORTACAO DE EXTRATO BANCARIO (ago/2026).
