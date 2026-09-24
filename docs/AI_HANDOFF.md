@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 23:54 BRT
+
+- Décima primeira fatia da decisão 29 entregue pela PR #275 no build
+  `046e363d87513eabc5e08df30a1d0fa1042dd914`. Produção autenticada confirmou o
+  arquivo histórico de 08/08 a 04/09, 36 linhas, saldo conferido e 0 pendências.
+- Décima segunda lacuna reproduzida: criar, editar e remover categorias ainda
+  escrevia direto na tabela, sem auditoria, e permitia desativar as categorias
+  estruturais que sustentam comissão recebida e comissão paga.
+- A migration `financeiro_categoria_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Criação, reativação,
+  edição e remoção são idempotentes e auditadas; as duas naturezas estruturais
+  são únicas e não podem ser removidas ou convertidas.
+- A prova pré-migration desativou uma categoria estrutural sem auditoria; o
+  rollback restaurou o estado. A prova pós-migration criou/repetiu, editou/repetiu
+  e removeu/repetiu uma fixture, confirmou três auditorias e todos os bloqueios;
+  também terminou em `ROLLBACK`.
+- Produção permaneceu com 28 categorias, 16 ativas, 2 estruturais e 0 fixtures ou
+  auditorias de prova. Os advisors não citam a nova função ou índice. Os 1.192
+  testes, TypeScript, lint sem erros e build Vinext passaram. Próximo passo:
+  PR/CI, merge e aceite pós-deploy somente de leitura.
+
 ## Estado verificado em 23/09/2026, 23:36 BRT
 
 - Décima fatia da decisão 29 entregue pela PR #274 no build

@@ -10,6 +10,7 @@ import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimen
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "./comissao-rpc";
 import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "./extrato-rpc";
 import { importarExtratoAtomico } from "./extrato-import-rpc";
+import { mutarCategoriaAtomica } from "./categoria-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -163,33 +164,34 @@ export async function PATCH(request: Request) {
   const guard = (pairs: Array<[string, string]>, msg: string) => denyIfCannot(access, pairs, msg);
 
   if (action === "createCategory" || action === "renameCategory" || action === "removeCategory") {
-    const { data: me, error: meError } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    if (meError) return falhaFinanceiro(meError, "autorizar_categoria");
-    if (!me || !papelNoGrupo(me.role, "financeiro")) return Response.json({ error: "Apenas administradores podem gerenciar categorias." }, { status: 403 });
     const validNatureza = (value: string) => ["normal", "comissao_recebida", "comissao_paga"].includes(value) ? value : "normal";
+    let categoriaId: string | null = null;
+    let operacao: "criar" | "editar" | "remover";
+    let payload: Record<string, unknown> = {};
     if (action === "createCategory") {
       const nome = clean(body.nome, 80);
       const tipo = clean(body.tipo, 10);
       if (!nome || !["entrada", "saida", "ambos"].includes(tipo)) return Response.json({ error: "Informe o nome e o tipo da categoria." }, { status: 422 });
-      const { error } = await auth.supabase.from("categorias_caixa").insert({ nome, tipo: tipo as "entrada" | "saida", natureza: validNatureza(clean(body.natureza, 30)), cor: clean(body.cor, 20) || null, ordem: 99 } as never);
-      if (error && /duplicate|unique/i.test(error.message)) return falhaFinanceiro(error, "criar_categoria", { mensagem: "Já existe uma categoria com esse nome.", erro: "categoria_duplicada", status: 409 });
-      return error ? falhaFinanceiro(error, "criar_categoria") : Response.json({ success: true });
-    }
-    if (action === "renameCategory") {
-      const id = clean(body.categoryId, 60);
+      operacao = "criar";
+      payload = { nome, tipo, natureza: validNatureza(clean(body.natureza, 30)), cor: clean(body.cor, 20) || null };
+    } else if (action === "renameCategory") {
+      categoriaId = clean(body.categoryId, 60);
       const patch: Record<string, unknown> = {};
       if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 80);
       if (["entrada", "saida", "ambos"].includes(clean(body.tipo, 10))) patch.tipo = clean(body.tipo, 10);
       if (typeof body.natureza === "string") patch.natureza = validNatureza(clean(body.natureza, 30));
       if (typeof body.cor === "string") patch.cor = clean(body.cor, 20) || null;
-      if (!id || Object.keys(patch).length === 0) return Response.json({ error: "Informe a categoria e o que alterar." }, { status: 422 });
-      const { error } = await auth.supabase.from("categorias_caixa").update(patch as never).eq("id", id);
-      return error ? falhaFinanceiro(error, "renomear_categoria") : Response.json({ success: true });
+      if (!categoriaId || Object.keys(patch).length === 0) return Response.json({ error: "Informe a categoria e o que alterar." }, { status: 422 });
+      operacao = "editar";
+      payload = patch;
+    } else {
+      categoriaId = clean(body.categoryId, 60);
+      if (!categoriaId) return Response.json({ error: "Categoria inválida." }, { status: 422 });
+      operacao = "remover";
     }
-    const id = clean(body.categoryId, 60);
-    if (!id) return Response.json({ error: "Categoria inválida." }, { status: 422 });
-    const { error } = await auth.supabase.from("categorias_caixa").update({ ativo: false }).eq("id", id);
-    return error ? falhaFinanceiro(error, "remover_categoria") : Response.json({ success: true });
+    const resultado = await mutarCategoriaAtomica(semTipos(auth.supabase), categoriaId, operacao, payload);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_categoria_rpc_falhou", { operacao, codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "createSale") {
