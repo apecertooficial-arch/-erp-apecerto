@@ -1,5 +1,23 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 21:55 BRT
+
+- Quarta fatia da decisão 29 entregue pela PR #268 no build
+  `9df803559eb01bda786c459c3f0ea94e671574d9`. A migration de baixa direta está
+  aplicada; `authenticated` executa, `anon` não, e os advisors não associam
+  achado novo à RPC. O Financeiro autenticado carregou sem alerta.
+- Prova pós-deploy baixou, repetiu, reabriu e repetiu uma parcela em transação.
+  Somente as duas mudanças reais auditaram; o rollback preservou 368 caixas,
+  16 vínculos, zero divergências e os 2 recebimentos legados pendentes.
+- Quinta lacuna reproduzida: editar venda ainda atualizava a venda e depois
+  baixava parcelas em chamada separada, sem criar caixa. A nova RPC não baixa
+  parcelas lateralmente, preserva o trigger de auditoria e bloqueia novo estado
+  incompatível com movimentos ou valores dependentes.
+- Prova pré-migration `authenticated` confirmou edição/replay idempotente,
+  reabertura com `data_conclusao` limpa e os três bloqueios em `BEGIN/ROLLBACK`.
+  1.174 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge, migration e aceite pós-deploy.
+
 ## Estado verificado em 23/09/2026, 21:38 BRT
 
 - Terceira fatia da decisão 29 entregue pela PR #267 no build

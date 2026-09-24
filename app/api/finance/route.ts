@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
-import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
+import { criarVendaAtomica, editarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 import { decidirRepasseAtomico } from "./repasse-rpc";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
@@ -322,53 +322,13 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "updateSale") {
-    const saleId = clean(body.saleId, 50); const status = clean(body.status, 20); const percent = Number(body.percent);
-    if (!saleId || !['pendente', 'concluido', 'pago', 'distrato'].includes(status) || !Number.isFinite(percent) || percent < 0 || percent > 100) return Response.json({ error: "Dados da venda inválidos." }, { status: 422 });
+    const saleId = clean(body.saleId, 50);
+    if (!saleId) return Response.json({ error: "Venda inválida." }, { status: 422 });
     const denied = guard([["vendas", "editar"], ["financeiro", "editar"]], "Você não tem permissão para editar vendas.");
     if (denied) return denied;
-    /* Mesmo buraco do createSale: mudar o status para concluído/pago não
-       carimbava a conclusão, então a venda continuava fora do VGV. Aqui o
-       carimbo usa a data da venda, pelo mesmo motivo — o resultado pertence ao
-       mês em que a venda aconteceu.
-
-       Só carimba se ainda estiver vazio: venda que passou pela Esteira já tem
-       a data oficial do gatilho, e sobrescrever mudaria o mês de um resultado
-       já fechado. */
-    const patchVenda: Record<string, unknown> = {
-      status: status as "pendente" | "concluido" | "pago" | "distrato",
-      percentual_comissao: percent / 100,
-      forma_pgto: clean(body.payment, 100) || null,
-      obs: clean(body.notes, 1000) || null,
-    };
-    /* A ficha da venda virou o mesmo formulario do lancamento (ago/2026), entao
-       o updateSale precisa aceitar os mesmos campos. Cada um so entra no patch
-       se veio no corpo — assim quem chama so o status continua funcionando. */
-    if (typeof body.dataVenda === "string" && clean(body.dataVenda, 10)) patchVenda.data_venda = clean(body.dataVenda, 10);
-    if (body.vgv !== undefined) { const vgv = Number(body.vgv); if (!Number.isFinite(vgv) || vgv <= 0) return Response.json({ error: "VGV inválido." }, { status: 422 }); patchVenda.vgv = vgv; }
-    if (body.custos !== undefined) { const custos = Number(body.custos); patchVenda.custos = Number.isFinite(custos) && custos >= 0 ? custos : 0; }
-    if (body.empreendimentoId !== undefined) patchVenda.empreendimento_id = clean(body.empreendimentoId, 60) || null;
-    if (body.empreendimentoNome !== undefined) patchVenda.empreendimento_nome = clean(body.empreendimentoNome, 200) || null;
-    if (body.unidade !== undefined) patchVenda.unidade_rotulo = clean(body.unidade, 120) || null;
-    if (body.clienteNome !== undefined) patchVenda.cliente_nome = clean(body.clienteNome, 200) || null;
-    if (body.proprietarioNome !== undefined) patchVenda.proprietario_nome = clean(body.proprietarioNome, 200) || null;
-    if (Array.isArray(body.documentos)) {
-      patchVenda.documentos = (body.documentos as unknown[]).filter((doc) => doc && typeof doc === "object").map((doc) => {
-        const d = doc as Record<string, unknown>;
-        return { nome: clean(d.nome, 200), path: clean(d.path, 1000), bucket: clean(d.bucket, 60) || "esteira-docs" };
-      }).filter((doc) => doc.path).slice(0, 30);
-    }
-    if (status === "concluido" || status === "pago") {
-      const { data: atual, error: atualError } = await auth.supabase.from("vendas").select("data_venda,data_conclusao").eq("id", saleId).maybeSingle();
-      if (atualError) return falhaFinanceiro(atualError, "consultar_venda_para_atualizacao");
-      if (atual && !atual.data_conclusao) patchVenda.data_conclusao = atual.data_venda;
-    }
-    const { error } = await auth.supabase.from("vendas").update(patchVenda as never).eq("id", saleId);
-    if (error) return falhaFinanceiro(error, "atualizar_venda");
-    if (status === "pago") {
-      const { error: receiptError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: hojeOperacao() }).eq("venda_id", saleId).neq("status", "recebido");
-      if (receiptError) return falhaFinanceiro(receiptError, "baixar_parcelas_apos_venda", { parcial: true });
-    }
-    return Response.json({ success: true });
+    const resultado = await editarVendaAtomica(semTipos(auth.supabase), saleId, body);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_venda_rpc_falhou", { operacao: "editar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
   /* REPASSE DE COMISSAO - FONTE UNICA (ago/2026).
 

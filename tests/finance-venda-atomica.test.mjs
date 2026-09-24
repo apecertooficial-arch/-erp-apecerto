@@ -5,8 +5,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   montarPayloadVenda,
+  montarPayloadEdicaoVenda,
   traduzirErroVenda,
   criarVendaAtomica,
+  editarVendaAtomica,
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
 import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
@@ -114,6 +116,9 @@ test("códigos de negócio mapeiam para status HTTP", () => {
     ["VENDA_SEM_PERMISSAO: Apenas administradores podem apagar vendas.", 403],
     ["VENDA_NAO_ENCONTRADA: Venda não encontrada ou já apagada.", 404],
     ["VENDA_NEGOCIO_JA_VINCULADO: Este negócio já está ligado a outra venda.", 409],
+    ["VENDA_RECEBIMENTOS_PENDENTES: Baixe cada parcela antes de marcar a venda como paga.", 409],
+    ["VENDA_MOVIMENTOS_ATIVOS: Reabra os movimentos antes do distrato.", 409],
+    ["VENDA_VALOR_DEPENDENTE: Ajuste os dependentes primeiro.", 409],
     ["VENDA_VALOR_INVALIDO: Comissão não pode ser negativa.", 422],
     ["VENDA_COMISSAO_EXCEDE: As comissões somam R$ 5000,01 e passam da comissão bruta de R$ 5000,00 (VGV × percentual).", 422],
   ];
@@ -183,6 +188,29 @@ test("a rota não grava mais venda tabela a tabela em createSale/deleteSale", ()
   // Mesma regra de quem pode apagar (não mudou).
   assert.match(apagar, /papelNoGrupo\(me\.role, "financeiro"\)/);
   assert.match(criar, /guard\(\[\["vendas", "criar"\], \["financeiro", "criar"\]\]/);
+});
+
+test("edição da venda usa uma única RPC e não baixa parcelas lateralmente", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "updateSale")');
+  const fim = rota.indexOf('if (action === "savePayout")', inicio);
+  const editar = rota.slice(inicio, fim);
+  assert.match(editar, /editarVendaAtomica\(semTipos\(auth\.supabase\), saleId, body\)/);
+  assert.doesNotMatch(editar, /\.from\("vendas"\)\.(?:update|insert|delete)/);
+  assert.doesNotMatch(editar, /\.from\("recebimentos"\)\.(?:update|insert|delete)/);
+
+  const cliente = clienteFalso({ data: { ok: true, venda_id: "v-1", data_conclusao: "2026-09-23", idempotente: false }, error: null });
+  const body = { dataVenda: "2026-09-20", vgv: 500000, percent: 5, custos: 0, payment: "Financiamento", status: "concluido", notes: "ok", empreendimentoId: "", empreendimentoNome: "Teste", unidade: "1", clienteNome: "Cliente", proprietarioNome: "" };
+  const resposta = await editarVendaAtomica(cliente, "v-1", body);
+  assert.equal(cliente.chamadas.length, 1);
+  assert.equal(cliente.chamadas[0].fn, "venda_editar");
+  assert.equal(cliente.chamadas[0].args.p_venda_id, "v-1");
+  assert.deepEqual(cliente.chamadas[0].args.payload, montarPayloadEdicaoVenda(body));
+  assert.deepEqual(resposta.body, { success: true, saleId: "v-1", idempotente: false, dataConclusao: "2026-09-23" });
+  assert.ok(!("parcial" in resposta.body));
+
+  const payloadInvalido = montarPayloadEdicaoVenda({ ...body, custos: -1 });
+  assert.equal(payloadInvalido.custos, -1, "custo negativo chega ao banco para ser rejeitado; não vira zero");
 });
 
 test("baixa e reabertura de recebimento usam uma única RPC atômica", async () => {
@@ -294,6 +322,28 @@ test("migration da baixa direta trava linhas, sincroniza caixa e audita sem back
   assert.match(sql, /sem backfill automático/i);
   assert.match(sql, /revoke all on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) from public,anon/);
   assert.match(sql, /grant execute on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) to authenticated,service_role/);
+});
+
+test("migration da edição de venda protege dependentes e preserva o legado", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923215500_financeiro_venda_editar_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.venda_editar\(p_venda_id uuid,payload jsonb\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.vendas where id=p_venda_id for update/);
+  for (const tabela of ["comissoes", "recebimentos", "pagamentos_comissao", "lancamentos_caixa"]) {
+    assert.match(sql, new RegExp(`from public\\.${tabela} where venda_id=p_venda_id order by id for update`));
+  }
+  assert.match(sql, /VENDA_VALOR_DEPENDENTE/);
+  assert.match(sql, /VENDA_MOVIMENTOS_ATIVOS/);
+  assert.match(sql, /VENDA_RECEBIMENTOS_PENDENTES/);
+  assert.match(sql, /left join public\.lancamentos_caixa l on l\.recebimento_id=r\.id/);
+  assert.match(sql, /v_antes\.status::text<>'pago'/);
+  assert.doesNotMatch(sql, /update public\.recebimentos/);
+  assert.match(sql, /data_conclusao=v_conclusao/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /auditoria por trigger/);
+  assert.match(sql, /Sem backfill/);
+  assert.match(sql, /revoke all on function public\.venda_editar\(uuid,jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.venda_editar\(uuid,jsonb\) to authenticated,service_role/);
 });
 
 test("modal de caixa envia requestId estável para retry idempotente", () => {
@@ -463,7 +513,6 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
   const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
   assert.deepEqual(gravacoesIgnoradas, []);
   for (const operacao of [
-    "baixar_parcelas_apos_venda",
     "gravar_linhas_extrato",
     "marcar_linha_extrato",
   ]) {
