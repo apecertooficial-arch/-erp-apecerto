@@ -11,7 +11,7 @@ import {
   editarVendaAtomica,
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
-import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
+import { decidirRepasseAtomico, excluirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 
 function clienteFalso(resposta) {
@@ -453,6 +453,33 @@ test("falha da RPC de repasse nunca sinaliza estado parcial", async () => {
   assert.equal((await decidirRepasseAtomico(indisponivel, "r-1", false, "2026-09-23")).status, 503);
 });
 
+test("exclusão de repasse e caixa usa uma única RPC atômica e idempotente", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "deletePayout")');
+  const fim = rota.indexOf('if (action === "saveReceipt")', inicio);
+  const excluir = rota.slice(inicio, fim);
+  assert.match(excluir, /excluirRepasseAtomico\(semTipos\(auth\.supabase\), payoutId\)/);
+  assert.doesNotMatch(excluir, /\.from\("pagamentos_comissao"\)\.(?:select|delete|update)/);
+  assert.doesNotMatch(excluir, /\.from\("lancamentos_caixa"\)\.(?:select|delete|update)/);
+  assert.doesNotMatch(excluir, /parcial/);
+
+  const cliente = clienteFalso({ data: { ok: true, repasse_id: "r-1", lancamento_removido: true, idempotente: false }, error: null });
+  const resposta = await excluirRepasseAtomico(cliente, "r-1");
+  assert.deepEqual(cliente.chamadas, [{ fn: "financeiro_excluir_repasse", args: { p_repasse_id: "r-1" } }]);
+  assert.deepEqual(resposta, {
+    status: 200,
+    body: { success: true, payoutId: "r-1", cashRemoved: true, idempotente: false },
+  });
+
+  const repetido = clienteFalso({ data: { ok: true, repasse_id: "r-1", lancamento_removido: true, idempotente: true }, error: null });
+  assert.equal((await excluirRepasseAtomico(repetido, "r-1")).body.idempotente, true);
+
+  const falha = clienteFalso({ data: null, error: { code: "P0001", message: "REPASSE_INCONSISTENTE: O caixa ligado diverge do repasse." } });
+  const respostaFalha = await excluirRepasseAtomico(falha, "r-1");
+  assert.equal(respostaFalha.status, 409);
+  assert.ok(!("parcial" in respostaFalha.body));
+});
+
 test("migration do repasse trava linhas, sincroniza caixa e audita na mesma função", () => {
   const sql = readFileSync(new URL("../supabase/migrations/20260923205500_financeiro_repasse_atomico.sql", import.meta.url), "utf8");
   assert.match(sql, /create or replace function public\.financeiro_decidir_repasse\(/);
@@ -465,6 +492,23 @@ test("migration do repasse trava linhas, sincroniza caixa e audita na mesma fun�
   assert.match(sql, /'idempotente', true/);
   assert.match(sql, /revoke all on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) from public, anon/);
   assert.match(sql, /grant execute on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) to authenticated, service_role/);
+});
+
+test("migration exclui repasse e caixa ligados na mesma transação auditada", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923222000_financeiro_repasse_excluir_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.financeiro_excluir_repasse\(p_repasse_id uuid\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.pagamentos_comissao[\s\S]+for update/);
+  assert.match(sql, /from public\.lancamentos_caixa[\s\S]+for update/);
+  assert.match(sql, /REPASSE_INCONSISTENTE:[\s\S]+caixa ligado diverge/);
+  assert.match(sql, /delete from public\.lancamentos_caixa where id=v_caixa\.id/);
+  assert.match(sql, /delete from public\.pagamentos_comissao where id=p_repasse_id/);
+  assert.equal((sql.match(/get diagnostics v_n=row_count/g) ?? []).length, 2);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'acao'='excluir repasse'|'excluir repasse','Financeiro'/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_excluir_repasse\(uuid\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_excluir_repasse\(uuid\) to authenticated,service_role/);
 });
 
 test("painel do corretor separa comissão a receber de repasse já pago", () => {

@@ -4,7 +4,7 @@ import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, editarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
-import { decidirRepasseAtomico } from "./repasse-rpc";
+import { decidirRepasseAtomico, excluirRepasseAtomico } from "./repasse-rpc";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
@@ -18,21 +18,6 @@ async function authClient(request: Request) {
   const { data, error } = await supabase.auth.getUser(token);
   return error || !data.user ? null : { supabase, user: data.user };
 }
-
-/* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
-
-   A migracao repasse_comissao_fonte_unica criou tres colunas em
-   pagamentos_comissao: ordem, data_prevista e lancamento_id. O arquivo
-   app/lib/supabase/database.types.ts e gerado por `supabase gen types` e ainda
-   nao as conhece. Como o cliente do Supabase e tipado, citar essas colunas num
-   select vira erro de compilacao.
-
-   Enquanto os tipos nao forem regerados, o select usa "*" (o Postgres devolve
-   as colunas de qualquer jeito) e a leitura das tres e tipada aqui.
-
-   Na proxima vez que alguem rodar `supabase gen types`, este bloco perde a
-   razao de existir: apague o tipo e volte a listar as colunas no select. */
-type RepasseColunasNovas = { ordem: number; data_prevista: string | null; lancamento_id: string | null };
 
 /* PONTE TEMPORARIA DE TIPO — APAGUE AO REGERAR OS TIPOS.
 
@@ -396,18 +381,9 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const payoutId = clean(body.payoutId, 50);
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
-    const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
-    if (readError) return falhaFinanceiro(readError, "consultar_repasse_para_exclusao");
-    if (!lido) return Response.json({ error: "Repasse nao encontrado." }, { status: 404 });
-    const atual = lido ? lido as typeof lido & RepasseColunasNovas : null;
-    let removeuLancamento = false;
-    if (atual?.lancamento_id) {
-      const { error: cashDeleteError } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
-      if (cashDeleteError) return falhaFinanceiro(cashDeleteError, "remover_caixa_antes_repasse");
-      removeuLancamento = true;
-    }
-    const { error } = await auth.supabase.from("pagamentos_comissao").delete().eq("id", payoutId);
-    return error ? falhaFinanceiro(error, "excluir_repasse", { parcial: removeuLancamento }) : Response.json({ success: true });
+    const resultado = await excluirRepasseAtomico(semTipos(auth.supabase), payoutId);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_repasse_rpc_falhou", { operacao: "excluir", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "saveReceipt") {

@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 77,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar edição atômica de venda do item 29",
-  lastCheckpoint: "PR #268 entregue no build 9df80355: baixa direta de recebimento agora cria/remove caixa e audita na mesma transação; authenticated executa, anon não, e a prova pós-deploy preservou 368 caixas, 16 vínculos e zero divergências. Quinta fatia em prova: edição de venda virou RPC idempotente, não baixa parcelas lateralmente e bloqueia status/valores incompatíveis sem corrigir os 2 legados. Prova authenticated terminou em rollback.",
-  lastCheckpointAt: "2026-09-23T21:55:40-03:00",
-  lastCommitSent: "9df80355",
-  productionCommit: "9df803559eb01bda786c459c3f0ea94e671574d9",
+  currentTask: "Publicar e aceitar exclusão atômica de repasse e caixa do item 29",
+  lastCheckpoint: "PR #269 entregue no build da5d1603: edição de venda agora é idempotente, não baixa parcelas lateralmente e bloqueia status/valores incompatíveis sem corrigir os 2 legados. Sexta fatia em prova: exclusão de repasse e caixa virou uma RPC auditada; delete/replay authenticated passaram em rollback e restauraram 3 repasses e 368 caixas. Uma divergência histórica entre repasse e comissão do caixa foi preservada e será bloqueada, não corrigida automaticamente.",
+  lastCheckpointAt: "2026-09-23T22:11:34-03:00",
+  lastCommitSent: "da5d1603",
+  productionCommit: "da5d16031edd00a55e3c2cf65e48eadfeef7816b",
   latestDeliveries: [
+    "PR #269 publicada: edição de venda passou a ser transacional e idempotente, preserva o trigger canônico e recusa status ou valores incompatíveis com recebimentos, repasses e comissões.",
     "PR #268 publicada: baixa e reabertura direta de recebimento passaram a sincronizar parcela, caixa e auditoria, com retry idempotente e sem backfill do legado.",
     "PR #267 publicada: edição e exclusão de caixa passaram a ser atômicas e auditadas, sincronizam ou reabrem a parcela e bloqueiam alteração lateral de caixa derivado de repasse.",
     "PR #266 publicada: criação de caixa, baixa opcional e auditoria agora são uma transação idempotente; recebimento aceita no máximo um lançamento reconciliado.",
@@ -87,10 +88,11 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "CRM desktop esconde imediatamente clientes da busca antiga ao trocar o termo; reprodução em produção passou de 40 cartões obsoletos a zero.",
   ],
   blockers: [
+    "Um dos 3 repasses pagos históricos aponta para caixa com comissão diferente: a exclusão atômica bloqueia esse vínculo e exige conferência financeira humana; nenhum valor ou vínculo foi corrigido automaticamente.",
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a quinta fatia do item 29, aplicar a migration e repetir edição/replay/bloqueios com rollback no build produtivo. Depois diagnosticar comissões, parcelas e repasses auxiliares. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a sexta fatia do item 29, aplicar a migration e repetir exclusão/replay/bloqueio da divergência com rollback no build produtivo. Depois diagnosticar as mutações auxiliares de comissão e parcela. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
