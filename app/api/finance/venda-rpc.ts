@@ -85,11 +85,14 @@ const STATUS_POR_CODIGO: Record<string, number> = {
   VENDA_NAO_ENCONTRADA: 404,
   VENDA_NEGOCIO_NAO_ENCONTRADO: 404,
   VENDA_NEGOCIO_JA_VINCULADO: 409,
+  VENDA_RECEBIMENTOS_PENDENTES: 409,
+  VENDA_MOVIMENTOS_ATIVOS: 409,
+  VENDA_VALOR_DEPENDENTE: 409,
 };
 
 /** Erro da RPC -> resposta segura. Só a mensagem de negócio escrita na função
     (prefixo VENDA_<CODIGO>:) chega ao usuário; o resto vira texto genérico. */
-export function traduzirErroVenda(error: RpcErro, operacao: "criar" | "excluir"): RespostaVenda {
+export function traduzirErroVenda(error: RpcErro, operacao: "criar" | "editar" | "excluir"): RespostaVenda {
   const message = typeof error?.message === "string" ? error.message : "";
   const negocio = /^(VENDA_[A-Z_]+):\s*([\s\S]+)$/.exec(message);
   if (negocio) return { status: STATUS_POR_CODIGO[negocio[1]] ?? 422, body: { error: negocio[2].trim(), code: negocio[1] } };
@@ -100,7 +103,7 @@ export function traduzirErroVenda(error: RpcErro, operacao: "criar" | "excluir")
     return { status: 503, body: { error: "O financeiro está sendo atualizado. Tente novamente em alguns minutos. Nada foi alterado." } };
   }
   if (error?.code === "22P02") {
-    return { status: 422, body: { error: operacao === "criar" ? "Algum campo da venda está em formato inválido. Nada foi gravado." : "Venda inválida." } };
+    return { status: 422, body: { error: operacao === "criar" ? "Algum campo da venda está em formato inválido. Nada foi gravado." : operacao === "editar" ? "Algum campo da venda está em formato inválido. Nada foi alterado." : "Venda inválida." } };
   }
   if (error?.code === "23503" || error?.code === "23514") {
     return { status: 422, body: { error: operacao === "criar"
@@ -109,7 +112,30 @@ export function traduzirErroVenda(error: RpcErro, operacao: "criar" | "excluir")
   }
   return { status: 502, body: { error: operacao === "criar"
     ? "Não foi possível lançar a venda. Nada foi gravado — tente novamente."
-    : "Não foi possível apagar a venda. Nada foi apagado — tente novamente." } };
+    : operacao === "editar"
+      ? "Não foi possível editar a venda. Nada foi alterado — tente novamente."
+      : "Não foi possível apagar a venda. Nada foi apagado — tente novamente." } };
+}
+
+export function montarPayloadEdicaoVenda(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    data_venda: texto(body.dataVenda, 10),
+    vgv: numeroOuNulo(body.vgv),
+    percentual: numeroOuNulo(body.percent),
+    custos: numeroOuNulo(body.custos),
+    forma_pgto: texto(body.payment, 100) || null,
+    status: texto(body.status, 20),
+    obs: texto(body.notes, 1000) || null,
+    empreendimento_id: texto(body.empreendimentoId, 60) || null,
+    empreendimento_nome: texto(body.empreendimentoNome, 200) || null,
+    unidade_rotulo: texto(body.unidade, 120) || null,
+    cliente_nome: texto(body.clienteNome, 200) || null,
+    proprietario_nome: texto(body.proprietarioNome, 200) || null,
+  };
+  if (Array.isArray(body.documentos)) {
+    payload.documentos = lista(body.documentos).map((doc) => ({ nome: texto(doc.nome, 200), path: texto(doc.path, 1000), bucket: texto(doc.bucket, 60) || "esteira-docs" }));
+  }
+  return payload;
 }
 
 export async function criarVendaAtomica(cliente: ClienteRpc, body: Record<string, unknown>): Promise<RespostaVenda & { erroInterno?: RpcErro }> {
@@ -125,6 +151,22 @@ export async function criarVendaAtomica(cliente: ClienteRpc, body: Record<string
       idempotente: resultado.idempotente === true,
       comissaoBruta: resultado.comissao_bruta ?? null,
       comissaoDistribuida: resultado.comissao_distribuida ?? 0,
+    },
+  };
+}
+
+export async function editarVendaAtomica(cliente: ClienteRpc, saleId: string, body: Record<string, unknown>): Promise<RespostaVenda & { erroInterno?: RpcErro }> {
+  const { data, error } = await cliente.rpc("venda_editar", { p_venda_id: saleId, payload: montarPayloadEdicaoVenda(body) });
+  if (error) return { ...traduzirErroVenda(error, "editar"), erroInterno: error };
+  const resultado = (data ?? {}) as { venda_id?: string; idempotente?: boolean; data_conclusao?: string | null };
+  if (!resultado.venda_id) return { status: 502, body: { error: "Não foi possível confirmar a edição. Nada foi alterado — tente novamente." } };
+  return {
+    status: 200,
+    body: {
+      success: true,
+      saleId: resultado.venda_id,
+      idempotente: resultado.idempotente === true,
+      dataConclusao: resultado.data_conclusao ?? null,
     },
   };
 }
