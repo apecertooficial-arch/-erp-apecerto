@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { blocoAberto, BLOCO_LABEL, completudeBloco, docExigido as regraDocExigido, docVisivel as regraDocVisivel, etapaDoBloco, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../lib/esteira";
 import { MoneyInput, PercentInput } from "../../components/MoneyInput";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
@@ -387,14 +387,23 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const parteDoBanco = (papel: string, ordem: number) => { const row = partes.find((x) => x.papel === papel && (x.ordem ?? 1) === ordem); return { nome: row?.nome ?? "", telefone: row?.telefone ?? "", email: row?.email ?? "", cpf: row?.cpf ?? "" }; };
   const parteSuja = (papel: string, ordem: number) => JSON.stringify(parteEdit[chave(papel, ordem)] ?? parteDoBanco(papel, ordem)) !== JSON.stringify(parteDoBanco(papel, ordem));
   const partesSujas = () => Object.keys(parteEdit).filter((k) => { const [papel, ordem] = k.split("#"); return parteSuja(papel, Number(ordem)); });
-  const salvarParte = (papel: string, ordem: number) => { const v = parteEdit[chave(papel, ordem)]; if (!v) return; void run(() => api({ action: "salvarParte", processId: process.id, papel, ordem, ...v })); };
+  const parteRequests = useRef(new Map<string, string>());
+  const requestParte = (key: string) => { const atual = parteRequests.current.get(key); if (atual) return atual; const novo = crypto.randomUUID(); parteRequests.current.set(key, novo); return novo; };
+  const salvarPartePayload = async (papel: string, ordem: number, v: { nome: string; telefone: string; email: string; cpf: string }) => {
+    const key = `salvar:${papel}:${ordem}:${JSON.stringify(v)}`;
+    await api({ action: "salvarParte", processId: process.id, papel, ordem, requestId: requestParte(key), ...v });
+    parteRequests.current.delete(key);
+  };
+  const salvarParte = (papel: string, ordem: number) => { const v = parteEdit[chave(papel, ordem)]; if (!v) return; void run(() => salvarPartePayload(papel, ordem, v)); };
   const adicionarParte = (papel: string) => run(async () => {
-    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "adicionarParte", processId: process.id, papel }) });
-    const j = await r.json() as { error?: string; ordem?: number };
-    if (!r.ok) throw new Error(j.error || "Não foi possível adicionar.");
-    if (j.ordem) setParteEdit((c) => ({ ...c, [chave(papel, j.ordem!)]: { nome: "", telefone: "", email: "", cpf: "" } }));
+    const key = `adicionar:${papel}`;
+    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "adicionarParte", processId: process.id, papel, requestId: requestParte(key) }) });
+    const j = await r.json() as { success?: boolean; error?: string; order?: number };
+    if (!r.ok || j.success !== true) throw new Error(j.error || "Não foi possível adicionar.");
+    parteRequests.current.delete(key);
+    if (j.order) setParteEdit((c) => ({ ...c, [chave(papel, j.order!)]: { nome: "", telefone: "", email: "", cpf: "" } }));
   });
-  const removerParte = (parteId: string) => run(() => api({ action: "removerParte", parteId }));
+  const removerParte = (parteId: string) => run(async () => { const key = `remover:${parteId}`; await api({ action: "removerParte", processId: process.id, parteId, requestId: requestParte(key) }); parteRequests.current.delete(key); });
 
   // ===== Cascata: o que a etapa atual libera para preenchimento =====
   const etapasRegra: EtapaRegra[] = stageList.map((s2, i) => ({ slug: s2.id, nome: s2.name, ordem: s2.ordem ?? i + 1, libera: s2.libera ?? [], restrito_a: s2.restritoA ?? null }));
@@ -471,7 +480,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     if (comSujo) await persistComissao();
     for (const k of sujasPartes) {
       const [papel, ordem] = k.split("#");
-      await api({ action: "salvarParte", processId: process.id, papel, ordem: Number(ordem), ...parteEdit[k] });
+      await salvarPartePayload(papel, Number(ordem), parteEdit[k]);
     }
   });
   const descartarAlteracoes = () => { setCond(condDoBanco()); setCom(comDoBanco()); setCondRef(JSON.stringify(condDoBanco())); setComRef(JSON.stringify(comDoBanco())); setParteEdit((c) => { const novo = { ...c }; sujasPartes.forEach((k) => { const [papel, ordem] = k.split("#"); novo[k] = parteDoBanco(papel, Number(ordem)); }); return novo; }); };
