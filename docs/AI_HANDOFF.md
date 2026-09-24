@@ -1,5 +1,23 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 01:27 BRT
+
+- Partes da Esteira entregues pela PR #281 no build
+  `9c6dfdd6fca34961c25484acf9a470f23d71f309`. A aba autenticada exibiu o
+  comprador e o vendedor e foi fechada sem edição. Produção preservou 1 parte,
+  zero cônjuges, zero divergência e zero resíduo da prova.
+- A próxima lacuna reproduzida estava na revisão de documentos: o status era
+  confirmado antes da trilha best-effort. A prova controlada atingiu
+  `anexado -> em_analise` com zero evento; a exceção reverteu tudo.
+- A migration `esteira_documento_revisao_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Status e trilha agora
+  são uma transação com UUID estável até a confirmação.
+- A prova pós-migration alterou/repetiu o status, confirmou uma única trilha e
+  bloqueou o reuso conflitante do request. O `ROLLBACK` restaurou 1 anexo
+  `anexado`, zero eventos e zero fixture. Advisors não citam os objetos novos.
+  Os 1.203 testes, TypeScript, lint sem erros e build Vinext passaram; faltam
+  PR/CI, deploy e aceite produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 01:13 BRT
 
 - Comissão da Esteira entregue pela PR #280 no build
