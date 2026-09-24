@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
+import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 
@@ -219,6 +220,34 @@ test("migration mantém parte e flag de cônjuge na mesma transação", () => {
   assert.match(sql, /insert into public\.venda_condicoes/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_parte_mutar\(text,uuid,uuid,jsonb,uuid\) to authenticated,service_role/);
+});
+
+test("revisão de documento usa uma RPC para status e trilha", async () => {
+  const inicio = api.indexOf('if (action === "docStatus")');
+  const fim = api.indexOf('if (action === "docAnexoObrig")', inicio);
+  const revisar = api.slice(inicio, fim);
+  assert.match(revisar, /reviewSalesDocumentAtomic/);
+  assert.doesNotMatch(revisar, /\.from\("esteira_anexos"\)\.update/);
+  assert.doesNotMatch(revisar, /trilha\(/);
+  assert.match(ui, /const documentReviewRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "docStatus", anexoId: a\.id, status, motivo, requestId: requestDocumento\(key\)/);
+
+  const client = clienteFalso({ data: { anexo_id: "a-1", status: "aprovado", idempotente: false }, error: null });
+  const response = await reviewSalesDocumentAtomic(client, { attachmentId: "a-1", status: "aprovado", reason: "", requestId: "req-5" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_anexo_revisar", args: {
+    p_anexo_id: "a-1", p_status: "aprovado", p_motivo: null, p_request_id: "req-5",
+  } }]);
+  assert.deepEqual(response.body, { success: true, attachmentId: "a-1", status: "aprovado", idempotent: false });
+});
+
+test("migration mantém revisão e trilha de documento na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924053000_esteira_documento_revisao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists esteira_anexo_eventos_status_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_anexo_revisar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /update public\.esteira_anexos/);
+  assert.match(sql, /insert into public\.esteira_anexo_eventos/);
+  assert.match(sql, /grant execute on function public\.esteira_anexo_revisar\(uuid,text,text,uuid\) to authenticated,service_role/);
 });
 
 test("drawer só atualiza etapa após movimentação confirmada", () => {

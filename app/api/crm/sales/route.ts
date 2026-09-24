@@ -3,6 +3,7 @@ import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type
 import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
 import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
+import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 
@@ -557,15 +558,16 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     const id = clean(body.anexoId, 60);
     const status = clean(body.status, 20);
+    const requestId = clean(body.requestId, 60);
     const validos = ["anexado", "em_analise", "aprovado", "recusado", "correcao"];
-    if (!id || !validos.includes(status)) return Response.json({ error: "Documento ou status inválido." }, { status: 422 });
+    if (!id || !requestId || !validos.includes(status)) return Response.json({ error: "Documento, status ou solicitação inválida." }, { status: 422 });
     const motivo = clean(body.motivo, 400);
     if ((status === "recusado" || status === "correcao") && !motivo) return Response.json({ error: "Informe o motivo da recusa/correção." }, { status: 422 });
-    const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,status,grupo,doc_nome,nome").eq("id", id).maybeSingle();
-    const { error } = await auth.supabase.from("esteira_anexos").update({ status, status_motivo: motivo || null, revisado_por: auth.user.id, revisado_em: new Date().toISOString() } as never).eq("id", id);
-    if (error) return falhaEsteira(error, "alterar_status_anexo");
-    await trilha(auth, "status_alterado", { anexoId: id, processoRef: (antes?.processo_ref as string) ?? null, detalhe: { arquivo: antes?.nome ?? null, de: antes?.status ?? null, para: status, motivo: motivo || null } });
-    return Response.json({ success: true });
+    const resultado = await reviewSalesDocumentAtomic(auth.supabase as unknown as SalesDocumentReviewRpcClient, {
+      attachmentId: id, status, reason: motivo, requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_documento_revisao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "docAnexoObrig") {
