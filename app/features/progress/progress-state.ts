@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 77,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar a baixa/reabertura atômica de repasse do item 29",
-  lastCheckpoint: "Item 29 em prova: produção está reconciliada nos vínculos verificados (16 recebimentos e 3 repasses). A primeira lacuna reproduzida foi fechada: baixa/reabertura de repasse passou a sincronizar agenda, caixa e auditoria numa RPC transacional e idempotente. A prova com RLS authenticated passou dentro de BEGIN/ROLLBACK, sem alterar valores reais; 1.168 testes, TypeScript, lint e build passaram.",
-  lastCheckpointAt: "2026-09-23T21:00:00-03:00",
-  lastCommitSent: "dab1a1c9",
-  productionCommit: "dab1a1c98e07e5e515694b8c18c9e009da7ac236",
+  currentTask: "Publicar e aceitar criação de caixa + baixa atômica do item 29",
+  lastCheckpoint: "Segunda fatia do item 29 em prova: os 16 vínculos caixa/recebimento atuais são únicos, de entrada, da mesma venda e do mesmo valor. Criação de caixa + baixa agora usam uma RPC transacional e auditada, com requestId e unicidade por recebimento. Prova authenticated em rollback confirmou criação, baixa, replay idempotente e recusa de duplicidade. 1.170 testes, TypeScript, lint e build passaram.",
+  lastCheckpointAt: "2026-09-23T21:13:28-03:00",
+  lastCommitSent: "2ca85eb2",
+  productionCommit: "2ca85eb238fd9f6d258372082671f2e667148ef4",
   latestDeliveries: [
+    "PR #265 publicada: baixa e reabertura de repasse passaram a ser transacionais, idempotentes e auditadas, sem reconciliar nem alterar valores históricos.",
     "PR #264 publicada: fronteira do portal futuro ficou reproduzível e documentada, com PII fechada e nenhum código especulativo de portal ou autenticação.",
     "PR #263 publicada: só a gestão decide captações pela RPC atômica; reprovação exige motivo, aprovação publica uma vez e retries reutilizam a auditoria canônica.",
     "PR #262 publicada: captação e finalização atômicas vinculam proprietário, autoria e captador; idempotência tolera acentos, anon não executa as RPCs e a prova produtiva terminou sem resíduo.",
@@ -86,7 +87,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a primeira fatia do item 29, aplicar a migration e repetir a prova com rollback no build produtivo. Depois diagnosticar a próxima mutação financeira multietapa. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a segunda fatia do item 29, aplicar a migration e repetir a prova com rollback no build produtivo. Depois diagnosticar edição/exclusão de caixa. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

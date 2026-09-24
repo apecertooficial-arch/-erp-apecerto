@@ -1,5 +1,33 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 21:13 BRT
+
+- Segunda fatia da decisão 29 em prova. Os 16 lançamentos ligados a recebimento
+  são únicos, entradas, da mesma venda e do mesmo valor; não há recebido sem data.
+- A nova `financeiro_caixa_criar` reúne lançamento, baixa opcional e auditoria na
+  mesma transação, usa `request_id` para retry e impede mais de um caixa por
+  recebimento. O modal mantém um UUID estável enquanto a solicitação está aberta.
+- Prova pré-migration sob `authenticated` dentro de `BEGIN/ROLLBACK`: criou caixa,
+  baixou a parcela, repetiu sem duplicar e recusou nova solicitação para a mesma
+  parcela; exatamente um caixa e uma auditoria foram transitórios.
+- 1.170 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge, migration aditiva e aceite pós-deploy com rollback.
+
+## Estado verificado em 23/09/2026, 21:08 BRT
+
+- A primeira fatia da decisão 29 foi entregue pela PR #265 no build produtivo
+  `2ca85eb238fd9f6d258372082671f2e667148ef4`; CI integral passou.
+- A migration `financeiro_repasse_atomico` está aplicada. `authenticated` executa
+  a RPC e `anon` não. A prova pós-deploy sob RLS fez replay pago, reabertura,
+  replay reaberto, nova baixa e replay final dentro de `BEGIN/ROLLBACK`; somente
+  as duas mudanças reais geraram auditoria e nada permaneceu gravado.
+- Produção permaneceu com 368 lançamentos, 16 ligados a recebimentos e 3 repasses;
+  zero recebimentos recebidos sem caixa e zero repasses divergentes. O Financeiro
+  carregou no navegador autenticado sem alerta; nenhuma ação foi acionada.
+- Advisors não associaram aviso novo a `financeiro_decidir_repasse`. Uso semanal:
+  77%, teto 90%, crédito de reset intacto. Próxima fatia: diagnosticar criação de
+  caixa + baixa de recebimento, ainda sem mutação financeira real.
+
 ## Estado verificado em 23/09/2026, 21:00 BRT
 
 - Decisão 29 em prova. Diagnóstico agregado de produção: 368 lançamentos de caixa,
