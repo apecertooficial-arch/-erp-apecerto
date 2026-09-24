@@ -17,6 +17,7 @@ import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "../app/api/finance/comissao-rpc.ts";
 import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "../app/api/finance/extrato-rpc.ts";
 import { importarExtratoAtomico } from "../app/api/finance/extrato-import-rpc.ts";
+import { mutarCategoriaAtomica } from "../app/api/finance/categoria-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -757,6 +758,37 @@ test("migration importa cabeçalho, linhas e auditoria em uma transação", () =
   assert.match(sql, /'idempotente',true/);
   assert.match(sql, /revoke all on function public\.financeiro_extrato_importar\(jsonb,jsonb\) from public,anon/);
   assert.match(sql, /grant execute on function public\.financeiro_extrato_importar\(jsonb,jsonb\) to authenticated,service_role/);
+});
+
+test("categorias de caixa usam uma única RPC para criar, editar e remover", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "createCategory"');
+  const fim = rota.indexOf('if (action === "createSale"', inicio);
+  const categorias = rota.slice(inicio, fim);
+  assert.match(categorias, /mutarCategoriaAtomica/);
+  assert.doesNotMatch(categorias, /\.from\("categorias_caixa"\)\.(?:insert|update|delete)/);
+
+  const payload = { nome: "Cartório", tipo: "saida", natureza: "normal", cor: null };
+  const cliente = clienteFalso({ data: { categoria_id: "cat-1", criada: true, idempotente: false }, error: null });
+  const resposta = await mutarCategoriaAtomica(cliente, null, "criar", payload);
+  assert.deepEqual(cliente.chamadas, [{ fn: "financeiro_categoria_mutar", args: { p_categoria_id: null, p_operacao: "criar", payload } }]);
+  assert.deepEqual(resposta.body, { success: true, categoryId: "cat-1", created: true, idempotente: false });
+});
+
+test("migration protege categorias estruturais e audita toda mutação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924013000_financeiro_categoria_atomica.sql", import.meta.url), "utf8");
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists categorias_caixa_natureza_especial_uidx/);
+  assert.match(sql, /create or replace function public\.financeiro_categoria_mutar\(p_categoria_id uuid,p_operacao text,payload jsonb\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /CATEGORIA_ESTRUTURAL: Categorias estruturais de comissão não podem ser removidas/);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtextextended/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_categoria_mutar\(uuid,text,jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_categoria_mutar\(uuid,text,jsonb\) to authenticated,service_role/);
+  assert.match(workspace, /disabled=\{manageBusy \|\| cat\.natureza !== "normal"\}/);
+  assert.match(workspace, /Categoria estrutural de comissão/);
 });
 
 test("painel do corretor separa comissão a receber de repasse já pago", () => {
