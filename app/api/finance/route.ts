@@ -4,6 +4,7 @@ import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
+import { decidirRepasseAtomico } from "./repasse-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -448,54 +449,9 @@ export async function PATCH(request: Request) {
     const pago = body.pago === true;
     const dataPagamento = clean(body.dataPagamento, 10) || hojeOperacao();
     if (!payoutId) return Response.json({ error: "Repasse invalido." }, { status: 422 });
-    const { data: lido, error: readError } = await auth.supabase.from("pagamentos_comissao").select("*").eq("id", payoutId).maybeSingle();
-    if (readError) return falhaFinanceiro(readError, "consultar_repasse");
-    if (!lido) return Response.json({ error: "Repasse nao encontrado." }, { status: 404 });
-    const atual = lido as typeof lido & RepasseColunasNovas;
-
-    if (!pago) {
-      // Desfazer a baixa: some o lancamento derivado, some a data.
-      let removeuLancamento = false;
-      if (atual.lancamento_id) {
-        const { error: delError } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", atual.lancamento_id);
-        if (delError) return falhaFinanceiro(delError, "remover_caixa_do_repasse");
-        removeuLancamento = true;
-      }
-      const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "previsto", data_pagamento: null, lancamento_id: null } as never).eq("id", payoutId);
-      return error ? falhaFinanceiro(error, "reabrir_repasse", { parcial: removeuLancamento }) : Response.json({ success: true });
-    }
-
-    // Dar baixa: gera o lancamento de caixa e amarra os dois.
-    const { data: categoria, error: categoriaError } = await auth.supabase.from("categorias_caixa").select("nome").eq("natureza", "comissao_paga").eq("ativo", true).order("ordem", { ascending: true }).limit(1).maybeSingle();
-    if (categoriaError) return falhaFinanceiro(categoriaError, "consultar_categoria_repasse");
-    if (!categoria?.nome) return Response.json({ error: "Nao existe categoria de caixa com natureza 'comissao paga'. Crie a categoria antes de dar baixa." }, { status: 422 });
-    let lancamentoId = atual.lancamento_id as string | null;
-    let alterouLancamento = false;
-    if (!lancamentoId) {
-      const { data: lancamento, error: cashError } = await auth.supabase.from("lancamentos_caixa").insert({
-        tipo: "saida",
-        categoria: categoria.nome,
-        data: dataPagamento,
-        valor: atual.valor,
-        descricao: "Repasse de comissao lancado pela ficha da venda.",
-        origem: "erp",
-        venda_id: atual.venda_id,
-        comissao_id: atual.comissao_id,
-        beneficiario_id: atual.beneficiario_id,
-        papel: atual.papel,
-        natureza: "comissao_paga",
-      } as never).select("id").single();
-      if (cashError || !lancamento) return falhaFinanceiro(cashError, "criar_caixa_do_repasse");
-      lancamentoId = lancamento.id as string;
-      alterouLancamento = true;
-    } else {
-      const { error: cashUpdateError } = await auth.supabase.from("lancamentos_caixa").update({ data: dataPagamento, valor: atual.valor } as never).eq("id", lancamentoId);
-      if (cashUpdateError) return falhaFinanceiro(cashUpdateError, "atualizar_caixa_do_repasse");
-      alterouLancamento = true;
-    }
-    const { error } = await auth.supabase.from("pagamentos_comissao").update({ status: "pago", data_pagamento: dataPagamento, lancamento_id: lancamentoId } as never).eq("id", payoutId);
-    if (error) return falhaFinanceiro(error, "baixar_repasse", { parcial: alterouLancamento });
-    return Response.json({ success: true });
+    const resultado = await decidirRepasseAtomico(semTipos(auth.supabase), payoutId, pago, dataPagamento);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_repasse_rpc_falhou", { codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "deletePayout") {

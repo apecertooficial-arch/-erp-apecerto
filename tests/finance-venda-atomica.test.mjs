@@ -9,6 +9,7 @@ import {
   criarVendaAtomica,
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
+import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -280,6 +281,49 @@ test("repasse só vira pago pelo comando que também movimenta o caixa", () => {
   assert.doesNotMatch(savePayout, /body\.status/);
 });
 
+test("baixa e reabertura de repasse usam uma única RPC atômica", async () => {
+  const cliente = clienteFalso({ data: { ok: true, repasse_id: "r-1", lancamento_id: "c-1", idempotente: false }, error: null });
+  const resposta = await decidirRepasseAtomico(cliente, "r-1", true, "2026-09-23");
+
+  assert.deepEqual(cliente.chamadas, [{
+    fn: "financeiro_decidir_repasse",
+    args: { p_repasse_id: "r-1", p_pago: true, p_data_pagamento: "2026-09-23" },
+  }]);
+  assert.deepEqual(resposta, {
+    status: 200,
+    body: { success: true, payoutId: "r-1", cashId: "c-1", idempotente: false },
+  });
+
+  const reabrir = clienteFalso({ data: { ok: true, repasse_id: "r-1", lancamento_id: null, idempotente: true }, error: null });
+  await decidirRepasseAtomico(reabrir, "r-1", false, "2026-09-23");
+  assert.equal(reabrir.chamadas[0].args.p_data_pagamento, null);
+});
+
+test("falha da RPC de repasse nunca sinaliza estado parcial", async () => {
+  const inconsistente = clienteFalso({ data: null, error: { code: "P0001", message: "REPASSE_INCONSISTENTE: Caixa divergente; solicite conferência financeira." } });
+  const resposta = await decidirRepasseAtomico(inconsistente, "r-1", true, "2026-09-23");
+  assert.equal(resposta.status, 409);
+  assert.equal(resposta.body.error, "Caixa divergente; solicite conferência financeira.");
+  assert.ok(!("parcial" in resposta.body));
+
+  const indisponivel = clienteFalso({ data: null, error: { code: "PGRST202", message: "schema cache" } });
+  assert.equal((await decidirRepasseAtomico(indisponivel, "r-1", false, "2026-09-23")).status, 503);
+});
+
+test("migration do repasse trava linhas, sincroniza caixa e audita na mesma função", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923205500_financeiro_repasse_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.financeiro_decidir_repasse\(/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.pagamentos_comissao[\s\S]+for update/);
+  assert.match(sql, /insert into public\.lancamentos_caixa/);
+  assert.match(sql, /delete from public\.lancamentos_caixa/);
+  assert.match(sql, /update public\.pagamentos_comissao/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente', true/);
+  assert.match(sql, /revoke all on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) from public, anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) to authenticated, service_role/);
+});
+
 test("painel do corretor separa comissão a receber de repasse já pago", () => {
   const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /const brokerReceived = brokerPayouts\.filter\(\(item\) => item\.status === "pago"\)/);
@@ -330,7 +374,6 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
     "auditar_edicao_lancamento",
     "reabrir_parcela_apos_exclusao",
     "baixar_parcelas_apos_venda",
-    "baixar_repasse",
     "gravar_linhas_extrato",
     "marcar_linha_extrato",
   ]) {
