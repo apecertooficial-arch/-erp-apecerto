@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
+import { saveSalesConditionsAtomic } from "../app/api/crm/sales-conditions-rpc.ts";
 import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
@@ -162,6 +163,36 @@ test("migration devolve processo e negócio em uma transação idempotente", () 
   assert.match(sql, /update public\.venda_processos/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_venda_devolver\(uuid,bigint,text,uuid\) to authenticated,service_role/);
+});
+
+test("condições comerciais usam uma RPC auditada e request estável", async () => {
+  const inicio = api.indexOf('if (action === "salvarCondicoes")');
+  const fim = api.indexOf('if (action === "salvarComissao")', inicio);
+  const salvar = api.slice(inicio, fim);
+  assert.match(salvar, /saveSalesConditionsAtomic/);
+  assert.doesNotMatch(salvar, /\.from\("venda_condicoes"\)\.upsert/);
+  assert.match(ui, /const conditionRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "salvarCondicoes", processId: process\.id, requestId/);
+
+  const client = clienteFalso({ data: { processo_id: "p-1", idempotente: false }, error: null });
+  const payload = { valor_total: 500000, forma_pagamento: "financiamento" };
+  const response = await saveSalesConditionsAtomic(client, { processId: "p-1", payload, spouseOnly: false, requestId: "req-cond" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_condicoes_salvar", args: {
+    p_processo_id: "p-1", p_payload: payload, p_somente_conjuge: false, p_request_id: "req-cond",
+  } }]);
+  assert.deepEqual(response.body, { success: true, processId: "p-1", idempotent: false });
+});
+
+test("migration salva condições e auditoria na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924134500_esteira_condicoes_atomicas.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_condicoes_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_condicoes_salvar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.venda_processos p[\s\S]*for update/);
+  assert.match(sql, /p_somente_conjuge/);
+  assert.match(sql, /insert into public\.venda_condicoes/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_condicoes_salvar\(uuid,jsonb,boolean,uuid\) to authenticated,service_role/);
 });
 
 test("salvar comissão usa uma RPC para cabeçalho, parcelas e auditoria", async () => {

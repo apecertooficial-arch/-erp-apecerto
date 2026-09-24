@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 11:22 BRT
+
+- Remoção de etapas entregue pela PR #290 no build
+  `cdf4fd6d1ae1eb2b1f974184f39880275c1c4d50`. A Esteira abriu com 18 vendas;
+  o menu de uma etapa vazia mostrou “Excluir” habilitado e foi fechado sem
+  confirmar. Produção preservou as 10 etapas e zero resíduo de prova.
+- A próxima falha comprovada estava nas condições comerciais: a rota fazia
+  `upsert` direto numa tabela cuja RLS permite escrita autenticada ampla, sem
+  auditoria ou chave de retry. O toggle de cônjuge também reenviava todos os
+  valores financeiros carregados no cliente.
+- A migration `esteira_condicoes_atomicas` está aplicada. A RPC
+  `esteira_condicoes_salvar` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. Ela bloqueia e revalida processo, etapa, bloco e papel, grava a
+  auditoria na mesma transação e, no modo cônjuge, altera somente as flags.
+- A prova autenticada gravou condições e auditoria, repetiu sem duplicar,
+  preservou os valores comerciais ao trocar as flags, bloqueou request
+  conflitante e recusou etapa que não abre condições. O `ROLLBACK` deixou zero
+  condição e auditoria de prova. Advisors não citam os objetos novos. Os 1.221
+  testes, TypeScript, lint sem erros e build Vinext passaram; faltam PR/CI,
+  deploy e aceite produtivo sem alterar uma venda real.
+
 ## Estado verificado em 24/09/2026, 11:02 BRT
 
 - Substituição de anexos entregue pela PR #289 no build
