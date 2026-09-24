@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 01:36 BRT
+
+- Revisão documental entregue pela PR #282 no build
+  `67fe189d0ad01b5d8a967287d311c9d273742189`. A aba autenticada exibiu os três
+  grupos de documentação e foi fechada sem acionar status. Produção preservou 1
+  anexo `anexado`, zero eventos e zero resíduo da prova.
+- A próxima falha reproduzida estava em reordenar etapas: a primeira atualização
+  linha a linha colidia com o índice único da ordem ativa. A prova encontrou a
+  colisão na ordem 2 e terminou em `ROLLBACK`.
+- A migration `esteira_etapas_reordenacao_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Ela estaciona a
+  sequência em ordens temporárias, aplica todas as posições e audita na mesma
+  transação, com UUID estável para retry.
+- A prova pós-migration trocou as duas primeiras das 10 etapas, repetiu sem
+  duplicar auditoria e bloqueou request conflitante. O `ROLLBACK` restaurou as
+  ordens 1–10, sem duplicidade nem fixture. Advisors não citam os objetos novos.
+  Os 1.205 testes, TypeScript, lint sem erros e build Vinext passaram; faltam
+  PR/CI, deploy e aceite produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 01:27 BRT
 
 - Partes da Esteira entregues pela PR #281 no build

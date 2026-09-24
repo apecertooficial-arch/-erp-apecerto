@@ -6,6 +6,7 @@ import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.t
 import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
+import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
@@ -248,6 +249,34 @@ test("migration mantém revisão e trilha de documento na mesma transação", ()
   assert.match(sql, /update public\.esteira_anexos/);
   assert.match(sql, /insert into public\.esteira_anexo_eventos/);
   assert.match(sql, /grant execute on function public\.esteira_anexo_revisar\(uuid,text,text,uuid\) to authenticated,service_role/);
+});
+
+test("reordenação das etapas usa uma RPC para a sequência completa", async () => {
+  const inicio = api.indexOf('if (action === "reorderStages")');
+  const fim = api.indexOf('if (action === "bulkMoveStage")', inicio);
+  const reordenar = api.slice(inicio, fim);
+  assert.match(reordenar, /reorderSalesStagesAtomic/);
+  assert.doesNotMatch(reordenar, /\.from\("esteira_etapas"\)\.update/);
+  assert.match(ui, /const stageOrderRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "reorderStages", ids, requestId/);
+
+  const client = clienteFalso({ data: { etapas: 3, idempotente: false }, error: null });
+  const response = await reorderSalesStagesAtomic(client, { stageIds: ["s-2", "s-1", "s-3"], requestId: "req-6" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_etapas_reordenar", args: {
+    p_ids: ["s-2", "s-1", "s-3"], p_request_id: "req-6",
+  } }]);
+  assert.deepEqual(response.body, { success: true, stages: 3, idempotent: false });
+});
+
+test("migration reordena todas as etapas e auditoria na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924060000_esteira_etapas_reordenacao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_etapas_ordem_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_etapas_reordenar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /set ordem=-array_position\(p_ids,id\)/);
+  assert.match(sql, /set ordem=array_position\(p_ids,id\)/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_etapas_reordenar\(uuid\[\],uuid\) to authenticated,service_role/);
 });
 
 test("drawer só atualiza etapa após movimentação confirmada", () => {
