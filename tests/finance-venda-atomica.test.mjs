@@ -10,7 +10,7 @@ import {
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
 import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
-import { criarCaixaAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
+import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -185,13 +185,27 @@ test("a rota não grava mais venda tabela a tabela em createSale/deleteSale", ()
   assert.match(criar, /guard\(\[\["vendas", "criar"\], \["financeiro", "criar"\]\]/);
 });
 
-test("baixa de recebimento não confirma sucesso sem linha alterada", () => {
+test("baixa e reabertura de recebimento usam uma única RPC atômica", async () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const inicio = rota.indexOf('if (action === "settleReceipt")');
   const fim = rota.indexOf('if (action === "updateSale")', inicio);
   const baixa = rota.slice(inicio, fim);
-  assert.match(baixa, /\.eq\("id", receiptId\)\.select\("id"\)\.maybeSingle\(\)/);
-  assert.match(baixa, /if \(!atualizado\) return Response\.json\([^;]+status: 404/);
+  assert.match(baixa, /decidirRecebimentoAtomico\(semTipos\(auth\.supabase\), receiptId, received, hojeOperacao\(\)\)/);
+  assert.doesNotMatch(baixa, /\.from\("recebimentos"\)\.(?:update|delete)/);
+  assert.doesNotMatch(baixa, /\.from\("lancamentos_caixa"\)\.(?:insert|update|delete)/);
+
+  const cliente = clienteFalso({ data: { ok: true, recebimento_id: "r-1", lancamento_id: "c-1", idempotente: false }, error: null });
+  const resposta = await decidirRecebimentoAtomico(cliente, "r-1", true, "2026-09-23");
+  assert.deepEqual(cliente.chamadas, [{
+    fn: "financeiro_recebimento_decidir",
+    args: { p_recebimento_id: "r-1", p_recebido: true, p_data_recebimento: "2026-09-23" },
+  }]);
+  assert.deepEqual(resposta.body, { success: true, receiptId: "r-1", cashId: "c-1", idempotente: false });
+  assert.ok(!("parcial" in resposta.body));
+
+  const reabrir = clienteFalso({ data: { ok: true, recebimento_id: "r-1", lancamento_id: null, idempotente: true }, error: null });
+  await decidirRecebimentoAtomico(reabrir, "r-1", false, "2026-09-23");
+  assert.equal(reabrir.chamadas[0].args.p_data_recebimento, null);
 });
 
 test("edição e exclusão de caixa usam somente RPCs atômicas", async () => {
@@ -263,6 +277,23 @@ test("migration de edição/exclusão mantém recebimento reconciliado e protege
   assert.match(sql, /a\.acao='excluir lançamento'/);
   assert.match(sql, /revoke all on function public\.financeiro_caixa_editar\(uuid,jsonb\) from public,anon/);
   assert.match(sql, /revoke all on function public\.financeiro_caixa_excluir\(uuid\) from public,anon/);
+});
+
+test("migration da baixa direta trava linhas, sincroniza caixa e audita sem backfill", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923213000_financeiro_recebimento_decidir_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.financeiro_recebimento_decidir\(/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.recebimentos[\s\S]+for update/);
+  assert.match(sql, /from public\.lancamentos_caixa[\s\S]+for update/);
+  assert.match(sql, /insert into public\.lancamentos_caixa/);
+  assert.match(sql, /delete from public\.lancamentos_caixa/);
+  assert.match(sql, /update public\.recebimentos set status='recebido'/);
+  assert.match(sql, /update public\.recebimentos set status='pendente',data_recebimento=null/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /sem backfill automático/i);
+  assert.match(sql, /revoke all on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_recebimento_decidir\(uuid,boolean,date\) to authenticated,service_role/);
 });
 
 test("modal de caixa envia requestId estável para retry idempotente", () => {
