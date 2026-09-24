@@ -1,12 +1,24 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
 const harness = readFileSync(new URL("./crm-visual-harness/main.tsx", import.meta.url), "utf8");
 const salesHarness = readFileSync(new URL("./sales-mobile-visual-harness/main.tsx", import.meta.url), "utf8");
 const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+function clienteFalso(resposta) {
+  const chamadas = [];
+  return {
+    chamadas,
+    rpc(fn, args) {
+      chamadas.push({ fn, args });
+      return Promise.resolve(resposta);
+    },
+  };
+}
 
 test("observação comprova acesso ao processo antes de inserir", () => {
   const comando = api.match(/if \(action === "addObs"\)[\s\S]*?return error \?/)?.[0] ?? "";
@@ -81,6 +93,37 @@ test("Esteira rejeita carga parcial em vez de publicar falso vazio", () => {
 test("criação de venda só fecha o modal após confirmação explícita", () => {
   assert.match(ui, /if \(!response\.ok \|\| result\.success !== true\) throw new Error\(result\.error \|\| "A Esteira não confirmou a criação da venda\."\)/);
   assert.match(harness, /salesCreate/);
+});
+
+test("conectar venda ao CRM usa uma única RPC atômica e request estável", async () => {
+  const inicio = api.indexOf('if (action === "create")');
+  const fim = api.indexOf('if (action === "solicitar")', inicio);
+  const criar = api.slice(inicio, fim);
+  assert.match(criar, /criarVendaCrmAtomica/);
+  assert.doesNotMatch(criar, /\.from\("(?:vendas|negocios|venda_processos)"\)\.(?:insert|update|delete)/);
+  assert.match(ui, /const \[requestId\] = useState\(\(\) => crypto\.randomUUID\(\)\)/);
+  assert.match(ui, /action: "create", requestId, dealId:/);
+
+  const payload = { request_id: "req-1", negocio_id: 10, produto_id: "prod-1" };
+  const cliente = clienteFalso({ data: { venda_id: "v-1", processo_id: "p-1", aprovacao: "aprovada", idempotente: false }, error: null });
+  const resposta = await criarVendaCrmAtomica(cliente, payload);
+  assert.deepEqual(cliente.chamadas, [{ fn: "esteira_venda_criar", args: { payload } }]);
+  assert.deepEqual(resposta.body, { success: true, saleId: "v-1", processId: "p-1", aprovacao: "aprovada", idempotente: false });
+});
+
+test("migration conecta venda, negócio, processo e auditoria em uma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924020000_esteira_venda_criar_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists venda_processos_negocio_id_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_venda_criar\(payload jsonb\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtextextended\(v_request_id::text,0\)\)/);
+  assert.match(sql, /insert into public\.vendas/);
+  assert.match(sql, /update public\.negocios/);
+  assert.match(sql, /insert into public\.venda_processos/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.esteira_venda_criar\(jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.esteira_venda_criar\(jsonb\) to authenticated,service_role/);
 });
 
 test("drawer só atualiza etapa após movimentação confirmada", () => {

@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from "../../../lib/supabase/server";
 import type { TablesUpdate } from "../../../lib/supabase/database.types";
 import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 import { papelNoGrupo } from "../../../lib/papeis";
-import { hojeOperacao } from "../../../lib/timezone";
+import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -539,26 +539,20 @@ export async function PATCH(request: Request) {
   if (action === "create") {
     const dealId = Number(body.dealId);
     const productId = String(body.productId || "");
+    const requestId = clean(body.requestId, 60);
     // O valor não entra aqui: é definido nas Condições comerciais, na etapa de Proposta.
     const vgv = Number.isFinite(Number(body.vgv)) && Number(body.vgv) > 0 ? Number(body.vgv) : 0;
-    if (!Number.isSafeInteger(dealId) || !productId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
-    const [{ data: deal }, { data: product }] = await Promise.all([
-      auth.supabase.from("negocios").select("id,lead_id,empreendimento_id").eq("id", dealId).maybeSingle(),
-      auth.supabase.from("empreendimentos").select("id,nome,origem").eq("id", productId).maybeSingle(),
-    ]);
-    if (!deal || !product) return Response.json({ error: "Negócio ou produto não encontrado." }, { status: 404 });
-    // Gestor/admin que gera a venda já entra aprovada; corretor entra pendente da aprovação do gestor.
-    const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
-    const gestor = !!me && papelNoGrupo(me.role, "esteira_config");
-    const aprovacao = gestor ? "aprovada" : "pendente";
-    const { data: sale, error: saleError } = await auth.supabase.from("vendas").insert({ data_venda: hojeOperacao(), empreendimento_id: product.id, empreendimento_nome: product.nome, vgv, forma_pgto: String(body.payment || "") || null, status: "pendente", obs: String(body.notes || "") || null }).select("id").single();
-    if (saleError) return falhaEsteira(saleError, "criar_venda_manual");
-    if (!sale) return Response.json({ error: "Não foi possível criar a venda.", erro: "resposta_invalida" }, { status: 502 });
-    const { error: dealError } = await auth.supabase.from("negocios").update({ venda_id: sale.id, status: "ganho", ultima_movimentacao: new Date().toISOString() }).eq("id", deal.id);
-    const { error: processError } = await auth.supabase.from("venda_processos").insert({ venda_id: sale.id, negocio_id: deal.id, etapa: "inicio", tipo_venda: product.origem === "terceiros" ? "revenda" : "construtora", criado_por: auth.user.id, solicitado_por: auth.user.id, aprovacao_status: aprovacao, aprovado_por: gestor ? auth.user.id : null, aprovado_em: gestor ? new Date().toISOString() : null } as never);
-    if (dealError) return falhaEsteira(dealError, "vincular_negocio_venda");
-    if (processError) return falhaEsteira(processError, "criar_processo_venda");
-    return Response.json({ success: true, saleId: sale.id, aprovacao });
+    if (!Number.isSafeInteger(dealId) || !productId || !requestId) return Response.json({ error: "Selecione o negócio e o produto." }, { status: 422 });
+    const resultado = await criarVendaCrmAtomica(auth.supabase as unknown as ClienteRpcVendaCrm, {
+      request_id: requestId,
+      negocio_id: dealId,
+      produto_id: productId,
+      vgv,
+      forma_pgto: clean(body.payment, 120) || null,
+      obs: clean(body.notes, 1000) || null,
+    });
+    if ("erroInterno" in resultado && resultado.erroInterno && resultado.status >= 500) console.error("esteira_venda_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
   if (action === "solicitar") {
     const dealId = Number(body.dealId);
