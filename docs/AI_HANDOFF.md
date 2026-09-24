@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 01:54 BRT
+
+- Reordenação de etapas entregue pela PR #283 no build
+  `0350b3c47733c8e6887e58f25ab7da1be82cb05d`. O menu autenticado mostrou os
+  controles de ordem coerentes para a primeira etapa e foi fechado sem mover
+  nada. Produção preservou 10 etapas nas ordens 1–10, sem duplicidade ou fixture.
+- A próxima falha reproduzida estava em criar etapas: duas solicitações podiam
+  calcular a mesma próxima ordem fora da escrita. A prova encontrou a colisão na
+  ordem 11 e terminou em `ROLLBACK`.
+- A migration `esteira_etapa_criar_atomica` está aplicada. A função é `SECURITY
+  INVOKER`; `authenticated` executa e `anon` não. Ela usa o mesmo lock da
+  reordenação para reservar slug e ordem, insere e audita na mesma transação e
+  aceita retry com UUID estável.
+- A prova pós-migration criou a ordem 11, repetiu sem duplicar, bloqueou o reuso
+  conflitante e criou a ordem 12 com slug reservado. O `ROLLBACK` restaurou as
+  10 etapas, ordens 1–10 e zero fixture. Os 1.207 testes, TypeScript, lint sem
+  erros e build Vinext passaram; faltam PR/CI, deploy e aceite produtivo somente
+  do formulário, sem criar etapa real.
+
 ## Estado verificado em 24/09/2026, 01:36 BRT
 
 - Revisão documental entregue pela PR #282 no build

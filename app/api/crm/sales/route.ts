@@ -6,6 +6,7 @@ import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sal
 import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
+import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales-stage-create-rpc";
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
 
 export const dynamic = "force-dynamic";
@@ -416,15 +417,20 @@ export async function PATCH(request: Request) {
     if (denied) return denied;
     if (action === "createStage") {
       const nome = clean(body.nome, 80);
-      if (!nome) return Response.json({ error: "Informe o nome da etapa." }, { status: 422 });
-      let slug = slugify(nome);
-      if (!slug) slug = `etapa_${Date.now().toString(36)}`;
-      const { data: existing } = await auth.supabase.from("esteira_etapas").select("slug").eq("slug", slug).maybeSingle();
-      if (existing) slug = `${slug}_${Date.now().toString(36).slice(-4)}`;
-      const { data: last } = await auth.supabase.from("esteira_etapas").select("ordem").order("ordem", { ascending: false }).limit(1).maybeSingle();
-      const ordem = (last?.ordem ?? 0) + 1;
-      const { error } = await auth.supabase.from("esteira_etapas").insert({ slug, nome, cor: clean(body.cor, 20) || "#8d2bd1", papel: clean(body.papel, 40) || "Corretor", sla_dias: Number.isFinite(Number(body.slaDias)) ? Math.max(0, Math.trunc(Number(body.slaDias))) : 3, resale: body.resale === true, ordem } as never);
-      return error ? falhaEsteira(error, "criar_etapa") : Response.json({ success: true });
+      const requestId = clean(body.requestId, 60);
+      if (!nome || !requestId) return Response.json({ error: "Informe o nome e a solicitação da etapa." }, { status: 422 });
+      const slugBase = slugify(nome) || `etapa_${requestId.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase()}`;
+      const resultado = await createSalesStageAtomic(auth.supabase as unknown as SalesStageCreateRpcClient, {
+        name: nome,
+        slugBase,
+        color: clean(body.cor, 20) || "#8d2bd1",
+        role: clean(body.papel, 40) || "Corretor",
+        slaDays: Number.isFinite(Number(body.slaDias)) ? Math.max(0, Math.trunc(Number(body.slaDias))) : 3,
+        resale: body.resale === true,
+        requestId,
+      });
+      if ("internalError" in resultado && resultado.internalError) console.error("esteira_etapa_criacao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     if (action === "updateStage") {
       const id = clean(body.stageId, 60);
