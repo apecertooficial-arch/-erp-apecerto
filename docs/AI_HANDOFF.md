@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 11:02 BRT
+
+- Substituição de anexos entregue pela PR #289 no build
+  `ede3cfbbe18e036bf7a23d3bfe191c9c2f547047`. A Esteira e a documentação
+  abriram sem erro e exibiram os 10 controles de anexo. Não existe anexo
+  legítimo ligado a processo para acionar “Substituir” sem fabricar dado
+  comercial; a produção preservou zero fixtures e o único anexo legado órfão.
+- A próxima falha comprovada estava em excluir etapas: a API contava processos
+  e desativava a etapa em operações separadas. Uma venda podia entrar na etapa
+  entre as duas operações e ficar vinculada a uma configuração inativa.
+- A migration `esteira_etapa_remocao_atomica` está aplicada. A RPC idempotente
+  `esteira_etapa_remover` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. Um trigger também `SECURITY INVOKER` bloqueia a linha da etapa ao
+  inserir ou mover processos, serializando a entrada com a exclusão.
+- A prova autenticada desativou e auditou uma fixture, repetiu sem duplicar,
+  bloqueou request conflitante, preservou etapa com vendas e impediu um processo
+  de entrar na etapa inativa. O `ROLLBACK` deixou 10 etapas ativas e zero
+  resíduo. Advisors não citam os objetos novos. Os 1.219 testes, TypeScript,
+  lint sem erros e build Vinext passaram; faltam PR/CI, deploy e aceite
+  produtivo sem excluir etapa real.
+
 ## Estado verificado em 24/09/2026, 10:52 BRT
 
 - Upload manual entregue pela PR #288 no build
