@@ -5,6 +5,7 @@ import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
 import { saveSalesConditionsAtomic } from "../app/api/crm/sales-conditions-rpc.ts";
 import { addSalesObservationAtomic } from "../app/api/crm/sales-observation-rpc.ts";
+import { decideSalesRequestAtomic } from "../app/api/crm/sales-request-decision-rpc.ts";
 import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
@@ -154,6 +155,44 @@ test("migration conecta venda, negócio, processo e auditoria em uma transação
   assert.match(sql, /'idempotente',true/);
   assert.match(sql, /revoke all on function public\.esteira_venda_criar\(jsonb\) from public,anon/);
   assert.match(sql, /grant execute on function public\.esteira_venda_criar\(jsonb\) to authenticated,service_role/);
+});
+
+test("decisão da solicitação usa uma RPC idempotente e conserva o request no retry", async () => {
+  const inicio = api.indexOf('if (action === "aprovarSolicitacao" || action === "recusarSolicitacao")');
+  const fim = api.indexOf('// ===== Negociação:', inicio);
+  const decidir = api.slice(inicio, fim);
+  assert.match(decidir, /decideSalesRequestAtomic/);
+  assert.doesNotMatch(decidir, /\.rpc\("(?:aprovar_solicitacao|recusar_solicitacao)"/);
+  assert.match(ui, /const decisionRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: aprovar \? "aprovarSolicitacao" : "recusarSolicitacao", id, motivo: motivo \|\| "", requestId/);
+
+  const client = clienteFalso({ data: { solicitacao_id: "s-1", status: "aprovada", venda_id: "v-1", processo_id: "p-1", idempotente: false }, error: null });
+  const response = await decideSalesRequestAtomic(client, { requestId: "req-3", requestIdToDecide: "s-1", approve: true, reason: null });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_solicitacao_decidir", args: {
+    p_id: "s-1", p_aprovar: true, p_motivo: null, p_request_id: "req-3",
+  } }]);
+  assert.deepEqual(response.body, { success: true, requestId: "s-1", status: "aprovada", saleId: "v-1", processId: "p-1", idempotent: false });
+});
+
+test("migration serializa aprovação, venda, processo, negócio e auditoria", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924153000_esteira_solicitacao_decisao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists decisao_request_id uuid/);
+  assert.match(sql, /create unique index if not exists venda_solicitacoes_decisao_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_solicitacao_decidir/);
+  assert.match(sql, /create policy vsol_decide_manage/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.venda_solicitacoes[\s\S]*for update/);
+  assert.match(sql, /from public\.negocios[\s\S]*for update/);
+  assert.match(sql, /insert into public\.vendas/);
+  assert.match(sql, /update public\.negocios/);
+  assert.match(sql, /insert into public\.venda_processos/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /create or replace function public\.aprovar_solicitacao/);
+  assert.match(sql, /public\.esteira_solicitacao_decidir\(p_id,true,null,gen_random_uuid\(\)\)/);
+  assert.match(sql, /grant execute on function public\.esteira_solicitacao_decidir\(uuid,boolean,text,uuid\) to authenticated,service_role/);
+  const hardening = readFileSync(new URL("../supabase/migrations/20260924154500_esteira_solicitacao_decisao_invoker.sql", import.meta.url), "utf8");
+  assert.match(hardening, /create policy vsol_decide_manage/);
+  assert.match(hardening, /alter function public\.esteira_solicitacao_decidir\(uuid,boolean,text,uuid\)\s+security invoker/);
 });
 
 test("devolver venda usa uma RPC para processo, negócio e auditoria", async () => {
