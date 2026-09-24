@@ -9,6 +9,7 @@ import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 import { createSalesStageAtomic } from "../app/api/crm/sales-stage-create-rpc.ts";
 import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
 import { confirmSalesTriageAtomic } from "../app/api/crm/sales-triage-confirm-rpc.ts";
+import { registerSalesBatchAttachmentsAtomic } from "../app/api/crm/sales-batch-attachment-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
@@ -281,6 +282,36 @@ test("migration confirma triagem e grava trilha na mesma transação", () => {
   assert.match(sql, /update public\.esteira_anexos/);
   assert.match(sql, /insert into public\.esteira_anexo_eventos/);
   assert.match(sql, /grant execute on function public\.esteira_anexo_triagem_confirmar\(uuid,text,text,boolean,uuid\) to authenticated,service_role/);
+});
+
+test("upload em lote usa uma RPC para anexos e trilha", async () => {
+  const inicio = api.indexOf('if (action === "addAnexoLote")');
+  const fim = api.indexOf('if (action === "classificarLote")', inicio);
+  const lote = api.slice(inicio, fim);
+  assert.match(lote, /registerSalesBatchAttachmentsAtomic/);
+  assert.doesNotMatch(lote, /\.from\("esteira_anexos"\)\.insert/);
+  assert.doesNotMatch(lote, /trilha\(/);
+  assert.match(ui, /action: "addAnexoLote", processId: process\.id, loteId, etapaSlug: process\.etapa, arquivos: enviados/);
+
+  const arquivos = [{ nome: "RG.pdf", path: "esteira/p-1/_lote/l-1/RG.pdf", mime: "application/pdf", tamanho: 50 }];
+  const client = clienteFalso({ data: { lote_id: "l-1", anexos: [{ id: "a-1", nome: "RG.pdf" }], idempotente: false }, error: null });
+  const response = await registerSalesBatchAttachmentsAtomic(client, {
+    processId: "p-1", batchId: "l-1", stageSlug: null, files: arquivos,
+  });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_anexo_lote_registrar", args: {
+    p_processo_id: "p-1", p_lote_id: "l-1", p_etapa_slug: null, p_arquivos: arquivos,
+  } }]);
+  assert.deepEqual(response.body, { success: true, loteId: "l-1", anexos: [{ id: "a-1", nome: "RG.pdf" }], idempotent: false });
+});
+
+test("migration registra lote e trilha na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924103000_esteira_anexo_lote_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists esteira_anexo_eventos_upload_lote_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_anexo_lote_registrar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /insert into public\.esteira_anexos/);
+  assert.match(sql, /insert into public\.esteira_anexo_eventos/);
+  assert.match(sql, /grant execute on function public\.esteira_anexo_lote_registrar\(uuid,uuid,text,jsonb\) to authenticated,service_role/);
 });
 
 test("reordenação das etapas usa uma RPC para a sequência completa", async () => {

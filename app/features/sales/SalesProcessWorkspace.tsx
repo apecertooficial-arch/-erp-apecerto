@@ -368,7 +368,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
           if (upErr) throw new Error(`${file.name}: ${upErr.message}`);
           enviados.push({ nome: file.name, path, mime: file.type, tamanho: file.size });
         }
-        await api({ action: "addAnexoLote", processId: process.id, negocioId: process.negocio_id, loteId, arquivos: enviados });
+        await api({ action: "addAnexoLote", processId: process.id, loteId, etapaSlug: process.etapa, arquivos: enviados });
         setLoteFase("lendo");
         const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "classificarLote", processId: process.id, loteId }) });
         const j = await r.json() as { error?: string; classificados?: number; triagem?: number; processados?: number };
