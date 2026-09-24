@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 23:04 BRT
+
+- Oitava fatia da decisão 29 entregue pela PR #272 no build
+  `5dc50773ae0a5f7269c73e05071a20f3c5f7ceb6`. Produção autenticada confirmou
+  a comissão com repasse/caixa desabilitada e marcada “movimento vinculado”,
+  enquanto três comissões sem movimento da venda de controle seguem editáveis.
+- Nona lacuna reproduzida: criação/edição da agenda de repasse ainda escrevia
+  direto em `pagamentos_comissao`, aceitava linha sem comissão, não auditava e
+  podia duplicar no retry ou ultrapassar a parte distribuída.
+- A migration `financeiro_repasse_agenda_atomica` está aplicada. A nova função
+  é `SECURITY INVOKER`, `authenticated` executa e `anon` não; ela canoniza o
+  vínculo pela venda/destinatário/papel, limita valor e ordem e congela pago.
+- Provas pré e pós-migration criaram, repetiram, editaram e excluíram fixture,
+  bloquearam ordem duplicada, total excessivo e edição de repasse pago, geraram
+  três auditorias na prova integral e terminaram em `ROLLBACK`.
+- Produção permaneceu com 3 repasses e 368 caixas, sem fixture nem auditoria
+  residual. O repasse sem comissão, a ordem histórica duplicada e o total antigo
+  acima da comissão não foram alterados. Os 1.186 testes, TypeScript, lint sem
+  erros e build Vinext passaram. Próximo passo: PR/CI, merge e aceite pós-deploy
+  somente de leitura.
+
 ## Estado verificado em 23/09/2026, 22:47 BRT
 
 - Sétima fatia da decisão 29 entregue pela PR #271 no build

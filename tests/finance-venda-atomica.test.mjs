@@ -11,7 +11,7 @@ import {
   editarVendaAtomica,
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
-import { decidirRepasseAtomico, excluirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
+import { decidirRepasseAtomico, excluirRepasseAtomico, salvarRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/finance/recebimento-rpc.ts";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "../app/api/finance/comissao-rpc.ts";
@@ -481,9 +481,31 @@ test("repasse só vira pago pelo comando que também movimenta o caixa", () => {
   const savePayout = rota.slice(inicio, fim);
   assert.match(savePayout, /status: "previsto"/);
   assert.match(savePayout, /data_pagamento: null/);
-  assert.match(savePayout, /\.neq\("status", "pago"\)/);
-  assert.match(savePayout, /repasse_ja_pago/);
+  assert.match(savePayout, /salvarRepasseAtomico/);
+  assert.doesNotMatch(savePayout, /\.from\("pagamentos_comissao"\)\.(?:insert|update|delete)/);
   assert.doesNotMatch(savePayout, /body\.status/);
+});
+
+test("criação e edição da agenda de repasse usam uma única RPC", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "savePayout")');
+  const fim = rota.indexOf('if (action === "settlePayout")', inicio);
+  const salvar = rota.slice(inicio, fim);
+  assert.equal((salvar.match(/salvarRepasseAtomico\(/g) ?? []).length, 2);
+  assert.doesNotMatch(salvar, /\.from\("pagamentos_comissao"\)\.(?:insert|update|delete)/);
+  assert.match(salvar, /requestId/);
+
+  const payload = { venda_id: "v-1", comissao_id: "c-1", beneficiario_id: "u-1", papel: "corretor", valor: 100, ordem: 1, data_prevista: "2026-10-01", request_id: "req-1" };
+  const cliente = clienteFalso({ data: { ok: true, repasse_id: "p-1", comissao_id: "c-1", criado: true, idempotente: false }, error: null });
+  const resposta = await salvarRepasseAtomico(cliente, null, payload);
+  assert.deepEqual(cliente.chamadas, [{ fn: "financeiro_repasse_salvar", args: { p_repasse_id: null, payload } }]);
+  assert.deepEqual(resposta.body, { success: true, payoutId: "p-1", commissionId: "c-1", created: true, idempotente: false });
+
+  const bloqueado = clienteFalso({ data: null, error: { code: "P0001", message: "REPASSE_MOVIMENTO_ATIVO: Desfaça a baixa antes de editar o repasse." } });
+  const falha = await salvarRepasseAtomico(bloqueado, "p-1", payload);
+  assert.equal(falha.status, 409);
+  assert.equal(falha.body.error, "Desfaça a baixa antes de editar o repasse.");
+  assert.ok(!("parcial" in falha.body));
 });
 
 test("baixa e reabertura de repasse usam uma única RPC atômica", async () => {
@@ -554,6 +576,33 @@ test("migration do repasse trava linhas, sincroniza caixa e audita na mesma fun�
   assert.match(sql, /'idempotente', true/);
   assert.match(sql, /revoke all on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) from public, anon/);
   assert.match(sql, /grant execute on function public\.financeiro_decidir_repasse\(uuid, boolean, date\) to authenticated, service_role/);
+});
+
+test("migration da agenda de repasse canoniza comissão, limita total e audita", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923235500_financeiro_repasse_agenda_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists pagamentos_comissao_request_id_uidx/);
+  assert.match(sql, /create or replace function public\.financeiro_repasse_salvar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.vendas where id=v_venda_id for update/);
+  assert.match(sql, /from public\.comissoes[\s\S]+for update/);
+  assert.match(sql, /from public\.pagamentos_comissao[\s\S]+for update/);
+  assert.match(sql, /REPASSE_COMISSAO_INVALIDA:/);
+  assert.match(sql, /REPASSE_ORDEM_DUPLICADA:/);
+  assert.match(sql, /v_soma_depois>v_comissao\.valor_final and v_soma_depois>v_soma_antes/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_repasse_salvar\(uuid,jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_repasse_salvar\(uuid,jsonb\) to authenticated,service_role/);
+});
+
+test("modal preserva repasses existentes, cria requestId e congela linha paga", () => {
+  const modal = readFileSync(new URL("../app/features/finance/VendaModal.tsx", import.meta.url), "utf8");
+  assert.match(modal, /type PayoutRow = \{ id\?: string; requestId\?: string;/);
+  assert.match(modal, /const agendadoDe =/);
+  assert.match(modal, /setPayouts\(\(atuais\) => \[\.\.\.atuais, \.\.\.novos\]\)/);
+  assert.match(modal, /action: "savePayout", requestId: linha\.requestId/);
+  assert.equal((modal.match(/disabled=\{somenteLeitura \|\| linha\.status === "pago"\}/g) ?? []).length, 3);
+  assert.match(modal, /l\.reduce\(\(maior, linha\) => Math\.max\(maior, linha\.ordem\), 0\) \+ 1/);
 });
 
 test("migration exclui repasse e caixa ligados na mesma transação auditada", () => {
