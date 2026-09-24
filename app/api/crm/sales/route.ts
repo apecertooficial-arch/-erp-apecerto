@@ -8,6 +8,7 @@ import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales-stage-create-rpc";
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
+import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -795,18 +796,13 @@ export async function PATCH(request: Request) {
     if (!blocoTriagem) return Response.json({ error: "Grupo de documento inválido." }, { status: 422 });
     const gTriagem = await guardBloco(auth, String(antes.processo_ref), blocoTriagem);
     if (gTriagem.deny) return gTriagem.deny;
-    const corrigido = antes ? (antes.ia_grupo !== grupo || (antes.ia_doc_nome ?? "") !== docNome) : false;
-    const { error } = await auth.supabase.from("esteira_anexos").update({
-      grupo, doc_nome: docNome || null, status: "anexado",
-      obrigatorio: body.obrigatorio === true,
-      confirmado_por: auth.user.id, confirmado_em: new Date().toISOString(),
-    } as never).eq("id", id);
-    if (error) return falhaEsteira(error, "confirmar_triagem");
-    await trilha(auth, corrigido ? "corrigido" : "confirmado", {
-      anexoId: id, processoRef: (antes?.processo_ref as string) ?? null,
-      detalhe: { arquivo: antes?.nome ?? null, sugerido: { grupo: antes?.ia_grupo ?? null, doc_nome: antes?.ia_doc_nome ?? null, confianca: antes?.ia_confianca ?? null }, aplicado: { grupo, doc_nome: docNome || null } },
+    const requestId = clean(body.requestId, 60);
+    if (!requestId) return Response.json({ error: "Informe a solicitação da confirmação." }, { status: 422 });
+    const resultado = await confirmSalesTriageAtomic(auth.supabase as unknown as SalesTriageConfirmRpcClient, {
+      attachmentId: id, group: grupo, documentName: docNome, required: body.obrigatorio === true, requestId,
     });
-    return Response.json({ success: true });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_triagem_confirmacao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   // ===== Exclusão definitiva da venda (admin e diretor) =====

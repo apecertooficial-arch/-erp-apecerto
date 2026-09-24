@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 81,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar criação atômica das etapas da Esteira",
-  lastCheckpoint: "PR #283 entregue no build 0350b3c: reordenar etapas agora troca a sequência inteira em uma transação idempotente; os controles produtivos foram inspecionados sem mover etapa e o banco preservou as ordens 1–10. Nova fatia em prova: duas criações ainda podiam reservar a mesma próxima ordem. A nova RPC serializa criação e reordenação, reserva slug e ordem, audita e suporta retry; migration e prova authenticated com rollback passaram sem resíduo.",
-  lastCheckpointAt: "2026-09-24T01:54:00-03:00",
-  lastCommitSent: "0350b3c",
-  productionCommit: "0350b3c47733c8e6887e58f25ab7da1be82cb05d",
+  currentTask: "Publicar e aceitar confirmação atômica da triagem documental",
+  lastCheckpoint: "PR #284 entregue no build 4f6d963: criar etapa agora reserva slug e ordem e audita numa transação idempotente; o formulário produtivo abriu e fechou sem criar etapa e o banco preservou as ordens 1–10. Nova fatia em prova: confirmar a triagem alterava o anexo antes da trilha best-effort. A nova RPC une confirmação/correção e evento, autoriza pela etapa e suporta retry; migration e prova authenticated com rollback passaram sem resíduo.",
+  lastCheckpointAt: "2026-09-24T09:57:00-03:00",
+  lastCommitSent: "4f6d963",
+  productionCommit: "4f6d9632aee78cce79b84e6c5c104d4894abf907",
   latestDeliveries: [
+    "PR #284 publicada: criar etapa passou a reservar slug e ordem e registrar auditoria numa transação idempotente; o formulário foi aceito sem criar etapa real.",
     "PR #283 publicada: reordenar etapas passou a trocar a sequência completa em uma transação auditada e idempotente; os controles foram aceitos sem mover etapa real.",
     "PR #282 publicada: revisar status de documento e registrar a trilha agora é uma transação idempotente; a aba foi aceita sem alterar o anexo real.",
     "PR #281 publicada: salvar, adicionar e remover partes da Esteira sincronizam pessoa, flag de cônjuge e auditoria numa transação idempotente; a aba foi aceita sem mutação real.",
@@ -106,7 +107,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a criação atômica das etapas, acompanhar CI/deploy e aceitar apenas o formulário de configuração, sem criar etapa real. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a confirmação atômica da triagem documental, acompanhar CI/deploy e aceitar apenas a tela com os dados atuais, sem classificar anexo real. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
