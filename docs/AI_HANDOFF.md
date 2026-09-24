@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 23:36 BRT
+
+- Décima fatia da decisão 29 entregue pela PR #274 no build
+  `8a0550c5d5146c0196a60b9398d32274e6f1ca09`. Produção autenticada exibiu a
+  importação histórica com 36 linhas, saldo conferido e nenhuma decisão pendente.
+- Décima primeira lacuna reproduzida: a rota criava o cabeçalho da importação e
+  só depois gravava as linhas; falha de contexto ou upsert deixava estado parcial
+  e reenvio do arquivo podia criar cabeçalho órfão.
+- A migration `financeiro_extrato_importacao_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. O SHA-256 do conjunto
+  de impressões deduplica retry/reenvio completo e sobreposição parcial é bloqueada.
+- Provas pré e pós-migration criaram cabeçalho/linhas/auditoria, repetiram o mesmo
+  conteúdo, bloquearam sobreposição parcial e reconheceram a importação histórica
+  canônica. Tudo terminou em `ROLLBACK`.
+- Produção permaneceu com 1 importação, 36 linhas e 0 fixtures/auditorias de prova;
+  o histórico continua com fingerprint nulo, sem backfill. Os advisors não citam
+  a função ou índice novos. Os 1.190 testes, TypeScript, lint sem erros e build
+  Vinext passaram. Próximo passo: PR/CI, merge e aceite pós-deploy somente de
+  leitura.
+
 ## Estado verificado em 23/09/2026, 23:23 BRT
 
 - Nona fatia da decisão 29 entregue pela PR #273 no build
