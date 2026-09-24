@@ -288,6 +288,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const [comRequestId, setComRequestId] = useState(() => crypto.randomUUID());
   const documentReviewRequests = useRef(new Map<string, string>());
   const triageConfirmRequests = useRef(new Map<string, string>());
+  const attachmentRemoveRequests = useRef(new Map<string, string>());
   // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
   const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
   const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
@@ -313,7 +314,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     if (upErr) throw new Error(upErr.message);
     await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: process.etapa, docNome, obrigatorio, nome: file.name, path, mime: file.type, tamanho: file.size });
   });
-  const removeAnexo = (id: string) => run(() => api({ action: "removeAnexo", anexoId: id }));
+  const removeAnexo = (id: string) => { const requestId = attachmentRemoveRequests.current.get(id) ?? crypto.randomUUID(); attachmentRemoveRequests.current.set(id, requestId); return run(async () => { await api({ action: "removeAnexo", anexoId: id, requestId }); attachmentRemoveRequests.current.delete(id); }); };
   const requestDocumento = (key: string) => { const atual = documentReviewRequests.current.get(key); if (atual) return atual; const novo = crypto.randomUUID(); documentReviewRequests.current.set(key, novo); return novo; };
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } const key = JSON.stringify([a.id, status, motivo]); void run(async () => { await api({ action: "docStatus", anexoId: a.id, status, motivo, requestId: requestDocumento(key) }); documentReviewRequests.current.delete(key); }); };
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };

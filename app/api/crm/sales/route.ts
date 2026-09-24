@@ -10,6 +10,7 @@ import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
 import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
 import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
+import { removeSalesAttachmentAtomic, type SalesAttachmentRemoveRpcClient } from "../sales-attachment-remove-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -292,7 +293,8 @@ export async function PATCH(request: Request) {
   if (action === "addAnexo" || action === "removeAnexo") {
     if (action === "removeAnexo") {
       const id = clean(body.anexoId, 60);
-      if (!id) return Response.json({ error: "Anexo inválido." }, { status: 422 });
+      const requestId = clean(body.requestId, 60);
+      if (!id || !requestId) return Response.json({ error: "Anexo ou solicitação inválida." }, { status: 422 });
       const { data: antes } = await auth.supabase.from("esteira_anexos").select("processo_ref,grupo,etapa_slug,doc_nome,nome,path,status").eq("id", id).maybeSingle();
       if (antes?.processo_ref) {
         if (antes.etapa_slug && antes.doc_nome && !antes.grupo) {
@@ -305,10 +307,16 @@ export async function PATCH(request: Request) {
           if (g.deny) return g.deny;
         }
       }
-      const { error } = await auth.supabase.from("esteira_anexos").delete().eq("id", id);
-      if (error) return falhaEsteira(error, "remover_anexo");
-      await trilha(auth, "removido", { processoRef: (antes?.processo_ref as string) ?? null, detalhe: antes ?? { id } });
-      return Response.json({ success: true });
+      const resultado = await removeSalesAttachmentAtomic(auth.supabase as unknown as SalesAttachmentRemoveRpcClient, { attachmentId: id, requestId });
+      if ("internalError" in resultado && resultado.internalError) console.error("esteira_anexo_remocao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+      const filePath = "filePath" in resultado && typeof resultado.filePath === "string" ? resultado.filePath : null;
+      if (resultado.status !== 200 || !filePath) return Response.json(resultado.body, { status: resultado.status });
+      const { error: storageError } = await auth.supabase.storage.from("esteira-docs").remove([filePath]);
+      if (storageError) {
+        console.error("esteira_anexo_storage_remocao_falhou", { codigo: storageError.statusCode ?? "desconhecido" });
+        return Response.json({ error: "O documento saiu da venda, mas o arquivo ainda precisa ser removido. Tente novamente." }, { status: 502 });
+      }
+      return Response.json(resultado.body, { status: resultado.status });
     }
     const processo_ref = clean(body.processId, 60);
     const path = clean(body.path, 400);
