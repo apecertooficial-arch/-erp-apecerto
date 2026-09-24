@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const sqlUrl = new URL("../docs/erp-reestruturacao/P1_VISITA_FEEDBACK_AUDIO_DRAFT.sql", import.meta.url);
+const sqlUrl = new URL("../supabase/migrations/20260924170000_feedback_visita_audio_privado.sql", import.meta.url);
 const edgeUrl = new URL("../supabase/functions/f2-feedback-visita-transcrever/index.ts", import.meta.url);
 const apiUrl = new URL("../app/api/agenda/route.ts", import.meta.url);
 const componentUrl = new URL("../app/features/calendar/FeedbackVisitaAudio.tsx", import.meta.url);
@@ -50,9 +50,9 @@ test("transcrição é service-only, idempotente e preserva falha explícita", (
 });
 
 test("Edge valida segredo, hash e tamanho antes de enviar à transcrição", () => {
-  assert.match(edge, /x-internal-secret/);
+  assert.match(edge, /x-cron-secret/);
   assert.match(edge, /timingSafeEqual/);
-  assert.match(edge, /VISITA_FEEDBACK_TRANSCRICAO_SECRET/);
+  assert.match(edge, /CRON_SECRET/);
   assert.match(edge, /const UUID = \/\^\[0-9a-f\]/);
   assert.match(edge, /storage\.from\(BUCKET\)\.download/);
   assert.match(edge, /crypto\.subtle\.digest\("SHA-256"/);
@@ -90,18 +90,20 @@ test("desktop e aplicativo compartilham gravador fail-closed e exigem confirmaç
   assert.match(mobile, /visitId=\{resultadoPendente\.id\}/);
 });
 
-test("dispatcher é service-only, limitado, desligado por padrão e lê segredos do Vault", () => {
+test("dispatcher é service-only, limitado, desligado por padrão e reutiliza o segredo da Sara", () => {
   assert.match(sql, /f2_visita_feedback_audio_config/);
   assert.match(sql, /values\(true,false,5\)/i);
   assert.match(sql, /f2_feedback_audio_tick/);
   assert.match(sql, /if v_cfg\.enabled is not true then/i);
-  assert.match(sql, /visita_feedback_transcricao_url/);
-  assert.match(sql, /visita_feedback_transcricao_gateway_jwt/);
-  assert.match(sql, /visita_feedback_transcricao_secret/);
+  assert.match(sql, /ncrm_sara_cron_secret/);
   assert.match(sql, /vault\.decrypted_secrets/);
   assert.match(sql, /net\.http_post/);
-  assert.match(sql, /authorization.*bearer/is);
+  assert.match(sql, /x-cron-secret/);
   assert.match(sql, /limit v_cfg\.lote/i);
   assert.match(sql, /grant execute on function public\.f2_feedback_audio_tick\(\) to service_role/i);
   assert.doesNotMatch(sql, /grant execute on function public\.f2_feedback_audio_tick\(\)[^\n]*authenticated/i);
+});
+
+test("reserva fica fechada até o cutover explícito", () => {
+  assert.match(sql, /enabled\) then[\s\S]*'audio_indisponivel'/i);
 });

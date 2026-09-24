@@ -1,8 +1,6 @@
 # Trace — visita, feedback e cobrança
 
-Atualizado em: 2026-09-20
-Branch de promoção: `codex/deploy-visita-feedback-20260920`
-Base: `48fcce626d726a8ed71da6c11433834acb003dea`
+Atualizado em: 2026-09-24
 
 ## Falhas reproduzidas
 
@@ -31,13 +29,14 @@ Base: `48fcce626d726a8ed71da6c11433834acb003dea`
 - performance por corretor só considera feedback estruturado; histórico legado
   não recebe nota inventada.
 
-## Contratos de banco fora de migrations
+## Promoção do áudio
 
-`P0_VISITA_OWNER_COBRANCA_DRAFT.sql` e
-`P1_VISITA_FEEDBACK_AUDIO_DRAFT.sql` permanecem fora de
-`supabase/migrations`. Eles documentam ownership, cobrança persistente, Storage
-privado, idempotência e retry, mas não são aplicados por este pacote. Migration,
-Edge Function e configuração remota exigem gates e autorização próprios.
+`P0_VISITA_OWNER_COBRANCA_DRAFT.sql` permanece fora de migrations. O contrato
+de áudio foi promovido para
+`20260924170000_feedback_visita_audio_privado.sql`, ainda desligado por padrão.
+A própria reserva recusa upload antes do cutover. O dispatcher reutiliza o
+segredo interno já usado pelos runners da Sara, sem criar credencial paralela,
+e continua service-only, limitado e auditável.
 
 ## Evidência revalidada sobre o `main` atual
 

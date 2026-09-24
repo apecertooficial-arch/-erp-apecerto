@@ -1,5 +1,5 @@
 // Transcrição privada do feedback de visita.
-// Deploy futuro: verify_jwt=true; chamada somente pelo motor com segredo do Vault.
+// Chamada somente pelo motor com o mesmo segredo do Vault usado pelos runners da Sara.
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.2";
@@ -33,8 +33,8 @@ const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)]
 
 Deno.serve(async (request: Request) => {
   if (request.method!=="POST") return json({ok:false,erro:"metodo_invalido"},405);
-  const segredoEsperado = Deno.env.get("VISITA_FEEDBACK_TRANSCRICAO_SECRET") ?? "";
-  const segredoRecebido = request.headers.get("x-internal-secret") ?? "";
+  const segredoEsperado = Deno.env.get("CRON_SECRET") ?? "";
+  const segredoRecebido = request.headers.get("x-cron-secret") ?? "";
   if (!segredoEsperado || !segredoRecebido || !await timingSafeEqual(segredoEsperado,segredoRecebido)) {
     return json({ok:false,erro:"nao_autorizado"},401);
   }
