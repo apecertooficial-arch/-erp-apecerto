@@ -5,6 +5,7 @@ import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-r
 import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
 import { saveSalesConditionsAtomic, type SalesConditionsRpcClient } from "../sales-conditions-rpc";
 import { addSalesObservationAtomic, type SalesObservationRpcClient } from "../sales-observation-rpc";
+import { decideSalesRequestAtomic, type SalesRequestDecisionRpcClient } from "../sales-request-decision-rpc";
 import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
@@ -568,24 +569,19 @@ export async function PATCH(request: Request) {
     if (!r.ok) return Response.json({ error: r.erro === "ja_solicitado" ? "Já existe uma solicitação pendente para este negócio." : r.erro === "ja_tem_venda" ? "Este negócio já virou venda." : r.erro === "sem_permissao_neste_negocio" ? "Você só pode enviar negócios sob sua responsabilidade." : (r.erro || "Não foi possível solicitar.") }, { status: 422 });
     return Response.json({ success: true });
   }
-  if (action === "aprovarSolicitacao") {
-    const id = String(body.id || "");
-    if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("aprovar_solicitacao", { p_id: id });
-    if (error) return falhaEsteira(error, "aprovar_solicitacao");
-    const r = (data ?? {}) as { ok?: boolean; erro?: string };
-    if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode aprovar." : r.erro === "ja_decidida" ? "Esta solicitação já foi decidida." : (r.erro || "Não foi possível aprovar.") }, { status: 422 });
-    return Response.json({ success: true, saleId: (data as { venda_id?: string }).venda_id });
-  }
-  if (action === "recusarSolicitacao") {
-    const id = String(body.id || "");
-    const motivo = String(body.motivo || "").slice(0, 300);
-    if (!id) return Response.json({ error: "Solicitação inválida." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("recusar_solicitacao", { p_id: id, p_motivo: motivo });
-    if (error) return falhaEsteira(error, "recusar_solicitacao");
-    const r = (data ?? {}) as { ok?: boolean; erro?: string };
-    if (!r.ok) return Response.json({ error: r.erro === "sem_permissao" ? "Apenas admin/gestor pode recusar." : (r.erro || "Não foi possível recusar.") }, { status: 422 });
-    return Response.json({ success: true });
+  if (action === "aprovarSolicitacao" || action === "recusarSolicitacao") {
+    const id = clean(body.id, 60);
+    const requestId = clean(body.requestId, 60);
+    const motivo = clean(body.motivo, 300) || null;
+    if (!id || !requestId) return Response.json({ error: "Solicitação ou identificador inválido." }, { status: 422 });
+    const resultado = await decideSalesRequestAtomic(auth.supabase as unknown as SalesRequestDecisionRpcClient, {
+      requestIdToDecide: id,
+      approve: action === "aprovarSolicitacao",
+      reason: motivo,
+      requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_solicitacao_decisao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
   // ===== Negociação: status de documento (revisão), condições comerciais, comissão, observações =====
   if (action === "docStatus") {
