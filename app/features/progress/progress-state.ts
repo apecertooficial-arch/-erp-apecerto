@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 81,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar revisão e trilha atômicas dos documentos da Esteira",
-  lastCheckpoint: "PR #281 entregue no build 9c6dfdd: salvar, adicionar e remover partes agora sincronizam a flag de cônjuge e auditoria na mesma transação; a aba produtiva abriu e fechou sem salvar e o banco permaneceu sem divergências. Nova fatia em prova: revisão de documento e trilha agora usam uma RPC idempotente. A falha parcial anterior foi reproduzida, a migration foi aplicada e a prova authenticated com rollback passou sem resíduo.",
-  lastCheckpointAt: "2026-09-24T01:27:00-03:00",
-  lastCommitSent: "9c6dfdd",
-  productionCommit: "9c6dfdd6fca34961c25484acf9a470f23d71f309",
+  currentTask: "Publicar e aceitar reordenação atômica das etapas da Esteira",
+  lastCheckpoint: "PR #282 entregue no build 67fe189: revisão de documento e trilha agora são uma transação idempotente; a documentação produtiva abriu e fechou sem ação e o banco preservou o anexo real. Nova fatia em prova: a reordenação linha a linha colidia com o índice único. A nova RPC troca a sequência completa, audita e suporta retry; migration e prova authenticated com rollback passaram sem resíduo.",
+  lastCheckpointAt: "2026-09-24T01:36:00-03:00",
+  lastCommitSent: "67fe189",
+  productionCommit: "67fe189d0ad01b5d8a967287d311c9d273742189",
   latestDeliveries: [
+    "PR #282 publicada: revisar status de documento e registrar a trilha agora é uma transação idempotente; a aba foi aceita sem alterar o anexo real.",
     "PR #281 publicada: salvar, adicionar e remover partes da Esteira sincronizam pessoa, flag de cônjuge e auditoria numa transação idempotente; a aba foi aceita sem mutação real.",
     "PR #280 publicada: cabeçalho e parcelas da comissão da Esteira passaram a ser salvos juntos, com auditoria, retry idempotente e ordem única; a aba foi aceita sem mutação real.",
     "PR #279 publicada: devolver uma venda ao atendimento agora atualiza negócio, processo e auditoria juntos; retry é idempotente e o modal foi aceito sem executar devolução real.",
@@ -104,7 +105,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a revisão atômica de documentos, acompanhar CI/deploy e aceitar a tela somente de leitura, sem alterar status real. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a reordenação atômica das etapas, acompanhar CI/deploy e aceitar apenas os controles de configuração, sem mover etapa real. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

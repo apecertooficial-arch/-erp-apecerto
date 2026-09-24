@@ -6,6 +6,7 @@ import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sal
 import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
+import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -441,12 +442,11 @@ export async function PATCH(request: Request) {
     }
     if (action === "reorderStages") {
       const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((value) => clean(value, 60)).filter(Boolean) : [];
-      if (!ids.length) return Response.json({ error: "Ordem inválida." }, { status: 422 });
-      for (let index = 0; index < ids.length; index += 1) {
-        const { error } = await auth.supabase.from("esteira_etapas").update({ ordem: index + 1 } as never).eq("id", ids[index]);
-        if (error) return falhaEsteira(error, "reordenar_etapas");
-      }
-      return Response.json({ success: true });
+      const requestId = clean(body.requestId, 60);
+      if (ids.length < 2 || !requestId) return Response.json({ error: "Ordem ou solicitação inválida." }, { status: 422 });
+      const resultado = await reorderSalesStagesAtomic(auth.supabase as unknown as SalesStageOrderRpcClient, { stageIds: ids, requestId });
+      if ("internalError" in resultado && resultado.internalError) console.error("esteira_etapas_reordenacao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     if (action === "bulkMoveStage") {
       return Response.json({ error: "Cada venda precisa ser movida individualmente para validar suas pré-condições." }, { status: 409 });
