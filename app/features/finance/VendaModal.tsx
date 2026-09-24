@@ -31,7 +31,7 @@ const PAPEIS: Array<[string, string]> = [["corretor", "Corretor"], ["executivo",
 type DocRow = { nome: string; path: string; bucket: string; uploading?: boolean; error?: string };
 type CommRow = { id?: string; requestId?: string; papel: string; beneficiarioId: string; valor: string };
 type ReceiptRow = { id?: string; numeroParcela: string; valor: string; dataPrevista: string; recebido: boolean };
-type PayoutRow = { id?: string; comissaoId: string | null; beneficiarioId: string; papel: string; valor: string; ordem: number; dataPrevista: string; status: "previsto" | "pago"; dataPagamento: string };
+type PayoutRow = { id?: string; requestId?: string; comissaoId: string | null; beneficiarioId: string; papel: string; valor: string; ordem: number; dataPrevista: string; status: "previsto" | "pago"; dataPagamento: string };
 
 export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, onSave, onDelete }: {
   data: FinanceData;
@@ -109,6 +109,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
   const somaAgendado = payouts.filter((p) => p.status === "previsto").reduce((soma, p) => soma + (Number(p.valor) || 0), 0);
   const faltaAgendar = Math.max(0, somaComissoes - somaRepassado - somaAgendado);
   const repassadoDe = (linha: CommRow) => payouts.filter((p) => p.status === "pago" && ((linha.id && p.comissaoId === linha.id) || (!p.comissaoId && p.beneficiarioId === linha.beneficiarioId && p.papel === linha.papel))).reduce((soma, p) => soma + (Number(p.valor) || 0), 0);
+  const agendadoDe = (linha: CommRow) => payouts.filter((p) => (linha.id && p.comissaoId === linha.id) || (!p.comissaoId && p.beneficiarioId === linha.beneficiarioId && p.papel === linha.papel)).reduce((soma, p) => soma + (Number(p.valor) || 0), 0);
 
   const executar = async (payload: Record<string, unknown>, mensagem: string) => {
     setError(null); setBusy(true);
@@ -173,11 +174,14 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
     const base = commissions.filter((c) => Number(c.valor) > 0 && c.beneficiarioId);
     if (base.length === 0) { setError("Lance as comissões antes de gerar a agenda de repasse."); setStep(2); return; }
     setError(null);
-    setPayouts(base.map((c, indice) => ({
+    const proximaOrdem = payouts.reduce((maior, linha) => Math.max(maior, linha.ordem), 0) + 1;
+    const novos = base.map((c, indice) => ({
+      requestId: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "",
       comissaoId: c.id ?? null, beneficiarioId: c.beneficiarioId, papel: c.papel,
-      valor: String(Number(c.valor) - repassadoDe(c)), ordem: indice + 1,
+      valor: String(Number(c.valor) - agendadoDe(c)), ordem: proximaOrdem + indice,
       dataPrevista: form.dataVenda, status: "previsto" as const, dataPagamento: "",
-    })).filter((linha) => Number(linha.valor) > 0));
+    })).filter((linha) => Number(linha.valor) > 0);
+    setPayouts((atuais) => [...atuais, ...novos]);
   };
 
   const cabecalho = venda
@@ -320,11 +324,11 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
               <span className={faltaAgendar > 0.009 ? "comm-warn" : "comm-ok"}>Pago {brl.format(somaRepassado)} · agendado {brl.format(somaAgendado)}{faltaAgendar > 0.009 ? ` · falta agendar ${brl.format(faltaAgendar)}` : " ✓"}</span>
             </div>
             <p className="nova-venda-hint">Marcar um repasse como pago lança a saída no fluxo de caixa automaticamente. Não lance comissão paga à mão no caixa — o valor seria contado duas vezes.</p>
-            {payouts.map((linha, indice) => <div className={`comm-row venda-payout-row ${linha.status}`} key={linha.id ?? `nova-${indice}`}>
-              <select disabled={somenteLeitura} value={linha.beneficiarioId} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, beneficiarioId: e.target.value } : r))}>
+            {payouts.map((linha, indice) => <div className={`comm-row venda-payout-row ${linha.status}`} key={linha.id ?? linha.requestId ?? `nova-${indice}`}>
+              <select disabled={somenteLeitura || linha.status === "pago"} value={linha.beneficiarioId} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, beneficiarioId: e.target.value } : r))}>
                 <option value="">Quem recebe…</option>{usuarios.map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}
               </select>
-              <select disabled={somenteLeitura} value={linha.papel} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, papel: e.target.value } : r))}>
+              <select disabled={somenteLeitura || linha.status === "pago"} value={linha.papel} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, papel: e.target.value } : r))}>
                 {PAPEIS.map(([id, rotulo]) => <option value={id} key={id}>{rotulo}</option>)}
               </select>
               <input disabled={somenteLeitura || linha.status === "pago"} type="number" step="0.01" placeholder="Valor" value={linha.valor} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, valor: e.target.value } : r))} />
@@ -333,7 +337,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
                 : <input disabled={somenteLeitura} type="date" title="Previsão de pagamento" value={linha.dataPrevista} onChange={(e) => setPayouts((l) => l.map((r, i) => i === indice ? { ...r, dataPrevista: e.target.value } : r))} />}
               <em className={linha.status === "pago" ? "venda-tag ok" : "venda-tag aguardando"}>{linha.status === "pago" ? "Pago" : "A pagar"}</em>
               {!somenteLeitura && editando && <>
-                {!linha.id && <button disabled={busy} title="Salvar repasse" type="button" onClick={() => void executar({ action: "savePayout", saleId, comissaoId: linha.comissaoId, beneficiarioId: linha.beneficiarioId, papel: linha.papel, valor: Number(linha.valor), ordem: linha.ordem, dataPrevista: linha.dataPrevista, status: "previsto" }, "Repasse agendado.")}>✓</button>}
+                {!linha.id && <button disabled={busy} title="Salvar repasse" type="button" onClick={() => void executar({ action: "savePayout", requestId: linha.requestId, saleId, comissaoId: linha.comissaoId, beneficiarioId: linha.beneficiarioId, papel: linha.papel, valor: Number(linha.valor), ordem: linha.ordem, dataPrevista: linha.dataPrevista, status: "previsto" }, "Repasse agendado.")}>✓</button>}
                 {linha.id && linha.status === "previsto" && <button disabled={busy} title="Salvar alterações" type="button" onClick={() => void executar({ action: "savePayout", payoutId: linha.id, saleId, comissaoId: linha.comissaoId, beneficiarioId: linha.beneficiarioId, papel: linha.papel, valor: Number(linha.valor), ordem: linha.ordem, dataPrevista: linha.dataPrevista, status: "previsto" }, "Repasse salvo.")}>✓</button>}
                 {linha.id && <button className="venda-baixar" disabled={busy} type="button" onClick={() => void executar({ action: "settlePayout", payoutId: linha.id, pago: linha.status !== "pago", dataPagamento: linha.dataPagamento || hoje() }, linha.status === "pago" ? "Baixa desfeita e lançamento removido do caixa." : "Repasse pago e lançado no caixa.")}>{linha.status === "pago" ? "↺ desfazer" : "Marcar pago"}</button>}
                 {linha.id && <button className="comm-del" disabled={busy} title="Remover" type="button" onClick={() => void executar({ action: "deletePayout", payoutId: linha.id }, "Repasse removido.")}>×</button>}
@@ -343,7 +347,7 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
             </div>)}
             {payouts.length === 0 && <p className="finance-empty">Nenhum repasse agendado. Gere a agenda a partir das comissões ou adicione linha a linha.</p>}
             {!somenteLeitura && <div className="venda-payout-acoes">
-              <button className="comm-add-btn" type="button" onClick={() => setPayouts((l) => [...l, { comissaoId: null, beneficiarioId: "", papel: "corretor", valor: "", ordem: l.length + 1, dataPrevista: form.dataVenda, status: "previsto", dataPagamento: "" }])}>＋ Adicionar repasse</button>
+              <button className="comm-add-btn" type="button" onClick={() => setPayouts((l) => [...l, { requestId: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "", comissaoId: null, beneficiarioId: "", papel: "corretor", valor: "", ordem: l.reduce((maior, linha) => Math.max(maior, linha.ordem), 0) + 1, dataPrevista: form.dataVenda, status: "previsto", dataPagamento: "" }])}>＋ Adicionar repasse</button>
               <button className="comm-add-btn" type="button" onClick={gerarRepasses}>Gerar a partir das comissões</button>
             </div>}
           </>}

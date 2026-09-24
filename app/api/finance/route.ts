@@ -4,7 +4,7 @@ import { resolveEffectiveAccess, denyIfCannot } from "../../lib/supabase/authz";
 import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, editarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
-import { decidirRepasseAtomico, excluirRepasseAtomico } from "./repasse-rpc";
+import { decidirRepasseAtomico, excluirRepasseAtomico, salvarRepasseAtomico } from "./repasse-rpc";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimento-rpc";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "./comissao-rpc";
@@ -358,13 +358,15 @@ export async function PATCH(request: Request) {
       observacao: clean(body.observacao, 500) || null,
     };
     if (payoutId) {
-      const { data: atualizado, error } = await auth.supabase.from("pagamentos_comissao").update(linha as never).eq("id", payoutId).neq("status", "pago").select("id").maybeSingle();
-      if (error) return falhaFinanceiro(error, "atualizar_repasse");
-      if (!atualizado) return Response.json({ error: "Repasse pago só pode ser alterado depois de desfazer a baixa.", erro: "repasse_ja_pago" }, { status: 409 });
-      return Response.json({ success: true });
+      const resultado = await salvarRepasseAtomico(semTipos(auth.supabase), payoutId, linha);
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_repasse_rpc_falhou", { operacao: "editar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
-    const { data: criado, error } = await auth.supabase.from("pagamentos_comissao").insert(linha as never).select("id").single();
-    return error || !criado ? falhaFinanceiro(error, "criar_repasse") : Response.json({ success: true, payoutId: criado.id });
+    const requestId = clean(body.requestId, 60);
+    if (!requestId) return Response.json({ error: "Identificador da solicitação inválido." }, { status: 422 });
+    const resultado = await salvarRepasseAtomico(semTipos(auth.supabase), null, { ...linha, request_id: requestId });
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_repasse_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "settlePayout") {

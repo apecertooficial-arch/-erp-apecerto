@@ -9,6 +9,11 @@ const STATUS_POR_CODIGO: Record<string, number> = {
   REPASSE_SEM_PERMISSAO: 403,
   REPASSE_NAO_ENCONTRADO: 404,
   REPASSE_INCONSISTENTE: 409,
+  REPASSE_MOVIMENTO_ATIVO: 409,
+  REPASSE_COMISSAO_INVALIDA: 409,
+  REPASSE_ORDEM_DUPLICADA: 409,
+  REPASSE_TOTAL_EXCEDE: 409,
+  REPASSE_REQUEST_CONFLITANTE: 409,
 };
 
 function traduzirErroRepasse(error: RpcErro): RespostaVenda {
@@ -19,6 +24,27 @@ function traduzirErroRepasse(error: RpcErro): RespostaVenda {
   if (error?.code === "PGRST202" || error?.code === "42883") return { status: 503, body: { error: "O financeiro está sendo atualizado. Tente novamente em alguns minutos. Nada foi alterado." } };
   if (error?.code === "22P02") return { status: 422, body: { error: "Repasse ou data de pagamento inválidos. Nada foi alterado." } };
   return { status: 502, body: { error: "Não foi possível atualizar o repasse. Nada foi alterado — tente novamente." } };
+}
+
+export async function salvarRepasseAtomico(
+  cliente: ClienteRpc,
+  payoutId: string | null,
+  payload: Record<string, unknown>,
+): Promise<RespostaVenda & { erroInterno?: RpcErro }> {
+  const { data, error } = await cliente.rpc("financeiro_repasse_salvar", { p_repasse_id: payoutId, payload });
+  if (error) return { ...traduzirErroRepasse(error), erroInterno: error };
+  const resultado = (data ?? {}) as { repasse_id?: string; criado?: boolean; idempotente?: boolean; comissao_id?: string };
+  if (!resultado.repasse_id) return { status: 502, body: { error: "Não foi possível confirmar o repasse. Nada foi alterado — tente novamente." } };
+  return {
+    status: 200,
+    body: {
+      success: true,
+      payoutId: resultado.repasse_id,
+      commissionId: resultado.comissao_id ?? null,
+      created: resultado.criado === true,
+      idempotente: resultado.idempotente === true,
+    },
+  };
 }
 
 export async function decidirRepasseAtomico(
