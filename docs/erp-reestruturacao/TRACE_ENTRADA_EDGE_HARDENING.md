@@ -65,3 +65,15 @@ janela de transição, monitoramento e autorização específica de configuraç�
 - dois registros históricos sanitizados do Site não têm mais fila nem linha em
   `site_leads` e não foram usados como evidência. Nenhuma inferência ou reparo
   automático foi feito sobre eles.
+
+## Evidência da distribuição
+
+No mesmo evento Meta 715:
+
+- o bloco `b11` registrou uma distribuição `ok` e a evidência de elegibilidade
+  no instante da execução;
+- o dono escolhido estava ativo e fazia parte dos 3 candidatos habilitados no
+  snapshot publicado;
+- `leads.corretor_id`, `negocios.corretor_id` e `f2_lead.corretor_id`
+  permaneceram iguais após a conclusão;
+- a verificação foi somente leitura e não redistribuiu cliente.

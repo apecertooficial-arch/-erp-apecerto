@@ -14,7 +14,7 @@ checks do projeto, publicação e confirmação da build.
 | 1 | Entrada Meta/site passa por Make/webhook e chega ao ERP. | Um evento real autorizado é aceito uma vez e aparece na automação correta. | entregue | Produção confirmou as duas origens sem novo disparo: Meta evento 715 → automação 73/fila 38075/v174 → 1 lead, 1 negócio e 1 card; Site evento 427 → automação 42/fila 22750 → `site_leads` e os mesmos três vínculos. A unicidade por automação+identificador impede segunda aceitação. |
 | 2 | A entrada normaliza campos e evita duplicatas. | Repetição do mesmo identificador não cria segundo lead/negócio/card. | entregue | Edge `entrada` v23 normaliza nome/telefone/e-mail e deriva chave estável. Em 24/09, prova produtiva sanitizada com `ROLLBACK` repetiu o mesmo identificador: a segunda chamada reutilizou a única fila e os módulos publicados produziram exatamente 1 lead, 1 negócio e 1 card; o pós-rollback confirmou zero resíduo. |
 | 3 | Automações comerciais são configuráveis e publicadas com versão. | Rascunho não executa; publicação válida executa exatamente o mapa publicado. | entregue | Em 24/09, prova produtiva com `ROLLBACK` recusou o rascunho, publicou um snapshot autorizado, fixou a versão na fila e executou pelo worker somente `Entrada → fim`, apesar de o rascunho apontar para ações comerciais. Resultado: 1 lead, 0 negócios e 0 cards; o pós-rollback zerou automação, versão, fila e entidades da prova. |
-| 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | em prova | O evento real mais recente da automação 73 terminou com dono consistente nas três entidades. |
+| 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | entregue | No evento real 715 da automação 73, o bloco `b11` registrou distribuição `ok` com elegibilidade. O corretor estava ativo e entre os 3 candidatos habilitados do snapshot; lead, negócio e card terminaram com o mesmo dono. A prova foi somente leitura. |
 | 5 | A primeira abordagem sai somente pela instância do corretor dono. | Aceite do provedor não conta como envio; `messages.sent` confirma e entrega é rastreada. | entregue | PR #251 publicada no hash `b560fff`; mobile e desktop mostram “Aceites D-API”, e o evento real mais recente foi aceito, confirmado e entregue pela instância do dono. |
 | 6 | A proteção do dono só vale em visita ou negociação. | Fora desses estados a redistribuição autorizada não é bloqueada por histórico antigo. | entregue | PR #252 publicada no hash `5e1555c`: a regra nova preserva o único estado ativo e libera cinco históricos encerrados; migração, permissões, mobile 390×844 e desktop 1440×900 foram aceitos em produção. |
 | 7 | O corretor pode transferir voluntariamente um cliente. | Transferência explícita muda o dono em todas as entidades e deixa auditoria. | em prova | PRs #253/#254 publicadas no hash `b0ade7d`; negócio próprio, aceite do destino, auditoria e alinhamento negócio/lead/card foram provados em transação. Falta uma transferência operacional real autorizada. |
@@ -55,9 +55,9 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Provar a decisão 4 no evento real mais recente: além de dono consistente em
-lead, negócio e card, confirmar que o corretor pertencia ao conjunto publicado e
-estava elegível no momento da distribuição. Não redistribuir cliente real.
+Retomar a decisão 7 procurando uma transferência voluntária operacional já
+registrada. Não transferir cliente apenas para fabricar aceite; se não houver
+evento real, preservar `em prova` e avançar para a próxima evidência observável.
 A decisão 20 permanece
 bloqueada até existir infraestrutura de áudio capaz de processar o arquivo de ponta
 a ponta. Não reconciliar automaticamente as 101 divergências legadas entre
