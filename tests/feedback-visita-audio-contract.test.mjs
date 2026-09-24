@@ -64,7 +64,7 @@ test("Edge valida segredo, hash e tamanho antes de enviar à transcrição", () 
 test("capacidade e consulta são owner-scoped e falham fechadas antes da migration", () => {
   assert.match(sql, /f2_feedback_audio_consultar/);
   assert.match(sql, /f2_pode_acessar_audio_visita\(p_visita_id\)/);
-  assert.match(sql, /'disponivel',true/);
+  assert.match(sql, /'disponivel',coalesce\([\s\S]*f2_visita_feedback_audio_config/);
   assert.match(api, /feedbackAudioVisitaId/);
   assert.match(api, /disponivel:\s*false/);
 });

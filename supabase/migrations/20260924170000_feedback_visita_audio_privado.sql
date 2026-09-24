@@ -233,7 +233,9 @@ begin
   end if;
   return pg_catalog.jsonb_build_object(
     'ok',true,
-    'disponivel',true,
+    'disponivel',coalesce((
+      select c.enabled from public.f2_visita_feedback_audio_config c where c.id=true
+    ),false),
     'audios',coalesce((
       select pg_catalog.jsonb_agg(
         pg_catalog.jsonb_build_object(
