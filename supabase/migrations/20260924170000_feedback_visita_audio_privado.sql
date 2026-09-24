@@ -1,7 +1,6 @@
--- DRAFT NÃO APLICADO — áudio privado do feedback de visita
--- Gerar migration somente pela CLI oficial e ensaiar em branch Supabase
--- isolada. Este contrato não apaga objetos, não envia mensagens e não expõe
--- URL pública. Deploy da Edge exige verify_jwt=true e segredo interno no Vault.
+-- Áudio privado do feedback de visita.
+-- A infraestrutura nasce desligada: o cutover só ocorre depois do deploy e
+-- da prova autenticada da Edge. Nada é público nem usa URL assinada persistida.
 
 begin;
 
@@ -175,6 +174,9 @@ declare
   v_uid uuid:=(select auth.uid());
   v_existente public.f2_visita_feedback_audio%rowtype;
 begin
+  if not exists(select 1 from public.f2_visita_feedback_audio_config where id=true and enabled) then
+    return pg_catalog.jsonb_build_object('ok',false,'erro','audio_indisponivel');
+  end if;
   if v_uid is null or public.f2_pode_acessar_audio_visita(p_visita_id) is not true then
     return pg_catalog.jsonb_build_object('ok',false,'erro','sem_permissao');
   end if;
@@ -231,7 +233,9 @@ begin
   end if;
   return pg_catalog.jsonb_build_object(
     'ok',true,
-    'disponivel',true,
+    'disponivel',coalesce((
+      select c.enabled from public.f2_visita_feedback_audio_config c where c.id=true
+    ),false),
     'audios',coalesce((
       select pg_catalog.jsonb_agg(
         pg_catalog.jsonb_build_object(
@@ -307,8 +311,7 @@ set search_path to ''
 as $fn$
 declare
   v_cfg public.f2_visita_feedback_audio_config%rowtype;
-  v_url text;
-  v_gateway_jwt text;
+  v_url constant text:='https://diaegvfveqezispcthwk.supabase.co/functions/v1/f2-feedback-visita-transcrever';
   v_secret text;
   v_audio record;
   v_despachados integer:=0;
@@ -319,18 +322,14 @@ begin
     return pg_catalog.jsonb_build_object('ok',true,'motivo','desligado','despachados',0);
   end if;
   begin
-    select
-      max(decrypted_secret) filter(where name='visita_feedback_transcricao_url'),
-      max(decrypted_secret) filter(where name='visita_feedback_transcricao_gateway_jwt'),
-      max(decrypted_secret) filter(where name='visita_feedback_transcricao_secret')
-      into v_url,v_gateway_jwt,v_secret
-      from vault.decrypted_secrets;
+    select decrypted_secret into v_secret
+      from vault.decrypted_secrets
+      where name='ncrm_sara_cron_secret'
+      limit 1;
   exception when others then
     return pg_catalog.jsonb_build_object('ok',false,'erro','vault_indisponivel','despachados',0);
   end;
-  if coalesce(v_url,'') !~ '^https://[a-z0-9-]+[.]supabase[.]co/functions/v1/f2-feedback-visita-transcrever$'
-     or length(coalesce(v_gateway_jwt,''))<20
-     or length(coalesce(v_secret,''))<32 then
+  if length(coalesce(v_secret,''))<32 then
     return pg_catalog.jsonb_build_object('ok',false,'erro','configuracao_incompleta','despachados',0);
   end if;
 
@@ -362,8 +361,7 @@ begin
         url:=v_url,
         headers:=pg_catalog.jsonb_build_object(
           'Content-Type','application/json',
-          'Authorization','Bearer '||v_gateway_jwt,
-          'x-internal-secret',v_secret
+          'x-cron-secret',v_secret
         ),
         body:=pg_catalog.jsonb_build_object('audio_id',v_audio.id),
         timeout_milliseconds:=145000
