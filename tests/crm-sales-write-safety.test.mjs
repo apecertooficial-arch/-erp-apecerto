@@ -10,6 +10,7 @@ import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 import { createSalesStageAtomic } from "../app/api/crm/sales-stage-create-rpc.ts";
 import { deleteSalesStageAtomic } from "../app/api/crm/sales-stage-delete-rpc.ts";
 import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
+import { updateSalesStageAtomic } from "../app/api/crm/sales-stage-update-rpc.ts";
 import { confirmSalesTriageAtomic } from "../app/api/crm/sales-triage-confirm-rpc.ts";
 import { registerSalesBatchAttachmentsAtomic } from "../app/api/crm/sales-batch-attachment-rpc.ts";
 import { removeSalesAttachmentAtomic } from "../app/api/crm/sales-attachment-remove-rpc.ts";
@@ -489,6 +490,34 @@ test("migration cria etapa e auditoria na mesma transação serializada", () => 
   assert.match(sql, /insert into public\.esteira_etapas/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_etapa_criar\(text,text,text,text,integer,boolean,uuid\) to authenticated,service_role/);
+});
+
+test("edição de etapa usa uma RPC idempotente e conserva o request no retry", async () => {
+  const inicio = api.indexOf('if (action === "updateStage")');
+  const fim = api.indexOf('if (action === "reorderStages")', inicio);
+  const atualizar = api.slice(inicio, fim);
+  assert.match(atualizar, /updateSalesStageAtomic/);
+  assert.doesNotMatch(atualizar, /\.from\("esteira_etapas"\)\.update/);
+  assert.match(ui, /const stageUpdateRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "updateStage", stageId, requestId/);
+
+  const client = clienteFalso({ data: { etapa_id: "s-4", slug: "vistoria", idempotente: false }, error: null });
+  const response = await updateSalesStageAtomic(client, { stageId: "s-4", patch: { nome: "Vistoria final" }, requestId: "req-9" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_etapa_atualizar", args: {
+    p_etapa_id: "s-4", p_patch: { nome: "Vistoria final" }, p_request_id: "req-9",
+  } }]);
+  assert.deepEqual(response.body, { success: true, stageId: "s-4", slug: "vistoria", idempotent: false });
+});
+
+test("migration atualiza etapa e auditoria na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924141000_esteira_etapa_edicao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_etapa_atualizar_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_etapa_atualizar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /for update/);
+  assert.match(sql, /update public\.esteira_etapas/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_etapa_atualizar\(uuid,jsonb,uuid\) to authenticated,service_role/);
 });
 
 test("remoção de etapa usa uma RPC idempotente e conserva a solicitação no retry", async () => {

@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 11:35 BRT
+
+- Condições comerciais entregues pela PR #291 no build
+  `cf51531327c0bd985ce6e55c11706f0b133cd7d0`. A Esteira abriu com 18 vendas e
+  a aba “Condições comerciais” exibiu forma de pagamento, campos gerais e ação
+  de salvar; a ficha foi fechada sem editar. Produção preservou zero condição e
+  auditoria de prova, além das 10 etapas ativas.
+- A próxima falha comprovada estava em editar etapas: nome e cor eram gravados
+  diretamente, sem confirmação da linha, auditoria ou chave estável de retry.
+- A migration `esteira_etapa_edicao_atomica` está aplicada. A RPC
+  `esteira_etapa_atualizar` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. Ela aceita somente os seis campos configuráveis, normaliza os
+  valores, bloqueia a etapa ativa e grava estado e auditoria na mesma transação.
+- A prova autenticada alterou nome e cor, repetiu a solicitação sem duplicar,
+  bloqueou request conflitante e recusou campo não permitido. O `ROLLBACK`
+  restaurou “Pedido aprovado” e `#ff7000`, com zero auditoria de prova. Advisors
+  não citam os objetos novos. Os 1.223 testes, TypeScript, lint sem erros e build
+  Vinext passaram; faltam PR/CI, deploy e aceite produtivo sem editar uma etapa
+  real.
+
 ## Estado verificado em 24/09/2026, 11:22 BRT
 
 - Remoção de etapas entregue pela PR #290 no build
