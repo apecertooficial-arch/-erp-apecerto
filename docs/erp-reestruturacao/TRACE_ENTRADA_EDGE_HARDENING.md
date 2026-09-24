@@ -50,3 +50,18 @@ janela de transição, monitoramento e autorização específica de configuraç�
   todos em zero;
 - o fluxo positivo completo por HTTP não foi disparado contra a automação
   comercial, porque isso atravessaria o bloco de abordagem real.
+
+## Evidência real por origem
+
+- Meta: o evento 715 entrou em 24/09 na automação 73, gerou a fila 38075 fixada
+  na versão 174, concluiu com status `ok` e corresponde a exatamente 1 lead, 1
+  negócio e 1 card;
+- Site: o evento 427 entrou em 08/09 na automação 42, gerou a fila 22750 com
+  status `ok`, preservou a linha canônica em `site_leads` e os vínculos
+  confirmados para lead, negócio e card;
+- `automacao_eventos_entrada` possui unicidade em
+  `(automacao_id, idempotency_key)`, portanto o mesmo identificador não pode ser
+  aceito duas vezes pela mesma automação;
+- dois registros históricos sanitizados do Site não têm mais fila nem linha em
+  `site_leads` e não foram usados como evidência. Nenhuma inferência ou reparo
+  automático foi feito sobre eles.

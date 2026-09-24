@@ -11,7 +11,7 @@ checks do projeto, publicação e confirmação da build.
 
 | # | decisão do usuário | aceite funcional mínimo | estado | evidência |
 |---:|---|---|---|---|
-| 1 | Entrada Meta/site passa por Make/webhook e chega ao ERP. | Um evento real autorizado é aceito uma vez e aparece na automação correta. | em prova | Em 23/09, a automação 73 registrou webhook real recente; falta provar também as demais origens. |
+| 1 | Entrada Meta/site passa por Make/webhook e chega ao ERP. | Um evento real autorizado é aceito uma vez e aparece na automação correta. | entregue | Produção confirmou as duas origens sem novo disparo: Meta evento 715 → automação 73/fila 38075/v174 → 1 lead, 1 negócio e 1 card; Site evento 427 → automação 42/fila 22750 → `site_leads` e os mesmos três vínculos. A unicidade por automação+identificador impede segunda aceitação. |
 | 2 | A entrada normaliza campos e evita duplicatas. | Repetição do mesmo identificador não cria segundo lead/negócio/card. | entregue | Edge `entrada` v23 normaliza nome/telefone/e-mail e deriva chave estável. Em 24/09, prova produtiva sanitizada com `ROLLBACK` repetiu o mesmo identificador: a segunda chamada reutilizou a única fila e os módulos publicados produziram exatamente 1 lead, 1 negócio e 1 card; o pós-rollback confirmou zero resíduo. |
 | 3 | Automações comerciais são configuráveis e publicadas com versão. | Rascunho não executa; publicação válida executa exatamente o mapa publicado. | entregue | Em 24/09, prova produtiva com `ROLLBACK` recusou o rascunho, publicou um snapshot autorizado, fixou a versão na fila e executou pelo worker somente `Entrada → fim`, apesar de o rascunho apontar para ações comerciais. Resultado: 1 lead, 0 negócios e 0 cards; o pós-rollback zerou automação, versão, fila e entidades da prova. |
 | 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | em prova | O evento real mais recente da automação 73 terminou com dono consistente nas três entidades. |
@@ -55,10 +55,9 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Retomar a decisão 1 com inventário somente leitura das entradas reais recentes
-por origem, sem inventar evento nem disparar automação comercial. Se uma origem
-ainda não tiver ocorrido, registrar a lacuna e avançar para o próximo aceite
-observável que não dependa de uma operação humana real.
+Provar a decisão 4 no evento real mais recente: além de dono consistente em
+lead, negócio e card, confirmar que o corretor pertencia ao conjunto publicado e
+estava elegível no momento da distribuição. Não redistribuir cliente real.
 A decisão 20 permanece
 bloqueada até existir infraestrutura de áudio capaz de processar o arquivo de ponta
 a ponta. Não reconciliar automaticamente as 101 divergências legadas entre
