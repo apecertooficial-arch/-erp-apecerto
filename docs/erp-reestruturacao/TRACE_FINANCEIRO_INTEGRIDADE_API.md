@@ -1,7 +1,28 @@
 # Trace — integridade e fronteira da API Financeira
 
-Atualizado em: 2026-09-20
-Estado: P0 parcial de aplicação publicado e validado; banco intacto
+Atualizado em: 2026-09-24
+Estado: P0 de aplicação publicado; correção de honestidade da leitura na PR #302
+
+## Estado persistido, sem reconciliação fictícia
+
+A API transformava, somente na resposta, todo recebimento pendente de uma venda
+`pago` em `recebido` e inventava `data_recebimento` a partir da data da venda.
+O banco permanecia pendente, mas o painel e o total “Falta receber” escondiam a
+divergência que exigia decisão humana.
+
+A PR #302 remove esse mapa e devolve `scopedReceipts` sem mutação. A consulta
+produtiva somente leitura de 24/09 confirmou 25 vendas, 57 comissões, 18
+recebimentos, 368 lançamentos e 3 repasses. Permanecem visíveis para conferência:
+
+- 2 recebimentos pendentes ligados a vendas pagas;
+- 1 repasse pago com vínculo de comissão divergente do caixa;
+- 1 total de repasses acima da comissão vinculada;
+- 2 vendas cuja comissão distribuída excede a comissão bruta;
+- 0 ordens de repasse duplicadas.
+
+Nenhum status, valor ou vínculo foi corrigido automaticamente. O teste de
+regressão exige que a API preserve o estado persistido; 52/52 testes financeiros,
+661/661 testes frontend, TypeScript, lint focado e build completo passaram.
 
 ## Falhas reproduzidas no código
 
