@@ -160,7 +160,7 @@ test("movimentação e blocos nunca usam contexto parcial da venda", () => {
 test("escritas auxiliares da venda não fingem sucesso quando falham", () => {
   assert.match(salesApi, /reabrirError[\s\S]*reabrir_negocio_recusado/);
   assert.match(salesApi, /saveSalesCommissionAtomic[\s\S]*resultado\.body/);
-  assert.match(salesApi, /sincronizarConjuge[\s\S]*syncError[\s\S]*sincronizar_conjuge/);
+  assert.match(salesApi, /mutateSalesPartyAtomic[\s\S]*resultado\.body/);
 });
 
 test("os três fluxos preservam foco, teclado e alvos móveis", () => {

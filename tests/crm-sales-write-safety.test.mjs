@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
+import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
@@ -185,6 +186,39 @@ test("migration salva comissão e parcelas em uma transação idempotente", () =
   assert.match(sql, /insert into public\.venda_comissao_parcelas/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_comissao_salvar\(uuid,jsonb,jsonb,uuid\) to authenticated,service_role/);
+});
+
+test("mutações de parte usam uma RPC para pessoa, flag de cônjuge e auditoria", async () => {
+  const inicio = api.indexOf('if (action === "salvarParte" || action === "adicionarParte")');
+  const fim = api.indexOf('// ===== Upload em lote', inicio);
+  const partes = api.slice(inicio, fim);
+  assert.match(partes, /mutateSalesPartyAtomic/);
+  assert.doesNotMatch(partes, /\.from\("venda_partes"\)\.(?:upsert|insert|update|delete)/);
+  assert.doesNotMatch(partes, /\.from\("venda_condicoes"\)\.upsert/);
+  assert.doesNotMatch(partes, /if \(!alvo\) return Response\.json/);
+  assert.match(ui, /const parteRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "adicionarParte"[\s\S]*requestId: requestParte\(key\)/);
+  assert.match(ui, /action: "removerParte", processId: process\.id, parteId, requestId: requestParte\(key\)/);
+
+  const client = clienteFalso({ data: { parte_id: "pt-1", ordem: 1, removida: false, idempotente: false }, error: null });
+  const payload = { papel: "conjuge_comprador", ordem: 1, nome: "Pessoa" };
+  const response = await mutateSalesPartyAtomic(client, { action: "salvar", processId: "p-1", payload, requestId: "req-4" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_parte_mutar", args: {
+    p_acao: "salvar", p_processo_id: "p-1", p_parte_id: null, p_payload: payload, p_request_id: "req-4",
+  } }]);
+  assert.deepEqual(response.body, { success: true, partyId: "pt-1", order: 1, removed: false, idempotent: false });
+});
+
+test("migration mantém parte e flag de cônjuge na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924050000_esteira_partes_atomicas.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_parte_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_parte_mutar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /insert into public\.venda_partes/);
+  assert.match(sql, /delete from public\.venda_partes/);
+  assert.match(sql, /insert into public\.venda_condicoes/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_parte_mutar\(text,uuid,uuid,jsonb,uuid\) to authenticated,service_role/);
 });
 
 test("drawer só atualiza etapa após movimentação confirmada", () => {

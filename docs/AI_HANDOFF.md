@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 01:13 BRT
+
+- Comissão da Esteira entregue pela PR #280 no build
+  `893731d6bdb12e0e3a5a8aa396cf641a63413d72`. A aba autenticada exibiu todos os
+  campos e foi fechada sem edição. Produção preservou zero comissões, zero
+  parcelas, zero ordem duplicada e zero auditoria da prova.
+- A próxima lacuna reproduzida estava nas partes da venda: criar um cônjuge e
+  ligar a flag que ativa seus documentos eram transações separadas. A prova
+  controlada atingiu `conjuge=1, flag_comprador=false`; a exceção reverteu tudo.
+- A migration `esteira_partes_atomicas` está aplicada. A função é `SECURITY
+  INVOKER`; `authenticated` executa e `anon` não. Salvar, adicionar e remover
+  parte agora sincronizam a flag de cônjuge e a auditoria numa transação.
+- A prova pós-migration adicionou/repetiu, salvou e removeu/repetiu um cônjuge,
+  confirmou a flag em cada estado, três auditorias e bloqueio de request
+  conflitante. O `ROLLBACK` restaurou 1 parte, zero cônjuges, zero divergência e
+  zero resíduo. Advisors não citam os objetos novos. Testes dirigidos e
+  TypeScript passaram; faltam suíte integral, lint, build, PR/CI, deploy e aceite
+  produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 00:55 BRT
 
 - Devolução ao atendimento entregue pela PR #279 no build

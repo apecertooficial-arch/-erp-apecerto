@@ -37,9 +37,9 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 85,
+  overallPercent: 86,
   fronts: [
-    { name: "CRM / Kanban", percent: 97 },
+    { name: "CRM / Kanban", percent: 98 },
     { name: "Identidade visual (fase final)", percent: 0 },
     { name: "Meu Dia", percent: 86 },
     { name: "Agenda / visitas", percent: 96 },
@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 80,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar a gravação atômica da comissão da Esteira no item 25",
-  lastCheckpoint: "PR #279 entregue no build f89c24f: devolver ao atendimento agora atualiza negócio, processo e auditoria numa transação idempotente; o modal produtivo abriu e fechou sem envio. Nova fatia em prova: cabeçalho e parcelas da comissão da Esteira passam por uma única RPC auditada com request estável. Migration, permissões e prova authenticated com rollback passaram sem resíduo.",
-  lastCheckpointAt: "2026-09-24T00:55:00-03:00",
-  lastCommitSent: "f89c24f",
-  productionCommit: "f89c24f4ed949483b52d41892fe808d9408fb649",
+  currentTask: "Publicar e aceitar partes e flag de cônjuge atômicas no item 25",
+  lastCheckpoint: "PR #280 entregue no build 893731d: cabeçalho, parcelas e auditoria da comissão da Esteira agora são uma transação idempotente; a aba produtiva abriu e fechou sem salvar. Nova fatia em prova: salvar, adicionar ou remover parte sincroniza a flag de cônjuge na mesma RPC auditada. Migration, permissões e prova authenticated com rollback passaram sem resíduo.",
+  lastCheckpointAt: "2026-09-24T01:13:00-03:00",
+  lastCommitSent: "893731d",
+  productionCommit: "893731d6bdb12e0e3a5a8aa396cf641a63413d72",
   latestDeliveries: [
+    "PR #280 publicada: cabeçalho e parcelas da comissão da Esteira passaram a ser salvos juntos, com auditoria, retry idempotente e ordem única; a aba foi aceita sem mutação real.",
     "PR #279 publicada: devolver uma venda ao atendimento agora atualiza negócio, processo e auditoria juntos; retry é idempotente e o modal foi aceito sem executar devolução real.",
     "PR #278 publicada: criação, edição e exclusão de metas passaram a ser atômicas e auditadas, com request estável e replay seguro mesmo após apagar.",
     "PR #277 publicada: venda, negócio, processo aprovado e auditoria passaram a nascer juntos, com request idempotente e unicidade do negócio na Esteira.",
@@ -102,7 +103,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a comissão atômica da Esteira, acompanhar CI/deploy e aceitar a aba somente de leitura, sem salvar valores reais. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar partes e flag de cônjuge atômicas, acompanhar CI/deploy e aceitar a aba somente de leitura, sem cadastrar ou remover pessoa real. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

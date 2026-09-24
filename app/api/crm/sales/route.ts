@@ -3,6 +3,7 @@ import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type
 import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
 import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
+import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 
 export const dynamic = "force-dynamic";
@@ -175,21 +176,6 @@ async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
     return { deny: Response.json({ error: `Só ${quem} pode preencher a etapa "${ctx.atual?.nome}".` }, { status: 403 }), ctx };
   }
   return { deny: null, ctx };
-}
-
-/**
- * Mantém venda_condicoes.{comprador,vendedor}_tem_conjuge coerente com a existência
- * da parte cônjuge — é essa flag que liga o grupo de documentos do cônjuge.
- */
-async function sincronizarConjuge(auth: Auth, processId: string, papel: string) {
-  const coluna = papel === "conjuge_comprador" ? "comprador_tem_conjuge" : "vendedor_tem_conjuge";
-  const { count, error } = await auth.supabase.from("venda_partes").select("id", { count: "exact", head: true }).eq("processo_ref", processId).eq("papel", papel);
-  if (error) return falhaEsteira(error, "consultar_conjuge");
-  const { error: syncError } = await auth.supabase.from("venda_condicoes").upsert(
-    { processo_ref: processId, [coluna]: (count ?? 0) > 0, atualizado_em: new Date().toISOString() } as never,
-    { onConflict: "processo_ref" },
-  );
-  return syncError ? falhaEsteira(syncError, "sincronizar_conjuge") : null;
 }
 
 /** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisição principal). */
@@ -694,56 +680,45 @@ export async function PATCH(request: Request) {
   if (action === "salvarParte" || action === "adicionarParte") {
     const processId = clean(body.processId, 60);
     const papel = clean(body.papel, 30);
-    if (!processId || !(PAPEIS_PARTE as readonly string[]).includes(papel)) return Response.json({ error: "Informe a venda e o papel da parte." }, { status: 422 });
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !requestId || !(PAPEIS_PARTE as readonly string[]).includes(papel)) return Response.json({ error: "Informe a venda, o papel e a solicitação da parte." }, { status: 422 });
     const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
     if (g.deny) return g.deny;
     const email = clean(body.email, 160).toLowerCase();
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: "E-mail inválido." }, { status: 422 });
-
-    let ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 0;
-    if (!ordem) {
-      // Sem ordem explícita: "adicionarParte" cria a próxima; "salvarParte" edita a primeira.
-      const { data: ult } = await auth.supabase.from("venda_partes").select("ordem").eq("processo_ref", processId).eq("papel", papel).order("ordem", { ascending: false }).limit(1).maybeSingle();
-      ordem = action === "adicionarParte" ? Number(ult?.ordem ?? 0) + 1 : Number(ult?.ordem ?? 0) || 1;
-      if (action === "adicionarParte" && ordem > 6) return Response.json({ error: "Limite de 6 pessoas por papel." }, { status: 422 });
-    }
-    const row: Record<string, unknown> = {
-      processo_ref: processId, papel, ordem,
+    const ordem = Number.isSafeInteger(Number(body.ordem)) && Number(body.ordem) > 0 ? Number(body.ordem) : 1;
+    const payload: Record<string, unknown> = {
+      papel, ordem,
       nome: clean(body.nome, 160) || null,
       telefone: clean(body.telefone, 40) || null,
       email: email || null,
       cpf: clean(body.cpf, 20) || null,
       observacao: clean(body.observacao, 400) || null,
-      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
-    const { error } = await auth.supabase.from("venda_partes").upsert(row as never, { onConflict: "processo_ref,papel,ordem" });
-    if (error) return falhaEsteira(error, "salvar_parte");
-    if (papel.startsWith("conjuge_")) {
-      const falha = await sincronizarConjuge(auth, processId, papel);
-      if (falha) return falha;
-    }
-    return Response.json({ success: true, ordem });
+    const resultado = await mutateSalesPartyAtomic(auth.supabase as unknown as SalesPartyRpcClient, {
+      action: action === "adicionarParte" ? "adicionar" : "salvar", processId, payload, requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_parte_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "removerParte") {
     const id = clean(body.parteId, 60);
-    if (!id) return Response.json({ error: "Parte inválida." }, { status: 422 });
-    const { data: alvo } = await auth.supabase.from("venda_partes").select("processo_ref,papel,ordem").eq("id", id).maybeSingle();
-    if (!alvo) return Response.json({ error: "Parte não encontrada." }, { status: 404 });
-    const papel = String(alvo.papel);
-    const processId = String(alvo.processo_ref);
-    const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
-    if (g.deny) return g.deny;
-    if (!papel.startsWith("conjuge_") && Number(alvo.ordem) === 1) {
-      return Response.json({ error: "O titular não pode ser removido — edite os dados ou devolva a venda ao atendimento." }, { status: 409 });
+    const processId = clean(body.processId, 60);
+    const requestId = clean(body.requestId, 60);
+    if (!id || !processId || !requestId) return Response.json({ error: "Venda, parte ou solicitação inválida." }, { status: 422 });
+    const { data: alvo, error: alvoError } = await auth.supabase.from("venda_partes").select("processo_ref,papel,ordem").eq("id", id).eq("processo_ref", processId).maybeSingle();
+    if (alvoError) return falhaEsteira(alvoError, "carregar_parte_remocao");
+    if (alvo) {
+      const papel = String(alvo.papel);
+      const g = await guardBloco(auth, processId, papel.includes("vendedor") ? "partes_vendedor" : "partes_comprador");
+      if (g.deny) return g.deny;
     }
-    const { error } = await auth.supabase.from("venda_partes").delete().eq("id", id);
-    if (error) return falhaEsteira(error, "remover_parte");
-    if (papel.startsWith("conjuge_")) {
-      const falha = await sincronizarConjuge(auth, processId, papel);
-      if (falha) return falha;
-    }
-    return Response.json({ success: true });
+    const resultado = await mutateSalesPartyAtomic(auth.supabase as unknown as SalesPartyRpcClient, {
+      action: "remover", processId, partyId: id, requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_parte_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   // ===== Upload em lote: o corretor manda tudo de uma vez e a Sara organiza =====
