@@ -62,6 +62,31 @@ test("migration torna observação idempotente e comprova o acesso na transaçã
   assert.match(sql, /grant execute on function public\.esteira_observacao_adicionar\(uuid,text,uuid\) to authenticated,service_role/);
 });
 
+test("exclusão de venda conserva o request e recupera o tombstone no retry", () => {
+  const comando = api.match(/if \(action === "excluirVenda"\)[\s\S]*?if \(action === "addObs"\)/)?.[0] ?? "";
+  assert.match(comando, /const requestId = clean\(body\.requestId, 60\)/);
+  assert.match(comando, /\.rpc\("esteira_venda_excluir"/);
+  assert.doesNotMatch(comando, /\.rpc\("excluir_venda_esteira"/);
+  assert.match(ui, /const \[excRequestId, setExcRequestId\] = useState\(""\)/);
+  assert.match(ui, /action: "excluirVenda", processId: process\.id, motivo: excMotivo, forcar, descartarLead: excDescartar, requestId: excRequestId/);
+  assert.match(ui, /setExcRequestId\(crypto\.randomUUID\(\)\)/);
+});
+
+test("migration torna tombstone e caminhos da exclusão idempotentes", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924170000_esteira_venda_exclusao_idempotente.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists request_id uuid/);
+  assert.match(sql, /create unique index if not exists venda_exclusoes_request_uidx/);
+  assert.match(sql, /create policy vexcl_update_owner/);
+  assert.match(sql, /create or replace function public\.esteira_venda_excluir/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /pg_advisory_xact_lock/);
+  assert.match(sql, /from public\.venda_exclusoes[\s\S]*request_id=p_request_id/);
+  assert.match(sql, /public\.excluir_venda_esteira/);
+  assert.match(sql, /update public\.venda_exclusoes/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /grant execute on function public\.esteira_venda_excluir\(uuid,text,boolean,boolean,uuid\) to authenticated,service_role/);
+});
+
 test("movimentação usa revisão otimista e comprova a linha alterada", () => {
   const move = api.match(/if \(action === "move"\)[\s\S]*?if \(action === "addAnexo"/)?.[0] ?? "";
   assert.match(move, /\.update\(update\)\.eq\("id", processId\)\.eq\("etapa", ctx\.proc\.etapa\)\.select\("id,etapa"\)\.maybeSingle\(\)/);

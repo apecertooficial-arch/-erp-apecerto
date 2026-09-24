@@ -38,6 +38,10 @@ function falhaEsteira(error: { code?: string; message?: string }, operacao: stri
     console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
     return Response.json({ error: "A etapa de destino não está mais ativa. Atualize a tela.", erro: "etapa_inativa" }, { status: 409 });
   }
+  if (/ESTEIRA_EXCLUSAO_REQUEST_CONFLITANTE/.test(error.message ?? "")) {
+    console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
+    return Response.json({ error: "Esta solicitação já foi usada com outra exclusão. Atualize a tela.", erro: "request_conflitante" }, { status: 409 });
+  }
   const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message ?? "");
   console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
   return Response.json({
@@ -832,12 +836,16 @@ export async function PATCH(request: Request) {
   // ===== Exclusão definitiva da venda (admin e diretor) =====
   if (action === "excluirVenda") {
     const processId = clean(body.processId, 60);
-    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
-    const { data, error } = await auth.supabase.rpc("excluir_venda_esteira", {
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !requestId) return Response.json({ error: "Venda ou solicitação inválida." }, { status: 422 });
+    const { data, error } = await (auth.supabase as unknown as {
+      rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+    }).rpc("esteira_venda_excluir", {
       p_processo: processId,
       p_motivo: clean(body.motivo, 400) || undefined,
       p_forcar: body.forcar === true,
       p_descartar_lead: body.descartarLead === true,
+      p_request_id: requestId,
     });
     if (error) return falhaEsteira(error, "excluir_venda");
     const r = (data ?? {}) as { ok?: boolean; erro?: string; bloqueios?: string[]; paths?: string[]; lead?: string; forcada?: boolean };

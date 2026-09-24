@@ -363,8 +363,9 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const [excDescartar, setExcDescartar] = useState(false);
   const [excConfirma, setExcConfirma] = useState("");
   const [excBloqueios, setExcBloqueios] = useState<string[] | null>(null);
+  const [excRequestId, setExcRequestId] = useState("");
   const excluirVenda = (forcar: boolean) => run(async () => {
-    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "excluirVenda", processId: process.id, motivo: excMotivo, forcar, descartarLead: excDescartar }) });
+    const r = await authedFetch("/api/crm/sales", { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "excluirVenda", processId: process.id, motivo: excMotivo, forcar, descartarLead: excDescartar, requestId: excRequestId }) });
     const j = await r.json() as { error?: string; bloqueios?: string[]; precisaForcar?: boolean };
     if (!r.ok) {
       // Impacto financeiro: mostra o que será perdido e exige uma segunda confirmação.
@@ -803,7 +804,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
         <div className="sale-full-foot-left">
           
           {canApprove && <button type="button" className="sale-full-devolver" disabled={busyAll} onClick={() => { setDevMotivo(""); setDevPipe(""); setDevStage(""); setDevRequestId(crypto.randomUUID()); setDevolverOpen(true); }}>↩ Devolver ao atendimento</button>}
-          {podeExcluir && <button type="button" className="sale-full-excluir" disabled={busyAll} onClick={() => { setExcMotivo(""); setExcDescartar(false); setExcConfirma(""); setExcBloqueios(null); setExcluirOpen(true); }}>🗑 Excluir venda</button>}
+          {podeExcluir && <button type="button" className="sale-full-excluir" disabled={busyAll} onClick={() => { setExcMotivo(""); setExcDescartar(false); setExcConfirma(""); setExcBloqueios(null); setExcRequestId(crypto.randomUUID()); setExcluirOpen(true); }}>🗑 Excluir venda</button>}
         </div>
         <div className="sale-full-foot-right">
           {blockReasons.length > 0 && <span className="sale-full-foot-block">🔒 avanço bloqueado</span>}
