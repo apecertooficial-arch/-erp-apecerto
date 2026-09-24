@@ -13,7 +13,7 @@ checks do projeto, publicação e confirmação da build.
 |---:|---|---|---|---|
 | 1 | Entrada Meta/site passa por Make/webhook e chega ao ERP. | Um evento real autorizado é aceito uma vez e aparece na automação correta. | em prova | Em 23/09, a automação 73 registrou webhook real recente; falta provar também as demais origens. |
 | 2 | A entrada normaliza campos e evita duplicatas. | Repetição do mesmo identificador não cria segundo lead/negócio/card. | entregue | Edge `entrada` v23 normaliza nome/telefone/e-mail e deriva chave estável. Em 24/09, prova produtiva sanitizada com `ROLLBACK` repetiu o mesmo identificador: a segunda chamada reutilizou a única fila e os módulos publicados produziram exatamente 1 lead, 1 negócio e 1 card; o pós-rollback confirmou zero resíduo. |
-| 3 | Automações comerciais são configuráveis e publicadas com versão. | Rascunho não executa; publicação válida executa exatamente o mapa publicado. | não iniciado | — |
+| 3 | Automações comerciais são configuráveis e publicadas com versão. | Rascunho não executa; publicação válida executa exatamente o mapa publicado. | entregue | Em 24/09, prova produtiva com `ROLLBACK` recusou o rascunho, publicou um snapshot autorizado, fixou a versão na fila e executou pelo worker somente `Entrada → fim`, apesar de o rascunho apontar para ações comerciais. Resultado: 1 lead, 0 negócios e 0 cards; o pós-rollback zerou automação, versão, fila e entidades da prova. |
 | 4 | A distribuição escolhe corretor elegível e mantém um único dono. | Lead, negócio e card ficam com o mesmo corretor elegível. | em prova | O evento real mais recente da automação 73 terminou com dono consistente nas três entidades. |
 | 5 | A primeira abordagem sai somente pela instância do corretor dono. | Aceite do provedor não conta como envio; `messages.sent` confirma e entrega é rastreada. | entregue | PR #251 publicada no hash `b560fff`; mobile e desktop mostram “Aceites D-API”, e o evento real mais recente foi aceito, confirmado e entregue pela instância do dono. |
 | 6 | A proteção do dono só vale em visita ou negociação. | Fora desses estados a redistribuição autorizada não é bloqueada por histórico antigo. | entregue | PR #252 publicada no hash `5e1555c`: a regra nova preserva o único estado ativo e libera cinco históricos encerrados; migração, permissões, mobile 390×844 e desktop 1440×900 foram aceitos em produção. |
@@ -55,9 +55,10 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Provar a decisão 3: rascunho não pode executar, e a publicação deve fixar uma
-versão imutável que o runtime realmente consome. Depois, retomar o primeiro item
-em prova que possa ganhar evidência sem inventar uma operação comercial real.
+Retomar a decisão 1 com inventário somente leitura das entradas reais recentes
+por origem, sem inventar evento nem disparar automação comercial. Se uma origem
+ainda não tiver ocorrido, registrar a lacuna e avançar para o próximo aceite
+observável que não dependa de uma operação humana real.
 A decisão 20 permanece
 bloqueada até existir infraestrutura de áudio capaz de processar o arquivo de ponta
 a ponta. Não reconciliar automaticamente as 101 divergências legadas entre
