@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
+import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
@@ -151,6 +152,39 @@ test("migration devolve processo e negócio em uma transação idempotente", () 
   assert.match(sql, /update public\.venda_processos/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_venda_devolver\(uuid,bigint,text,uuid\) to authenticated,service_role/);
+});
+
+test("salvar comissão usa uma RPC para cabeçalho, parcelas e auditoria", async () => {
+  const inicio = api.indexOf('if (action === "salvarComissao")');
+  const fim = api.indexOf('// ===== Partes da negociação', inicio);
+  const salvar = api.slice(inicio, fim);
+  assert.match(salvar, /saveSalesCommissionAtomic/);
+  assert.doesNotMatch(salvar, /\.from\("venda_comissao(?:_parcelas)?"\)\.(?:upsert|insert|update|delete)/);
+  assert.match(ui, /const \[comRequestId, setComRequestId\] = useState\(\(\) => crypto\.randomUUID\(\)\)/);
+  assert.match(ui, /action: "salvarComissao", processId: process\.id, requestId: comRequestId/);
+  assert.match(ui, /setComRequestId\(crypto\.randomUUID\(\)\)/);
+
+  const client = clienteFalso({ data: { processo_id: "p-1", parcelas: 2, idempotente: false }, error: null });
+  const commission = { percentual_total: 5, valor_total: 1000, participantes: [] };
+  const installments = [{ valor: 500 }, { valor: 500 }];
+  const response = await saveSalesCommissionAtomic(client, { processId: "p-1", commission, installments, requestId: "req-3" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_comissao_salvar", args: {
+    p_processo_id: "p-1", p_comissao: commission, p_parcelas: installments, p_request_id: "req-3",
+  } }]);
+  assert.deepEqual(response.body, { success: true, processId: "p-1", installments: 2, idempotent: false });
+});
+
+test("migration salva comissão e parcelas em uma transação idempotente", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924043000_esteira_comissao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists venda_comissao_parcelas_processo_ordem_uidx/);
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_comissao_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_comissao_salvar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /insert into public\.venda_comissao/);
+  assert.match(sql, /delete from public\.venda_comissao_parcelas/);
+  assert.match(sql, /insert into public\.venda_comissao_parcelas/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_comissao_salvar\(uuid,jsonb,jsonb,uuid\) to authenticated,service_role/);
 });
 
 test("drawer só atualiza etapa após movimentação confirmada", () => {
