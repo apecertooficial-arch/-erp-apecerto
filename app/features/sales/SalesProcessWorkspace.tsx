@@ -290,6 +290,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const triageConfirmRequests = useRef(new Map<string, string>());
   const attachmentRemoveRequests = useRef(new Map<string, string>());
   const attachmentUploadRequests = useRef(new Map<string, { requestId: string; path: string; uploaded: boolean }>());
+  const attachmentReplaceRequests = useRef(new Map<string, { requestId: string; path: string; uploaded: boolean }>());
   // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
   const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
   const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
@@ -316,7 +317,22 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   };
   const upload = (file: File, grupo: string, docNome: string | null, obrigatorio: boolean, observacao: string) => run(() => uploadDocument(file, grupo, { grupo, docNome, obrigatorio, observacao }));
   const uploadEtapa = (file: File, docNome: string, obrigatorio: boolean) => run(() => uploadDocument(file, `_etapa/${process.etapa}`, { etapaSlug: process.etapa, docNome, obrigatorio }));
-  const removeAttachment = async (id: string, clearRequest = true) => { const requestId = attachmentRemoveRequests.current.get(id) ?? crypto.randomUUID(); attachmentRemoveRequests.current.set(id, requestId); await api({ action: "removeAnexo", anexoId: id, requestId }); if (clearRequest) attachmentRemoveRequests.current.delete(id); };
+  const replaceAttachment = async (id: string, file: File, folder: string, payload: Record<string, unknown>) => {
+    const key = JSON.stringify([id, folder, payload.grupo ?? null, payload.etapaSlug ?? null, payload.docNome ?? null, payload.obrigatorio === true, file.name, file.size, file.lastModified]);
+    const safe = file.name.replace(/[^\w.\-]+/g, "_");
+    const atual = attachmentReplaceRequests.current.get(key);
+    const request = atual ?? { requestId: crypto.randomUUID(), path: "", uploaded: false };
+    if (!request.path) request.path = `esteira/${process.id}/${folder}/${request.requestId}_${safe}`;
+    attachmentReplaceRequests.current.set(key, request);
+    if (!request.uploaded) {
+      const { error: upErr } = await getBrowserSupabaseClient().storage.from("esteira-docs").upload(request.path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      request.uploaded = true;
+    }
+    await api({ action: "replaceAnexo", anexoId: id, requestId: request.requestId, ...payload, nome: file.name, path: request.path, mime: file.type, tamanho: file.size });
+    attachmentReplaceRequests.current.delete(key);
+  };
+  const removeAttachment = async (id: string) => { const requestId = attachmentRemoveRequests.current.get(id) ?? crypto.randomUUID(); attachmentRemoveRequests.current.set(id, requestId); await api({ action: "removeAnexo", anexoId: id, requestId }); attachmentRemoveRequests.current.delete(id); };
   const removeAnexo = (id: string) => run(() => removeAttachment(id));
   const requestDocumento = (key: string) => { const atual = documentReviewRequests.current.get(key); if (atual) return atual; const novo = crypto.randomUUID(); documentReviewRequests.current.set(key, novo); return novo; };
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } const key = JSON.stringify([a.id, status, motivo]); void run(async () => { await api({ action: "docStatus", anexoId: a.id, status, motivo, requestId: requestDocumento(key) }); documentReviewRequests.current.delete(key); }); };
@@ -526,7 +542,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
         {a ? <>
           <button type="button" title="Abrir" onClick={() => void abrir(a.path)}>👁</button>
           <button type="button" title="Baixar" onClick={() => void baixar(a.path, a.nome)}>⬇</button>
-          <label title="Substituir" className="docx-replace">⟳<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => { await removeAttachment(a.id, false); await uploadDocument(f, grupo, { grupo, docNome: nome, obrigatorio }); attachmentRemoveRequests.current.delete(a.id); }); e.target.value = ""; }} /></label>
+          <label title="Substituir" className="docx-replace">⟳<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(() => replaceAttachment(a.id, f, grupo, { grupo, docNome: nome, obrigatorio })); e.target.value = ""; }} /></label>
           <button type="button" title="Excluir" className="docx-del" disabled={bloqueado} onClick={() => removeAnexo(a.id)}>🗑</button>
           {canApprove && <select className="docx-statussel" value={a.status || "anexado"} disabled={busyAll} onChange={(e) => setStatus(a, e.target.value)} title="Alterar status">{["anexado", "em_analise", "aprovado", "recusado", "correcao"].map((s) => <option value={s} key={s}>{DOC_STATUS_LABEL[s]}</option>)}</select>}
         </> : <label className="docx-up">📎 Anexar<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, grupo, modelo ? nome : null, obrigatorio, ""); e.target.value = ""; }} /></label>}
