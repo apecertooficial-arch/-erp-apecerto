@@ -45,3 +45,22 @@ export async function decidirRepasseAtomico(
     },
   };
 }
+
+export async function excluirRepasseAtomico(
+  cliente: ClienteRpc,
+  payoutId: string,
+): Promise<RespostaVenda & { erroInterno?: RpcErro }> {
+  const { data, error } = await cliente.rpc("financeiro_excluir_repasse", { p_repasse_id: payoutId });
+  if (error) return { ...traduzirErroRepasse(error), erroInterno: error };
+  const resultado = (data ?? {}) as { repasse_id?: string; lancamento_removido?: boolean; idempotente?: boolean };
+  if (!resultado.repasse_id) return { status: 502, body: { error: "Não foi possível confirmar a exclusão do repasse. Nada foi alterado — tente novamente." } };
+  return {
+    status: 200,
+    body: {
+      success: true,
+      payoutId: resultado.repasse_id,
+      cashRemoved: resultado.lancamento_removido === true,
+      idempotente: resultado.idempotente === true,
+    },
+  };
+}

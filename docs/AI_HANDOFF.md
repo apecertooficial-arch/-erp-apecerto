@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 22:11 BRT
+
+- Quinta fatia da decisão 29 entregue pela PR #269 no build
+  `da5d16031edd00a55e3c2cf65e48eadfeef7816b`. A edição de venda é atômica,
+  idempotente e bloqueia estados ou valores incompatíveis com os movimentos;
+  prova pós-deploy, permissões, advisors e Financeiro autenticado passaram.
+- Sexta lacuna reproduzida: `deletePayout` apagava primeiro o caixa e depois o
+  repasse em chamadas REST separadas. A nova RPC trava e valida os dois registros,
+  apaga ambos numa transação, audita uma vez e trata retry como idempotente.
+- Prova pré-migration `authenticated` excluiu e repetiu um repasse íntegro em
+  `BEGIN/ROLLBACK`: dentro da transação houve 2 repasses, 367 caixas e uma única
+  auditoria; depois voltaram 3, 368 e zero auditorias de exclusão. A função também
+  não persistiu.
+- O diagnóstico completo revelou 1 dos 3 repasses pagos históricos com
+  `comissao_id` nula enquanto seu caixa aponta para uma comissão. A nova RPC o
+  bloqueia como divergente; nenhum vínculo ou valor foi corrigido automaticamente.
+  1.176 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge, migration e aceite pós-deploy com rollback.
+
 ## Estado verificado em 23/09/2026, 21:55 BRT
 
 - Quarta fatia da decisão 29 entregue pela PR #268 no build
