@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 00:27 BRT
+
+- A conexão atômica venda–CRM foi entregue pela PR #277 no build
+  `753b5638940881281d6b49400e1582f3330b571b`. A Esteira autenticada carregou
+  22 processos; o modal “Conectar venda ao CRM” abriu e fechou sem envio.
+  Produção preservou 25 vendas, 2 negócios vinculados, 0 divergência e 0 duplicidade.
+- A próxima lacuna reproduzida estava em `/api/metas`: localizar e depois
+  inserir/atualizar eram chamadas separadas, e excluir não auditava nem tinha
+  chave de retry. A prova autenticada criou, editou e apagou uma fixture sem
+  auditoria; o `ROLLBACK` preservou as 13 metas reais.
+- A migration `metas_mutacao_atomica` está aplicada. A função é `SECURITY
+  INVOKER`; `authenticated` executa e `anon` não. Salvar, editar, apagar e
+  auditoria agora formam uma transação, com UUID estável por conteúdo e índice
+  único na auditoria que mantém a idempotência mesmo depois da exclusão.
+- A prova pós-migration criou/repetiu, editou/repetiu e apagou/repetiu a fixture,
+  confirmou exatamente três auditorias e bloqueou o reuso conflitante do request.
+  Terminou em `ROLLBACK`: 13 metas, 0 fixture e 0 auditoria de prova. Advisors
+  não citam a função ou índice novos. Os 1.195 testes, TypeScript, lint sem erros
+  e build Vinext passaram. Próximo passo: PR/CI, merge e aceite pós-deploy somente
+  de leitura.
+
 ## Estado verificado em 24/09/2026, 00:12 BRT
 
 - Décima segunda fatia da decisão 29 entregue pela PR #276 no build
