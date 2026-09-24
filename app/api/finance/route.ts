@@ -5,7 +5,7 @@ import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 import { decidirRepasseAtomico } from "./repasse-rpc";
-import { criarCaixaAtomico } from "./caixa-rpc";
+import { criarCaixaAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -280,57 +280,26 @@ export async function PATCH(request: Request) {
       : guard([["fluxo_caixa", "cancelar"], ["financeiro", "editar"]], "Você não tem permissão para excluir lançamentos do fluxo de caixa.");
     if (denied) return denied;
 
-    const { data: antes, error: readError } = await auth.supabase.from("lancamentos_caixa")
-      .select("id,venda_id,recebimento_id,data,tipo,categoria,descricao,valor,origem,papel,beneficiario_id,comissao_id,natureza,created_at")
-      .eq("id", cashId).maybeSingle();
-    if (readError) return falhaFinanceiro(readError, "consultar_lancamento");
-    if (!antes) return Response.json({ error: "Lançamento não encontrado. Ele pode já ter sido excluído." }, { status: 404 });
-
-    /* Nome de quem fez, para a auditoria significar alguma coisa na leitura. */
-    const { data: autor, error: autorError } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
-    if (autorError) return falhaFinanceiro(autorError, "consultar_autor_auditoria");
-    const autorNome = autor?.nome || auth.user.email || "desconhecido";
-    const registrar = async (acao: string, depois: Record<string, unknown> | null) => {
-      const { error: auditError } = await auth.supabase.from("erp_auditoria").insert({
-        modulo: "Financeiro", acao, entidade: "lancamentos_caixa", entidade_id: cashId,
-        usuario_id: auth.user.id, usuario_nome: autorNome,
-        detalhe: `${antes.tipo === "entrada" ? "Entrada" : "Saída"} de ${antes.valor} em ${antes.data} · ${antes.categoria}`,
-        antes: antes as never, depois: depois as never,
-      } as never);
-      return auditError;
-    };
-
     if (action === "updateCash") {
       const type = clean(body.type, 10);
       const category = clean(body.category, 100);
       const date = clean(body.date, 10);
       const value = Number(body.value);
       if (!['entrada', 'saida'].includes(type) || !category || !date || !Number.isFinite(value) || value <= 0) return Response.json({ error: "Preencha tipo, categoria, data e valor." }, { status: 422 });
-      const patch = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null };
-      const { data: alterado, error } = await auth.supabase.from("lancamentos_caixa").update(patch as never).eq("id", cashId).select("id").maybeSingle();
-      if (error) return falhaFinanceiro(error, "editar_lancamento");
-      if (!alterado) return Response.json({ error: "O lançamento deixou de existir antes da edição." }, { status: 409 });
-      const auditError = await registrar("Editar lançamento", patch);
-      if (auditError) return falhaFinanceiro(auditError, "auditar_edicao_lancamento", { parcial: true });
-      return Response.json({ success: true });
+      const resultado = await editarCaixaAtomico(semTipos(auth.supabase), cashId, {
+        tipo: type, categoria: category, data: date, valor: value,
+        descricao: clean(body.description, 500) || null,
+      });
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_caixa_rpc_falhou", { operacao: "editar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
 
     /* Excluir. O lançamento é a prova de que a parcela entrou em caixa — sem ele, a
        parcela tem que voltar a aparecer em "A receber", senão o financeiro passa a
        contar duas histórias diferentes sobre o mesmo dinheiro. */
-    const { data: alterado, error } = await auth.supabase.from("lancamentos_caixa").delete().eq("id", cashId).select("id").maybeSingle();
-    if (error) return falhaFinanceiro(error, "excluir_lancamento");
-    if (!alterado) return Response.json({ error: "O lançamento deixou de existir antes da exclusão." }, { status: 409 });
-    const auditError = await registrar("Excluir lançamento", null);
-    if (antes.recebimento_id) {
-      const { error: reopenError } = await auth.supabase.from("recebimentos")
-        .update({ status: "pendente", data_recebimento: null }).eq("id", antes.recebimento_id);
-      if (reopenError) return falhaFinanceiro(reopenError, "reabrir_parcela_apos_exclusao", { parcial: true });
-      if (auditError) return falhaFinanceiro(auditError, "auditar_exclusao_lancamento", { parcial: true });
-      return Response.json({ success: true, reopened: true });
-    }
-    if (auditError) return falhaFinanceiro(auditError, "auditar_exclusao_lancamento", { parcial: true });
-    return Response.json({ success: true });
+    const resultado = await excluirCaixaAtomico(semTipos(auth.supabase), cashId);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_caixa_rpc_falhou", { operacao: "excluir", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "createReceipt") {

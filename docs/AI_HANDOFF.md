@@ -1,5 +1,20 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 21:25 BRT
+
+- Segunda fatia da decisão 29 entregue pela PR #266 no build
+  `e08eb4812dd45d9ad49718099e811cb0a47df89c`. A migration
+  `financeiro_caixa_criar_atomico` está aplicada; prova pós-deploy preservou 368
+  caixas, 16 vínculos, zero duplicidade/divergência e terminou em rollback.
+- Terceira lacuna reproduzida: edição/exclusão de caixa, auditoria e reabertura da
+  parcela ainda eram chamadas separadas; além disso, `ON DELETE SET NULL` permitia
+  apagar lateralmente um dos 3 caixas de repasse e deixar o repasse pago sem caixa.
+- Novas RPCs em prova editam/sincronizam ou excluem/reabrem numa transação, fazem
+  retry idempotente e bloqueiam caixas derivados de repasse. Prova `authenticated`
+  com edição, replay, exclusão, replay e bloqueios passou em `BEGIN/ROLLBACK`.
+- 1.171 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge, migration e aceite pós-deploy sem mutação persistente.
+
 ## Estado verificado em 23/09/2026, 21:13 BRT
 
 - Segunda fatia da decisão 29 em prova. Os 16 lançamentos ligados a recebimento
