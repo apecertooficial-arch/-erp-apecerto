@@ -7,6 +7,7 @@ import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "..
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales-stage-create-rpc";
+import { deleteSalesStageAtomic, type SalesStageDeleteRpcClient } from "../sales-stage-delete-rpc";
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
 import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
 import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
@@ -29,6 +30,10 @@ const clean = (value: unknown, max = 200) => typeof value === "string" ? value.t
 const slugify = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
 
 function falhaEsteira(error: { code?: string; message?: string }, operacao: string) {
+  if (/ESTEIRA_PROCESSO_ETAPA_INATIVA/.test(error.message ?? "")) {
+    console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
+    return Response.json({ error: "A etapa de destino não está mais ativa. Atualize a tela.", erro: "etapa_inativa" }, { status: 409 });
+  }
   const semPermissao = error.code === "42501" || /permission|policy|acesso negado/i.test(error.message ?? "");
   console.error("esteira_vendas_falhou", { operacao, codigo: error.code ?? "desconhecido" });
   return Response.json({
@@ -481,14 +486,11 @@ export async function PATCH(request: Request) {
     }
     // deleteStage
     const id = clean(body.stageId, 60);
-    if (!id) return Response.json({ error: "Etapa inválida." }, { status: 422 });
-    const { data: stageRow } = await auth.supabase.from("esteira_etapas").select("slug").eq("id", id).maybeSingle();
-    if (stageRow?.slug) {
-      const { count } = await auth.supabase.from("venda_processos").select("id", { count: "exact", head: true }).eq("etapa", stageRow.slug);
-      if ((count ?? 0) > 0) return Response.json({ error: "Esta etapa tem vendas. Mova cada venda individualmente antes de excluir." }, { status: 409 });
-    }
-    const { error } = await auth.supabase.from("esteira_etapas").update({ ativo: false } as never).eq("id", id);
-    return error ? falhaEsteira(error, "remover_etapa") : Response.json({ success: true });
+    const requestId = clean(body.requestId, 60);
+    if (!id || !requestId) return Response.json({ error: "Etapa ou solicitação inválida." }, { status: 422 });
+    const resultado = await deleteSalesStageAtomic(auth.supabase as unknown as SalesStageDeleteRpcClient, { stageId: id, requestId });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_etapa_remocao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
   if (action === "assign") {
     const processId = String(body.processId || "");

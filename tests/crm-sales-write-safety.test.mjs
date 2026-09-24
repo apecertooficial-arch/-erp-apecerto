@@ -7,6 +7,7 @@ import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 import { createSalesStageAtomic } from "../app/api/crm/sales-stage-create-rpc.ts";
+import { deleteSalesStageAtomic } from "../app/api/crm/sales-stage-delete-rpc.ts";
 import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
 import { confirmSalesTriageAtomic } from "../app/api/crm/sales-triage-confirm-rpc.ts";
 import { registerSalesBatchAttachmentsAtomic } from "../app/api/crm/sales-batch-attachment-rpc.ts";
@@ -457,6 +458,38 @@ test("migration cria etapa e auditoria na mesma transação serializada", () => 
   assert.match(sql, /insert into public\.esteira_etapas/);
   assert.match(sql, /insert into public\.erp_auditoria/);
   assert.match(sql, /grant execute on function public\.esteira_etapa_criar\(text,text,text,text,integer,boolean,uuid\) to authenticated,service_role/);
+});
+
+test("remoção de etapa usa uma RPC idempotente e conserva a solicitação no retry", async () => {
+  const inicio = api.indexOf('// deleteStage');
+  const fim = api.indexOf('if (action === "assign")', inicio);
+  const remover = api.slice(inicio, fim);
+  assert.match(remover, /deleteSalesStageAtomic/);
+  assert.doesNotMatch(remover, /\.from\("(?:esteira_etapas|venda_processos)"\)/);
+  assert.match(ui, /const stageDeleteRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "deleteStage", stageId, requestId/);
+
+  const client = clienteFalso({ data: { etapa_id: "s-4", slug: "vistoria", idempotente: false }, error: null });
+  const response = await deleteSalesStageAtomic(client, { stageId: "s-4", requestId: "req-8" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_etapa_remover", args: {
+    p_etapa_id: "s-4", p_request_id: "req-8",
+  } }]);
+  assert.deepEqual(response.body, { success: true, stageId: "s-4", slug: "vistoria", idempotent: false });
+});
+
+test("migration remove etapa sem corrida com a entrada de processos", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924130500_esteira_etapa_remocao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_etapa_remover_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_processo_exigir_etapa_ativa\(\)/);
+  assert.match(sql, /for share/);
+  assert.match(sql, /create trigger venda_processos_etapa_ativa_guard/);
+  assert.match(sql, /create or replace function public\.esteira_etapa_remover/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /for update/);
+  assert.match(sql, /from public\.venda_processos where etapa=v_etapa\.slug/);
+  assert.match(sql, /update public\.esteira_etapas set ativo=false/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_etapa_remover\(uuid,uuid\) to authenticated,service_role/);
 });
 
 test("migration reordena todas as etapas e auditoria na mesma transação", () => {
