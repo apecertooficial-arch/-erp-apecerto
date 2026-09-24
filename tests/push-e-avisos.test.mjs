@@ -23,6 +23,7 @@ const LISTA = ler("../app/features/funil-2/Funil2Mobile.tsx");
 const REDIRECT = ler("../app/(erp)/negocio/[...caminho]/page.tsx");
 const MIGRACAO = ler("../supabase/migrations/20260803010000_push_vencendo_e_deep_links_reais.sql");
 const AVISO_APP = ler("../app/features/home/AvisoNotificacoes.tsx");
+const IDENTIDADE = ler("../app/styles/apecerto-identidade.css");
 const PAGINA_AVISOS = ler("../app/(erp)/notificacoes/page.tsx");
 const TELA_AVISOS = ler("../app/features/notifications/NotificationsWorkspace.tsx");
 const LOGICA_AVISOS = ler("../app/features/notifications/telaAvisos.logica.ts");
@@ -64,6 +65,10 @@ test("app confirma visualmente que o aparelho esta inscrito para lead novo", () 
   assert.match(AVISO_APP, /Avisos de lead novo ligados/);
   assert.match(AVISO_APP, /Este aparelho vai avisar quando um lead cair para você/);
   assert.match(AVISO_APP, /Notification\.requestPermission\(\)/);
+});
+
+test("aviso de push termina acima da Sara no celular", () => {
+  assert.match(IDENTIDADE, /\.aviso-push-convite, \.aviso-push-ok \{ bottom: calc\(132px \+ env\(safe-area-inset-bottom, 0px\)\); \}/);
 });
 
 test("app só confirma o aparelho depois de ok persistido", () => {
