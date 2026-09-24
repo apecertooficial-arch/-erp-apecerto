@@ -289,6 +289,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const documentReviewRequests = useRef(new Map<string, string>());
   const triageConfirmRequests = useRef(new Map<string, string>());
   const attachmentRemoveRequests = useRef(new Map<string, string>());
+  const attachmentUploadRequests = useRef(new Map<string, { requestId: string; path: string; uploaded: boolean }>());
   // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
   const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
   const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
@@ -298,23 +299,25 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     const j = await r.json().catch(() => ({})) as { success?: boolean; error?: string }; if (!r.ok || j.success !== true) throw new Error(j.error || "A Esteira não confirmou a alteração.");
   };
   const run = async (fn: () => Promise<void>) => { setWBusy(true); setError(null); try { await fn(); await onReload(); } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha."); } finally { setWBusy(false); } };
-  const upload = (file: File, grupo: string, docNome: string | null, obrigatorio: boolean, observacao: string) => run(async () => {
-    const supabase = getBrowserSupabaseClient();
+  const uploadDocument = async (file: File, folder: string, payload: Record<string, unknown>) => {
+    const key = JSON.stringify([folder, payload.grupo ?? null, payload.etapaSlug ?? null, payload.docNome ?? null, payload.obrigatorio === true, payload.observacao ?? null, file.name, file.size, file.lastModified]);
     const safe = file.name.replace(/[^\w.\-]+/g, "_");
-    const path = `esteira/${process.id}/${grupo}/${Date.now()}_${safe}`;
-    const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
-    if (upErr) throw new Error(upErr.message);
-    await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, grupo, docNome, obrigatorio, observacao, nome: file.name, path, mime: file.type, tamanho: file.size });
-  });
-  const uploadEtapa = (file: File, docNome: string, obrigatorio: boolean) => run(async () => {
-    const supabase = getBrowserSupabaseClient();
-    const safe = file.name.replace(/[^\w.\-]+/g, "_");
-    const path = `esteira/${process.id}/_etapa/${process.etapa}/${Date.now()}_${safe}`;
-    const { error: upErr } = await supabase.storage.from("esteira-docs").upload(path, file, { upsert: false });
-    if (upErr) throw new Error(upErr.message);
-    await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, etapaSlug: process.etapa, docNome, obrigatorio, nome: file.name, path, mime: file.type, tamanho: file.size });
-  });
-  const removeAnexo = (id: string) => { const requestId = attachmentRemoveRequests.current.get(id) ?? crypto.randomUUID(); attachmentRemoveRequests.current.set(id, requestId); return run(async () => { await api({ action: "removeAnexo", anexoId: id, requestId }); attachmentRemoveRequests.current.delete(id); }); };
+    const atual = attachmentUploadRequests.current.get(key);
+    const request = atual ?? { requestId: crypto.randomUUID(), path: "", uploaded: false };
+    if (!request.path) request.path = `esteira/${process.id}/${folder}/${request.requestId}_${safe}`;
+    attachmentUploadRequests.current.set(key, request);
+    if (!request.uploaded) {
+      const { error: upErr } = await getBrowserSupabaseClient().storage.from("esteira-docs").upload(request.path, file, { upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      request.uploaded = true;
+    }
+    await api({ action: "addAnexo", processId: process.id, requestId: request.requestId, ...payload, nome: file.name, path: request.path, mime: file.type, tamanho: file.size });
+    attachmentUploadRequests.current.delete(key);
+  };
+  const upload = (file: File, grupo: string, docNome: string | null, obrigatorio: boolean, observacao: string) => run(() => uploadDocument(file, grupo, { grupo, docNome, obrigatorio, observacao }));
+  const uploadEtapa = (file: File, docNome: string, obrigatorio: boolean) => run(() => uploadDocument(file, `_etapa/${process.etapa}`, { etapaSlug: process.etapa, docNome, obrigatorio }));
+  const removeAttachment = async (id: string, clearRequest = true) => { const requestId = attachmentRemoveRequests.current.get(id) ?? crypto.randomUUID(); attachmentRemoveRequests.current.set(id, requestId); await api({ action: "removeAnexo", anexoId: id, requestId }); if (clearRequest) attachmentRemoveRequests.current.delete(id); };
+  const removeAnexo = (id: string) => run(() => removeAttachment(id));
   const requestDocumento = (key: string) => { const atual = documentReviewRequests.current.get(key); if (atual) return atual; const novo = crypto.randomUUID(); documentReviewRequests.current.set(key, novo); return novo; };
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } const key = JSON.stringify([a.id, status, motivo]); void run(async () => { await api({ action: "docStatus", anexoId: a.id, status, motivo, requestId: requestDocumento(key) }); documentReviewRequests.current.delete(key); }); };
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
@@ -523,7 +526,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
         {a ? <>
           <button type="button" title="Abrir" onClick={() => void abrir(a.path)}>👁</button>
           <button type="button" title="Baixar" onClick={() => void baixar(a.path, a.nome)}>⬇</button>
-          <label title="Substituir" className="docx-replace">⟳<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => { await api({ action: "removeAnexo", anexoId: a.id }); const supabase = getBrowserSupabaseClient(); const safe = f.name.replace(/[^\w.\-]+/g, "_"); const path = `esteira/${process.id}/${grupo}/${Date.now()}_${safe}`; const { error: ue } = await supabase.storage.from("esteira-docs").upload(path, f); if (ue) throw new Error(ue.message); await api({ action: "addAnexo", processId: process.id, negocioId: process.negocio_id, grupo, docNome: nome, obrigatorio, nome: f.name, path, mime: f.type, tamanho: f.size }); }); e.target.value = ""; }} /></label>
+          <label title="Substituir" className="docx-replace">⟳<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) void run(async () => { await removeAttachment(a.id, false); await uploadDocument(f, grupo, { grupo, docNome: nome, obrigatorio }); attachmentRemoveRequests.current.delete(a.id); }); e.target.value = ""; }} /></label>
           <button type="button" title="Excluir" className="docx-del" disabled={bloqueado} onClick={() => removeAnexo(a.id)}>🗑</button>
           {canApprove && <select className="docx-statussel" value={a.status || "anexado"} disabled={busyAll} onChange={(e) => setStatus(a, e.target.value)} title="Alterar status">{["anexado", "em_analise", "aprovado", "recusado", "correcao"].map((s) => <option value={s} key={s}>{DOC_STATUS_LABEL[s]}</option>)}</select>}
         </> : <label className="docx-up">📎 Anexar<input type="file" hidden disabled={bloqueado} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, grupo, modelo ? nome : null, obrigatorio, ""); e.target.value = ""; }} /></label>}

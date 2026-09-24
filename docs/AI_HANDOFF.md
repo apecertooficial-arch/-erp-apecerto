@@ -1,5 +1,26 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 10:38 BRT
+
+- Remoção de anexos entregue pela PR #287 no build
+  `e77926eb277c2f62f28cb580e97d9b6fe9d47ea4`. A Esteira e a aba de
+  documentação abriram em produção sem erro e foram fechadas sem exclusão. Não
+  há anexo legítimo ligado a uma venda para acionar o botão com segurança; o
+  único anexo persistido é legado e aponta para um processo inexistente.
+- A próxima falha comprovada estava no upload manual: o anexo era inserido antes
+  da trilha best-effort, e uma resposta incerta fazia nova tentativa gerar outro
+  caminho e outra solicitação.
+- A migration `esteira_anexo_upload_atomico` está aplicada. A função
+  `esteira_anexo_registrar` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. Ela revalida processo, etapa, documento e papel, deriva o negócio
+  do processo e registra anexo e trilha na mesma transação. A interface conserva
+  request e caminho após o Storage confirmar o upload.
+- A prova autenticada criou anexo e trilha, repetiu retornando o mesmo anexo e
+  bloqueou o request conflitante. O `ROLLBACK` deixou zero fixture e zero evento
+  de prova. Advisors não citam os objetos novos. Os 1.215 testes, TypeScript e
+  lint sem erros e build Vinext passaram; o helper best-effort ficou sem uso e
+  foi removido. Faltam PR/CI, deploy e aceite produtivo sem anexar arquivo real.
+
 ## Estado verificado em 24/09/2026, 10:25 BRT
 
 - Upload em lote entregue pela PR #286 no build
@@ -17,7 +38,8 @@
   repetiu sem duplicar e bloqueou o request conflitante. O `ROLLBACK` restaurou
   1 anexo real, zero fixture e zero evento de prova. Advisors não citam os
   objetos novos. Os 1.213 testes, TypeScript, lint sem erros e build Vinext
-  passaram; faltam PR/CI, deploy e aceite produtivo somente de leitura.
+  passaram; PR/CI, deploy e aceite produtivo somente de leitura também foram
+  concluídos.
 
 ## Estado verificado em 24/09/2026, 10:11 BRT
 
