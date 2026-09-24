@@ -4,6 +4,7 @@ import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
 import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
 import { saveSalesConditionsAtomic, type SalesConditionsRpcClient } from "../sales-conditions-rpc";
+import { addSalesObservationAtomic, type SalesObservationRpcClient } from "../sales-observation-rpc";
 import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
@@ -869,13 +870,15 @@ export async function PATCH(request: Request) {
   if (action === "addObs") {
     const processId = clean(body.processId, 60);
     const texto = clean(body.texto, 4000);
-    if (!processId || !texto) return Response.json({ error: "Escreva a observação." }, { status: 422 });
-    const { data: processo, error: processoError } = await auth.supabase.from("venda_processos").select("id").eq("id", processId).maybeSingle();
-    if (processoError) return falhaEsteira(processoError, "autorizar_observacao");
-    if (!processo) return Response.json({ error: "Venda não encontrada ou sem acesso." }, { status: 404 });
-    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
-    const { error } = await auth.supabase.from("venda_observacoes").insert({ processo_ref: processId, texto, autor: auth.user.id, autor_nome: me?.nome ?? null } as never);
-    return error ? falhaEsteira(error, "adicionar_observacao") : Response.json({ success: true });
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !texto || !requestId) return Response.json({ error: "Escreva a observação." }, { status: 422 });
+    const resultado = await addSalesObservationAtomic(auth.supabase as unknown as SalesObservationRpcClient, {
+      processId,
+      text: texto,
+      requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_observacao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   return Response.json({ error: "Ação desconhecida." }, { status: 400 });

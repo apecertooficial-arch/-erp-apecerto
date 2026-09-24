@@ -4,6 +4,7 @@ import test from "node:test";
 import { criarVendaCrmAtomica } from "../app/api/crm/sales-create-rpc.ts";
 import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.ts";
 import { saveSalesConditionsAtomic } from "../app/api/crm/sales-conditions-rpc.ts";
+import { addSalesObservationAtomic } from "../app/api/crm/sales-observation-rpc.ts";
 import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
@@ -34,15 +35,30 @@ function clienteFalso(resposta) {
   };
 }
 
-test("observação comprova acesso ao processo antes de inserir", () => {
-  const comando = api.match(/if \(action === "addObs"\)[\s\S]*?return error \?/)?.[0] ?? "";
-  assert.match(comando, /from\("venda_processos"\)\.select\("id"\)\.eq\("id", processId\)\.maybeSingle\(\)/);
-  assert.match(comando, /if \(processoError\) return falhaEsteira\(processoError, "autorizar_observacao"\)/);
-  assert.match(comando, /if \(!processo\) return Response\.json\(\{ error: "Venda não encontrada ou sem acesso\." \}, \{ status: 404 \}\)/);
+test("observação usa RPC idempotente e request estável", async () => {
+  const comando = api.match(/if \(action === "addObs"\)[\s\S]*?return Response\.json\(resultado\.body/)?.[0] ?? "";
+  assert.match(comando, /addSalesObservationAtomic/);
+  assert.doesNotMatch(comando, /\.from\("(?:venda_processos|venda_observacoes)"\)/);
+  assert.match(ui, /const observationRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "addObs", processId: process\.id, texto, requestId/);
 
-  const autorizacao = comando.indexOf('from("venda_processos")');
-  const escrita = comando.indexOf('from("venda_observacoes").insert');
-  assert.ok(autorizacao >= 0 && escrita > autorizacao, "a autorização deve anteceder a escrita");
+  const client = clienteFalso({ data: { observacao_id: "o-1", processo_id: "p-1", idempotente: false }, error: null });
+  const response = await addSalesObservationAtomic(client, { processId: "p-1", text: "Acordo registrado", requestId: "req-obs" });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_observacao_adicionar", args: {
+    p_processo_id: "p-1", p_texto: "Acordo registrado", p_request_id: "req-obs",
+  } }]);
+  assert.deepEqual(response.body, { success: true, observationId: "o-1", processId: "p-1", idempotent: false });
+});
+
+test("migration torna observação idempotente e comprova o acesso na transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924144500_esteira_observacao_idempotente.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists request_id uuid/);
+  assert.match(sql, /create unique index if not exists venda_observacoes_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_observacao_adicionar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.venda_processos p[\s\S]*for share/);
+  assert.match(sql, /insert into public\.venda_observacoes/);
+  assert.match(sql, /grant execute on function public\.esteira_observacao_adicionar\(uuid,text,uuid\) to authenticated,service_role/);
 });
 
 test("movimentação usa revisão otimista e comprova a linha alterada", () => {
