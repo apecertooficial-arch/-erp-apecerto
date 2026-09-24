@@ -30,7 +30,7 @@ checks do projeto, publicação e confirmação da build.
 | 17 | Gatilhos oportunos atualizam Sara e Meu Dia. | Mensagem/evento agenda uma única reavaliação; resultado atualiza cobrança sem duplicar fila. | entregue | O enfileirador canônico recebeu evento sintético, informou janela de silêncio de 6 s e o dispatcher concluiu. Repetir o mesmo ID retornou uma duplicata e zero nova fila; a reavaliação renovou somente um checkpoint. |
 | 18 | O corretor executa e a IA reavalia depois. | Ação humana confirmada atualiza o CRM antes de nova análise, sem IA executar pelo corretor. | entregue | Uma saída sintética do corretor foi persistida antes do novo evento; a Sara reavaliou depois, aplicou o resultado seguro como `mantida`, incrementou o card e não gerou mensagem nem notificação. |
 | 19 | Visita permite agendar, reagendar e cancelar. | Cada ação persiste, respeita conflito/permissão e atualiza Agenda/CRM. | entregue | PR #257 publicada no hash `607766a`: edição exige o card original. Prova integral com `ROLLBACK` sincronizou agendamento, reagendamento e cancelamento entre visita canônica, Agenda e CRM, com autorização, eventos e auditoria. Produção 390×844 e desktop aceita sem alerta. |
-| 20 | Feedback de visita aceita texto e áudio. | Ambos persistem com autoria, visita e acesso corretos. | bloqueado | Texto publicado e provado com autoria. Áudio permanece fail-closed: tabela, bucket privado, RPC, função de transcrição, cron e segredos ainda não existem em produção. O crédito de IA voltou, mas não substitui essa infraestrutura; habilitar o rascunho agora aceitaria arquivos que não seriam processados. |
+| 20 | Feedback de visita aceita texto e áudio. | Ambos persistem com autoria, visita e acesso corretos. | bloqueado | Texto publicado e provado com autoria. PRs #299/#300 promoveram a infraestrutura privada: tabela/RLS, bucket fechado, RPCs, cron, Edge v2 e chave no cofre foram provados em produção. Tudo permanece vazio e `enabled=false`; consulta e reserva falham fechadas. O cutover enviaria gravações potencialmente sensíveis à OpenAI e exige aprovação específica e informada para esse destino. |
 | 21 | Feedback registra acompanhantes, produtos, objeções, intenção e próxima ação. | Campos persistem e a próxima ação atualiza o card sem inventar dados. | entregue | Produção no hash `607766a`: prova com `ROLLBACK` obteve nota 10/10, persistiu o envelope versionado com acompanhantes, alternativas/produtos, objeções e intenção, preservou autoria, sincronizou a Agenda e avançou o card para acompanhamento em 24 h. O formulário real passou em 390×844 e desktop sem overflow; nenhum dado artificial permaneceu. |
 | 22 | Gestão cobra persistentemente o corretor por feedback/pendência. | Cobrança nasce, aparece para ambos, persiste e encerra somente após resultado válido. | entregue | Produção no hash `607766a`: a prova transacional criou avisos para corretor e gestão, confirmou visibilidade pelas RPCs, idempotência, bloqueio de resposta gerencial e de feedback inválido, e resolveu ambos somente após resultado válido. Push/WhatsApp ficaram desligados, o rollback foi confirmado e a fila publicada já havia sido aceita em mobile e desktop. |
 | 23 | Cada cliente tem definição explícita no acompanhamento. | Card informa estado, responsável e motivo da próxima ação sem categoria ambígua. | entregue | PR #258 publicada no hash `bea893a`: os 37 cards pós-visita deixaram a categoria ambígua; 4 ações comprovadas foram recuperadas e 33 históricos passaram a pedir registro humano. Novos feedbacks preservam a frase exata. Banco, mobile 390×844 e desktop foram aceitos em produção. |
@@ -57,8 +57,9 @@ checks do projeto, publicação e confirmação da build.
 
 Retomar a decisão 30 em uma sessão real de corretor para percorrer Meu Dia,
 WhatsApp, busca, visitas e feedback. Não personificar conta nem criar credencial
-para fabricar aceite. As decisões 7–9 e 11 permanecem `em prova` porque as
-buscas produtivas não encontraram operação humana material. A decisão 20 permanece
-bloqueada até existir infraestrutura de áudio capaz de processar o arquivo de ponta
-a ponta. Não reconciliar automaticamente as 101 divergências legadas entre
-lead/negócio nem as 18 entre card/negócio: elas precisam de triagem humana.
+para fabricar aceite. A decisão 20 só pode ser habilitada após aprovação
+específica para enviar o áudio privado à OpenAI para transcrição. As decisões
+7–9 e 11 permanecem `em prova` porque as buscas produtivas não encontraram
+operação humana material. Não reconciliar automaticamente as 101 divergências
+legadas entre lead/negócio nem as 18 entre card/negócio: elas precisam de
+triagem humana.

@@ -38,6 +38,19 @@ A própria reserva recusa upload antes do cutover. O dispatcher reutiliza o
 segredo interno já usado pelos runners da Sara, sem criar credencial paralela,
 e continua service-only, limitado e auditável.
 
+Em produção, a migration `feedback_visita_audio_privado` foi aplicada e a Edge
+`f2-feedback-visita-transcrever` chegou à versão 2. O preflight confirmou bucket
+privado, tabela e configuração, cron, Vault, chave da OpenAI no cofre, zero
+áudios e `enabled=false`. Sem segredo, a Edge respondeu 401; com o segredo
+interno, carregou a chave privada e alcançou a RPC, que recusou corretamente o
+UUID inexistente com 409. O tick desligado despachou zero itens e a reserva
+retornou `audio_indisponivel`.
+
+O cutover não foi executado. Habilitá-lo permitiria que gravações potencialmente
+sensíveis de visitas fossem enviadas à OpenAI para transcrição, o que requer
+aprovação específica e informada para esse destino. A infraestrutura permanece
+vazia e fail-closed até essa decisão.
+
 ## Evidência revalidada sobre o `main` atual
 
 - 57/57 testes direcionados de Agenda, CRM, feedback, áudio e contratos;
