@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 10:25 BRT
+
+- Upload em lote entregue pela PR #286 no build
+  `0d63e64a2cedb5c69c5c1b7a9ddb4650bec47b8d`. A área autenticada “Enviar tudo
+  de uma vez” abriu em produção e a ficha foi fechada sem selecionar arquivos.
+  Produção preservou zero lotes e zero resíduos de prova.
+- A próxima falha comprovada estava na remoção de anexos: banco e trilha eram
+  escritos separadamente, e o objeto no Storage nunca era apagado.
+- A migration `esteira_anexo_remocao_atomica` está aplicada. A função
+  `esteira_anexo_remover` é `SECURITY INVOKER`; `authenticated` executa e `anon`
+  não. Ela revalida processo, etapa, documento e papel, remove a linha e grava
+  uma trilha preservada na mesma transação. O request estável permite repetir a
+  limpeza do Storage sem duplicar a auditoria.
+- A prova autenticada removeu a fixture, preservou uma trilha sem FK destrutiva,
+  repetiu sem duplicar e bloqueou o request conflitante. O `ROLLBACK` restaurou
+  1 anexo real, zero fixture e zero evento de prova. Advisors não citam os
+  objetos novos. Os 1.213 testes, TypeScript, lint sem erros e build Vinext
+  passaram; faltam PR/CI, deploy e aceite produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 10:11 BRT
 
 - Confirmação da triagem entregue pela PR #285 no build
@@ -17,7 +36,8 @@
   duplicar e bloqueou o reuso conflitante. O `ROLLBACK` deixou zero anexo e zero
   evento de prova; a produção continua sem lotes reais. Advisors não citam os
   objetos novos. Os 1.211 testes, TypeScript, lint sem erros e build Vinext
-  passaram; faltam PR/CI, deploy e aceite produtivo sem upload real.
+  passaram; PR/CI, deploy e aceite produtivo sem upload real também foram
+  concluídos.
 
 ## Estado verificado em 24/09/2026, 09:57 BRT
 
