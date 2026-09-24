@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 09:57 BRT
+
+- Criação de etapas entregue pela PR #284 no build
+  `4f6d9632aee78cce79b84e6c5c104d4894abf907`. O formulário autenticado abriu
+  com a ação desabilitada sem nome e foi fechado por “Cancelar”. Produção
+  preservou 10 etapas nas ordens 1–10, zero fixture e zero auditoria de prova.
+- A próxima falha reproduzida estava em confirmar a triagem da Sara: o anexo
+  chegava a `anexado` antes da trilha best-effort. A prova controlada confirmou
+  o anexo com zero evento e terminou em `ROLLBACK`.
+- A migration `esteira_triagem_confirmacao_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Ela revalida etapa,
+  bloco e papel, confirma/corrige o anexo e registra o evento na mesma transação,
+  com UUID estável para retry.
+- A prova pós-migration corrigiu a classificação, repetiu o mesmo resultado,
+  manteve exatamente um evento e bloqueou o request conflitante. O `ROLLBACK`
+  restaurou 1 anexo real, zero fixture e zero evento de prova. Advisors não
+  citam os objetos novos. Os 1.209 testes, TypeScript, lint sem erros e build
+  Vinext passaram; faltam PR/CI, deploy e aceite produtivo somente de leitura.
+
 ## Estado verificado em 24/09/2026, 01:54 BRT
 
 - Reordenação de etapas entregue pela PR #283 no build

@@ -8,6 +8,7 @@ import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
 import { createSalesStageAtomic } from "../app/api/crm/sales-stage-create-rpc.ts";
 import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
+import { confirmSalesTriageAtomic } from "../app/api/crm/sales-triage-confirm-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
@@ -250,6 +251,36 @@ test("migration mantém revisão e trilha de documento na mesma transação", ()
   assert.match(sql, /update public\.esteira_anexos/);
   assert.match(sql, /insert into public\.esteira_anexo_eventos/);
   assert.match(sql, /grant execute on function public\.esteira_anexo_revisar\(uuid,text,text,uuid\) to authenticated,service_role/);
+});
+
+test("confirmação da triagem usa uma RPC para anexo e trilha", async () => {
+  const inicio = api.indexOf('if (action === "triagemConfirmar")');
+  const fim = api.indexOf('// ===== Exclusão definitiva', inicio);
+  const confirmar = api.slice(inicio, fim);
+  assert.match(confirmar, /confirmSalesTriageAtomic/);
+  assert.doesNotMatch(confirmar, /\.from\("esteira_anexos"\)\.update/);
+  assert.doesNotMatch(confirmar, /trilha\(/);
+  assert.match(ui, /const triageConfirmRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "triagemConfirmar", anexoId, grupo, docNome, obrigatorio, requestId/);
+
+  const client = clienteFalso({ data: { anexo_id: "a-2", status: "anexado", evento: "corrigido", idempotente: false }, error: null });
+  const response = await confirmSalesTriageAtomic(client, {
+    attachmentId: "a-2", group: "comprador", documentName: "RG", required: true, requestId: "req-8",
+  });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_anexo_triagem_confirmar", args: {
+    p_anexo_id: "a-2", p_grupo: "comprador", p_doc_nome: "RG", p_obrigatorio: true, p_request_id: "req-8",
+  } }]);
+  assert.deepEqual(response.body, { success: true, attachmentId: "a-2", status: "anexado", event: "corrigido", idempotent: false });
+});
+
+test("migration confirma triagem e grava trilha na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924100500_esteira_triagem_confirmacao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists esteira_anexo_eventos_triagem_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_anexo_triagem_confirmar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /update public\.esteira_anexos/);
+  assert.match(sql, /insert into public\.esteira_anexo_eventos/);
+  assert.match(sql, /grant execute on function public\.esteira_anexo_triagem_confirmar\(uuid,text,text,boolean,uuid\) to authenticated,service_role/);
 });
 
 test("reordenação das etapas usa uma RPC para a sequência completa", async () => {

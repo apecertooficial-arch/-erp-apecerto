@@ -287,6 +287,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const [com, setCom] = useState(comDoBanco);
   const [comRequestId, setComRequestId] = useState(() => crypto.randomUUID());
   const documentReviewRequests = useRef(new Map<string, string>());
+  const triageConfirmRequests = useRef(new Map<string, string>());
   // Marcadores do que já está gravado: qualquer divergência acende a barra de salvar.
   const [condRef, setCondRef] = useState(() => JSON.stringify(condDoBanco()));
   const [comRef, setComRef] = useState(() => JSON.stringify(comDoBanco()));
@@ -378,7 +379,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
       }
     });
   };
-  const confirmarTriagem = (anexoId: string, grupo: string, docNome: string, obrigatorio: boolean) => run(() => api({ action: "triagemConfirmar", anexoId, grupo, docNome, obrigatorio }));
+  const confirmarTriagem = (anexoId: string, grupo: string, docNome: string, obrigatorio: boolean) => { const key = JSON.stringify([anexoId, grupo, docNome, obrigatorio]); const requestId = triageConfirmRequests.current.get(key) ?? crypto.randomUUID(); triageConfirmRequests.current.set(key, requestId); return run(async () => { await api({ action: "triagemConfirmar", anexoId, grupo, docNome, obrigatorio, requestId }); triageConfirmRequests.current.delete(key); }); };
 
   // ===== Partes da negociação (várias pessoas por papel) =====
   const partesDe = (papel: string) => partes.filter((p) => p.papel === papel).slice().sort((a, b) => (a.ordem ?? 1) - (b.ordem ?? 1));
