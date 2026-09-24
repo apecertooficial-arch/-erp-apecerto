@@ -14,6 +14,7 @@ import {
 import { decidirRepasseAtomico, excluirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/finance/recebimento-rpc.ts";
+import { excluirComissaoAtomica, salvarComissaoAtomica } from "../app/api/finance/comissao-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -570,6 +571,65 @@ test("migration exclui repasse e caixa ligados na mesma transação auditada", (
   assert.match(sql, /'idempotente',true/);
   assert.match(sql, /revoke all on function public\.financeiro_excluir_repasse\(uuid\) from public,anon/);
   assert.match(sql, /grant execute on function public\.financeiro_excluir_repasse\(uuid\) to authenticated,service_role/);
+});
+
+test("criação, edição e exclusão de comissão usam somente RPCs atômicas", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "addCommission"');
+  const fim = rota.indexOf('return Response.json({ error: "Ação financeira desconhecida."', inicio);
+  const comissoes = rota.slice(inicio, fim);
+  assert.match(comissoes, /salvarComissaoAtomica\(semTipos\(auth\.supabase\), null/);
+  assert.match(comissoes, /salvarComissaoAtomica\(semTipos\(auth\.supabase\), id/);
+  assert.match(comissoes, /excluirComissaoAtomica\(semTipos\(auth\.supabase\), id\)/);
+  assert.doesNotMatch(comissoes, /\.from\("comissoes"\)\.(?:insert|update|delete)/);
+
+  const cliente = clienteFalso({ data: { ok: true, comissao_id: "c-1", criada: true, idempotente: false }, error: null });
+  const payload = { venda_id: "v-1", papel: "corretor", beneficiario_id: "u-1", valor: 100, request_id: "req-1" };
+  const resposta = await salvarComissaoAtomica(cliente, null, payload);
+  assert.deepEqual(cliente.chamadas, [{ fn: "financeiro_comissao_salvar", args: { p_comissao_id: null, payload } }]);
+  assert.deepEqual(resposta.body, { success: true, commissionId: "c-1", created: true, idempotente: false });
+
+  const excluir = clienteFalso({ data: { ok: true, comissao_id: "c-1", idempotente: true }, error: null });
+  assert.equal((await excluirComissaoAtomica(excluir, "c-1")).body.idempotente, true);
+  assert.deepEqual(excluir.chamadas, [{ fn: "financeiro_comissao_excluir", args: { p_comissao_id: "c-1" } }]);
+});
+
+test("falha de integridade da comissão informa o bloqueio sem estado parcial", async () => {
+  const cliente = clienteFalso({ data: null, error: { code: "P0001", message: "COMISSAO_MOVIMENTO_ATIVO: Remova primeiro os repasses vinculados." } });
+  const resposta = await salvarComissaoAtomica(cliente, "c-1", { papel: "corretor", beneficiario_id: "u-1", valor: 100 });
+  assert.equal(resposta.status, 409);
+  assert.equal(resposta.body.error, "Remova primeiro os repasses vinculados.");
+  assert.ok(!("parcial" in resposta.body));
+});
+
+test("migration da comissão protege limite, movimentos, retries e auditoria", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923233500_financeiro_comissao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists comissoes_request_id_uidx/);
+  assert.match(sql, /create or replace function public\.financeiro_comissao_salvar/);
+  assert.match(sql, /create or replace function public\.financeiro_comissao_excluir/);
+  assert.equal((sql.match(/language plpgsql\s+security invoker/g) ?? []).length, 2);
+  assert.match(sql, /from public\.comissoes where id=p_comissao_id for update/);
+  assert.match(sql, /from public\.pagamentos_comissao[\s\S]+for update/);
+  assert.match(sql, /from public\.lancamentos_caixa[\s\S]+for update/);
+  assert.match(sql, /v_soma_depois>v_bruta and v_soma_depois>v_soma_antes/);
+  assert.match(sql, /COMISSAO_MOVIMENTO_ATIVO:/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /trg_audit_comissoes grava o retrato anterior/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_comissao_salvar\(uuid,jsonb\),public\.financeiro_comissao_excluir\(uuid\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_comissao_salvar\(uuid,jsonb\),public\.financeiro_comissao_excluir\(uuid\) to authenticated,service_role/);
+});
+
+test("modal mantém requestId da comissão e trava linhas com repasse ou caixa", () => {
+  const modal = readFileSync(new URL("../app/features/finance/VendaModal.tsx", import.meta.url), "utf8");
+  assert.match(modal, /type CommRow = \{ id\?: string; requestId\?: string;/);
+  assert.match(modal, /requestId: typeof crypto !== "undefined" && "randomUUID" in crypto \? crypto\.randomUUID\(\) : ""/);
+  assert.match(modal, /action: "addCommission", requestId: linha\.requestId/);
+  assert.match(modal, /const movimentada = Boolean\(linha\.id/);
+  assert.match(modal, /disabled=\{busy \|\| movimentada\}/);
+  assert.match(modal, /Remova primeiro os repasses ou lançamentos de caixa vinculados/);
+  assert.match(modal, /movimentada \? "movimento vinculado"/);
+  assert.match(modal, /\.then\(\(ok\) => \{ if \(ok\) setCommissions/);
 });
 
 test("painel do corretor separa comissão a receber de repasse já pago", () => {

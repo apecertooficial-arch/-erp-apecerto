@@ -29,7 +29,7 @@ const hoje = () => hojeOperacao();
 const PAPEIS: Array<[string, string]> = [["corretor", "Corretor"], ["executivo", "Executivo"], ["gerente", "Taxa de gerente"], ["apecerto", "Apecerto"], ["indicacao", "Indicação"]];
 
 type DocRow = { nome: string; path: string; bucket: string; uploading?: boolean; error?: string };
-type CommRow = { id?: string; papel: string; beneficiarioId: string; valor: string };
+type CommRow = { id?: string; requestId?: string; papel: string; beneficiarioId: string; valor: string };
 type ReceiptRow = { id?: string; numeroParcela: string; valor: string; dataPrevista: string; recebido: boolean };
 type PayoutRow = { id?: string; comissaoId: string | null; beneficiarioId: string; papel: string; valor: string; ordem: number; dataPrevista: string; status: "previsto" | "pago"; dataPagamento: string };
 
@@ -112,8 +112,8 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
 
   const executar = async (payload: Record<string, unknown>, mensagem: string) => {
     setError(null); setBusy(true);
-    try { await onSave(payload); setAviso(mensagem); }
-    catch (motivo) { setError(motivo instanceof Error ? motivo.message : "Não foi possível salvar."); }
+    try { await onSave(payload); setAviso(mensagem); return true; }
+    catch (motivo) { setError(motivo instanceof Error ? motivo.message : "Não foi possível salvar."); return false; }
     finally { setBusy(false); }
   };
 
@@ -268,27 +268,33 @@ export function VendaModal({ data, saleId, sessionRole = "corretor", onClose, on
             <h3>Quem recebe comissão nesta venda</h3>
             {!isCorretor && <span className={distribuido ? "comm-ok" : "comm-warn"}>Distribuído {brl.format(somaComissoes)} de {brl.format(comissaoBruta)}{distribuido ? " ✓" : ` · falta ${brl.format(comissaoBruta - somaComissoes)}`}</span>}
           </div>
-          {commissions.map((linha, indice) => <div className="comm-row venda-comm-row" key={linha.id ?? `nova-${indice}`}>
-            <select disabled={somenteLeitura} value={linha.papel} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, papel: e.target.value } : r))}>
+          {commissions.map((linha, indice) => {
+            const movimentada = Boolean(linha.id && ((data.payouts ?? []).some((p) => p.comissao_id === linha.id || (!p.comissao_id && p.venda_id === saleId && p.beneficiario_id === (linha.beneficiarioId || null) && p.papel === linha.papel)) || data.cash.some((c) => c.comissao_id === linha.id)));
+            const tituloMovimento = movimentada ? "Remova primeiro os repasses ou lançamentos de caixa vinculados." : undefined;
+            return <div className="comm-row venda-comm-row" key={linha.id ?? linha.requestId ?? `nova-${indice}`}>
+            <select disabled={somenteLeitura || movimentada} title={tituloMovimento} value={linha.papel} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, papel: e.target.value } : r))}>
               {PAPEIS.map(([id, rotulo]) => <option value={id} key={id}>{rotulo}</option>)}
             </select>
-            <select disabled={somenteLeitura} value={linha.beneficiarioId} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, beneficiarioId: e.target.value } : r))}>
+            <select disabled={somenteLeitura || movimentada} title={tituloMovimento} value={linha.beneficiarioId} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, beneficiarioId: e.target.value } : r))}>
               <option value="">Sem beneficiário</option>{usuarios.map((u) => <option value={u.id} key={u.id}>{u.nome}</option>)}
             </select>
-            <input disabled={somenteLeitura} type="number" step="0.01" placeholder="Valor" value={linha.valor} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, valor: e.target.value } : r))} />
-            {editando && <em className="venda-comm-saldo">repassado {brl.format(repassadoDe(linha))}</em>}
+            <input disabled={somenteLeitura || movimentada} title={tituloMovimento} type="number" step="0.01" placeholder="Valor" value={linha.valor} onChange={(e) => setCommissions((l) => l.map((r, i) => i === indice ? { ...r, valor: e.target.value } : r))} />
+            {editando && <em className="venda-comm-saldo">{movimentada ? "movimento vinculado" : `repassado ${brl.format(repassadoDe(linha))}`}</em>}
             {!somenteLeitura && <>
-              {editando && <button disabled={busy} title="Salvar valor" type="button" onClick={() => void executar(linha.id
-                ? { action: "updateCommission", commissionId: linha.id, valor: Number(linha.valor) }
-                : { action: "addCommission", saleId, papel: linha.papel, beneficiarioId: linha.beneficiarioId, valor: Number(linha.valor) }, "Comissão salva.")}>✓</button>}
-              <button className="comm-del" disabled={busy} title="Remover" type="button" onClick={() => {
-                if (editando && linha.id) { void executar({ action: "deleteCommission", commissionId: linha.id }, "Comissão removida."); }
+              {editando && <button disabled={busy || movimentada} title={tituloMovimento ?? "Salvar comissão"} type="button" onClick={() => void executar(linha.id
+                ? { action: "updateCommission", commissionId: linha.id, papel: linha.papel, beneficiarioId: linha.beneficiarioId, valor: Number(linha.valor) }
+                : { action: "addCommission", requestId: linha.requestId, saleId, papel: linha.papel, beneficiarioId: linha.beneficiarioId, valor: Number(linha.valor) }, "Comissão salva.")}>✓</button>}
+              <button className="comm-del" disabled={busy || movimentada} title={tituloMovimento ?? "Remover"} type="button" onClick={() => {
+                if (editando && linha.id) {
+                  void executar({ action: "deleteCommission", commissionId: linha.id }, "Comissão removida.").then((ok) => { if (ok) setCommissions((l) => l.filter((item) => item.id !== linha.id)); });
+                  return;
+                }
                 setCommissions((l) => l.filter((_, i) => i !== indice));
               }}>×</button>
             </>}
-          </div>)}
+          </div>;})}
           {commissions.length === 0 && <p className="finance-empty">Nenhuma comissão lançada nesta venda ainda.</p>}
-          {!somenteLeitura && <button className="comm-add-btn" type="button" onClick={() => setCommissions((l) => [...l, { papel: "corretor", beneficiarioId: "", valor: "" }])}>＋ Adicionar participante</button>}
+          {!somenteLeitura && <button className="comm-add-btn" type="button" onClick={() => setCommissions((l) => [...l, { requestId: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "", papel: "corretor", beneficiarioId: "", valor: "" }])}>＋ Adicionar participante</button>}
         </section>}
 
         {step === 3 && <section className="nova-venda-section">
