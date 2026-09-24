@@ -138,17 +138,7 @@ export async function GET(request: Request) {
   const safeDetails = isBroker
     ? scopedDetails.map((detail) => ({ ...detail, percentual_comissao: null, comissao_bruta: null, comissao_corretores: null, comissao_executivo: null, comissao_apecerto: null, indicacao: null }))
     : scopedDetails;
-  const saleById = new Map(safeSales.map((sale) => [sale.id, sale]));
-  const reconciledReceipts = scopedReceipts.map((receipt) => {
-    const sale = saleById.get(receipt.venda_id);
-    if (sale?.status !== "pago") return receipt;
-    return {
-      ...receipt,
-      status: "recebido",
-      data_recebimento: receipt.data_recebimento || sale.data_venda,
-    };
-  });
-  return Response.json({ sales: safeSales, details: safeDetails, commissions: scopedCommissions, receipts: reconciledReceipts, cash: scopedCash, users: scopedUsers, brokers: brokerRows, goals: scopedGoals, leads: scopedLeads, deals: scopedDeals, empreendimentos: scopedEmpreendimentos, categorias: scopedCategorias, rankingVgv: scopedRanking, payouts: scopedPayouts, extratos: scopedExtratos, extratoLinhas: scopedExtratoLinhas });
+  return Response.json({ sales: safeSales, details: safeDetails, commissions: scopedCommissions, receipts: scopedReceipts, cash: scopedCash, users: scopedUsers, brokers: brokerRows, goals: scopedGoals, leads: scopedLeads, deals: scopedDeals, empreendimentos: scopedEmpreendimentos, categorias: scopedCategorias, rankingVgv: scopedRanking, payouts: scopedPayouts, extratos: scopedExtratos, extratoLinhas: scopedExtratoLinhas });
 }
 
 export async function PATCH(request: Request) {

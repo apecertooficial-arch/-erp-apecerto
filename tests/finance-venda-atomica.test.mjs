@@ -447,6 +447,13 @@ test("GET do financeiro falha fechado se qualquer conjunto obrigatório falhar",
   assert.match(rota, /if \(meError\) return falhaFinanceiro\(meError, "carregar_perfil"\)/);
 });
 
+test("GET preserva o estado persistido dos recebimentos para conferência humana", () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  assert.match(rota, /receipts: scopedReceipts/);
+  assert.doesNotMatch(rota, /reconciledReceipts/);
+  assert.doesNotMatch(rota, /status: "recebido",[\s\S]{0,120}data_recebimento:/);
+});
+
 test("rota financeira não devolve detalhes internos nem os grava no log", () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const linhasComRespostaCrua = rota.split("\n").filter((linha) => linha.includes("Response.json") && linha.includes(".message"));
