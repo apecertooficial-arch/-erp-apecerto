@@ -1,5 +1,29 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 00:12 BRT
+
+- Décima segunda fatia da decisão 29 entregue pela PR #276 no build
+  `cefff90be3905be56a75104213bfd43f931ed329`. O Financeiro autenticado confirmou
+  os botões de exclusão desabilitados para Comissão Paga e Comissão Recebida;
+  produção preservou 28 categorias, 16 ativas e 2 estruturais únicas.
+- A conexão manual da venda ao CRM ainda criava a venda, depois atualizava o
+  negócio e só então inseria o processo. Uma falha intermediária podia deixar
+  qualquer subconjunto desse estado persistido e o retry não era idempotente.
+- A migration `esteira_venda_criar_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Venda, negócio,
+  processo aprovado e auditoria agora nascem numa transação, protegida por UUID
+  estável da solicitação e unicidade do negócio no processo.
+- A prova pré-migration reproduziu venda e negócio conectados sem processo. A
+  prova pós-migration criou o conjunto completo, repetiu os mesmos IDs, auditou
+  uma vez e bloqueou request conflitante e segundo vínculo do negócio. Ambas
+  terminaram em `ROLLBACK`, sem fixture nem auditoria residual.
+- Produção permaneceu com 25 vendas, 22 processos, 2 negócios vinculados, 0
+  vínculos divergentes, 0 negócio duplicado e 0 fixture. As 3 vendas sem processo
+  e os 20 processos sem negócio são legado preservado, sem inferência. Advisors
+  não citam a nova função ou índice. Os 1.194 testes, TypeScript, lint sem erros
+  e build Vinext passaram. Próximo passo: PR/CI, merge e aceite pós-deploy somente
+  de leitura.
+
 ## Estado verificado em 23/09/2026, 23:54 BRT
 
 - Décima primeira fatia da decisão 29 entregue pela PR #275 no build

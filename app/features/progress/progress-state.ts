@@ -37,7 +37,7 @@ export function isProjectProgressState(value: unknown): value is ProjectProgress
 
 export const PROJECT_PROGRESS: ProjectProgressState = {
   version: 1,
-  overallPercent: 82,
+  overallPercent: 83,
   fronts: [
     { name: "CRM / Kanban", percent: 96 },
     { name: "Identidade visual (fase final)", percent: 0 },
@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 79,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar categorias atômicas do caixa no item 29",
-  lastCheckpoint: "PR #275 entregue no build 046e363d: importação de extrato agora grava cabeçalho, linhas e auditoria numa transação idempotente; produção autenticada preservou 1 arquivo, 36 linhas e nenhuma pendência. Décima segunda fatia em prova: criar, editar, reativar e remover categoria passam por uma RPC auditada, com proteção das naturezas estruturais de comissão. Migration aplicada e provas authenticated terminaram em rollback.",
-  lastCheckpointAt: "2026-09-23T23:54:00-03:00",
-  lastCommitSent: "046e363d",
-  productionCommit: "046e363d87513eabc5e08df30a1d0fa1042dd914",
+  currentTask: "Publicar e aceitar a conexão atômica da venda ao CRM nos itens 25/29",
+  lastCheckpoint: "PR #276 entregue no build cefff90b: categorias do caixa agora são atômicas, auditadas e protegem as naturezas estruturais de comissão; o Financeiro confirmou os dois botões protegidos desabilitados. Nova fatia em prova: venda, negócio, processo e auditoria nascem numa única RPC idempotente. A migration está aplicada, permissões e provas authenticated com rollback passaram sem resíduo.",
+  lastCheckpointAt: "2026-09-24T00:12:00-03:00",
+  lastCommitSent: "cefff90b",
+  productionCommit: "cefff90be3905be56a75104213bfd43f931ed329",
   latestDeliveries: [
+    "PR #276 publicada: categorias do caixa passaram a usar mutação atômica e auditada; Comissão Paga e Comissão Recebida são únicas e não podem ser removidas ou convertidas.",
     "PR #275 publicada: cabeçalho, linhas e auditoria do extrato passaram a entrar juntos, com fingerprint SHA-256, retry idempotente e bloqueio de sobreposição parcial.",
     "PR #274 publicada: decisão individual e aceite em lote do extrato passaram a conciliar linha, caixa e auditoria em transações idempotentes, sem estado parcial.",
     "PR #273 publicada: agenda de repasses passou a vincular comissão canônica, limitar valor e ordem, deduplicar retry e congelar os campos de linhas pagas.",
@@ -98,7 +99,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a sétima fatia do item 29, aplicar a migration e repetir criação/edição/exclusão/retries e bloqueios com rollback no build produtivo. Depois diagnosticar as mutações auxiliares de comissão. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a conexão atômica entre venda, negócio e processo, acompanhar CI/deploy e aceitar o modal e a integridade produtiva somente de leitura. Depois diagnosticar a próxima mutação financeira ou da Esteira ainda sujeita a estado parcial. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
