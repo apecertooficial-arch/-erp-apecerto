@@ -291,6 +291,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const [com, setCom] = useState(comDoBanco);
   const [comRequestId, setComRequestId] = useState(() => crypto.randomUUID());
   const conditionRequests = useRef(new Map<string, string>());
+  const observationRequests = useRef(new Map<string, string>());
   const documentReviewRequests = useRef(new Map<string, string>());
   const triageConfirmRequests = useRef(new Map<string, string>());
   const attachmentRemoveRequests = useRef(new Map<string, string>());
@@ -351,7 +352,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     setComRequestId(crypto.randomUUID());
   };
   const saveComissao = () => run(persistComissao);
-  const addObs = () => { if (!obsText.trim()) return; void run(async () => { await api({ action: "addObs", processId: process.id, texto: obsText.trim() }); setObsText(""); }); };
+  const addObs = () => { const texto = obsText.trim(); if (!texto) return; const requestId = observationRequests.current.get(texto) ?? crypto.randomUUID(); observationRequests.current.set(texto, requestId); void run(async () => { await api({ action: "addObs", processId: process.id, texto, requestId }); observationRequests.current.delete(texto); setObsText(""); }); };
   const devolver = (stageId: number, motivo: string) => run(async () => { await api({ action: "devolverFunil", processId: process.id, stageId, motivo, requestId: devRequestId }); onClose(); });
 
   // ===== Exclusão definitiva (admin e diretor) =====
