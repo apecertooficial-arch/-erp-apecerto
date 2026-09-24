@@ -40,13 +40,18 @@ Deno.serve(async (request: Request) => {
   }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
-  if (!supabaseUrl || !serviceKey || !openAiKey) return json({ok:false,erro:"configuracao_incompleta"},503);
+  if (!supabaseUrl || !serviceKey) return json({ok:false,erro:"configuracao_incompleta"},503);
+  const db = createClient(supabaseUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+  let openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
+  if (!openAiKey) {
+    const chave = await db.from("app_secrets").select("valor").eq("chave","OPENAI_API_KEY").maybeSingle();
+    openAiKey = typeof chave.data?.valor === "string" ? chave.data.valor : "";
+  }
+  if (!openAiKey) return json({ok:false,erro:"configuracao_incompleta"},503);
 
   const body = await request.json().catch(()=>null) as {audio_id?:unknown}|null;
   const audioId = typeof body?.audio_id==="string" && UUID.test(body.audio_id) ? body.audio_id : "";
   if (!audioId) return json({ok:false,erro:"audio_invalido"},422);
-  const db = createClient(supabaseUrl,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
   const claim = await db.rpc("f2_feedback_audio_reivindicar",{p_id:audioId});
   const item = claim.data as {ok?:boolean;erro?:string;path?:string;mime_type?:string;bytes?:number;sha256?:string}|null;
   if (claim.error || !item?.ok || !item.path) return json({ok:false,erro:item?.erro ?? "audio_indisponivel"},409);

@@ -58,6 +58,7 @@ test("Edge valida segredo, hash e tamanho antes de enviar à transcrição", () 
   assert.match(edge, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(edge, /AbortSignal\.timeout/);
   assert.match(edge, /f2_feedback_audio_concluir/);
+  assert.match(edge, /from\("app_secrets"\)\.select\("valor"\)\.eq\("chave","OPENAI_API_KEY"\)/);
   assert.doesNotMatch(edge, /console\.(log|error)\([^)]*(transcricao|texto|audio)/i);
 });
 
