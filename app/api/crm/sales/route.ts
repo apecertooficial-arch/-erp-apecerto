@@ -12,6 +12,7 @@ import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../s
 import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
 import { removeSalesAttachmentAtomic, type SalesAttachmentRemoveRpcClient } from "../sales-attachment-remove-rpc";
 import { createSalesAttachmentAtomic, type SalesAttachmentCreateRpcClient } from "../sales-attachment-create-rpc";
+import { replaceSalesAttachmentAtomic, type SalesAttachmentReplaceRpcClient } from "../sales-attachment-replace-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -273,6 +274,32 @@ export async function PATCH(request: Request) {
     if (error) return falhaEsteira(error, "mover_etapa");
     if (!movido) return Response.json({ error: "Esta venda mudou de etapa enquanto você trabalhava. Recarregue e tente novamente." }, { status: 409 });
     return Response.json({ success: true, stage: movido.etapa });
+  }
+
+  if (action === "replaceAnexo") {
+    const id = clean(body.anexoId, 60);
+    const requestId = clean(body.requestId, 60);
+    const payload: Record<string, unknown> = {
+      nome: clean(body.nome, 200), path: clean(body.path, 400),
+      mime: clean(body.mime, 100) || null,
+      tamanho: Number.isFinite(Number(body.tamanho)) ? Math.trunc(Number(body.tamanho)) : null,
+      grupo: clean(body.grupo, 40) || null,
+      etapa_slug: clean(body.etapaSlug, 40) || null,
+      doc_nome: clean(body.docNome, 200) || null,
+      obrigatorio: body.obrigatorio === true,
+      observacao: clean(body.observacao, 400) || null,
+    };
+    if (!id || !requestId || !payload.nome || !payload.path) return Response.json({ error: "Documento, arquivo ou solicitação inválida." }, { status: 422 });
+    const resultado = await replaceSalesAttachmentAtomic(auth.supabase as unknown as SalesAttachmentReplaceRpcClient, { attachmentId: id, requestId, payload });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_anexo_substituicao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    const previousFilePath = "previousFilePath" in resultado && typeof resultado.previousFilePath === "string" ? resultado.previousFilePath : null;
+    if (resultado.status !== 200 || !previousFilePath) return Response.json(resultado.body, { status: resultado.status });
+    const { error: storageError } = await auth.supabase.storage.from("esteira-docs").remove([previousFilePath]);
+    if (storageError) {
+      console.error("esteira_anexo_storage_substituicao_falhou", { codigo: storageError.statusCode ?? "desconhecido" });
+      return Response.json({ error: "O novo documento foi salvo, mas o arquivo anterior ainda precisa ser removido. Tente novamente." }, { status: 502 });
+    }
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "addAnexo" || action === "removeAnexo") {

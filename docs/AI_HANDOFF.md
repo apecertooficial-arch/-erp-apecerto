@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 10:52 BRT
+
+- Upload manual entregue pela PR #288 no build
+  `ded8798713cd90ba23ffe977978a0d92a37260b6`. A Esteira e a aba de
+  documentação abriram no build novo, exibiram os 10 controles de anexo e foram
+  fechadas sem selecionar arquivo. Produção preservou zero fixtures e o único
+  anexo legado órfão.
+- A próxima falha comprovada estava em “Substituir”: o fluxo removia o documento
+  antigo antes de confirmar o novo upload, podendo deixar a venda sem comprovante.
+- A migration `esteira_anexo_substituicao_atomica` está aplicada. A função
+  `esteira_anexo_substituir` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. A interface envia o arquivo novo primeiro; só então a RPC atualiza
+  o mesmo anexo e grava a trilha na mesma transação. O caminho antigo é limpo do
+  Storage depois e pode ser repetido com o mesmo request.
+- A prova autenticada substituiu a fixture mantendo o mesmo ID, preservou o
+  caminho anterior na trilha, repetiu sem duplicar e bloqueou o request
+  conflitante. O `ROLLBACK` deixou zero fixture e zero evento de prova. Advisors
+  não citam os objetos novos. Os 1.217 testes, TypeScript, lint sem erros e build
+  Vinext passaram; faltam PR/CI, deploy e aceite produtivo sem substituir arquivo.
+
 ## Estado verificado em 24/09/2026, 10:38 BRT
 
 - Remoção de anexos entregue pela PR #287 no build
@@ -19,7 +39,8 @@
   bloqueou o request conflitante. O `ROLLBACK` deixou zero fixture e zero evento
   de prova. Advisors não citam os objetos novos. Os 1.215 testes, TypeScript e
   lint sem erros e build Vinext passaram; o helper best-effort ficou sem uso e
-  foi removido. Faltam PR/CI, deploy e aceite produtivo sem anexar arquivo real.
+  foi removido. PR/CI, deploy e aceite produtivo sem anexar arquivo real também
+  foram concluídos.
 
 ## Estado verificado em 24/09/2026, 10:25 BRT
 

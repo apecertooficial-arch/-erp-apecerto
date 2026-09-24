@@ -12,6 +12,7 @@ import { confirmSalesTriageAtomic } from "../app/api/crm/sales-triage-confirm-rp
 import { registerSalesBatchAttachmentsAtomic } from "../app/api/crm/sales-batch-attachment-rpc.ts";
 import { removeSalesAttachmentAtomic } from "../app/api/crm/sales-attachment-remove-rpc.ts";
 import { createSalesAttachmentAtomic } from "../app/api/crm/sales-attachment-create-rpc.ts";
+import { replaceSalesAttachmentAtomic } from "../app/api/crm/sales-attachment-replace-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../app/features/sales/SalesProcessWorkspace.tsx", import.meta.url), "utf8");
@@ -358,7 +359,6 @@ test("upload manual usa uma RPC para anexo e trilha", async () => {
   assert.match(ui, /const attachmentUploadRequests = useRef\(new Map/);
   assert.match(ui, /action: "addAnexo", processId: process\.id, requestId: request\.requestId/);
   assert.match(ui, /request\.uploaded = true/);
-  assert.match(ui, /await removeAttachment\(a\.id, false\); await uploadDocument/);
 
   const payload = { nome: "RG.pdf", path: "esteira/p-1/comprador/req-10_RG.pdf", grupo: "comprador" };
   const client = clienteFalso({ data: { anexo_id: "a-4", status: "anexado", idempotente: false }, error: null });
@@ -377,6 +377,37 @@ test("migration registra upload manual e trilha na mesma transação", () => {
   assert.match(sql, /insert into public\.esteira_anexos/);
   assert.match(sql, /insert into public\.esteira_anexo_eventos/);
   assert.match(sql, /grant execute on function public\.esteira_anexo_registrar\(uuid,uuid,jsonb\) to authenticated,service_role/);
+});
+
+test("substituição preserva o anexo anterior até a RPC confirmar o novo", async () => {
+  const inicio = api.indexOf('if (action === "replaceAnexo")');
+  const fim = api.indexOf('if (action === "addAnexo"', inicio);
+  const substituir = api.slice(inicio, fim);
+  assert.match(substituir, /replaceSalesAttachmentAtomic/);
+  assert.doesNotMatch(substituir, /\.from\("esteira_anexos"\)\.(?:delete|update|insert)/);
+  assert.match(substituir, /storage\.from\("esteira-docs"\)\.remove/);
+  assert.match(ui, /const attachmentReplaceRequests = useRef\(new Map/);
+  assert.match(ui, /action: "replaceAnexo", anexoId: id, requestId: request\.requestId/);
+  assert.doesNotMatch(ui, /await removeAttachment\(a\.id, false\)/);
+
+  const payload = { nome: "RG-novo.pdf", path: "esteira/p-1/comprador/req-11_RG-novo.pdf", grupo: "comprador" };
+  const client = clienteFalso({ data: { anexo_id: "a-5", status: "anexado", path_anterior: "esteira/p-1/comprador/antigo.pdf", idempotente: false }, error: null });
+  const response = await replaceSalesAttachmentAtomic(client, { attachmentId: "a-5", requestId: "req-11", payload });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_anexo_substituir", args: {
+    p_anexo_id: "a-5", p_request_id: "req-11", p_payload: payload,
+  } }]);
+  assert.deepEqual(response.body, { success: true, attachmentId: "a-5", status: "anexado", idempotent: false });
+  assert.equal(response.previousFilePath, "esteira/p-1/comprador/antigo.pdf");
+});
+
+test("migration substitui anexo e grava trilha na mesma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924121500_esteira_anexo_substituicao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists esteira_anexo_eventos_substituicao_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_anexo_substituir/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /update public\.esteira_anexos/);
+  assert.match(sql, /insert into public\.esteira_anexo_eventos/);
+  assert.match(sql, /grant execute on function public\.esteira_anexo_substituir\(uuid,uuid,jsonb\) to authenticated,service_role/);
 });
 
 test("reordenação das etapas usa uma RPC para a sequência completa", async () => {
