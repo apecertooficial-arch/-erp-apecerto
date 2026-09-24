@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 00:40 BRT
+
+- Metas atômicas entregues pela PR #278 no build
+  `025db11cf1004d0df9c54bf6e229eb91c1e1bcfd`. A aba autenticada exibiu 13
+  metas sem salvar, editar ou apagar; o banco confirmou 13 metas e zero resíduo.
+- A próxima lacuna reproduzida estava em “Devolver ao atendimento”: o negócio
+  era reaberto antes de o processo ser marcado como devolvido. Uma falha entre
+  as chamadas deixava negócio aberto/sem venda e processo ainda aprovado, sem
+  auditoria. A prova autenticada reproduziu esse estado e terminou em `ROLLBACK`.
+- A migration `esteira_venda_devolver_atomica` está aplicada. A função é
+  `SECURITY INVOKER`; `authenticated` executa e `anon` não. Processo, negócio e
+  auditoria agora mudam numa transação; o modal mantém UUID estável por abertura.
+- A prova pós-migration devolveu a venda de controle, repetiu o mesmo resultado,
+  confirmou uma auditoria e bloqueou reuso do request com outro destino. O
+  `ROLLBACK` restaurou 22 processos, 2 negócios vinculados, processo aprovado e
+  negócio ganho. Advisors não citam os objetos novos. Os 1.197 testes,
+  TypeScript, lint sem erros e build Vinext passaram. Próximo passo: PR/CI, merge
+  e aceite pós-deploy somente de leitura.
+
 ## Estado verificado em 24/09/2026, 00:27 BRT
 
 - A conexão atômica venda–CRM foi entregue pela PR #277 no build

@@ -1,8 +1,8 @@
 import { createServerSupabaseClient } from "../../../lib/supabase/server";
-import type { TablesUpdate } from "../../../lib/supabase/database.types";
 import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type BlocoEsteira, type DadosCompletude, type EtapaRegra } from "../../../lib/esteira";
 import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
+import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -485,34 +485,14 @@ export async function PATCH(request: Request) {
     const denied = await requireManager(auth);
     if (denied) return denied;
     const processId = clean(body.processId, 60);
-    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !requestId) return Response.json({ error: "Venda ou solicitação inválida." }, { status: 422 });
     const motivo = clean(body.motivo, 400) || null;
-    const { data: proc } = await auth.supabase.from("venda_processos").select("negocio_id").eq("id", processId).maybeSingle();
-    if (!proc?.negocio_id) return Response.json({ error: "Venda sem negócio vinculado." }, { status: 404 });
-    // Etapa de destino: escolhida pelo gestor (qualquer etapa de qualquer funil). Fallback: follow-up do funil atual.
-    let stageId: number | null = Number.isSafeInteger(Number(body.stageId)) && Number(body.stageId) > 0 ? Number(body.stageId) : null;
-    let pipelineId: number | null = null;
-    if (stageId) {
-      const { data: st } = await auth.supabase.from("pipeline_stages").select("id,pipeline_id").eq("id", stageId).maybeSingle();
-      if (!st) return Response.json({ error: "Etapa de destino inválida." }, { status: 422 });
-      pipelineId = st.pipeline_id as number;
-    } else {
-      const { data: neg } = await auth.supabase.from("negocios").select("pipeline_id").eq("id", proc.negocio_id).maybeSingle();
-      if (neg?.pipeline_id) {
-        pipelineId = neg.pipeline_id as number;
-        const { data: stgs } = await auth.supabase.from("pipeline_stages").select("id,nome,ordem").eq("pipeline_id", neg.pipeline_id).order("ordem", { ascending: true });
-        const alvo = (stgs ?? []).find((s) => /follow/i.test(String(s.nome))) || (stgs ?? [])[0];
-        stageId = (alvo?.id as number | undefined) ?? null;
-      }
-    }
-    const now = new Date().toISOString();
-    const upd: TablesUpdate<"negocios"> = { status: "aberto", venda_id: null, ultima_movimentacao: now };
-    if (pipelineId) upd.pipeline_id = pipelineId;
-    if (stageId) { upd.stage_id = stageId; upd.estagio_desde = now; }
-    const { error: e1 } = await auth.supabase.from("negocios").update(upd).eq("id", proc.negocio_id);
-    if (e1) return falhaEsteira(e1, "devolver_negocio_ao_funil");
-    const { error: e2 } = await auth.supabase.from("venda_processos").update({ aprovacao_status: "devolvida", aprovacao_motivo: motivo, atualizado_em: now } as never).eq("id", processId);
-    return e2 ? falhaEsteira(e2, "marcar_venda_devolvida") : Response.json({ success: true });
+    const stageId = Number(body.stageId);
+    if (!Number.isSafeInteger(stageId) || stageId <= 0) return Response.json({ error: "Etapa de destino inválida." }, { status: 422 });
+    const result = await returnSaleAtomic(auth.supabase as unknown as SalesReturnRpcClient, { processId, stageId, reason: motivo, requestId });
+    if ("internalError" in result && result.internalError && result.status >= 500) console.error("esteira_venda_rpc_falhou", { operacao: "devolver", codigo: result.internalError.code ?? "desconhecido" });
+    return Response.json(result.body, { status: result.status });
   }
   if (action === "approveSale" || action === "rejectSale") {
     const denied = await requireManager(auth);
