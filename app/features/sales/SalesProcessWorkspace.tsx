@@ -288,6 +288,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   });
   const [com, setCom] = useState(comDoBanco);
   const [comRequestId, setComRequestId] = useState(() => crypto.randomUUID());
+  const conditionRequests = useRef(new Map<string, string>());
   const documentReviewRequests = useRef(new Map<string, string>());
   const triageConfirmRequests = useRef(new Map<string, string>());
   const attachmentRemoveRequests = useRef(new Map<string, string>());
@@ -340,7 +341,8 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
   const setStatus = (a: NonNullable<SalesData["anexos"]>[number], status: string) => { let motivo = ""; if (status === "recusado" || status === "correcao") { motivo = window.prompt(`Motivo (${DOC_STATUS_LABEL[status]}):`, a.status_motivo || "") || ""; if (!motivo.trim()) return; } const key = JSON.stringify([a.id, status, motivo]); void run(async () => { await api({ action: "docStatus", anexoId: a.id, status, motivo, requestId: requestDocumento(key) }); documentReviewRequests.current.delete(key); }); };
   const abrir = async (path: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
   const baixar = async (path: string, nome: string) => { const { data } = await getBrowserSupabaseClient().storage.from("esteira-docs").createSignedUrl(path, 300, { download: nome }); if (data?.signedUrl) window.open(data.signedUrl, "_blank"); };
-  const saveCondicoes = () => run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); });
+  const persistCondicoes = async (value: typeof cond, spouseOnly = false) => { const key = JSON.stringify([spouseOnly, value]); const requestId = conditionRequests.current.get(key) ?? crypto.randomUUID(); conditionRequests.current.set(key, requestId); await api({ action: "salvarCondicoes", processId: process.id, requestId, somenteConjuge: spouseOnly, ...value }); conditionRequests.current.delete(key); setCondRef(JSON.stringify(value)); };
+  const saveCondicoes = () => run(() => persistCondicoes(cond));
   const persistComissao = async () => {
     await api({ action: "salvarComissao", processId: process.id, requestId: comRequestId, ...com });
     setComRef(JSON.stringify(com));
@@ -504,7 +506,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
     sujasPartes.length ? `${sujasPartes.length} cadastro(s) de parte` : null,
   ].filter(Boolean).join(" · ");
   const salvarTudo = () => run(async () => {
-    if (condSujo) { await api({ action: "salvarCondicoes", processId: process.id, ...cond }); setCondRef(JSON.stringify(cond)); }
+    if (condSujo) await persistCondicoes(cond);
     if (comSujo) await persistComissao();
     for (const k of sujasPartes) {
       const [papel, ordem] = k.split("#");
@@ -691,7 +693,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
           </section>}
 
           {DOC_GRUPOS.map((g) => { const editavelG = aberto(g.bloco); const travaG = travaDe(g.bloco); const stG = statusBloco(g.bloco); return <section className={`docx-group ${editavelG ? "" : "travado"}`} key={g.key}>
-            <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v }); setCondRef(JSON.stringify(v)); }); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, somenteConjuge: true, ...v }); setCondRef(JSON.stringify(v)); }); }}>Não</button></div>}</header>
+            <header><h3>{g.label}</h3>{g.conjugeFlag && <div className="docx-conjuge"><span>Possui cônjuge?</span><button type="button" className={cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: true }; setCond(v); void run(() => persistCondicoes(v, true)); }}>Sim</button><button type="button" className={!cond[g.conjugeFlag] ? "on" : ""} disabled={busyAll} onClick={() => { const v = { ...cond, [g.conjugeFlag]: false }; setCond(v); void run(() => persistCondicoes(v, true)); }}>Não</button></div>}</header>
             {travaG && <div className="bloqx">🔒 {travaG}</div>}
             {docsDoGrupo(g.key).map((d) => <DocRow key={d.id} grupo={g.key} nome={d.nome} obrigatorio={d.obrigatorio && docExigido(d.condicao)} modelo condicao={d.condicao} travado={!editavelG} />)}
             {anexos.filter((a) => a.grupo === g.key && a.status !== "triagem" && !docModelo.some((d) => d.grupo === g.key && d.nome === a.doc_nome)).map((a) => <DocRow key={a.id} grupo={g.key} nome={a.doc_nome || a.nome} obrigatorio={Boolean(a.obrigatorio)} modelo={false} travado={!editavelG} />)}
@@ -729,7 +731,7 @@ function SaleDetailDrawer({ renderedAt, accessToken, canApprove, sessionRole = "
           <section className="condx">
             <h3>Forma de pagamento</h3>
             <p className="partesx-hint">Define quais documentos o checklist vai exigir. À vista dispensa carta de crédito e carta de aprovação de financiamento.</p>
-            <div className="partesx-pgto">{FORMA_PGTO_OPCOES.map((f) => <button key={f.key} type="button" className={cond.forma_pagamento === f.key ? "on" : ""} disabled={busyAll || !aberto("condicoes")} title={f.hint} onClick={() => { const v = { ...cond, forma_pagamento: f.key }; setCond(v); void run(async () => { await api({ action: "salvarCondicoes", processId: process.id, ...v }); setCondRef(JSON.stringify(v)); }); }}><strong>{f.label}</strong><small>{f.hint}</small></button>)}</div>
+            <div className="partesx-pgto">{FORMA_PGTO_OPCOES.map((f) => <button key={f.key} type="button" className={cond.forma_pagamento === f.key ? "on" : ""} disabled={busyAll || !aberto("condicoes")} title={f.hint} onClick={() => { const v = { ...cond, forma_pagamento: f.key }; setCond(v); void run(() => persistCondicoes(v)); }}><strong>{f.label}</strong><small>{f.hint}</small></button>)}</div>
             <h3>Informações gerais</h3>
             <div className="condx-grid">
               {([["valor_total", "Valor total da venda", "money"], ["valor_entrada", "Valor de entrada", "money"], ["data_entrada", "Data da entrada", "date"], ["valor_financiado", "Valor financiado", "money"], ["valor_fgts", "Valor de FGTS", "money"], ["valor_recursos_proprios", "Recursos próprios", "money"], ["valor_parcelas_interm", "Parcelas intermediárias", "money"], ["qtd_parcelas", "Qtd. de parcelas", "int"], ["valor_parcela", "Valor de cada parcela", "money"], ["valor_assinatura", "Pago na assinatura", "money"], ["valor_chaves", "Pago na entrega das chaves", "money"], ["data_assinatura", "Data prevista assinatura", "date"], ["data_conclusao", "Data prevista conclusão", "date"]] as Array<[string, string, string]>).map(([k, l, t]) => <label key={k}>{l}{t === "money"

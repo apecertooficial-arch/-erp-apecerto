@@ -3,6 +3,7 @@ import { blocoAberto, etapaDoBloco, pendenciasParaAvancar, podeEditarEtapa, type
 import { papelNoGrupo } from "../../../lib/papeis";
 import { criarVendaCrmAtomica, type ClienteRpcVendaCrm } from "../sales-create-rpc";
 import { saveSalesCommissionAtomic, type SalesCommissionRpcClient } from "../sales-commission-rpc";
+import { saveSalesConditionsAtomic, type SalesConditionsRpcClient } from "../sales-conditions-rpc";
 import { reviewSalesDocumentAtomic, type SalesDocumentReviewRpcClient } from "../sales-document-review-rpc";
 import { mutateSalesPartyAtomic, type SalesPartyRpcClient } from "../sales-party-rpc";
 import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc";
@@ -642,7 +643,8 @@ export async function PATCH(request: Request) {
 
   if (action === "salvarCondicoes") {
     const processId = clean(body.processId, 60);
-    if (!processId) return Response.json({ error: "Venda inválida." }, { status: 422 });
+    const requestId = clean(body.requestId, 60);
+    if (!processId || !requestId) return Response.json({ error: "Venda ou solicitação inválida." }, { status: 422 });
     // O toggle "possui cônjuge?" mora nesta tabela mas pertence à documentação —
     // por isso ele é aceito fora da etapa de proposta; o resto respeita a cascata.
     if (body.somenteConjuge !== true) {
@@ -652,7 +654,6 @@ export async function PATCH(request: Request) {
     const num = (v: unknown) => v === "" || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v);
     const dt = (v: unknown) => { const s = clean(v, 10); return s || null; };
     const row: Record<string, unknown> = {
-      processo_ref: processId,
       comprador_tem_conjuge: body.comprador_tem_conjuge === true,
       vendedor_tem_conjuge: body.vendedor_tem_conjuge === true,
       valor_total: num(body.valor_total), valor_entrada: num(body.valor_entrada), data_entrada: dt(body.data_entrada),
@@ -661,7 +662,6 @@ export async function PATCH(request: Request) {
       valor_assinatura: num(body.valor_assinatura), valor_chaves: num(body.valor_chaves),
       data_assinatura: dt(body.data_assinatura), data_conclusao: dt(body.data_conclusao),
       origem_recursos: Array.isArray(body.origem_recursos) ? body.origem_recursos : [],
-      atualizado_por: auth.user.id, atualizado_em: new Date().toISOString(),
     };
     // Forma de pagamento governa quais documentos o checklist passa a exigir.
     const forma = clean(body.forma_pagamento, 20);
@@ -671,8 +671,11 @@ export async function PATCH(request: Request) {
     } else if (body.forma_pagamento === null) {
       row.forma_pagamento = null;
     }
-    const { error } = await auth.supabase.from("venda_condicoes").upsert(row as never, { onConflict: "processo_ref" });
-    return error ? falhaEsteira(error, "salvar_condicoes") : Response.json({ success: true });
+    const resultado = await saveSalesConditionsAtomic(auth.supabase as unknown as SalesConditionsRpcClient, {
+      processId, payload: row, spouseOnly: body.somenteConjuge === true, requestId,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_condicoes_atomicas_falharam", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "salvarComissao") {
