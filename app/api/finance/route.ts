@@ -5,6 +5,7 @@ import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 import { decidirRepasseAtomico } from "./repasse-rpc";
+import { criarCaixaAtomico } from "./caixa-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -243,15 +244,23 @@ export async function PATCH(request: Request) {
     const papel = ['corretor', 'executivo', 'indicacao', 'apecerto'].includes(papelRaw) ? papelRaw : null;
     const naturezaRaw = clean(body.natureza, 30);
     const natureza = ["normal", "comissao_recebida", "comissao_paga"].includes(naturezaRaw) ? naturezaRaw : "normal";
-    const insert: Record<string, unknown> = { tipo: type as "entrada" | "saida", categoria: category, data: date, valor: value, descricao: clean(body.description, 500) || null, origem: "erp", venda_id: saleId, recebimento_id: receiptId, comissao_id: commissionId, beneficiario_id: beneficiarioId, papel, natureza };
-    const { error } = await auth.supabase.from("lancamentos_caixa").insert(insert as never);
-    if (error) return falhaFinanceiro(error, "criar_lancamento");
-    if (receiptId && body.settleReceipt === true) {
-      const { data: baixado, error: settleError } = await auth.supabase.from("recebimentos").update({ status: "recebido", data_recebimento: date }).eq("id", receiptId).neq("status", "recebido").select("id").maybeSingle();
-      if (settleError) return falhaFinanceiro(settleError, "baixar_parcela_apos_lancamento", { parcial: true });
-      if (!baixado) return Response.json({ error: "Lançamento criado, mas a baixa da parcela não foi confirmada. Confira o caixa antes de repetir.", parcial: true, erro: "reconciliacao_necessaria" }, { status: 409 });
-    }
-    return Response.json({ success: true });
+    const resultado = await criarCaixaAtomico(semTipos(auth.supabase), {
+      request_id: clean(body.requestId, 60) || null,
+      tipo: type,
+      categoria: category,
+      data: date,
+      valor: value,
+      descricao: clean(body.description, 500) || null,
+      venda_id: saleId,
+      recebimento_id: receiptId,
+      comissao_id: commissionId,
+      beneficiario_id: beneficiarioId,
+      papel,
+      natureza,
+      baixar_recebimento: body.settleReceipt === true,
+    });
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_caixa_rpc_falhou", { codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   /* Editar e excluir lançamento do fluxo de caixa (ago/2026).

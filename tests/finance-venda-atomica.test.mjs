@@ -10,6 +10,7 @@ import {
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
 import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
+import { criarCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -203,13 +204,47 @@ test("edição e exclusão de caixa só auditam linhas realmente alteradas", () 
   assert.equal((caixa.match(/if \(!alterado\) return Response\.json/g) ?? []).length, 2);
 });
 
-test("lançamento de caixa não finge baixa de parcela sem confirmação", () => {
+test("criação de caixa e baixa de parcela usam uma única RPC", async () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const inicio = rota.indexOf('if (action === "createCash")');
   const fim = rota.indexOf('if (action === "updateCash" || action === "deleteCash")', inicio);
   const caixa = rota.slice(inicio, fim);
-  assert.match(caixa, /\.eq\("id", receiptId\)\.neq\("status", "recebido"\)\.select\("id"\)\.maybeSingle\(\)/);
-  assert.match(caixa, /if \(!baixado\) return Response\.json\([^;]+parcial: true/);
+  assert.match(caixa, /criarCaixaAtomico\(semTipos\(auth\.supabase\),/);
+  assert.doesNotMatch(caixa, /\.from\("lancamentos_caixa"\)\.insert/);
+  assert.doesNotMatch(caixa, /\.from\("recebimentos"\)\.update/);
+
+  const cliente = clienteFalso({ data: { ok: true, lancamento_id: "c-1", recebimento_baixado: true, idempotente: false }, error: null });
+  const resposta = await criarCaixaAtomico(cliente, { request_id: "req-1", recebimento_id: "r-1", baixar_recebimento: true });
+  assert.deepEqual(cliente.chamadas, [{
+    fn: "financeiro_caixa_criar",
+    args: { payload: { request_id: "req-1", recebimento_id: "r-1", baixar_recebimento: true } },
+  }]);
+  assert.deepEqual(resposta.body, { success: true, cashId: "c-1", receiptSettled: true, idempotente: false });
+  assert.ok(!("parcial" in resposta.body));
+});
+
+test("migration do caixa impede duplicidade e audita lançamento + recebimento", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923211500_financeiro_caixa_criar_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /lancamentos_caixa_request_id_key/);
+  assert.match(sql, /lancamentos_caixa_recebimento_unique/);
+  assert.match(sql, /create or replace function public\.financeiro_caixa_criar\(payload jsonb\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /from public\.recebimentos[\s\S]+for update/);
+  assert.match(sql, /update public\.recebimentos[\s\S]+status = 'recebido'/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'lancamento_caixa', to_jsonb\(v_lancamento\)/);
+  assert.match(sql, /'recebimento',[\s\S]+select to_jsonb\(r\)/);
+  assert.match(sql, /grant execute on function public\.financeiro_caixa_criar\(jsonb\) to authenticated, service_role/);
+  assert.match(sql, /revoke all on function public\.financeiro_caixa_criar\(jsonb\) from public, anon/);
+});
+
+test("modal de caixa envia requestId estável para retry idempotente", () => {
+  const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
+  const inicio = workspace.indexOf("function CashModal");
+  const fim = workspace.indexOf("function ReceiptModal", inicio);
+  const modal = workspace.slice(inicio, fim);
+  assert.match(modal, /const \[requestId\] = useState\(\(\) => typeof crypto/);
+  assert.match(modal, /action: "createCash",\s+requestId,/);
 });
 
 test("a migration usa SECURITY INVOKER, transação única e grava auditoria", () => {
@@ -370,7 +405,6 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
   const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
   assert.deepEqual(gravacoesIgnoradas, []);
   for (const operacao of [
-    "baixar_parcela_apos_lancamento",
     "auditar_edicao_lancamento",
     "reabrir_parcela_apos_exclusao",
     "baixar_parcelas_apos_venda",

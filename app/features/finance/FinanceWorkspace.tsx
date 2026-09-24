@@ -287,6 +287,7 @@ function CashModal({ data, initial, onClose, onSave, onManage }: { data: Finance
      parcela, comissão) entram só como leitura: alterá-los aqui dessincronizaria a venda
      e o "A receber" sem aviso. Para trocar vínculo, exclua e lance de novo. */
   const editando = Boolean(initial);
+  const [requestId] = useState(() => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : "");
   const [form, setForm] = useState(initial
     ? { type: initial.tipo, category: initial.categoria, date: initial.data, value: String(initial.valor), description: initial.descricao || "", saleId: initial.venda_id || "", receiptId: initial.recebimento_id || "", commissionId: initial.comissao_id || "", settle: false }
     : { type: "saida", category: "", date: hojeOperacao(), value: "", description: "", saleId: "", receiptId: "", commissionId: "", settle: false });
@@ -347,6 +348,7 @@ function CashModal({ data, initial, onClose, onSave, onManage }: { data: Finance
     const comm = saleCommissions.find((c) => c.id === form.commissionId);
     void onSave({
       action: "createCash",
+      requestId,
       type: form.type,
       category: form.category,
       date: form.date,
