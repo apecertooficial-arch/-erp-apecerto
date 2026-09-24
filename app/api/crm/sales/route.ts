@@ -10,6 +10,7 @@ import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc
 import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales-stage-create-rpc";
 import { deleteSalesStageAtomic, type SalesStageDeleteRpcClient } from "../sales-stage-delete-rpc";
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
+import { updateSalesStageAtomic, type SalesStageUpdateRpcClient } from "../sales-stage-update-rpc";
 import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
 import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
 import { removeSalesAttachmentAtomic, type SalesAttachmentRemoveRpcClient } from "../sales-attachment-remove-rpc";
@@ -462,7 +463,8 @@ export async function PATCH(request: Request) {
     }
     if (action === "updateStage") {
       const id = clean(body.stageId, 60);
-      if (!id) return Response.json({ error: "Etapa inválida." }, { status: 422 });
+      const requestId = clean(body.requestId, 60);
+      if (!id || !requestId) return Response.json({ error: "Etapa ou solicitação inválida." }, { status: 422 });
       const patch: Record<string, unknown> = {};
       if (typeof body.nome === "string" && body.nome.trim()) patch.nome = clean(body.nome, 80);
       if (typeof body.cor === "string") patch.cor = clean(body.cor, 20);
@@ -471,8 +473,9 @@ export async function PATCH(request: Request) {
       if (typeof body.resale === "boolean") patch.resale = body.resale;
       if (typeof body.exigeDocs === "boolean") patch.exige_docs = body.exigeDocs;
       if (Object.keys(patch).length === 0) return Response.json({ error: "Nada para atualizar." }, { status: 422 });
-      const { error } = await auth.supabase.from("esteira_etapas").update(patch as never).eq("id", id);
-      return error ? falhaEsteira(error, "atualizar_etapa") : Response.json({ success: true });
+      const resultado = await updateSalesStageAtomic(auth.supabase as unknown as SalesStageUpdateRpcClient, { stageId: id, patch, requestId });
+      if ("internalError" in resultado && resultado.internalError) console.error("esteira_etapa_edicao_atomica_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     if (action === "reorderStages") {
       const ids = Array.isArray(body.ids) ? (body.ids as unknown[]).map((value) => clean(value, 60)).filter(Boolean) : [];
