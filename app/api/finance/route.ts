@@ -9,6 +9,7 @@ import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, exclu
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimento-rpc";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "./comissao-rpc";
 import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "./extrato-rpc";
+import { importarExtratoAtomico } from "./extrato-import-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -445,24 +446,9 @@ export async function PATCH(request: Request) {
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "criar"]], "Voce nao tem permissao para importar extrato.");
     if (denied) return denied;
     const brutas = Array.isArray(body.linhas) ? body.linhas as Array<Record<string, unknown>> : [];
-    if (brutas.length === 0) return Response.json({ error: "Nenhum lancamento encontrado no arquivo." }, { status: 422 });
+    if (brutas.length === 0 || brutas.length > 2000) return Response.json({ error: "O arquivo precisa ter entre 1 e 2.000 lançamentos." }, { status: 422 });
     const titular = clean(body.titular, 200);
     const conta = clean(body.conta, 40);
-
-    const { data: importacao, error: impError } = await semTipos(auth.supabase).from("extrato_importacao").insert({
-      banco: clean(body.banco, 20) || null,
-      agencia: clean(body.agencia, 20) || null,
-      conta: conta || null,
-      titular: titular || null,
-      periodo_inicio: clean(body.periodoInicio, 10) || null,
-      periodo_fim: clean(body.periodoFim, 10) || null,
-      saldo_abertura: Number.isFinite(Number(body.saldoAbertura)) ? Number(body.saldoAbertura) : null,
-      saldo_fechamento: Number.isFinite(Number(body.saldoFechamento)) ? Number(body.saldoFechamento) : null,
-      arquivo_nome: clean(body.arquivoNome, 200) || null,
-      linhas_total: brutas.length,
-    } as never).select("id").single();
-    if (impError || !importacao) return falhaFinanceiro(impError, "registrar_importacao_extrato");
-    const importacaoId = importacao.id as string;
 
     // Contexto para as sugestoes: caixa recente, categorias e palavras-chave.
     const datas = brutas.map((l) => clean(l.data, 10)).filter(Boolean).sort();
@@ -475,7 +461,7 @@ export async function PATCH(request: Request) {
       auth.supabase.from("caixa_keywords").select("categoria,keyword,prioridade").order("prioridade", { ascending: true }),
     ]);
     const contextoError = caixaContexto.error ?? chavesContexto.error;
-    if (contextoError) return falhaFinanceiro(contextoError, "carregar_contexto_extrato", { parcial: true });
+    if (contextoError) return falhaFinanceiro(contextoError, "carregar_contexto_extrato");
     const caixaProximo = caixaContexto.data;
     const chaves = chavesContexto.data;
 
@@ -509,7 +495,6 @@ export async function PATCH(request: Request) {
       const chave = (chaves ?? []).find((k) => descricaoLimpa.includes(semAcento(String(k.keyword || ""))));
 
       return {
-        importacao_id: importacaoId,
         data,
         descricao,
         valor,
@@ -521,11 +506,24 @@ export async function PATCH(request: Request) {
         categoria_sugerida: chave ? String(chave.categoria) : null,
       };
     }).filter((linha) => linha.data && Number.isFinite(linha.valor));
-
-    // upsert por impressao: reimportar o mesmo periodo nao duplica nada.
-    const { error: linhaError } = await semTipos(auth.supabase).from("extrato_linha").upsert(linhas as never, { onConflict: "impressao", ignoreDuplicates: true });
-    if (linhaError) return falhaFinanceiro(linhaError, "gravar_linhas_extrato", { parcial: true });
-    return Response.json({ success: true, importacaoId, linhas: linhas.length });
+    if (linhas.length === 0) return Response.json({ error: "Nenhum lançamento válido foi encontrado no arquivo." }, { status: 422 });
+    const material = linhas.map((linha) => linha.impressao).sort().join("\n");
+    const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(material));
+    const fingerprint = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const resultado = await importarExtratoAtomico(semTipos(auth.supabase), {
+      fingerprint,
+      banco: clean(body.banco, 20) || null,
+      agencia: clean(body.agencia, 20) || null,
+      conta: conta || null,
+      titular: titular || null,
+      periodo_inicio: clean(body.periodoInicio, 10) || null,
+      periodo_fim: clean(body.periodoFim, 10) || null,
+      saldo_abertura: Number.isFinite(Number(body.saldoAbertura)) ? Number(body.saldoAbertura) : null,
+      saldo_fechamento: Number.isFinite(Number(body.saldoFechamento)) ? Number(body.saldoFechamento) : null,
+      arquivo_nome: clean(body.arquivoNome, 200) || null,
+    }, linhas);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_extrato_rpc_falhou", { operacao: "importar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "resolverLinhaExtrato" || action === "resolverLoteExtrato") {

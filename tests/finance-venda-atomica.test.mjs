@@ -16,6 +16,7 @@ import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, exclu
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "../app/api/finance/recebimento-rpc.ts";
 import { excluirComissaoAtomica, salvarComissaoAtomica } from "../app/api/finance/comissao-rpc.ts";
 import { resolverLinhaExtratoAtomica, resolverLoteExtratoAtomico } from "../app/api/finance/extrato-rpc.ts";
+import { importarExtratoAtomico } from "../app/api/finance/extrato-import-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -724,6 +725,40 @@ test("migration resolve extrato, caixa, lote e auditoria em transações únicas
   assert.match(sql, /grant execute on function public\.financeiro_extrato_resolver_lote\(uuid\) to authenticated,service_role/);
 });
 
+test("importação do extrato usa fingerprint e uma única RPC", async () => {
+  const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
+  const inicio = rota.indexOf('if (action === "importarExtrato")');
+  const fim = rota.indexOf('if (action === "resolverLinhaExtrato"', inicio);
+  const importar = rota.slice(inicio, fim);
+  assert.match(importar, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(importar, /importarExtratoAtomico/);
+  assert.doesNotMatch(importar, /\.from\("(?:extrato_importacao|extrato_linha)"\)\.(?:insert|upsert|update|delete)/);
+  assert.doesNotMatch(importar, /parcial/);
+
+  const payload = { fingerprint: "a".repeat(64), arquivo_nome: "teste.xlsx" };
+  const linhas = [{ impressao: "conta|2026-09-23|10||teste" }];
+  const cliente = clienteFalso({ data: { importacao_id: "i-1", linhas: 1, idempotente: false }, error: null });
+  const resposta = await importarExtratoAtomico(cliente, payload, linhas);
+  assert.deepEqual(cliente.chamadas, [{ fn: "financeiro_extrato_importar", args: { payload, linhas } }]);
+  assert.deepEqual(resposta.body, { success: true, importacaoId: "i-1", linhas: 1, idempotente: false });
+});
+
+test("migration importa cabeçalho, linhas e auditoria em uma transação", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924010000_financeiro_extrato_importacao_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists fingerprint text/);
+  assert.match(sql, /create unique index if not exists extrato_importacao_fingerprint_uidx/);
+  assert.match(sql, /create or replace function public\.financeiro_extrato_importar\(payload jsonb, linhas jsonb\)/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtextextended\(v_fingerprint,0\)\)/);
+  assert.match(sql, /Parte deste arquivo já foi importada\. Nada foi alterado/);
+  assert.match(sql, /insert into public\.extrato_importacao/);
+  assert.match(sql, /insert into public\.extrato_linha/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /'idempotente',true/);
+  assert.match(sql, /revoke all on function public\.financeiro_extrato_importar\(jsonb,jsonb\) from public,anon/);
+  assert.match(sql, /grant execute on function public\.financeiro_extrato_importar\(jsonb,jsonb\) to authenticated,service_role/);
+});
+
 test("painel do corretor separa comissão a receber de repasse já pago", () => {
   const workspace = readFileSync(new URL("../app/features/finance/FinanceWorkspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /const brokerReceived = brokerPayouts\.filter\(\(item\) => item\.status === "pago"\)/);
@@ -769,7 +804,5 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
   assert.deepEqual(gravacoesIgnoradas, []);
-  for (const operacao of ["gravar_linhas_extrato"]) {
-    assert.match(rota, new RegExp(`falhaFinanceiro\\([^\\n]+"${operacao}"[^\\n]+parcial`), `${operacao} não sinaliza estado parcial`);
-  }
+  assert.doesNotMatch(rota, /gravar_linhas_extrato|marcar_linha_extrato/);
 });
