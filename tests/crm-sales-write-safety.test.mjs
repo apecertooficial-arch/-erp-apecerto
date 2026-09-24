@@ -6,6 +6,7 @@ import { saveSalesCommissionAtomic } from "../app/api/crm/sales-commission-rpc.t
 import { reviewSalesDocumentAtomic } from "../app/api/crm/sales-document-review-rpc.ts";
 import { mutateSalesPartyAtomic } from "../app/api/crm/sales-party-rpc.ts";
 import { returnSaleAtomic } from "../app/api/crm/sales-return-rpc.ts";
+import { createSalesStageAtomic } from "../app/api/crm/sales-stage-create-rpc.ts";
 import { reorderSalesStagesAtomic } from "../app/api/crm/sales-stage-order-rpc.ts";
 
 const api = readFileSync(new URL("../app/api/crm/sales/route.ts", import.meta.url), "utf8");
@@ -266,6 +267,38 @@ test("reordenação das etapas usa uma RPC para a sequência completa", async ()
     p_ids: ["s-2", "s-1", "s-3"], p_request_id: "req-6",
   } }]);
   assert.deepEqual(response.body, { success: true, stages: 3, idempotent: false });
+});
+
+test("criação de etapa usa uma RPC idempotente e só fecha o formulário após confirmação", async () => {
+  const inicio = api.indexOf('if (action === "createStage")');
+  const fim = api.indexOf('if (action === "updateStage")', inicio);
+  const criar = api.slice(inicio, fim);
+  assert.match(criar, /createSalesStageAtomic/);
+  assert.doesNotMatch(criar, /\.from\("esteira_etapas"\)\.select/);
+  assert.doesNotMatch(criar, /\.from\("esteira_etapas"\)\.insert/);
+  assert.match(ui, /const stageCreateRequests = useRef\(new Map<string, string>\(\)\)/);
+  assert.match(ui, /action: "createStage", nome, requestId/);
+  assert.match(ui, /if \(await mutateStages\([\s\S]*?setAddingStage\(false\)/);
+
+  const client = clienteFalso({ data: { etapa_id: "s-4", slug: "vistoria", ordem: 4, idempotente: false }, error: null });
+  const response = await createSalesStageAtomic(client, {
+    name: "Vistoria", slugBase: "vistoria", color: "#8d2bd1", role: "Corretor", slaDays: 3, resale: false, requestId: "req-7",
+  });
+  assert.deepEqual(client.chamadas, [{ fn: "esteira_etapa_criar", args: {
+    p_nome: "Vistoria", p_slug_base: "vistoria", p_cor: "#8d2bd1", p_papel: "Corretor", p_sla_dias: 3, p_resale: false, p_request_id: "req-7",
+  } }]);
+  assert.deepEqual(response.body, { success: true, stageId: "s-4", slug: "vistoria", order: 4, idempotent: false });
+});
+
+test("migration cria etapa e auditoria na mesma transação serializada", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260924063000_esteira_etapa_criar_atomica.sql", import.meta.url), "utf8");
+  assert.match(sql, /create unique index if not exists erp_auditoria_esteira_etapa_criar_request_uidx/);
+  assert.match(sql, /create or replace function public\.esteira_etapa_criar/);
+  assert.match(sql, /language plpgsql\s+security invoker/);
+  assert.match(sql, /pg_advisory_xact_lock\(hashtextextended\('esteira_etapas_ordem',0\)\)/);
+  assert.match(sql, /insert into public\.esteira_etapas/);
+  assert.match(sql, /insert into public\.erp_auditoria/);
+  assert.match(sql, /grant execute on function public\.esteira_etapa_criar\(text,text,text,text,integer,boolean,uuid\) to authenticated,service_role/);
 });
 
 test("migration reordena todas as etapas e auditoria na mesma transação", () => {
