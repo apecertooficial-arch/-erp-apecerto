@@ -1,5 +1,24 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 24/09/2026, 10:11 BRT
+
+- Confirmação da triagem entregue pela PR #285 no build
+  `5c5476dbddc38275bb00aec475a2493c9b9ca6d1`. A aba autenticada de documentos
+  abriu em produção; não havia anexo em triagem e a ficha foi fechada sem
+  mutação. Produção preservou 1 anexo real, zero triagens e zero eventos de prova.
+- A próxima falha comprovada estava no upload em lote: os anexos eram inseridos
+  antes da trilha best-effort e podiam permanecer sem auditoria.
+- A migration `esteira_anexo_lote_atomico` está aplicada. A função
+  `esteira_anexo_lote_registrar` é `SECURITY INVOKER`; `authenticated` executa e
+  `anon` não. Ela revalida acesso, etapa e papel, obtém o negócio pelo processo e
+  registra todos os anexos e a trilha na mesma transação. O `loteId` é a chave
+  idempotente e o mesmo lote com conteúdo diferente é recusado.
+- A prova autenticada pós-migration criou dois anexos e uma trilha, repetiu sem
+  duplicar e bloqueou o reuso conflitante. O `ROLLBACK` deixou zero anexo e zero
+  evento de prova; a produção continua sem lotes reais. Advisors não citam os
+  objetos novos. Os 1.211 testes, TypeScript, lint sem erros e build Vinext
+  passaram; faltam PR/CI, deploy e aceite produtivo sem upload real.
+
 ## Estado verificado em 24/09/2026, 09:57 BRT
 
 - Criação de etapas entregue pela PR #284 no build
@@ -17,7 +36,8 @@
   manteve exatamente um evento e bloqueou o request conflitante. O `ROLLBACK`
   restaurou 1 anexo real, zero fixture e zero evento de prova. Advisors não
   citam os objetos novos. Os 1.209 testes, TypeScript, lint sem erros e build
-  Vinext passaram; faltam PR/CI, deploy e aceite produtivo somente de leitura.
+  Vinext passaram; PR/CI, deploy e aceite produtivo somente de leitura também
+  foram concluídos.
 
 ## Estado verificado em 24/09/2026, 01:54 BRT
 

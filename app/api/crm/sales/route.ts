@@ -9,6 +9,7 @@ import { returnSaleAtomic, type SalesReturnRpcClient } from "../sales-return-rpc
 import { createSalesStageAtomic, type SalesStageCreateRpcClient } from "../sales-stage-create-rpc";
 import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sales-stage-order-rpc";
 import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
+import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -748,22 +749,20 @@ export async function PATCH(request: Request) {
     }
     const gLote = await guardBloco(auth, processo_ref, blocoLote);
     if (gLote.deny) return gLote.deny;
-    const negocioId = Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null;
     const linhas = arquivos.map((a) => ({
-      processo_ref, negocio_id: negocioId,
       nome: clean(a.nome, 200), path: clean(a.path, 400),
       mime: clean(a.mime, 100) || null,
       tamanho: Number.isFinite(Number(a.tamanho)) ? Math.trunc(Number(a.tamanho)) : null,
-      etapa_slug: clean(body.etapaSlug, 40) || null,
-      grupo: null, doc_nome: null, obrigatorio: false,
-      status: "triagem", origem: "lote_ia", ia_status: "nao_processado",
-      lote_id: loteId, enviado_por: auth.user.id,
     })).filter((l) => l.nome && l.path);
     if (!linhas.length) return Response.json({ error: "Arquivos inválidos." }, { status: 422 });
-    const { data: criados, error } = await auth.supabase.from("esteira_anexos").insert(linhas as never).select("id,nome");
-    if (error) return falhaEsteira(error, "adicionar_lote_anexos");
-    await trilha(auth, "upload_lote", { processoRef: processo_ref, loteId, detalhe: { quantidade: linhas.length, arquivos: linhas.map((l) => l.nome) } });
-    return Response.json({ success: true, loteId, anexos: criados ?? [] });
+    const resultado = await registerSalesBatchAttachmentsAtomic(auth.supabase as unknown as SalesBatchAttachmentRpcClient, {
+      processId: processo_ref,
+      batchId: loteId,
+      stageSlug: clean(body.etapaSlug, 40) || null,
+      files: linhas,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_lote_atomico_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "classificarLote") {
