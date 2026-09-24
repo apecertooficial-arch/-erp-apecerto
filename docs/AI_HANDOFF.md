@@ -1,5 +1,20 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 21:38 BRT
+
+- Terceira fatia da decisão 29 entregue pela PR #267 no build
+  `6815fedcac01636ffa2a30cb964a829a9dcd4677`. A migration de edição/exclusão
+  atômicas está aplicada; prova pós-deploy e tela autenticada passaram sem mutação.
+- Quarta lacuna reproduzida: `settleReceipt` mudava somente a parcela e podia
+  confirmar recebimento sem caixa nem auditoria. A nova RPC baixa/reabre parcela,
+  caixa e auditoria numa transação, preserva RLS e torna retries idempotentes.
+- Os 2 recebimentos pendentes de vendas historicamente pagas continuam intactos:
+  não há inferência ou backfill. A prova `authenticated` de baixa, replay,
+  reabertura e replay terminou em `ROLLBACK`, preservando 368 caixas, 16 vínculos
+  e zero divergências.
+- 1.172 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge, migration e aceite pós-deploy sem mutação persistente.
+
 ## Estado verificado em 23/09/2026, 21:25 BRT
 
 - Segunda fatia da decisão 29 entregue pela PR #266 no build

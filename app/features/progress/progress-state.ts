@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 77,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar edição/exclusão atômicas de caixa do item 29",
-  lastCheckpoint: "PR #266 entregue no build e08eb481: criação de caixa + baixa é transacional, auditada e idempotente; 16 vínculos seguem únicos e reconciliados. Terceira fatia em prova: edição sincroniza a parcela, exclusão a reabre e retries não duplicam auditoria; caixas dos 3 repasses são protegidos contra edição/exclusão lateral. Prova authenticated terminou em rollback; 1.171 testes, TypeScript, lint e build passaram.",
-  lastCheckpointAt: "2026-09-23T21:25:12-03:00",
-  lastCommitSent: "e08eb481",
-  productionCommit: "e08eb4812dd45d9ad49718099e811cb0a47df89c",
+  currentTask: "Publicar e aceitar baixa direta atômica de recebimento do item 29",
+  lastCheckpoint: "PR #267 entregue no build 6815fedc: edição e exclusão de caixa agora sincronizam/reabrem a parcela na mesma transação e protegem os 3 caixas de repasse. Quarta fatia em prova: baixa direta cria ou remove o caixa junto do recebimento e da auditoria, com retry idempotente e sem backfill dos 2 legados. Prova authenticated terminou em rollback com 368 caixas, 16 vínculos e zero divergências; 1.172 testes, TypeScript, lint e build passaram.",
+  lastCheckpointAt: "2026-09-23T21:38:37-03:00",
+  lastCommitSent: "6815fedc",
+  productionCommit: "6815fedcac01636ffa2a30cb964a829a9dcd4677",
   latestDeliveries: [
+    "PR #267 publicada: edição e exclusão de caixa passaram a ser atômicas e auditadas, sincronizam ou reabrem a parcela e bloqueiam alteração lateral de caixa derivado de repasse.",
     "PR #266 publicada: criação de caixa, baixa opcional e auditoria agora são uma transação idempotente; recebimento aceita no máximo um lançamento reconciliado.",
     "PR #265 publicada: baixa e reabertura de repasse passaram a ser transacionais, idempotentes e auditadas, sem reconciliar nem alterar valores históricos.",
     "PR #264 publicada: fronteira do portal futuro ficou reproduzível e documentada, com PII fechada e nenhum código especulativo de portal ou autenticação.",
@@ -88,7 +89,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a terceira fatia do item 29, aplicar a migration e repetir edição/exclusão com rollback no build produtivo. Depois diagnosticar baixa direta de recebimento. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a quarta fatia do item 29, aplicar a migration e repetir baixa/reabertura direta com rollback no build produtivo. Depois diagnosticar a edição de venda. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

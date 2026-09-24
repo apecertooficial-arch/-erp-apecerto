@@ -5,7 +5,7 @@ import { papelNoGrupo } from "../../lib/papeis";
 import type { Enums } from "../../lib/supabase/database.types";
 import { criarVendaAtomica, excluirVendaAtomica } from "./venda-rpc";
 import { decidirRepasseAtomico } from "./repasse-rpc";
-import { criarCaixaAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
+import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -316,10 +316,9 @@ export async function PATCH(request: Request) {
     if (!receiptId) return Response.json({ error: "Recebimento inválido." }, { status: 422 });
     const denied = guard([["fluxo_caixa", "conciliar"], ["financeiro", "editar"]], "Você não tem permissão para dar baixa em recebimentos.");
     if (denied) return denied;
-    const { data: atualizado, error } = await auth.supabase.from("recebimentos").update({ status: received ? "recebido" : "pendente", data_recebimento: received ? hojeOperacao() : null }).eq("id", receiptId).select("id").maybeSingle();
-    if (error) return falhaFinanceiro(error, "baixar_recebimento");
-    if (!atualizado) return Response.json({ error: "Recebimento não encontrado ou indisponível." }, { status: 404 });
-    return Response.json({ success: true });
+    const resultado = await decidirRecebimentoAtomico(semTipos(auth.supabase), receiptId, received, hojeOperacao());
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_recebimento_rpc_falhou", { codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "updateSale") {

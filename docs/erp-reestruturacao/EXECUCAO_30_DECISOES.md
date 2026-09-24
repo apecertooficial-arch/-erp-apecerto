@@ -39,7 +39,7 @@ checks do projeto, publicação e confirmação da build.
 | 26 | Captação de imóvel fica vinculada ao proprietário. | Imóvel e proprietário têm vínculo canônico, autoria e privacidade por perfil. | entregue | PR #262 publicada no hash `3866113e`: criação e finalização persistem proprietário, imóvel, unidade, autor e captador em transações únicas; repetição tolerante a acentos retoma o mesmo rascunho. CI integral, migração aditiva e prova pós-deploy com rollback passaram sem resíduo; `anon` não executa as RPCs. Permanecem 12 unidades legadas sem vínculo privado de proprietário, todas aprovadas e 11 publicadas, que exigem identificação humana e não foram inferidas. |
 | 27 | Gestor aprova a captação antes da publicação no site. | Reprovação não publica; aprovação publica uma vez e registra decisão. | entregue | PR #263 publicada no hash `a3d08072`: a única RPC gerencial decide e audita na mesma transação, reprovação exige motivo e retries retornam a auditoria existente. A migração está aplicada; `authenticated` executa, `anon` não. Prova pós-deploy com `ROLLBACK` e fila autenticada passaram sem mutar dados: 4 pendentes, 0 reprovadas publicadas, 29 aprovadas publicadas e 7 aprovadas offline. |
 | 28 | Portal do proprietário fica preparado como fase futura. | Não criar portal especulativo; preservar contrato de dados e fronteira de acesso. | entregue | PR #264 publicada no hash `dab1a1c9`: contrato e migração preservam proprietário canônico, vínculo do imóvel e PII fechada, sem portal, conta, convite ou policy especulativa. Produção confirmou RLS, 0 grants para `anon`/`authenticated`, 3/3 produtos de terceiros vinculados e 0 vínculos órfãos; os 12 privados legados seguem sem inferência. |
-| 29 | Financeiro cobre caixa, despesas, anúncios, impostos, comissões, aportes, sócios e painel do corretor. | Valores reconciliam, mutações são atômicas/auditadas e cada perfil vê somente seu escopo. | em prova | PRs #265 (`2ca85eb2`) e #266 (`e08eb481`): repasses e criação de caixa/baixa são transacionais, idempotentes e auditados, preservando 16 vínculos reconciliados. Edição/exclusão atômicas estão em prova e bloqueiam alteração lateral dos 3 caixas derivados de repasse. Outras mutações e a reconciliação humana do legado continuam pendentes. |
+| 29 | Financeiro cobre caixa, despesas, anúncios, impostos, comissões, aportes, sócios e painel do corretor. | Valores reconciliam, mutações são atômicas/auditadas e cada perfil vê somente seu escopo. | em prova | PRs #265–#267 (`2ca85eb2`, `e08eb481`, `6815fedc`): repasses e o ciclo de criação/edição/exclusão do caixa são transacionais, idempotentes e auditados; os 3 caixas de repasse ficam protegidos e os 16 vínculos seguem reconciliados. Baixa direta de recebimento está em prova sem backfill dos 2 legados. Outras mutações e a reconciliação humana do legado continuam pendentes. |
 | 30 | Apps do corretor/gerente e visão CEO cobrem as ações do papel. | Corretor: Meu Dia, WhatsApp, busca, visitas e feedback. Gestor: agenda/bloqueio, pendências, cobranças e Sara. CEO: visão operacional autorizada. | em prova | Rotas móveis existem; aceite item a item continua pendente. |
 
 ## Restrições transversais
@@ -55,10 +55,9 @@ checks do projeto, publicação e confirmação da build.
 
 ## Próxima fatia funcional
 
-Publicar e aceitar a terceira fatia da decisão 29: edição/exclusão de caixa com
-sincronização da parcela, auditoria e proteção do repasse na mesma transação. Depois
-diagnosticar a baixa direta de recebimento, sem reconciliar valores legados nem executar
-baixa, pagamento ou lançamento real.
+Publicar e aceitar a quarta fatia da decisão 29: baixa/reabertura direta de recebimento
+com caixa e auditoria na mesma transação. Depois diagnosticar a edição de venda, sem
+reconciliar valores legados nem executar baixa, pagamento ou lançamento real.
 A decisão 20 permanece
 bloqueada até existir infraestrutura de áudio capaz de processar o arquivo de ponta
 a ponta. Não reconciliar automaticamente as 101 divergências legadas entre

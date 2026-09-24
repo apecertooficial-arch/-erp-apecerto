@@ -8,6 +8,7 @@ const STATUS_POR_CODIGO: Record<string, number> = {
   CAIXA_RECEBIMENTO_NAO_ENCONTRADO: 404,
   CAIXA_RECEBIMENTO_JA_LANCADO: 409,
   CAIXA_RECEBIMENTO_JA_BAIXADO: 409,
+  CAIXA_RECEBIMENTO_INCONSISTENTE: 409,
   CAIXA_REPASSE_VINCULADO: 409,
 };
 
@@ -46,6 +47,31 @@ export async function editarCaixaAtomico(cliente: ClienteRpc, cashId: string, pa
 
 export async function excluirCaixaAtomico(cliente: ClienteRpc, cashId: string) {
   return mutarCaixa(cliente, "financeiro_caixa_excluir", { p_lancamento_id: cashId });
+}
+
+export async function decidirRecebimentoAtomico(
+  cliente: ClienteRpc,
+  receiptId: string,
+  recebido: boolean,
+  dataRecebimento: string,
+): Promise<RespostaVenda & { erroInterno?: RpcErro }> {
+  const { data, error } = await cliente.rpc("financeiro_recebimento_decidir", {
+    p_recebimento_id: receiptId,
+    p_recebido: recebido,
+    p_data_recebimento: recebido ? dataRecebimento : null,
+  });
+  if (error) return { ...traduzirErroCaixa(error), erroInterno: error };
+  const resultado = (data ?? {}) as { recebimento_id?: string; lancamento_id?: string | null; idempotente?: boolean };
+  if (!resultado.recebimento_id) return { status: 502, body: { error: "Não foi possível confirmar a baixa. Nada foi alterado — tente novamente." } };
+  return {
+    status: 200,
+    body: {
+      success: true,
+      receiptId: resultado.recebimento_id,
+      cashId: resultado.lancamento_id ?? null,
+      idempotente: resultado.idempotente === true,
+    },
+  };
 }
 
 export async function criarCaixaAtomico(
