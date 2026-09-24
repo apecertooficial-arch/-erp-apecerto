@@ -10,7 +10,7 @@ import {
   excluirVendaAtomica,
 } from "../app/api/finance/venda-rpc.ts";
 import { decidirRepasseAtomico } from "../app/api/finance/repasse-rpc.ts";
-import { criarCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
+import { criarCaixaAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "../app/api/finance/caixa-rpc.ts";
 
 function clienteFalso(resposta) {
   const chamadas = [];
@@ -194,14 +194,25 @@ test("baixa de recebimento não confirma sucesso sem linha alterada", () => {
   assert.match(baixa, /if \(!atualizado\) return Response\.json\([^;]+status: 404/);
 });
 
-test("edição e exclusão de caixa só auditam linhas realmente alteradas", () => {
+test("edição e exclusão de caixa usam somente RPCs atômicas", async () => {
   const rota = readFileSync(new URL("../app/api/finance/route.ts", import.meta.url), "utf8");
   const inicio = rota.indexOf('if (action === "updateCash" || action === "deleteCash")');
   const fim = rota.indexOf('if (action === "createReceipt")', inicio);
   const caixa = rota.slice(inicio, fim);
-  assert.match(caixa, /\.update\(patch as never\)\.eq\("id", cashId\)\.select\("id"\)\.maybeSingle\(\)/);
-  assert.match(caixa, /\.delete\(\)\.eq\("id", cashId\)\.select\("id"\)\.maybeSingle\(\)/);
-  assert.equal((caixa.match(/if \(!alterado\) return Response\.json/g) ?? []).length, 2);
+  assert.match(caixa, /editarCaixaAtomico\(semTipos\(auth\.supabase\), cashId,/);
+  assert.match(caixa, /excluirCaixaAtomico\(semTipos\(auth\.supabase\), cashId\)/);
+  assert.doesNotMatch(caixa, /\.from\("lancamentos_caixa"\)\.(?:update|delete)/);
+  assert.doesNotMatch(caixa, /\.from\("erp_auditoria"\)\.insert/);
+
+  const editar = clienteFalso({ data: { ok: true, lancamento_id: "c-1", idempotente: false }, error: null });
+  assert.equal((await editarCaixaAtomico(editar, "c-1", { valor: 10 })).status, 200);
+  assert.deepEqual(editar.chamadas[0], { fn: "financeiro_caixa_editar", args: { p_lancamento_id: "c-1", payload: { valor: 10 } } });
+
+  const excluir = clienteFalso({ data: { ok: true, lancamento_id: "c-1", recebimento_reaberto: true, idempotente: false }, error: null });
+  const resposta = await excluirCaixaAtomico(excluir, "c-1");
+  assert.deepEqual(excluir.chamadas[0], { fn: "financeiro_caixa_excluir", args: { p_lancamento_id: "c-1" } });
+  assert.equal(resposta.body.reopened, true);
+  assert.ok(!("parcial" in resposta.body));
 });
 
 test("criação de caixa e baixa de parcela usam uma única RPC", async () => {
@@ -236,6 +247,22 @@ test("migration do caixa impede duplicidade e audita lançamento + recebimento",
   assert.match(sql, /'recebimento',[\s\S]+select to_jsonb\(r\)/);
   assert.match(sql, /grant execute on function public\.financeiro_caixa_criar\(jsonb\) to authenticated, service_role/);
   assert.match(sql, /revoke all on function public\.financeiro_caixa_criar\(jsonb\) from public, anon/);
+});
+
+test("migration de edição/exclusão mantém recebimento reconciliado e protege caixa de repasse", () => {
+  const sql = readFileSync(new URL("../supabase/migrations/20260923212000_financeiro_caixa_editar_excluir_atomico.sql", import.meta.url), "utf8");
+  assert.match(sql, /create or replace function public\.financeiro_caixa_editar\(/);
+  assert.match(sql, /create or replace function public\.financeiro_caixa_excluir\(/);
+  assert.equal((sql.match(/security invoker/g) ?? []).length, 2);
+  assert.match(sql, /from public\.pagamentos_comissao p where p\.lancamento_id=p_lancamento_id/);
+  assert.match(sql, /CAIXA_REPASSE_VINCULADO/);
+  assert.match(sql, /v_tipo<>'entrada' or v_valor<>round\(v_recebimento\.valor_total,2\)/);
+  assert.match(sql, /update public\.recebimentos set status='recebido',data_recebimento=v_data/);
+  assert.match(sql, /update public\.recebimentos set status='pendente',data_recebimento=null/);
+  assert.equal((sql.match(/insert into public\.erp_auditoria/g) ?? []).length, 2);
+  assert.match(sql, /a\.acao='excluir lançamento'/);
+  assert.match(sql, /revoke all on function public\.financeiro_caixa_editar\(uuid,jsonb\) from public,anon/);
+  assert.match(sql, /revoke all on function public\.financeiro_caixa_excluir\(uuid\) from public,anon/);
 });
 
 test("modal de caixa envia requestId estável para retry idempotente", () => {
@@ -405,8 +432,6 @@ test("gravações do financeiro não ignoram a resposta do banco", () => {
   const gravacoesIgnoradas = rota.split("\n").filter((linha) => /^\s*await (?:semTipos\([^)]*\)|auth\.supabase)\.from\([^\n]+\)\.(?:insert|update|delete)\(/.test(linha));
   assert.deepEqual(gravacoesIgnoradas, []);
   for (const operacao of [
-    "auditar_edicao_lancamento",
-    "reabrir_parcela_apos_exclusao",
     "baixar_parcelas_apos_venda",
     "gravar_linhas_extrato",
     "marcar_linha_extrato",

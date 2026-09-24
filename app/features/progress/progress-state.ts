@@ -47,12 +47,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 77,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Publicar e aceitar criação de caixa + baixa atômica do item 29",
-  lastCheckpoint: "Segunda fatia do item 29 em prova: os 16 vínculos caixa/recebimento atuais são únicos, de entrada, da mesma venda e do mesmo valor. Criação de caixa + baixa agora usam uma RPC transacional e auditada, com requestId e unicidade por recebimento. Prova authenticated em rollback confirmou criação, baixa, replay idempotente e recusa de duplicidade. 1.170 testes, TypeScript, lint e build passaram.",
-  lastCheckpointAt: "2026-09-23T21:13:28-03:00",
-  lastCommitSent: "2ca85eb2",
-  productionCommit: "2ca85eb238fd9f6d258372082671f2e667148ef4",
+  currentTask: "Publicar e aceitar edição/exclusão atômicas de caixa do item 29",
+  lastCheckpoint: "PR #266 entregue no build e08eb481: criação de caixa + baixa é transacional, auditada e idempotente; 16 vínculos seguem únicos e reconciliados. Terceira fatia em prova: edição sincroniza a parcela, exclusão a reabre e retries não duplicam auditoria; caixas dos 3 repasses são protegidos contra edição/exclusão lateral. Prova authenticated terminou em rollback; 1.171 testes, TypeScript, lint e build passaram.",
+  lastCheckpointAt: "2026-09-23T21:25:12-03:00",
+  lastCommitSent: "e08eb481",
+  productionCommit: "e08eb4812dd45d9ad49718099e811cb0a47df89c",
   latestDeliveries: [
+    "PR #266 publicada: criação de caixa, baixa opcional e auditoria agora são uma transação idempotente; recebimento aceita no máximo um lançamento reconciliado.",
     "PR #265 publicada: baixa e reabertura de repasse passaram a ser transacionais, idempotentes e auditadas, sem reconciliar nem alterar valores históricos.",
     "PR #264 publicada: fronteira do portal futuro ficou reproduzível e documentada, com PII fechada e nenhum código especulativo de portal ou autenticação.",
     "PR #263 publicada: só a gestão decide captações pela RPC atômica; reprovação exige motivo, aprovação publica uma vez e retries reutilizam a auditoria canônica.",
@@ -87,7 +88,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Produção possui 12 unidades captadas sem vínculo privado de proprietário; todas estão aprovadas e 11 publicadas. A correção depende de identificação humana do proprietário e não pode ser inferida automaticamente.",
     "Feedback em áudio está fail-closed: produção não tem tabela, bucket, RPC, Edge Function, cron nem segredos de transcrição; o crédito de IA retomado não substitui essa infraestrutura.",
   ],
-  nextStep: "Publicar a segunda fatia do item 29, aplicar a migration e repetir a prova com rollback no build produtivo. Depois diagnosticar edição/exclusão de caixa. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Publicar a terceira fatia do item 29, aplicar a migration e repetir edição/exclusão com rollback no build produtivo. Depois diagnosticar baixa direta de recebimento. Não reconciliar valores nem executar baixa real. Identidade visual fica por último e exige nova conversa.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
