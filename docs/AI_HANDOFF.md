@@ -1,5 +1,25 @@
 # Checkpoint ERP ApeCerto
 
+## Estado verificado em 23/09/2026, 22:47 BRT
+
+- Sétima fatia da decisão 29 entregue pela PR #271 no build
+  `85c493af4d79bf995d7230e97621bca603309141`. Produção autenticada confirmou
+  valor, data, salvar e excluir desabilitados para parcela baixada; só a
+  reabertura permanece disponível.
+- Oitava lacuna reproduzida: comissão avulsa era gravada diretamente pela rota,
+  podia ultrapassar a comissão bruta, perder vínculo por exclusão e duplicar no
+  retry. As novas RPCs serializam a venda, deduplicam criação, auditam e bloqueiam
+  edição/exclusão quando há repasse ou caixa vinculado.
+- A migration `financeiro_comissao_atomica` está aplicada; as funções são
+  `SECURITY INVOKER`, `authenticated` executa e `anon` não. Provas pré e
+  pós-migration criaram, repetiram, editaram e excluíram uma fixture, bloquearam
+  duplicidade, excesso e comissão movimentada e terminaram em `ROLLBACK`.
+- Produção permaneceu com 57 comissões, 3 repasses e 368 caixas, sem fixture nem
+  auditoria residual. As 2 vendas historicamente acima da comissão bruta e o
+  repasse divergente não foram alterados; a regra permite redução, nunca piora.
+- 1.183 testes, TypeScript, lint (0 erros; 9 avisos antigos) e build passaram.
+  Próximo passo: PR/CI/merge e aceite visual/pós-deploy somente de leitura.
+
 ## Estado verificado em 23/09/2026, 22:27 BRT
 
 - Sexta fatia da decisão 29 entregue pela PR #270 no build

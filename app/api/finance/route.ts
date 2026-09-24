@@ -7,6 +7,7 @@ import { criarVendaAtomica, editarVendaAtomica, excluirVendaAtomica } from "./ve
 import { decidirRepasseAtomico, excluirRepasseAtomico } from "./repasse-rpc";
 import { criarCaixaAtomico, decidirRecebimentoAtomico, editarCaixaAtomico, excluirCaixaAtomico } from "./caixa-rpc";
 import { excluirRecebimentoAtomico, salvarRecebimentoAtomico } from "./recebimento-rpc";
+import { excluirComissaoAtomica, salvarComissaoAtomica } from "./comissao-rpc";
 import { hojeOperacao, somarDias } from "../../lib/timezone";
 
 export const dynamic = "force-dynamic";
@@ -642,20 +643,24 @@ export async function PATCH(request: Request) {
       const papeis: Enums<"papel_comissao">[] = ["corretor", "executivo", "indicacao", "apecerto", "gerente"];
       const papel = papeis.find((item) => item === papelBruto);
       const beneficiarioId = clean(body.beneficiarioId, 60) || null;
-      if (!vendaId || !papel || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Informe a venda, o papel e um valor não negativo." }, { status: 422 });
-      const { error } = await auth.supabase.from("comissoes").insert({ venda_id: vendaId, papel, valor_final: valor, valor_calculado: valor, beneficiario_id: beneficiarioId });
-      return error ? falhaFinanceiro(error, "adicionar_comissao") : Response.json({ success: true });
+      const requestId = clean(body.requestId, 60);
+      if (!vendaId || !papel || !requestId || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Informe a venda, o papel, o identificador da solicitação e um valor não negativo." }, { status: 422 });
+      const resultado = await salvarComissaoAtomica(semTipos(auth.supabase), null, { venda_id: vendaId, papel, beneficiario_id: beneficiarioId, valor, request_id: requestId });
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_comissao_rpc_falhou", { operacao: "criar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     if (action === "updateCommission") {
-      const id = clean(body.commissionId, 60); const valor = Number(body.valor);
-      if (!id || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Comissão inválida." }, { status: 422 });
-      const { error } = await auth.supabase.from("comissoes").update({ valor_final: valor }).eq("id", id);
-      return error ? falhaFinanceiro(error, "atualizar_comissao") : Response.json({ success: true });
+      const id = clean(body.commissionId, 60); const valor = Number(body.valor); const papel = clean(body.papel, 40); const beneficiarioId = clean(body.beneficiarioId, 60) || null;
+      if (!id || !papel || !Number.isFinite(valor) || valor < 0) return Response.json({ error: "Comissão inválida." }, { status: 422 });
+      const resultado = await salvarComissaoAtomica(semTipos(auth.supabase), id, { papel, beneficiario_id: beneficiarioId, valor });
+      if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_comissao_rpc_falhou", { operacao: "editar", codigo: resultado.erroInterno.code ?? "desconhecido" });
+      return Response.json(resultado.body, { status: resultado.status });
     }
     const id = clean(body.commissionId, 60);
     if (!id) return Response.json({ error: "Comissão inválida." }, { status: 422 });
-    const { error } = await auth.supabase.from("comissoes").delete().eq("id", id);
-    return error ? falhaFinanceiro(error, "excluir_comissao") : Response.json({ success: true });
+    const resultado = await excluirComissaoAtomica(semTipos(auth.supabase), id);
+    if (resultado.erroInterno && resultado.status >= 500) console.error("financeiro_comissao_rpc_falhou", { operacao: "excluir", codigo: resultado.erroInterno.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   return Response.json({ error: "Ação financeira desconhecida." }, { status: 400 });
