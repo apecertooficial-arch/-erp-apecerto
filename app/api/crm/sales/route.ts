@@ -11,6 +11,7 @@ import { reorderSalesStagesAtomic, type SalesStageOrderRpcClient } from "../sale
 import { confirmSalesTriageAtomic, type SalesTriageConfirmRpcClient } from "../sales-triage-confirm-rpc";
 import { registerSalesBatchAttachmentsAtomic, type SalesBatchAttachmentRpcClient } from "../sales-batch-attachment-rpc";
 import { removeSalesAttachmentAtomic, type SalesAttachmentRemoveRpcClient } from "../sales-attachment-remove-rpc";
+import { createSalesAttachmentAtomic, type SalesAttachmentCreateRpcClient } from "../sales-attachment-create-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -184,22 +185,6 @@ async function guardBloco(auth: Auth, processId: string, bloco: BlocoEsteira) {
   return { deny: null, ctx };
 }
 
-/** Registra um evento na trilha de auditoria dos anexos (nunca derruba a requisição principal). */
-async function trilha(auth: Auth, evento: string, dados: { anexoId?: string | null; processoRef?: string | null; loteId?: string | null; detalhe?: unknown }) {
-  try {
-    const { data: me } = await auth.supabase.from("usuarios").select("nome").eq("id", auth.user.id).maybeSingle();
-    await auth.supabase.from("esteira_anexo_eventos").insert({
-      anexo_id: dados.anexoId ?? null,
-      processo_ref: dados.processoRef ?? null,
-      lote_id: dados.loteId ?? null,
-      evento,
-      detalhe: (dados.detalhe ?? null) as never,
-      ator: auth.user.id,
-      ator_nome: me?.nome ?? null,
-    } as never);
-  } catch { /* auditoria é best-effort */ }
-}
-
 type Auth = { supabase: ReturnType<typeof createServerSupabaseClient>; user: { id: string } };
 async function requireManager(auth: Auth) {
   const { data: me } = await auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle();
@@ -319,9 +304,10 @@ export async function PATCH(request: Request) {
       return Response.json(resultado.body, { status: resultado.status });
     }
     const processo_ref = clean(body.processId, 60);
+    const requestId = clean(body.requestId, 60);
     const path = clean(body.path, 400);
     const nome = clean(body.nome, 200);
-    if (!processo_ref || !path || !nome) return Response.json({ error: "Informe o processo, o arquivo e o nome." }, { status: 422 });
+    if (!processo_ref || !requestId || !path || !nome) return Response.json({ error: "Informe o processo, o arquivo, o nome e a solicitação." }, { status: 422 });
     const grupoAlvo = clean(body.grupo, 40);
     const etapaSlug = clean(body.etapaSlug, 40);
     const docNome = clean(body.docNome, 200);
@@ -335,8 +321,8 @@ export async function PATCH(request: Request) {
       const gEtapa = await guardDocumentoEtapa(auth, processo_ref, etapaSlug, docNome);
       if (gEtapa.deny) return gEtapa.deny;
     }
-    const insert: Record<string, unknown> = {
-      processo_ref, nome, path,
+    const payload: Record<string, unknown> = {
+      nome, path,
       etapa_slug: etapaSlug || null,
       doc_nome: docNome || null,
       grupo: grupoAlvo || null,
@@ -345,13 +331,12 @@ export async function PATCH(request: Request) {
       status: "anexado",
       mime: clean(body.mime, 100) || null,
       tamanho: Number.isFinite(Number(body.tamanho)) ? Math.trunc(Number(body.tamanho)) : null,
-      negocio_id: Number.isSafeInteger(Number(body.negocioId)) && Number(body.negocioId) > 0 ? Number(body.negocioId) : null,
-      enviado_por: auth.user.id,
     };
-    const { data: criado, error } = await auth.supabase.from("esteira_anexos").insert(insert as never).select("id").maybeSingle();
-    if (error) return falhaEsteira(error, "adicionar_anexo");
-    await trilha(auth, "upload", { anexoId: (criado?.id as string) ?? null, processoRef: processo_ref, detalhe: { arquivo: nome, grupo: insert.grupo, doc_nome: insert.doc_nome, origem: "manual" } });
-    return Response.json({ success: true });
+    const resultado = await createSalesAttachmentAtomic(auth.supabase as unknown as SalesAttachmentCreateRpcClient, {
+      processId: processo_ref, requestId, payload,
+    });
+    if ("internalError" in resultado && resultado.internalError) console.error("esteira_anexo_upload_atomico_falhou", { codigo: resultado.internalError.code ?? "desconhecido" });
+    return Response.json(resultado.body, { status: resultado.status });
   }
 
   if (action === "verifyStage" || action === "unverifyStage") {
