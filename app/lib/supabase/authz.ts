@@ -1,7 +1,7 @@
 // Resolução de acesso efetivo no servidor, compartilhada pelas rotas de API.
 // Espelha a lógica do /api/session: override individual do usuário tem
 // prioridade; sem override, cai no perfil do papel (role).
-import { canDo, type PermissionMap } from "../permissions";
+import { canDo, MODULE_CAPABILITIES, type PermissionMap } from "../permissions";
 import type { createServerSupabaseClient } from "./server";
 
 type ServerSupabase = ReturnType<typeof createServerSupabaseClient>;
@@ -14,7 +14,7 @@ export async function resolveEffectiveAccess(
 ): Promise<EffectiveAccess> {
   const { data: userProfile, error } = await supabase
     .from("usuarios")
-    .select("role,permissoes")
+    .select("role,permissoes,gestor_produtos")
     .eq("id", userId)
     .maybeSingle();
   if (error || !userProfile) return { role: "", permissions: {}, resolved: false };
@@ -29,6 +29,12 @@ export async function resolveEffectiveAccess(
       .maybeSingle();
     if (roleError || !roleProfile) return { role: "", permissions: {}, resolved: false };
     permissions = (roleProfile as { permissoes?: PermissionMap | null } | null)?.permissoes ?? {};
+  }
+  if ((userProfile as { gestor_produtos?: boolean }).gestor_produtos === true) {
+    permissions = {
+      ...(permissions ?? {}),
+      produtos: [...MODULE_CAPABILITIES.produtos],
+    };
   }
   return { role, permissions: permissions ?? {}, resolved: true };
 }

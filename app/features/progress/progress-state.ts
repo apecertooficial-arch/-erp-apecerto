@@ -47,7 +47,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 86,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "Concluir os aceites humanos restantes das 30 decisões, sem fabricar operação nem reconciliar legado automaticamente",
+  currentTask: "PRO-ADM-001 — conceder ao Fabiano gestão completa e restrita de Produtos, inclusive proprietários, sem ampliar seu papel geral no ERP",
   lastCheckpoint: "PR #302 entregue no build cff6f6a7: a API Financeira deixou de transformar parcelas pendentes em recebidas somente na resposta. Produção mostra os 2 recebimentos persistidos como pendentes, com ação de baixa disponível para conferência humana; mobile e desktop passaram sem erro ou overflow e nenhum dado foi alterado.",
   lastCheckpointAt: "2026-09-24T13:48:09-03:00",
   lastCommitSent: "cff6f6a7",

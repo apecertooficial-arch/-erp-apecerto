@@ -4,7 +4,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getBrowserSupabaseClient } from "../../lib/supabase/browser";
 import { isPlausibleProductPrice, type ProductQuality } from "./quality";
-import { isProductManagerRole } from "./access";
 import { MoneyInput } from "./MoneyInput";
 import { applyOfficialWatermark } from "./watermark";
 import { sitePropertyUrl } from "./products";
@@ -90,8 +89,8 @@ function initials(name?: string | null): string {
 
 export type UnitOpenAction = "view" | "edit" | "media" | "delete";
 
-export function ProductDetail({ productId, accessToken, sessionRole = "corretor", initialUnitId, initialUnitAction = "view", initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; sessionRole?: string; initialUnitId?: string | null; initialUnitAction?: UnitOpenAction; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
-  const canPublish = isProductManagerRole(sessionRole);
+export function ProductDetail({ productId, accessToken, canManageProducts = false, initialUnitId, initialUnitAction = "view", initialEditing = false, captadorScore = null, onClose, onChanged }: { productId: string; accessToken: string; canManageProducts?: boolean; initialUnitId?: string | null; initialUnitAction?: UnitOpenAction; initialEditing?: boolean; captadorScore?: number | null; onClose: () => void; onChanged: () => void }) {
+  const canPublish = canManageProducts === true;
   const [product, setProduct] = useState<ProductDetailData | null>(null);
   const [draft, setDraft] = useState<Record<string, string | number | null>>({});
   const [owner, setOwner] = useState<Owner | null>(null);

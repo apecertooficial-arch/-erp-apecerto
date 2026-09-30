@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { papelDeSessao } from "../../lib/papeis";
 import { isInvalidSessionError } from "../../lib/supabase/auth-errors";
+import { MODULE_CAPABILITIES } from "../../lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
   if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
   const [{ data: profile, error: profileError }, { data: broker, error: brokerError }] = await Promise.all([
-    supabase.from("usuarios").select("id,nome,role,ativo,permissoes").eq("id", authData.user.id).maybeSingle(),
+    supabase.from("usuarios").select("id,nome,role,ativo,permissoes,gestor_produtos").eq("id", authData.user.id).maybeSingle(),
     supabase.from("corretores").select("id,nome,email,usuario_id,ativo,online").eq("usuario_id", authData.user.id).maybeSingle(),
   ]);
   if (profileError) return falhaSessao(profileError, "carregar_perfil");
@@ -41,6 +42,13 @@ export async function GET(request: Request) {
     const { data: roleProfile, error: roleProfileError } = await supabase.from("perfis").select("permissoes").eq("id", profile.role).maybeSingle();
     if (roleProfileError) return falhaSessao(roleProfileError, "carregar_permissoes_papel");
     effectivePermissions = (roleProfile as { permissoes?: Record<string, string[]> | null } | null)?.permissoes ?? null;
+  }
+  const gestorProdutos = (profile as { gestor_produtos?: boolean } | null)?.gestor_produtos === true;
+  if (gestorProdutos) {
+    effectivePermissions = {
+      ...(effectivePermissions ?? {}),
+      produtos: [...MODULE_CAPABILITIES.produtos],
+    };
   }
   /* Classe de sessão vem de app/lib/papeis.ts (grupo `gestao`): admin, gestor
      (executivo, diretor, gerente) ou corretor. Onda 5.8 já tinha incluído
@@ -56,5 +64,6 @@ export async function GET(request: Request) {
     brokerId: broker?.id ?? null,
     online: broker?.online ?? false,
     permissoes: effectivePermissions,
+    gestorProdutos,
   }, { headers: { "Cache-Control": "private, no-store, no-cache" } });
 }

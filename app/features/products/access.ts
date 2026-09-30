@@ -6,3 +6,11 @@ export const PRODUCT_MANAGER_ROLES: ReadonlySet<string> = new Set(GRUPOS.produto
 export function isProductManagerRole(role: string | null | undefined) {
   return papelNoGrupo(role, "produtos");
 }
+
+/** Alçada de Produtos por papel canônico ou concessão individual dedicada. */
+export function isProductManagerAccess(
+  role: string | null | undefined,
+  dedicatedAccess = false,
+) {
+  return dedicatedAccess === true || isProductManagerRole(role);
+}

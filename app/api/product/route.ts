@@ -7,7 +7,7 @@ import {
   validateProductPrice,
   validateProductPricePerSquareMeter,
 } from "../../features/products/quality";
-import { isProductManagerRole } from "../../features/products/access";
+import { isProductManagerAccess } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 import { canViewUnitOwner } from "../../features/products/product-domain";
 import { lerComandoJson } from "../../lib/http/read-json-command.mjs";
@@ -189,11 +189,14 @@ export async function GET(request: Request) {
     { data: meuPerfilGet, error: profileError },
   ] = await Promise.all([
     auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle(),
-    auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
+    auth.supabase.from("usuarios").select("role,gestor_produtos").eq("id", auth.user.id).maybeSingle(),
   ]);
   const contextReadError = brokerError ?? profileError;
   if (contextReadError) return productTechnicalFailure("read_product_context", contextReadError);
-  const gerenciaProdutosGet = isProductManagerRole((meuPerfilGet as { role?: string } | null)?.role);
+  const gerenciaProdutosGet = isProductManagerAccess(
+    (meuPerfilGet as { role?: string } | null)?.role,
+    (meuPerfilGet as { gestor_produtos?: boolean } | null)?.gestor_produtos === true,
+  );
   if (!gerenciaProdutosGet && !broker?.id) {
     return Response.json({ error: "Seu usuário ainda não está vinculado a uma carteira ativa." }, { status: 403 });
   }
@@ -294,14 +297,17 @@ export async function PATCH(request: Request) {
     { data: brokerContext, error: brokerContextError },
   ] = await Promise.all([
     auth.supabase.from("empreendimentos").select("nome, descricao, finalidade, origem, condominio_id, captado_por_usuario, captador_corretor_id, aprovacao, publicado, rascunho").eq("id", id).maybeSingle(),
-    auth.supabase.from("usuarios").select("role").eq("id", auth.user.id).maybeSingle(),
+    auth.supabase.from("usuarios").select("role,gestor_produtos").eq("id", auth.user.id).maybeSingle(),
     auth.supabase.from("corretores").select("id").eq("usuario_id", auth.user.id).maybeSingle(),
   ]);
   const mutationContextError = productContextError ?? profilePatchError ?? brokerContextError;
   if (mutationContextError) return productTechnicalFailure("read_mutation_context", mutationContextError);
   if (!productContext) return Response.json({ error: "Produto não encontrado." }, { status: 404 });
   const currentPurpose = productContext?.finalidade ?? "venda";
-  const gerenciaProdutos = isProductManagerRole((meuPerfilPatch as { role?: string } | null)?.role);
+  const gerenciaProdutos = isProductManagerAccess(
+    (meuPerfilPatch as { role?: string } | null)?.role,
+    (meuPerfilPatch as { gestor_produtos?: boolean } | null)?.gestor_produtos === true,
+  );
   const souCaptador = (productContext as { captado_por_usuario?: string | null } | null)?.captado_por_usuario === auth.user.id
     || (brokerContext?.id != null && productContext?.captador_corretor_id === brokerContext.id);
   const negadoPorCaptacao = !gerenciaProdutos && !souCaptador ? Response.json({ error: "Você só pode editar imóveis captados por você." }, { status: 403 }) : null;

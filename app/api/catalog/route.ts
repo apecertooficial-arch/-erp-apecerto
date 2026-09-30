@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice } from "../../features/products/quality";
-import { isProductManagerRole } from "../../features/products/access";
+import { isProductManagerAccess } from "../../features/products/access";
 import { isProductPublishedOnSite } from "../../features/products/publication";
 import { resolveCommercialOrigin, summarizeInventory } from "../../features/products/product-domain";
 
@@ -82,10 +82,10 @@ export async function GET(request: Request) {
   if (authError) return falhaCatalogo(authError, "autenticar");
   if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const { data: me, error: profileError } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+  const { data: me, error: profileError } = await supabase.from("usuarios").select("role,gestor_produtos").eq("id", authData.user.id).maybeSingle();
   if (profileError) return falhaCatalogo(profileError, "carregar_perfil");
   const role = (me as { role?: string } | null)?.role ?? "corretor";
-  const canApprove = isProductManagerRole(role);
+  const canApprove = isProductManagerAccess(role, (me as { gestor_produtos?: boolean } | null)?.gestor_produtos === true);
 
   const { data, error } = await supabase
     .from("empreendimentos")

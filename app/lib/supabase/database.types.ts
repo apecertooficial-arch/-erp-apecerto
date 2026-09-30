@@ -9961,6 +9961,7 @@ export type Database = {
           endereco_logradouro: string | null
           endereco_numero: string | null
           endereco_uf: string | null
+          gestor_produtos: boolean
           id: string
           nome: string
           permissoes: Json | null
@@ -9979,6 +9980,7 @@ export type Database = {
           endereco_logradouro?: string | null
           endereco_numero?: string | null
           endereco_uf?: string | null
+          gestor_produtos?: boolean
           id: string
           nome: string
           permissoes?: Json | null
@@ -9997,6 +9999,7 @@ export type Database = {
           endereco_logradouro?: string | null
           endereco_numero?: string | null
           endereco_uf?: string | null
+          gestor_produtos?: boolean
           id?: string
           nome?: string
           permissoes?: Json | null

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import { assessProductQuality, isPlausibleProductPrice, validateProductPrice } from "../../features/products/quality";
-import { isProductManagerRole } from "../../features/products/access";
+import { isProductManagerAccess } from "../../features/products/access";
 import type { Json } from "../../lib/supabase/database.types";
 
 export const dynamic = "force-dynamic";
@@ -73,9 +73,9 @@ export async function PATCH(request: Request) {
   const id = String(body.id || "");
   if ((action !== "approve" && action !== "reject") || !id) return Response.json({ error: "Ação ou empreendimento inválido." }, { status: 422 });
   if (action === "approve") {
-    const { data: approver, error: approverError } = await supabase.from("usuarios").select("role").eq("id", authData.user.id).maybeSingle();
+    const { data: approver, error: approverError } = await supabase.from("usuarios").select("role,gestor_produtos").eq("id", authData.user.id).maybeSingle();
     if (approverError) return falhaCaptacao(approverError, "carregar_papel_aprovador");
-    if (!isProductManagerRole(approver?.role)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar imóveis." }, { status: 403 });
+    if (!isProductManagerAccess(approver?.role, approver?.gestor_produtos === true)) return Response.json({ error: "Apenas a gestão de Produtos pode aprovar imóveis." }, { status: 403 });
     const { data: product, error: productError } = await supabase
       .from("empreendimentos")
       .select("nome,titulo,slogan,descricao,finalidade,status,preco,area_util,dormitorios,banheiros,vagas,endereco,numero,bairro,cidade,uf,cep,condominio_valor,iptu,outros_custos,lazer,diferenciais,tour_url,unidades(area_m2,valor_tabela,valor_promo,disponivel,aprovacao),midias(tipo,categoria,is_capa,unidade_id)")
