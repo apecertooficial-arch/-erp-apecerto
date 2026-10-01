@@ -45,5 +45,6 @@ test("a tela remota oferece estoque ao vivo, filtros e persistência compartilha
   assert.match(ui, /\/api\/products\/migration/);
   assert.match(ui, /ownerContact/);
   assert.match(page, /GuardaModulo modulo="Produtos"/);
+  assert.match(page, /ErpSessionProvider/);
   assert.doesNotMatch(products, /Selecionar migração|\/produtos\/migracao/);
 });
