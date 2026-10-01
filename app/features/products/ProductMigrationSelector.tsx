@@ -31,10 +31,20 @@ type MigrationUnit = {
   ownMedia: number;
   referenceMedia: number;
   coverUrl: string | null;
+  ownPhotos: MigrationPhoto[];
+  referencePhotos: MigrationPhoto[];
   segment: "terceiros" | "lancamento" | "remanescente";
   ownerName: string | null;
   ownerContact: string | null;
   selectedForMigration: boolean;
+};
+
+type MigrationPhoto = {
+  id: string;
+  url: string;
+  category: string | null;
+  name: string | null;
+  cover: boolean;
 };
 
 type MigrationCatalog = {
@@ -71,6 +81,8 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
   const [selection, setSelection] = useState("todos");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [selectedUnit, setSelectedUnit] = useState<MigrationUnit | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<MigrationPhoto | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/catalog?view=migration", {
@@ -115,6 +127,18 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
   }, [units, query, segment, captor, developer, neighborhood, commercialState, owner, photos, selection, minPrice, maxPrice]);
 
   const selectedCount = units.filter((unit) => unit.selectedForMigration).length;
+  const withCaptor = units.filter((unit) => Boolean(unit.captador)).length;
+  const withoutCaptor = units.length - withCaptor;
+
+  function openUnit(unit: MigrationUnit) {
+    setSelectedUnit(unit);
+    setPreviewPhoto(unit.ownPhotos[0] ?? unit.referencePhotos[0] ?? null);
+  }
+
+  function closeUnit() {
+    setSelectedUnit(null);
+    setPreviewPhoto(null);
+  }
 
   async function toggle(unit: MigrationUnit) {
     const selected = !unit.selectedForMigration;
@@ -148,10 +172,13 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
     </header>
 
     <section className="migration-products-summary" aria-label="Resumo do estoque">
-      <article><strong>{total}</strong><span>unidades no estoque</span></article>
+      <article><strong>{units.length}/{total}</strong><span>unidades carregadas do banco</span></article>
       <article><strong>{visible.length}</strong><span>aparecem nos filtros</span></article>
+      <article className={withoutCaptor ? "attention" : ""}><strong>{withCaptor}</strong><span>com captador · {withoutCaptor} sem vínculo</span></article>
       <article className="selected"><strong>{selectedCount}</strong><span>na lista de migração</span></article>
     </section>
+
+    {units.length !== total && <p className="migration-products-error" role="alert">Atenção: o banco informa {total} unidades, mas esta sessão carregou {units.length}. Atualize antes de selecionar.</p>}
 
     <section className="migration-products-filters" aria-label="Filtros do estoque">
       <label className="wide"><span>Buscar</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="AP, prédio, unidade, captador, proprietário…" /></label>
@@ -179,11 +206,12 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
 
     <div className="migration-products-list">
       {visible.map((unit) => <article key={unit.id} className={unit.selectedForMigration ? "selected" : ""}>
-        <div className="migration-products-photo">{unit.coverUrl ? <img src={unit.coverUrl} alt={`Foto do imóvel ${unit.codigo || unit.productName}`} onError={retryProductMediaImage} /> : <span>Sem foto própria</span>}<em>{segmentLabel[unit.segment]}</em></div>
-        <div className="migration-products-main">
+        <button type="button" className="migration-products-open" onClick={() => openUnit(unit)} aria-label={`Abrir ficha do imóvel ${unit.codigo || unit.productName}`}>
+          <div className="migration-products-photo">{unit.coverUrl ? <img src={unit.coverUrl} alt={`Foto do imóvel ${unit.codigo || unit.productName}`} onError={retryProductMediaImage} /> : <span>Sem foto própria</span>}<em>{segmentLabel[unit.segment]}</em></div>
+          <div className="migration-products-main">
           <div className="migration-products-title"><div><small>{unit.codigo || "Sem código"} · Unidade {unit.numero || "s/n"}</small><h2>{unit.productName}</h2><p>{unit.address || "Endereço não informado"} · {unit.neighborhood} · {unit.city}/{unit.state || "SP"}</p></div><strong>{unit.price == null ? "Preço não informado" : currency.format(unit.price)}</strong></div>
           <dl>
-            <div><dt>Captador</dt><dd>{unit.captador || "Não identificado"}</dd></div>
+            <div className={!unit.captador ? "missing" : ""}><dt>Captador</dt><dd>{unit.captador || "Sem captador vinculado"}</dd></div>
             <div><dt>Proprietário</dt><dd>{unit.ownerName || "Não vinculado"}{unit.ownerContact && <small>{unit.ownerContact}</small>}</dd></div>
             <div><dt>Incorporadora</dt><dd>{unit.developer || "Não informada"}</dd></div>
             <div><dt>Tipologia</dt><dd>{unit.tipologia || "Não informada"}</dd></div>
@@ -192,10 +220,33 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
             <div><dt>Galeria</dt><dd>{unit.ownMedia} própria(s) · {unit.referenceMedia} comum(ns)</dd></div>
             <div><dt>Status</dt><dd>{unit.published ? "Publicado" : unit.inCommercialCatalog ? "No catálogo" : unit.available ? "Fora do catálogo" : "Inativo"} · {unit.approval}</dd></div>
           </dl>
-        </div>
+          </div>
+        </button>
         <button type="button" className="migration-products-select" disabled={pending.has(unit.id)} aria-pressed={unit.selectedForMigration} onClick={() => void toggle(unit)}>{pending.has(unit.id) ? "Salvando…" : unit.selectedForMigration ? "✓ Na lista · remover" : "+ Enviar para a lista"}</button>
       </article>)}
       {!visible.length && <div className="migration-products-empty"><strong>Nenhum imóvel encontrado.</strong><p>Limpe ou altere os filtros para voltar ao estoque completo.</p></div>}
     </div>
+
+    {selectedUnit && <div className="migration-products-modal">
+      <button type="button" className="migration-products-scrim" aria-label="Fechar ficha" onClick={closeUnit} />
+      <section role="dialog" aria-modal="true" aria-label={`Ficha do imóvel ${selectedUnit.codigo || selectedUnit.productName}`}>
+        <header><div><small>{selectedUnit.codigo || "Sem código"} · Unidade {selectedUnit.numero || "s/n"}</small><h2>{selectedUnit.productName}</h2><p>{selectedUnit.address || "Endereço não informado"} · {selectedUnit.neighborhood} · {selectedUnit.city}/{selectedUnit.state || "SP"}</p></div><button type="button" onClick={closeUnit} aria-label="Fechar ficha">×</button></header>
+        <div className="migration-products-modal-body">
+          <div className="migration-products-preview">{previewPhoto ? <img src={previewPhoto.url} alt={previewPhoto.name || previewPhoto.category || "Foto do imóvel"} onError={retryProductMediaImage} /> : <span>Este imóvel não possui fotos disponíveis.</span>}</div>
+          <dl className="migration-products-detail-grid">
+            <div className={!selectedUnit.captador ? "missing" : ""}><dt>Captador</dt><dd>{selectedUnit.captador || "Sem captador vinculado no banco"}</dd></div>
+            <div><dt>Proprietário</dt><dd>{selectedUnit.ownerName || "Não vinculado"}{selectedUnit.ownerContact && <small>{selectedUnit.ownerContact}</small>}</dd></div>
+            <div><dt>Incorporadora</dt><dd>{selectedUnit.developer || "Não informada"}</dd></div>
+            <div><dt>Tipo</dt><dd>{segmentLabel[selectedUnit.segment]}</dd></div>
+            <div><dt>Valor</dt><dd>{selectedUnit.price == null ? "Não informado" : currency.format(selectedUnit.price)}</dd></div>
+            <div><dt>Área e vagas</dt><dd>{selectedUnit.area ? `${selectedUnit.area} m²` : "—"} · {selectedUnit.parking ?? 0} vaga(s)</dd></div>
+            <div><dt>Custos</dt><dd>Condomínio {selectedUnit.condominiumFee == null ? "—" : currency.format(selectedUnit.condominiumFee)} · IPTU {selectedUnit.propertyTax == null ? "—" : currency.format(selectedUnit.propertyTax)}</dd></div>
+            <div><dt>Status</dt><dd>{selectedUnit.published ? "Publicado" : selectedUnit.inCommercialCatalog ? "No catálogo" : selectedUnit.available ? "Fora do catálogo" : "Inativo"} · {selectedUnit.approval}</dd></div>
+          </dl>
+          <section className="migration-products-gallery"><header><h3>Fotos próprias da unidade</h3><span>{selectedUnit.ownPhotos.length}</span></header>{selectedUnit.ownPhotos.length ? <div>{selectedUnit.ownPhotos.map((photo) => <button type="button" key={photo.id} className={previewPhoto?.id === photo.id ? "active" : ""} onClick={() => setPreviewPhoto(photo)}><img src={photo.url} alt={photo.name || photo.category || "Foto da unidade"} onError={retryProductMediaImage} /><small>{photo.name || photo.category || "Sem classificação"}{photo.cover ? " · capa" : ""}</small></button>)}</div> : <p>Nenhuma foto própria cadastrada.</p>}</section>
+          <section className="migration-products-gallery common"><header><h3>Áreas comuns / referência</h3><span>{selectedUnit.referencePhotos.length}</span></header>{selectedUnit.referencePhotos.length ? <div>{selectedUnit.referencePhotos.map((photo) => <button type="button" key={photo.id} className={previewPhoto?.id === photo.id ? "active" : ""} onClick={() => setPreviewPhoto(photo)}><img src={photo.url} alt={photo.name || photo.category || "Foto de área comum"} onError={retryProductMediaImage} /><small>{photo.name || photo.category || "Área comum"}{photo.cover ? " · capa" : ""}</small></button>)}</div> : <p>Nenhuma foto de área comum cadastrada.</p>}</section>
+        </div>
+      </section>
+    </div>}
   </section>;
 }

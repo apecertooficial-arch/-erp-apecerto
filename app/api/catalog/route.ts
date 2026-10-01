@@ -54,6 +54,17 @@ type MediaRow = {
   created_at: string;
 };
 
+function migrationPhoto(media: MediaRow) {
+  const url = publicMediaUrl(media.storage_path);
+  return url ? {
+    id: media.id,
+    url,
+    category: media.categoria,
+    name: media.nome,
+    cover: media.is_capa,
+  } : null;
+}
+
 type CondominiumRow = {
   id: string;
   nome: string;
@@ -486,6 +497,7 @@ export async function GET(request: Request) {
       .filter((unit) => canApprove || (currentBrokerId != null && unit.captador_corretor_id === currentBrokerId) || (migrationMode && canPrepareMigration))
       .map((unit) => {
         const ownPhotos = allMedia.filter((media) => media.unidade_id === unit.id && media.tipo === "foto");
+        const referencePhotos = allMedia.filter((media) => !media.unidade_id && media.tipo === "foto");
         const cover = ownPhotos.find((media) => media.is_capa) ?? ownPhotos[0];
         const explicitOrigin = originByUnit.get(unit.id) ?? null;
         return {
@@ -516,6 +528,8 @@ export async function GET(request: Request) {
           ownMedia: ownPhotos.length,
           referenceMedia: buildingMediaCount,
           coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
+          ownPhotos: ownPhotos.map(migrationPhoto).filter((photo) => photo !== null),
+          referencePhotos: referencePhotos.map(migrationPhoto).filter((photo) => photo !== null),
           segment: resolveCommercialOrigin({
             explicit: explicitOrigin,
             thirdParty: unit.de_terceiros,

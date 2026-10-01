@@ -21,6 +21,8 @@ test("dados privados só entram na resposta do modo de migração autorizado", a
   assert.match(catalog, /migrationMode && !canPrepareMigration/);
   assert.match(catalog, /produto_unidades_proprietarios_ler/);
   assert.match(catalog, /ownerName: migrationOwnerByUnit\.get\(unit\.id\)/);
+  assert.match(catalog, /ownPhotos: ownPhotos\.map\(migrationPhoto\)/);
+  assert.match(catalog, /referencePhotos: referencePhotos\.map\(migrationPhoto\)/);
   assert.match(catalog, /selectedForMigration: selectedMigrationUnits\.has\(unit\.id\)/);
 });
 
@@ -46,6 +48,10 @@ test("a tela remota oferece estoque ao vivo, filtros e persistência compartilha
   assert.match(ui, /event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*clearFilters\(\);/);
   assert.match(ui, /\/api\/products\/migration/);
   assert.match(ui, /ownerContact/);
+  assert.match(ui, /Sem captador vinculado no banco/);
+  assert.match(ui, /Fotos próprias da unidade/);
+  assert.match(ui, /Áreas comuns \/ referência/);
+  assert.match(ui, /role="dialog" aria-modal="true"/);
   assert.match(page, /GuardaModulo modulo="Produtos"/);
   assert.match(page, /ErpSessionProvider/);
   assert.doesNotMatch(products, /Selecionar migração|\/produtos\/migracao/);
