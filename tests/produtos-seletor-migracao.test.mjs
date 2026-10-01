@@ -37,6 +37,7 @@ test("a tela remota oferece estoque ao vivo, filtros e persistência compartilha
   const ui = await read("app/features/products/ProductMigrationSelector.tsx");
   const page = await read("app/migracao-produtos/page.tsx");
   const products = await read("app/features/products/ProductsModule.tsx");
+  const styles = await read("app/styles/produtos-migracao.css");
   assert.match(ui, /\/api\/catalog\?view=migration/);
   assert.match(ui, /AP, prédio, unidade, captador, proprietário/);
   assert.match(ui, /Incorporadora/);
@@ -48,4 +49,5 @@ test("a tela remota oferece estoque ao vivo, filtros e persistência compartilha
   assert.match(page, /GuardaModulo modulo="Produtos"/);
   assert.match(page, /ErpSessionProvider/);
   assert.doesNotMatch(products, /Selecionar migração|\/produtos\/migracao/);
+  assert.match(styles, /\.migration-products\{height:100dvh;min-height:0;overflow-y:auto;/);
 });
