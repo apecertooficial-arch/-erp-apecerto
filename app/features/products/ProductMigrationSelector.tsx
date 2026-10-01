@@ -1,7 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { retryProductMediaImage } from "./media-image";
 
@@ -140,13 +139,12 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
   }
 
   if (state === "loading") return <section className="migration-products-state"><span /><strong>Carregando o estoque completo…</strong></section>;
-  if (state === "denied") return <section className="migration-products-state denied" role="alert"><strong>Acesso não liberado</strong><p>Peça à gestão a permissão “Selecionar para migração” em Produtos.</p><Link href="/produtos">Voltar para Produtos</Link></section>;
+  if (state === "denied") return <section className="migration-products-state denied" role="alert"><strong>Acesso não liberado</strong><p>Peça à gestão a permissão “Selecionar para migração” em Produtos.</p></section>;
   if (state === "error") return <section className="migration-products-state" role="alert"><strong>Não foi possível carregar o estoque.</strong><button type="button" onClick={() => { setState("loading"); void load(); }}>Tentar novamente</button></section>;
 
   return <section className="migration-products" aria-label="Seleção de Produtos para migração">
     <header>
-      <div><p>Gestão › Produtos › Migração</p><h1>Seleção para migração</h1><span>Espelho autenticado e atualizado do estoque da imobiliária.</span></div>
-      <Link href="/produtos">← Voltar para Produtos</Link>
+      <div><p>ApêCerto › Migração</p><h1>Espelho de Produtos para Migração</h1><span>Ambiente independente e atualizado para conferir e selecionar o estoque.</span></div>
     </header>
 
     <section className="migration-products-summary" aria-label="Resumo do estoque">
@@ -167,7 +165,7 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
       <label><span>Lista de migração</span><select value={selection} onChange={(event) => setSelection(event.target.value)}><option value="todos">Todos</option><option value="sim">Selecionados</option><option value="nao">Não selecionados</option></select></label>
       <label><span>Preço mínimo</span><input inputMode="numeric" type="number" min="0" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} /></label>
       <label><span>Preço máximo</span><input inputMode="numeric" type="number" min="0" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} /></label>
-      <button type="button" onPointerDown={clearFilters} onClick={clearFilters}>Limpar filtros</button>
+      <button type="button" onMouseUp={clearFilters} onClick={clearFilters}>Limpar filtros</button>
     </section>
 
     {message && <p className="migration-products-error" role="alert">{message}</p>}

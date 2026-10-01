@@ -35,13 +35,15 @@ test("selecionar e remover são idempotentes e revalidam a permissão no servido
 
 test("a tela remota oferece estoque ao vivo, filtros e persistência compartilhada", async () => {
   const ui = await read("app/features/products/ProductMigrationSelector.tsx");
-  const page = await read("app/(erp)/produtos/migracao/page.tsx");
+  const page = await read("app/migracao-produtos/page.tsx");
+  const products = await read("app/features/products/ProductsModule.tsx");
   assert.match(ui, /\/api\/catalog\?view=migration/);
   assert.match(ui, /AP, prédio, unidade, captador, proprietário/);
   assert.match(ui, /Incorporadora/);
   assert.match(ui, /Lista de migração/);
-  assert.match(ui, /onPointerDown=\{clearFilters\} onClick=\{clearFilters\}>Limpar filtros/);
+  assert.match(ui, /onMouseUp=\{clearFilters\} onClick=\{clearFilters\}>Limpar filtros/);
   assert.match(ui, /\/api\/products\/migration/);
   assert.match(ui, /ownerContact/);
   assert.match(page, /GuardaModulo modulo="Produtos"/);
+  assert.doesNotMatch(products, /Selecionar migração|\/produtos\/migracao/);
 });
