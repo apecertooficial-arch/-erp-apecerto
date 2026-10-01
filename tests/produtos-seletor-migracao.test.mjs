@@ -40,6 +40,7 @@ test("a tela remota oferece estoque ao vivo, filtros e persistência compartilha
   assert.match(ui, /AP, prédio, unidade, captador, proprietário/);
   assert.match(ui, /Incorporadora/);
   assert.match(ui, /Lista de migração/);
+  assert.match(ui, /onPointerDown=\{clearFilters\} onClick=\{clearFilters\}>Limpar filtros/);
   assert.match(ui, /\/api\/products\/migration/);
   assert.match(ui, /ownerContact/);
   assert.match(page, /GuardaModulo modulo="Produtos"/);

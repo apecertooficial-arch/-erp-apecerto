@@ -167,7 +167,7 @@ export function ProductMigrationSelector({ accessToken }: { accessToken: string 
       <label><span>Lista de migração</span><select value={selection} onChange={(event) => setSelection(event.target.value)}><option value="todos">Todos</option><option value="sim">Selecionados</option><option value="nao">Não selecionados</option></select></label>
       <label><span>Preço mínimo</span><input inputMode="numeric" type="number" min="0" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} /></label>
       <label><span>Preço máximo</span><input inputMode="numeric" type="number" min="0" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} /></label>
-      <button type="button" onClick={clearFilters}>Limpar filtros</button>
+      <button type="button" onPointerDown={clearFilters} onClick={clearFilters}>Limpar filtros</button>
     </section>
 
     {message && <p className="migration-products-error" role="alert">{message}</p>}
