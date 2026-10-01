@@ -73,6 +73,7 @@ function publicMediaUrl(path: string) {
 }
 
 export async function GET(request: Request) {
+  const migrationMode = new URL(request.url).searchParams.get("view") === "migration";
   const authorization = request.headers.get("authorization");
   const accessToken = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
   if (!accessToken) return Response.json({ error: "Sessão necessária." }, { status: 401 });
@@ -82,10 +83,18 @@ export async function GET(request: Request) {
   if (authError) return falhaCatalogo(authError, "autenticar");
   if (!authData.user) return Response.json({ error: "Sessão inválida ou expirada." }, { status: 401 });
 
-  const { data: me, error: profileError } = await supabase.from("usuarios").select("role,gestor_produtos").eq("id", authData.user.id).maybeSingle();
+  const [{ data: me, error: profileError }, { data: migrationPermission, error: migrationPermissionError }] = await Promise.all([
+    supabase.from("usuarios").select("role,gestor_produtos").eq("id", authData.user.id).maybeSingle(),
+    supabase.rpc("has_perm", { p_modulo: "produtos", p_acao: "selecionar_migracao" }),
+  ]);
   if (profileError) return falhaCatalogo(profileError, "carregar_perfil");
+  if (migrationPermissionError) return falhaCatalogo(migrationPermissionError, "carregar_permissao_migracao");
   const role = (me as { role?: string } | null)?.role ?? "corretor";
   const canApprove = isProductManagerAccess(role, (me as { gestor_produtos?: boolean } | null)?.gestor_produtos === true);
+  const canPrepareMigration = canApprove || migrationPermission === true;
+  if (migrationMode && !canPrepareMigration) {
+    return Response.json({ error: "Você não tem permissão para preparar a migração de Produtos." }, { status: 403 });
+  }
 
   const { data, error } = await supabase
     .from("empreendimentos")
@@ -141,6 +150,21 @@ export async function GET(request: Request) {
   if (leadLinksError) return falhaCatalogo(leadLinksError, "carregar_vinculos_leads");
   const leadCountByProduct = new Map<string, number>();
   for (const link of leadLinks ?? []) leadCountByProduct.set(link.empreendimento_id, (leadCountByProduct.get(link.empreendimento_id) ?? 0) + 1);
+
+  const migrationOwnerByUnit = new Map<string, { proprietario_nome: string; proprietario_contato: string }>();
+  const selectedMigrationUnits = new Set<string>();
+  if (migrationMode) {
+    const [{ data: ownerRows, error: ownerError }, { data: selectionRows, error: selectionError }] = await Promise.all([
+      catalogIds.length
+        ? supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: catalogIds })
+        : Promise.resolve({ data: [], error: null }),
+      supabase.from("produto_migracao_selecoes").select("unidade_id"),
+    ]);
+    if (ownerError) return falhaCatalogo(ownerError, "carregar_proprietarios_migracao");
+    if (selectionError) return falhaCatalogo(selectionError, "carregar_selecoes_migracao");
+    for (const owner of ownerRows ?? []) migrationOwnerByUnit.set(owner.unidade_id, owner);
+    for (const selection of selectionRows ?? []) selectedMigrationUnits.add(selection.unidade_id);
+  }
 
   const catalog = (data ?? []).map((item) => {
     const units = (item.unidades ?? []) as UnitRow[];
@@ -459,7 +483,7 @@ export async function GET(request: Request) {
     const allMedia = (item.midias ?? []) as MediaRow[];
     const buildingMediaCount = allMedia.filter((media) => !media.unidade_id).length;
     return ((item.unidades ?? []) as UnitRow[])
-      .filter((unit) => canApprove || (currentBrokerId != null && unit.captador_corretor_id === currentBrokerId))
+      .filter((unit) => canApprove || (currentBrokerId != null && unit.captador_corretor_id === currentBrokerId) || (migrationMode && canPrepareMigration))
       .map((unit) => {
         const ownPhotos = allMedia.filter((media) => media.unidade_id === unit.id && media.tipo === "foto");
         const cover = ownPhotos.find((media) => media.is_capa) ?? ownPhotos[0];
@@ -472,6 +496,11 @@ export async function GET(request: Request) {
           productName: item.nome,
           neighborhood: item.bairro ?? "Bairro não informado",
           city: item.cidade ?? "São Paulo",
+          state: item.uf ?? null,
+          address: [item.endereco, item.numero].filter(Boolean).join(", "),
+          developer: item.incorporadora ?? null,
+          purpose: item.finalidade ?? null,
+          tipologia: unit.tipologia,
           captador: corretorNameById.get(unit.captador_corretor_id ?? -1) ?? null,
           mine: currentBrokerId != null && unit.captador_corretor_id === currentBrokerId,
           available: unit.disponivel,
@@ -481,6 +510,9 @@ export async function GET(request: Request) {
           price: unit.valor_promo ?? unit.valor_tabela,
           area: unit.area_m2,
           parking: unit.vagas,
+          condominiumFee: unit.condominio_valor ?? item.condominio_valor,
+          propertyTax: unit.iptu ?? item.iptu,
+          otherCosts: unit.outros_custos ?? item.outros_custos,
           ownMedia: ownPhotos.length,
           referenceMedia: buildingMediaCount,
           coverUrl: cover ? publicMediaUrl(cover.storage_path) : null,
@@ -489,6 +521,9 @@ export async function GET(request: Request) {
             thirdParty: unit.de_terceiros,
             buildingStatus: item.status,
           }),
+          ownerName: migrationOwnerByUnit.get(unit.id)?.proprietario_nome ?? null,
+          ownerContact: migrationOwnerByUnit.get(unit.id)?.proprietario_contato ?? null,
+          selectedForMigration: selectedMigrationUnits.has(unit.id),
         };
       });
   });
@@ -505,6 +540,7 @@ export async function GET(request: Request) {
     mode: "production-readonly",
     role,
     canApprove,
+    canPrepareMigration,
     pendingCount,
     qualitySummary,
     pendingUnits,

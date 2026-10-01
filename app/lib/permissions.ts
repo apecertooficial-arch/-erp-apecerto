@@ -24,7 +24,7 @@ export const MODULE_CAPABILITIES: Record<string, readonly string[]> = {
   chat: ["ver", "criar"],
   disparos: ["ver", "criar", "aprovar", "enviar"],
   abordagens: ["ver", "criar", "editar", "excluir", "publicar"],
-  produtos: ["ver", "criar", "editar", "excluir"],
+  produtos: ["ver", "criar", "editar", "excluir", "selecionar_migracao"],
   vendas: ["ver", "criar", "editar", "excluir", "aprovar"],
   comissoes: ["ver", "criar", "editar", "excluir"],
   financeiro: ["ver", "criar", "editar", "cancelar", "aprovar", "exportar"],
@@ -59,6 +59,7 @@ export const ACTION_LABELS: Record<string, string> = {
   visualizar_historico: "Ver histórico", consultar_execucoes: "Consultar execuções",
   gerar: "Gerar", revisar: "Revisar", comentar: "Comentar", rejeitar: "Rejeitar", agendar: "Agendar",
   cancelar_publicacao: "Cancelar publicação", gerenciar: "Administrar",
+  selecionar_migracao: "Selecionar para migração",
 };
 
 // Ordem canônica das colunas de ação (as demais, se surgirem, vão para o fim).

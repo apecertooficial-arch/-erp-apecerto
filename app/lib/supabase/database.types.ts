@@ -9119,6 +9119,39 @@ export type Database = {
           },
         ]
       }
+      produto_migracao_selecoes: {
+        Row: {
+          selecionado_em: string
+          selecionado_por: string
+          unidade_id: string
+        }
+        Insert: {
+          selecionado_em?: string
+          selecionado_por: string
+          unidade_id: string
+        }
+        Update: {
+          selecionado_em?: string
+          selecionado_por?: string
+          unidade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_migracao_selecoes_selecionado_por_fkey"
+            columns: ["selecionado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_migracao_selecoes_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: true
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           ativo: boolean

@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { CaptureWizard } from "./CaptureWizard";
 import { CondominiumWizard } from "./CondominiumWizard";
 import { UnitWizard } from "./UnitWizard";
@@ -45,6 +46,7 @@ type CatalogResponse = {
   }>;
   qualitySummary?: { excellent: number; good: number; attention: number; critical: number; readyForSite: number; average: number };
   canApprove?: boolean;
+  canPrepareMigration?: boolean;
   pendingCount?: number;
   pendingUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; photoCount: number; approval: string; rejectionReason: string | null; codigo: string | null }>;
   myUnits?: Array<{ id: string; numero: string | null; tipologia: string | null; valor: number | null; empreendimentoId: string; predio: string; proprietario: string | null; indicador: string | null; coverUrl: string | null; photoCount: number; approval: string; rejectionReason: string | null; codigo: string | null; published: boolean; available: boolean }>;
@@ -162,6 +164,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [condominiums, setCondominiums] = useState<CondominiumSummary[]>([]);
   const [canApprove, setCanApprove] = useState(false);
+  const [canPrepareMigration, setCanPrepareMigration] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingUnits, setPendingUnits] = useState<NonNullable<CatalogResponse["pendingUnits"]>>([]);
   const [myUnits, setMyUnits] = useState<NonNullable<CatalogResponse["myUnits"]>>([]);
@@ -234,6 +237,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
       });
       }));
       setCanApprove(Boolean(result.canApprove));
+      setCanPrepareMigration(Boolean(result.canPrepareMigration));
       setPendingCount(result.pendingCount ?? 0);
       setPendingUnits(result.pendingUnits ?? []);
       setMyUnits(result.myUnits ?? []);
@@ -439,7 +443,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
   if (ehCelular && dataState === "auth") return <AppMobileSessaoExpirada />;
   if (ehCelular) return <section className="ape-produtos" aria-label="Produtos">
     <AppMobileOffline atualizadoEm={atualizadoEm} />
-    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button><button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>{canApprove ? "Central de decisões" : "Qualidade"} · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
+    <div className="ape-produto-mobile-actions"><button type="button" className="principal" onClick={() => setUnitWizardOpen(true)}>＋ Cadastrar apartamento</button><button type="button" onClick={() => setCondominiumOpen(true)}>＋ Cadastrar condomínio</button>{myUnits.length > 0 && <button type="button" className={myUnitsOpen ? "ativo" : ""} onClick={() => setMyUnitsOpen(!myUnitsOpen)}>Minhas captações · {myUnits.length}</button>}<button type="button" className={section === "estoque" ? "ativo" : ""} onClick={() => section === "estoque" ? showCatalog() : setSection("estoque")}>Estoque completo · {inventoryUnits.length}</button>{canPrepareMigration && <Link href="/produtos/migracao">Selecionar migração</Link>}<button type="button" className={section === "qualidade" ? "ativo" : ""} onClick={() => section === "qualidade" ? showCatalog() : setSection("qualidade")}>{canApprove ? "Central de decisões" : "Qualidade"} · {qualityQueue.length}</button>{canApprove && <button type="button" className={approvalFilter ? "ativo" : ""} onClick={() => approvalFilter ? showCatalog() : showApprovalQueue()}>Aprovar · {pendingCount + pendingUnits.length}</button>}</div>
     {inventorySummary && <button type="button" className="ape-inventory-truth" aria-label="Abrir estoque completo" onClick={() => setSection("estoque")}><strong>{inventorySummary.totalUnits} unidades no estoque</strong><span>{inventorySummary.catalogUnits} no catálogo · {inventorySummary.publishedUnits} no site</span><span>{inventorySummary.outsideCommercialCatalog} fora do catálogo · {inventorySummary.unavailableUnits} inativas</span></button>}
     <label className="ape-produto-busca">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
@@ -514,7 +518,7 @@ export function ProductsModule({ accessToken }: { accessToken: string }) {
     <section className="products-v3" aria-label="Produtos">
       <header className="pv3-header">
         <div><p className="pv3-breadcrumb">Gestão <span>›</span> Produtos</p><h1>Produtos</h1><p className="pv3-subtitle">Gerencie o que a apêcerto vende, publica e usa como referência.</p></div>
-        <div className="pv3-header-actions"><button className="pv3-icon-button" aria-label="Notificações" type="button"><Icon name="bell" /></button><button className="pv3-primary" type="button" onClick={() => setRegistrationOpen(true)}><Icon name="plus" /> Cadastrar</button></div>
+        <div className="pv3-header-actions">{canPrepareMigration && <Link className="pv3-secondary" href="/produtos/migracao">Selecionar migração</Link>}<button className="pv3-icon-button" aria-label="Notificações" type="button"><Icon name="bell" /></button><button className="pv3-primary" type="button" onClick={() => setRegistrationOpen(true)}><Icon name="plus" /> Cadastrar</button></div>
       </header>
 
       {section !== "aprovacoes" && <section className="pv3-kpis" aria-label="Resumo dos produtos">

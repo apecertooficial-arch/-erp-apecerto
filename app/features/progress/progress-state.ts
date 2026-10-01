@@ -44,12 +44,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     { name: "Meu Dia", percent: 86 },
     { name: "Agenda / visitas", percent: 96 },
     { name: "Aplicativo móvel", percent: 82 },
+    { name: "Produtos / seleção de migração", percent: 80 },
   ],
   weeklyUsagePercent: 86,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "PRO-ADM-001 — conceder ao Fabiano gestão completa e restrita de Produtos, inclusive proprietários, sem ampliar seu papel geral no ERP",
-  lastCheckpoint: "PR #302 entregue no build cff6f6a7: a API Financeira deixou de transformar parcelas pendentes em recebidas somente na resposta. Produção mostra os 2 recebimentos persistidos como pendentes, com ação de baixa disponível para conferência humana; mobile e desktop passaram sem erro ou overflow e nenhum dado foi alterado.",
-  lastCheckpointAt: "2026-09-24T13:48:09-03:00",
+  currentTask: "PRO-MIG-001 — espelho autenticado das 294 unidades e lista compartilhada para seleção da migração de Produtos",
+  lastCheckpoint: "Seletor remoto implementado localmente sobre as 294 unidades, com permissão granular, dados privados sob autenticação, lista compartilhada, 39 testes de Produtos, lint dirigido, tipos do delta e build completo aprovados.",
+  lastCheckpointAt: "2026-10-01T10:58:00-03:00",
   lastCommitSent: "cff6f6a7",
   productionCommit: "cff6f6a7b5bbb6237b0769dfeb1e7b9fa8780eca",
   latestDeliveries: [
@@ -113,7 +114,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Transferências voluntária, gerencial e por fit e a configuração de pipeline ainda precisam de uma operação humana real; produção não possui transferência e a única auditoria de configuração alterou somente timestamp.",
     "O aceite completo do aplicativo do corretor exige uma sessão real desse papel; nenhuma conta será personificada para fabricar a prova.",
   ],
-  nextStep: "Obter consentimento específico antes de enviar áudio privado à OpenAI e coletar operações reais para os aceites de transferência, configuração e aplicativo do corretor. A gestão deve conferir o legado financeiro visível antes de qualquer baixa ou correção. Identidade visual fica por último e exige nova conversa.",
+  nextStep: "Concluir testes locais do seletor, validar desktop e mobile, então solicitar o gate de migration/deploy e a identificação da conta do funcionário que receberá a permissão granular.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");
