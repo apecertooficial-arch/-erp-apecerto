@@ -163,17 +163,27 @@ export async function GET(request: Request) {
   for (const link of leadLinks ?? []) leadCountByProduct.set(link.empreendimento_id, (leadCountByProduct.get(link.empreendimento_id) ?? 0) + 1);
 
   const migrationOwnerByUnit = new Map<string, { proprietario_nome: string; proprietario_contato: string }>();
+  const migrationCaptorByUnit = new Map<string, string>();
   const selectedMigrationUnits = new Set<string>();
   if (migrationMode) {
-    const [{ data: ownerRows, error: ownerError }, { data: selectionRows, error: selectionError }] = await Promise.all([
+    const [
+      { data: ownerRows, error: ownerError },
+      { data: captorRows, error: captorError },
+      { data: selectionRows, error: selectionError },
+    ] = await Promise.all([
       catalogIds.length
         ? supabase.rpc("produto_unidades_proprietarios_ler", { p_empreendimento_ids: catalogIds })
+        : Promise.resolve({ data: [], error: null }),
+      rawUnits.length
+        ? supabase.rpc("produto_migracao_captadores_ler", { p_unidade_ids: rawUnits.map((unit) => unit.id) })
         : Promise.resolve({ data: [], error: null }),
       supabase.from("produto_migracao_selecoes").select("unidade_id"),
     ]);
     if (ownerError) return falhaCatalogo(ownerError, "carregar_proprietarios_migracao");
+    if (captorError) return falhaCatalogo(captorError, "carregar_captadores_migracao");
     if (selectionError) return falhaCatalogo(selectionError, "carregar_selecoes_migracao");
     for (const owner of ownerRows ?? []) migrationOwnerByUnit.set(owner.unidade_id, owner);
+    for (const captor of captorRows ?? []) migrationCaptorByUnit.set(captor.unidade_id, captor.captador_nome);
     for (const selection of selectionRows ?? []) selectedMigrationUnits.add(selection.unidade_id);
   }
 
@@ -513,7 +523,7 @@ export async function GET(request: Request) {
           developer: item.incorporadora ?? null,
           purpose: item.finalidade ?? null,
           tipologia: unit.tipologia,
-          captador: corretorNameById.get(unit.captador_corretor_id ?? -1) ?? null,
+          captador: migrationCaptorByUnit.get(unit.id) ?? corretorNameById.get(unit.captador_corretor_id ?? -1) ?? null,
           mine: currentBrokerId != null && unit.captador_corretor_id === currentBrokerId,
           available: unit.disponivel,
           approval: unit.aprovacao ?? "aprovado",

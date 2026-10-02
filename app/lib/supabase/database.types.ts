@@ -12334,6 +12334,10 @@ export type Database = {
           unidade_id: string
         }[]
       }
+      produto_migracao_captadores_ler: {
+        Args: { p_unidade_ids: string[] }
+        Returns: { captador_nome: string; unidade_id: string }[]
+      }
       produto_unidades_proprietario_status: {
         Args: { p_unidade_ids: string[] }
         Returns: { completo: boolean; unidade_id: string }[]

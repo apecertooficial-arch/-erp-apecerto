@@ -17,13 +17,20 @@ test("a lista compartilhada é autenticada, protegida por RLS e não duplica PII
 
 test("dados privados só entram na resposta do modo de migração autorizado", async () => {
   const catalog = await read("app/api/catalog/route.ts");
+  const captors = await read("supabase/migrations/20261002103000_produtos_migracao_captadores.sql");
   assert.match(catalog, /searchParams\.get\("view"\) === "migration"/);
   assert.match(catalog, /migrationMode && !canPrepareMigration/);
   assert.match(catalog, /produto_unidades_proprietarios_ler/);
   assert.match(catalog, /ownerName: migrationOwnerByUnit\.get\(unit\.id\)/);
   assert.match(catalog, /ownPhotos: ownPhotos\.map\(migrationPhoto\)/);
   assert.match(catalog, /referencePhotos: referencePhotos\.map\(migrationPhoto\)/);
+  assert.match(catalog, /produto_migracao_captadores_ler/);
+  assert.match(catalog, /captador: migrationCaptorByUnit\.get\(unit\.id\)/);
   assert.match(catalog, /selectedForMigration: selectedMigrationUnits\.has\(unit\.id\)/);
+  assert.match(captors, /security definer/i);
+  assert.match(captors, /has_perm\('produtos', 'selecionar_migracao'\)/i);
+  assert.match(captors, /revoke all on function public\.produto_migracao_captadores_ler\(uuid\[\]\)/i);
+  assert.doesNotMatch(captors, /proprietario|contato|email|telefone/i);
 });
 
 test("selecionar e remover são idempotentes e revalidam a permissão no servidor", async () => {
