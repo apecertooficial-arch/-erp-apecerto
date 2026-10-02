@@ -9,6 +9,21 @@ import { confirmarResultadoVisitaPersistido, verificarDonoResultadoVisita } from
 
 export const dynamic = "force-dynamic";
 
+const CAMPOS_LEAD_FUNIL = [
+  "id", "origem_negocio_id", "nome", "telefone", "corretor_id", "corretor_nome",
+  "etapa", "momento_codigo", "acao_codigo", "acao_rotulo", "proxima_acao_em",
+  "cadencia_passo", "ultima_interacao_em", "ultima_acao_confirmada_em", "ultima_acao_fonte",
+  "ultima_reavaliacao_sara_em", "ultima_reavaliacao_resumo", "versao", "criado_em",
+  "atualizado_em", "corte_conversa_em", "historico_completo", "qualidade_atendimento_nota",
+  "qualidade_atendimento_resumo", "qualidade_atendimento_em", "temperatura", "funil",
+].join(",");
+
+function lotesDe<T>(itens: T[], tamanho: number) {
+  const lotes: T[][] = [];
+  for (let inicio = 0; inicio < itens.length; inicio += tamanho) lotes.push(itens.slice(inicio, inicio + tamanho));
+  return lotes;
+}
+
 function tokenDe(request: Request): string | null {
   const value = request.headers.get("authorization");
   return value?.startsWith("Bearer ") ? value.slice(7) : null;
@@ -48,13 +63,13 @@ async function listarLeadsSemCorte(db: SupabaseClient) {
   for (let inicio = 0; ; inicio += pagina) {
     const { data, error } = await db
       .from("f2_lead")
-      .select("*")
+      .select(CAMPOS_LEAD_FUNIL)
       .is("descartado_em", null)
       .order("proxima_acao_em", { ascending: true })
       .order("id", { ascending: true })
       .range(inicio, inicio + pagina - 1);
     if (error) return { data: null, error };
-    todos.push(...((data ?? []) as Record<string, unknown>[]));
+    todos.push(...((data ?? []) as unknown as Record<string, unknown>[]));
     if ((data?.length ?? 0) < pagina) return { data: todos, error: null };
   }
 }
@@ -155,7 +170,7 @@ export async function GET(request: Request) {
     { data: leads, error: e1 }, { data: momentos, error: e2 },
     { data: etapas, error: e4 }, { data: visitas, error: e5 },
     { data: aquario, error: e7 }, { data: operacao, error: e8 },
-    { data: saraF2Config, error: erroSaraConfig }, saraF2Analises,
+    { data: saraF2Config, error: erroSaraConfig },
     { data: tagCatalogo, error: e9 },
   ] = await Promise.all([
     listarLeadsSemCorte(db),
@@ -165,17 +180,21 @@ export async function GET(request: Request) {
     db.rpc("f2_listar_aquario"),
     db.from("f2_operacao_config").select("*").eq("id", true).maybeSingle(),
     db.from("f2_sara_config").select("enabled,lote,modo_execucao,canary_limite").eq("id", true).maybeSingle(),
-    db.from("f2_sara_analise").select("id", { count: "exact", head: true }),
     db.from("lead_tag_catalogo").select("id,nome,cor").eq("ativo", true).order("nome"),
   ]);
   if (e1 || e2 || e4 || e5 || e7 || e9) {
     const primeiroErro = e1 ?? e2 ?? e4 ?? e5 ?? e7 ?? e9;
     return respostaFalhaBanco(primeiroErro, "GET:carga_inicial");
   }
-  const negociacoes: Array<Record<string, unknown>> = [];
   const funilLeadIds = (leads ?? []).map((lead) => String(lead.id));
-  for (let inicio = 0; inicio < funilLeadIds.length; inicio += 100) {
-    const { data, error } = await db.from("f2_negociacao").select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em").in("funil_lead_id", funilLeadIds.slice(inicio, inicio + 100)).order("atualizado_em", { ascending: false });
+  const negociacoes: Array<Record<string, unknown>> = [];
+  const lotesNegociacoes = await Promise.all(lotesDe(funilLeadIds, 250).map((ids) =>
+    db.from("f2_negociacao")
+      .select("id,funil_lead_id,titulo,etapa,valor,observacao,atualizado_em")
+      .in("funil_lead_id", ids)
+      .order("atualizado_em", { ascending: false }),
+  ));
+  for (const { data, error } of lotesNegociacoes) {
     if (error) return Response.json({ error: "Não foi possível carregar as oportunidades do atendimento." }, { status: statusErroBanco(error) });
     negociacoes.push(...((data ?? []) as Array<Record<string, unknown>>));
   }
@@ -183,8 +202,10 @@ export async function GET(request: Request) {
   type NegocioOriginal = { id: number; lead_id: number; pipeline_id: number; stage_id: number | null; empreendimento_id: string | null; unidade_id: string | null; valor: number | null; status: string; criado_em: string; ultima_movimentacao: string | null };
   type LeadOriginal = { id: number; nome: string | null; telefone: string | null; email: string | null; origem: string | null; corretor_id: number | null; tags: unknown; extras: unknown; atualizado_em: string | null };
   const negocioLead = new Map<number, { leadId: number; valor: number | null }>();
-  for (let inicio = 0; inicio < negociosIds.length; inicio += 500) {
-    const { data: negocios, error } = await db.from("negocios").select("id,lead_id,valor").in("id", negociosIds.slice(inicio, inicio + 500));
+  const lotesNegocios = await Promise.all(lotesDe(negociosIds, 500).map((ids) =>
+    db.from("negocios").select("id,lead_id,valor").in("id", ids),
+  ));
+  for (const { data: negocios, error } of lotesNegocios) {
     if (error) return Response.json({ error: "Não foi possível vincular o histórico real dos leads." }, { status: statusErroBanco(error) });
     for (const negocio of negocios ?? []) negocioLead.set(Number(negocio.id), {
       leadId: Number(negocio.lead_id),
@@ -197,8 +218,10 @@ export async function GET(request: Request) {
      quais tags o corretor pode ver. */
   const contextoPorLead = new Map<number, { original: LeadOriginal; tags: TagDoLead[]; interesse: string | null }>();
   const leadsOriginaisIds = [...new Set([...negocioLead.values()].map((negocio) => negocio.leadId))].filter(Number.isFinite);
-  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data: originais, error } = await db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em").in("id", leadsOriginaisIds.slice(inicio, inicio + 500));
+  const lotesOriginais = await Promise.all(lotesDe(leadsOriginaisIds, 500).map((ids) =>
+    db.from("leads").select("id,nome,telefone,email,origem,corretor_id,tags,extras,atualizado_em").in("id", ids),
+  ));
+  for (const { data: originais, error } of lotesOriginais) {
     if (error) return Response.json({ error: "Não foi possível carregar a identidade real dos leads." }, { status: statusErroBanco(error) });
     for (const original of (originais ?? []) as LeadOriginal[]) {
       const tags = normalizarTagsDoLead(original.tags);
@@ -207,8 +230,10 @@ export async function GET(request: Request) {
   }
 
   const negociosOriginais: NegocioOriginal[] = [];
-  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data, error } = await db.from("negocios").select("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status,criado_em,ultima_movimentacao").in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500));
+  const lotesNegociosOriginais = await Promise.all(lotesDe(leadsOriginaisIds, 500).map((ids) =>
+    db.from("negocios").select("id,lead_id,pipeline_id,stage_id,empreendimento_id,unidade_id,valor,status,criado_em,ultima_movimentacao").in("lead_id", ids),
+  ));
+  for (const { data, error } of lotesNegociosOriginais) {
     if (error) return Response.json({ error: "Não foi possível carregar os negócios vinculados." }, { status: statusErroBanco(error) });
     negociosOriginais.push(...((data ?? []) as NegocioOriginal[]));
   }
@@ -240,11 +265,13 @@ export async function GET(request: Request) {
   }
   type TarefaOriginal = { id: string | number; lead_id: number; negocio_id: number | null; corretor_id: number | null; titulo: string; vencimento: string | null; concluida: boolean; prioridade: string | null };
   const tarefasOriginais: TarefaOriginal[] = [];
-  for (let inicio = 0; inicio < leadsOriginaisIds.length; inicio += 500) {
-    const { data, error } = await db.from("crm_tarefas")
+  const lotesTarefas = await Promise.all(lotesDe(leadsOriginaisIds, 500).map((ids) =>
+    db.from("crm_tarefas")
       .select("id,lead_id,negocio_id,corretor_id,titulo,vencimento,concluida,prioridade")
-      .in("lead_id", leadsOriginaisIds.slice(inicio, inicio + 500))
-      .order("vencimento", { ascending: true });
+      .in("lead_id", ids)
+      .order("vencimento", { ascending: true }),
+  ));
+  for (const { data, error } of lotesTarefas) {
     if (error) return Response.json({ error: "Não foi possível carregar as atividades deste atendimento." }, { status: statusErroBanco(error) });
     tarefasOriginais.push(...((data ?? []) as TarefaOriginal[]));
   }
@@ -288,8 +315,10 @@ export async function GET(request: Request) {
   let arquivosEstado: "ok" | "sem_vinculo" | "erro" = negociosOriginais.length ? "ok" : "sem_vinculo";
   if (negociosOriginais.length) {
     const processos: Array<{ id: string; negocio_id: number }> = [];
-    for (let inicio = 0; inicio < negociosOriginais.length; inicio += 500) {
-      const { data, error } = await db.from("venda_processos").select("id,negocio_id").in("negocio_id", negociosOriginais.slice(inicio, inicio + 500).map((item) => item.id));
+    const lotesProcessos = await Promise.all(lotesDe(negociosOriginais, 500).map((itens) =>
+      db.from("venda_processos").select("id,negocio_id").in("negocio_id", itens.map((item) => item.id)),
+    ));
+    for (const { data, error } of lotesProcessos) {
       if (error) { arquivosEstado = "erro"; break; }
       processos.push(...((data ?? []) as Array<{ id: string; negocio_id: number }>));
     }
@@ -297,8 +326,10 @@ export async function GET(request: Request) {
       const processoNegocio = new Map(processos.map((item) => [String(item.id), Number(item.negocio_id)]));
       const anexos: Array<{ id: string; processo_ref: string; negocio_id: number | null; nome: string; status: string; criado_em: string }> = [];
       const processoIds = [...processoNegocio.keys()];
-      for (let inicio = 0; inicio < processoIds.length; inicio += 100) {
-        const { data, error } = await db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", processoIds.slice(inicio, inicio + 100));
+      const lotesAnexos = await Promise.all(lotesDe(processoIds, 100).map((ids) =>
+        db.from("esteira_anexos").select("id,processo_ref,negocio_id,nome,status,criado_em").in("processo_ref", ids),
+      ));
+      for (const { data, error } of lotesAnexos) {
         if (error) { arquivosEstado = "erro"; break; }
         anexos.push(...((data ?? []) as typeof anexos));
       }
@@ -362,7 +393,7 @@ export async function GET(request: Request) {
       conversas: instanciaDoLeadResultado.erro ? "erro" : "ok",
       instanciasPadrao: instanciasResultado.erro ? "erro" : "ok",
       operacao: e8 ? "erro" : "ok",
-      sara: erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+      sara: erroSaraConfig ? "erro" : "ok",
     }, aquario: aquario ?? [],
     /* A lista só retorna sem erro quando a própria função canônica reconhece
        a sessão como admin ou corretor cadastrado. A interface não deduz
@@ -371,11 +402,11 @@ export async function GET(request: Request) {
     operacao: e8 ? null : operacao ?? null,
     notas: [], tagCatalogo: tagCatalogo ?? [],
     sara: {
-      estado: erroSaraConfig || saraF2Analises.error ? "erro" : "ok",
+      estado: erroSaraConfig ? "erro" : "ok",
       modo: erroSaraConfig ? null : saraF2Config?.enabled === true
         ? saraF2Config.modo_execucao === "completo" ? "completo" : "canary"
         : "desligada",
-      analisesNoLaboratorio: saraF2Analises.count ?? (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
+      analisesNoLaboratorio: (leads ?? []).filter((lead) => Boolean(lead.ultima_reavaliacao_sara_em)).length,
       reavaliacaoAutomaticaFunil2: saraF2Config?.enabled === true,
       loteFunil2: typeof saraF2Config?.lote === "number" ? saraF2Config.lote : null,
       modoExecucaoFunil2: saraF2Config?.modo_execucao === "completo" ? "completo" : "canary",
