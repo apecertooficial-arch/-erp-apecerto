@@ -48,12 +48,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 86,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "CRM-PIPE-010 — criar o funil Leads recentes — últimos 10 dias e migrar todos os leads do corte, independentemente da campanha, preservando etapa, responsável e histórico",
-  lastCheckpoint: "Pipeline Leads recentes — últimos 10 dias criado com 4 etapas; 62 leads e 62 negócios migrados sem filtro de campanha, sem inconsistências e com responsáveis e histórico preservados. Visão dedicada do CRM, 99 testes dirigidos, lint, tipos e build completo aprovados.",
-  lastCheckpointAt: "2026-10-02T15:40:56-03:00",
+  currentTask: "CRM-PIPE-011 — ampliar o funil Leads recentes para 18 dias e migrar somente o delta, independentemente da campanha, preservando etapa, responsável e histórico",
+  lastCheckpoint: "Pipeline ampliado em produção para 18 dias: 62 leads e 62 negócios adicionados ao delta, totalizando 124; 123 estão em Novo, 1 em Em atendimento e não há inconsistências.",
+  lastCheckpointAt: "2026-10-02T16:06:21-03:00",
   lastCommitSent: "cff6f6a7",
   productionCommit: "cff6f6a7b5bbb6237b0769dfeb1e7b9fa8780eca",
   latestDeliveries: [
+    "Pipeline Leads recentes ampliado em produção para 18 dias: 62 leads e 62 negócios adicionados, total de 124, zero inconsistências; visão do CRM atualizada para o novo corte.",
     "Pipeline Leads recentes — últimos 10 dias criado: 62 leads de 2 origens migrados com seus 62 negócios, etapas equivalentes, responsáveis e histórico preservados; CRM ganhou visão dedicada do recorte.",
     "PR #302 publicada: o Financeiro preserva o estado persistido dos recebimentos e voltou a expor 2 parcelas pendentes de vendas pagas para conferência humana.",
     "PRs #299/#300 publicadas: tabela com RLS, bucket privado, RPCs, cron e Edge v2 do feedback em áudio estão em produção, vazios e desligados até consentimento específico para transcrição pela OpenAI.",
@@ -115,7 +116,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Transferências voluntária, gerencial e por fit e a configuração de pipeline ainda precisam de uma operação humana real; produção não possui transferência e a única auditoria de configuração alterou somente timestamp.",
     "O aceite completo do aplicativo do corretor exige uma sessão real desse papel; nenhuma conta será personificada para fabricar a prova.",
   ],
-  nextStep: "Publicar a visão dedicada do novo pipeline e confirmar o build e as contagens em produção.",
+  nextStep: "Publicar o rótulo Últimos 18 dias no CRM e confirmar o novo SHA em produção; o banco já está ampliado e reconciliado.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

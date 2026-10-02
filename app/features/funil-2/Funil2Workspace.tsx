@@ -26,9 +26,9 @@ import { ResultadoVisitaForm } from "../calendar/ResultadoVisitaForm";
 import { type StatusResultadoVisita } from "../calendar/resultadoVisita";
 
 type Perfil = { userId: string; role: string; name: string };
-type FunilAtivo = "principal" | "alphaville" | "recentes_10_dias";
+type FunilAtivo = "principal" | "alphaville" | "recentes_18_dias";
 
-const PIPELINE_LEADS_RECENTES = "Leads recentes — últimos 10 dias";
+const PIPELINE_LEADS_RECENTES = "Leads recentes — últimos 18 dias";
 
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
@@ -312,9 +312,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const idsLeadsRecentes = new Set(negociosVinculados
     .filter((negocio) => negocio.pipeline === PIPELINE_LEADS_RECENTES)
     .map((negocio) => negocio.funil_lead_id));
-  const trilhaDeEtapas = funilAtivo === "recentes_10_dias" ? "principal" : funilAtivo;
+  const trilhaDeEtapas = funilAtivo === "recentes_18_dias" ? "principal" : funilAtivo;
   const etapasDoQuadro = etapasAtivas.filter((e) => funilDe(e) === trilhaDeEtapas && !["atualizar_manual", "legado"].includes(e.codigo));
-  const leadsDoFunil = funilAtivo === "recentes_10_dias"
+  const leadsDoFunil = funilAtivo === "recentes_18_dias"
     ? leads.filter((leadAtual) => idsLeadsRecentes.has(leadAtual.id))
     : leads.filter((leadAtual) => funilDe(leadAtual) === funilAtivo);
   const idsDoFunil = new Set(leadsDoFunil.map((l) => l.id));
@@ -462,7 +462,7 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           {(podeVerAlphaville || idsLeadsRecentes.size > 0) && <div className="f2-funil-troca" role="tablist" aria-label="Trilha do funil">
             <button type="button" role="tab" aria-selected={funilAtivo === "principal"} className={funilAtivo === "principal" ? "ativo" : ""} onClick={() => setFunilAtivo("principal")}>Funil principal</button>
             {podeVerAlphaville && <button type="button" role="tab" aria-selected={funilAtivo === "alphaville"} className={funilAtivo === "alphaville" ? "ativo" : ""} onClick={() => setFunilAtivo("alphaville")}>Alphaville</button>}
-            {idsLeadsRecentes.size > 0 && <button type="button" role="tab" aria-selected={funilAtivo === "recentes_10_dias"} className={funilAtivo === "recentes_10_dias" ? "ativo" : ""} onClick={() => setFunilAtivo("recentes_10_dias")}>Últimos 10 dias · {idsLeadsRecentes.size}</button>}
+            {idsLeadsRecentes.size > 0 && <button type="button" role="tab" aria-selected={funilAtivo === "recentes_18_dias"} className={funilAtivo === "recentes_18_dias" ? "ativo" : ""} onClick={() => setFunilAtivo("recentes_18_dias")}>Últimos 18 dias · {idsLeadsRecentes.size}</button>}
           </div>}
         </div>
         <div className="f2-topo-acoes">
