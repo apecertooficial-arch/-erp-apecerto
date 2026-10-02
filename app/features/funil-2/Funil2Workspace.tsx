@@ -51,6 +51,7 @@ async function api(token: string, init?: RequestInit) {
   try {
     const response = await fetch("/api/funil2", {
       ...init,
+      signal: init?.signal ?? AbortSignal.timeout(25_000),
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
     return { ok: response.ok, json: await response.json().catch(() => ({})) as Payload & { resultado?: unknown } };

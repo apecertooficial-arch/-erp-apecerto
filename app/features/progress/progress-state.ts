@@ -48,9 +48,9 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 86,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "CRM-PIPE-011 — ampliar o funil Leads recentes para 18 dias e migrar somente o delta, independentemente da campanha, preservando etapa, responsável e histórico",
-  lastCheckpoint: "Pipeline ampliado em produção para 18 dias: 62 leads e 62 negócios adicionados ao delta, totalizando 124; 123 estão em Novo, 1 em Em atendimento e não há inconsistências.",
-  lastCheckpointAt: "2026-10-02T16:06:21-03:00",
+  currentTask: "CRM-PERF-001 — reduzir a carga inicial do Funil, remover trabalho global dispensável e validar o tempo real no desktop e no app",
+  lastCheckpoint: "Defeito reproduzido em produção: o Funil permaneceu carregando por mais de 120 s; logs mostraram consulta inicial de leads em 3,2 s, contagem do laboratório cancelada em 8 s e resolução global de instâncias em até 6,3 s, com cargas simultâneas repetidas.",
+  lastCheckpointAt: "2026-10-02T16:52:00-03:00",
   lastCommitSent: "cff6f6a7",
   productionCommit: "cff6f6a7b5bbb6237b0769dfeb1e7b9fa8780eca",
   latestDeliveries: [
@@ -116,7 +116,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Transferências voluntária, gerencial e por fit e a configuração de pipeline ainda precisam de uma operação humana real; produção não possui transferência e a única auditoria de configuração alterou somente timestamp.",
     "O aceite completo do aplicativo do corretor exige uma sessão real desse papel; nenhuma conta será personificada para fabricar a prova.",
   ],
-  nextStep: "Publicar o rótulo Últimos 18 dias no CRM e confirmar o novo SHA em produção; o banco já está ampliado e reconciliado.",
+  nextStep: "Aplicar a carga inicial enxuta do CRM, executar os testes do Funil e medir novamente no navegador autenticado antes da publicação.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

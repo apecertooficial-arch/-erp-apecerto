@@ -258,7 +258,7 @@ function useFunil2Mobile(accessToken: string) {
     let vivo = true;
     void fetch("/api/funil2", {
       headers: { Authorization: `Bearer ${accessToken}` },
-      signal: controle.signal,
+      signal: AbortSignal.any([controle.signal, AbortSignal.timeout(25_000)]),
     }).then(async (resposta) => {
       const json = await resposta.json().catch(() => ({})) as PayloadMobile;
       if (resposta.status === 401) throw new Error("sessao_expirada");
@@ -275,8 +275,17 @@ function useFunil2Mobile(accessToken: string) {
   }, [accessToken, versao]);
 
   useEffect(() => {
-    const relogio = window.setInterval(recarregar, 45_000);
-    return () => window.clearInterval(relogio);
+    const atualizarSeVisivel = () => {
+      if (document.visibilityState === "visible") recarregar();
+    };
+    const relogio = window.setInterval(atualizarSeVisivel, 300_000);
+    document.addEventListener("visibilitychange", atualizarSeVisivel);
+    window.addEventListener("online", atualizarSeVisivel);
+    return () => {
+      window.clearInterval(relogio);
+      document.removeEventListener("visibilitychange", atualizarSeVisivel);
+      window.removeEventListener("online", atualizarSeVisivel);
+    };
   }, [recarregar]);
 
   return { dados, erro, sessaoExpirada, recarregar };

@@ -51,9 +51,8 @@ test("persistência é service-role-only, idempotente e isolada no f2", () => {
 
 test("API e tela usam só a configuração canônica sem inventar saúde do worker", () => {
   assert.match(route, /from\("f2_sara_config"\)/);
-  assert.match(route, /from\("f2_sara_analise"\)/);
   assert.match(route, /reavaliacaoAutomaticaFunil2: saraF2Config\?\.enabled === true/);
-  assert.match(route, /estado: erroSaraConfig \|\| saraF2Analises\.error \? "erro" : "ok"/);
+  assert.match(route, /estado: erroSaraConfig \? "erro" : "ok"/);
   assert.match(route, /modo: erroSaraConfig \? null : saraF2Config\?\.enabled === true/);
   assert.doesNotMatch(route, /ncrm_sara_(?:modo|runner)_status/);
   assert.doesNotMatch(`${route}\n${workspace}\n${model}`, /runnerAtivo|o runner está/);
