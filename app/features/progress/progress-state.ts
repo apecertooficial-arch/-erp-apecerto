@@ -48,12 +48,13 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
   ],
   weeklyUsagePercent: 86,
   weeklyUsageCeilingPercent: 90,
-  currentTask: "PRO-MIG-001 — espelho autenticado das 294 unidades e lista compartilhada para seleção da migração de Produtos",
-  lastCheckpoint: "Seletor remoto implementado localmente sobre as 294 unidades, com permissão granular, dados privados sob autenticação, lista compartilhada, 39 testes de Produtos, lint dirigido, tipos do delta e build completo aprovados.",
-  lastCheckpointAt: "2026-10-01T10:58:00-03:00",
+  currentTask: "CRM-PIPE-010 — criar o funil Leads recentes — últimos 10 dias e migrar todos os leads do corte, independentemente da campanha, preservando etapa, responsável e histórico",
+  lastCheckpoint: "Pipeline Leads recentes — últimos 10 dias criado com 4 etapas; 62 leads e 62 negócios migrados sem filtro de campanha, sem inconsistências e com responsáveis e histórico preservados. Visão dedicada do CRM, 99 testes dirigidos, lint, tipos e build completo aprovados.",
+  lastCheckpointAt: "2026-10-02T15:40:56-03:00",
   lastCommitSent: "cff6f6a7",
   productionCommit: "cff6f6a7b5bbb6237b0769dfeb1e7b9fa8780eca",
   latestDeliveries: [
+    "Pipeline Leads recentes — últimos 10 dias criado: 62 leads de 2 origens migrados com seus 62 negócios, etapas equivalentes, responsáveis e histórico preservados; CRM ganhou visão dedicada do recorte.",
     "PR #302 publicada: o Financeiro preserva o estado persistido dos recebimentos e voltou a expor 2 parcelas pendentes de vendas pagas para conferência humana.",
     "PRs #299/#300 publicadas: tabela com RLS, bucket privado, RPCs, cron e Edge v2 do feedback em áudio estão em produção, vazios e desligados até consentimento específico para transcrição pela OpenAI.",
     "PR #297 publicada: o aviso de push não cobre mais o botão da Sara no celular; painel abriu em produção sem overflow.",
@@ -114,7 +115,7 @@ export const PROJECT_PROGRESS: ProjectProgressState = {
     "Transferências voluntária, gerencial e por fit e a configuração de pipeline ainda precisam de uma operação humana real; produção não possui transferência e a única auditoria de configuração alterou somente timestamp.",
     "O aceite completo do aplicativo do corretor exige uma sessão real desse papel; nenhuma conta será personificada para fabricar a prova.",
   ],
-  nextStep: "Concluir testes locais do seletor, validar desktop e mobile, então solicitar o gate de migration/deploy e a identificação da conta do funcionário que receberá a permissão granular.",
+  nextStep: "Publicar a visão dedicada do novo pipeline e confirmar o build e as contagens em produção.",
 };
 
 if (!isProjectProgressState(PROJECT_PROGRESS)) throw new Error("Fonte de progresso inválida.");

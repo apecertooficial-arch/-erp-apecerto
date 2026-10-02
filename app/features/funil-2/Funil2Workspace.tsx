@@ -26,6 +26,10 @@ import { ResultadoVisitaForm } from "../calendar/ResultadoVisitaForm";
 import { type StatusResultadoVisita } from "../calendar/resultadoVisita";
 
 type Perfil = { userId: string; role: string; name: string };
+type FunilAtivo = "principal" | "alphaville" | "recentes_10_dias";
+
+const PIPELINE_LEADS_RECENTES = "Leads recentes — últimos 10 dias";
+
 type Payload = {
   leads?: LeadFunil2[]; momentos?: MomentoFunil2[]; eventos?: EventoFunil2[]; etapas?: EtapaConfigFunil2[];
   visitas?: VisitaFunil2[]; atividades?: AtividadeFunil2[]; negociacoes?: NegociacaoFunil2[]; negociosVinculados?: NegocioVinculadoFunil2[]; imoveisVinculados?: ImovelVinculadoFunil2[]; arquivosVinculados?: ArquivoVinculadoFunil2[]; fontes?: { arquivos?: "ok" | "sem_vinculo" | "erro"; conversas?: "ok" | "erro"; instanciasPadrao?: "ok" | "erro"; operacao?: "ok" | "erro"; sara?: "ok" | "erro" }; notas?: NotaFunil2[]; aquario?: CandidatoAquarioFunil2[]; podePescar?: boolean; operacao?: OperacaoConfigFunil2 | null; sara?: SaraStatusFunil2; tagCatalogo?: TagCatalogoFunil2[]; ok?: boolean; error?: string; erro?: string; alteracaoAplicada?: boolean; reconciliacaoNecessaria?: boolean;
@@ -109,9 +113,9 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const [operacao, setOperacao] = useState<OperacaoConfigFunil2 | null>(null);
   const [sara, setSara] = useState<SaraStatusFunil2>({ estado: "erro", modo: null, analisesNoLaboratorio: 0, reavaliacaoAutomaticaFunil2: false });
   const [aba, setAba] = useState<"quadro" | "dia" | "leads" | "visitas" | "vendas" | "config">("quadro");
-  /* Trilha do funil em foco. "principal" é a operação de sempre; "alphaville"
-     é a trilha própria das campanhas de Alphaville (etapas e momentos dela). */
-  const [funilAtivo, setFunilAtivo] = useState<"principal" | "alphaville">("principal");
+  /* Trilha do funil em foco. O recorte recente continua usando as etapas da
+     operação principal, mas sua carteira vem do pipeline canônico do negócio. */
+  const [funilAtivo, setFunilAtivo] = useState<FunilAtivo>("principal");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [chatDireto, setChatDireto] = useState<LeadFunil2 | null>(null);
   const chatOrigemRef = useRef<HTMLButtonElement | null>(null);
@@ -304,9 +308,15 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
      trilha sempre resolve etapa e momento); a estrutura das telas — colunas do
      quadro, carteira e visitas — usa apenas a trilha escolhida no topo. */
   const funilDe = (item: { funil?: string | null }) => (item.funil && item.funil !== "" ? item.funil : "principal");
-  const etapasDoQuadro = etapasAtivas.filter((e) => funilDe(e) === funilAtivo && !["atualizar_manual", "legado"].includes(e.codigo));
   const momentosAtivos = momentos.filter((m) => m.ativo !== false);
-  const leadsDoFunil = leads.filter((l) => funilDe(l) === funilAtivo);
+  const idsLeadsRecentes = new Set(negociosVinculados
+    .filter((negocio) => negocio.pipeline === PIPELINE_LEADS_RECENTES)
+    .map((negocio) => negocio.funil_lead_id));
+  const trilhaDeEtapas = funilAtivo === "recentes_10_dias" ? "principal" : funilAtivo;
+  const etapasDoQuadro = etapasAtivas.filter((e) => funilDe(e) === trilhaDeEtapas && !["atualizar_manual", "legado"].includes(e.codigo));
+  const leadsDoFunil = funilAtivo === "recentes_10_dias"
+    ? leads.filter((leadAtual) => idsLeadsRecentes.has(leadAtual.id))
+    : leads.filter((leadAtual) => funilDe(leadAtual) === funilAtivo);
   const idsDoFunil = new Set(leadsDoFunil.map((l) => l.id));
   const visitasDoFunil = visitas.filter((v) => idsDoFunil.has(v.funil_lead_id));
   const podeVerAlphaville = ["admin", "gestor"].includes(profile.role.toLowerCase()) || leads.some((l) => funilDe(l) === "alphaville");
@@ -416,13 +426,13 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
   const podeAdicionarCliente = ["admin", "gestor", "corretor"].includes(profile.role.toLowerCase());
   const termoQuadro = buscaQuadro.trim().toLocaleLowerCase("pt-BR");
   const limitePeriodo = periodoQuadro === "todos" ? null : agoraQuadro - Number(periodoQuadro) * 24 * 60 * 60 * 1000;
-  const leadsDoPeriodo = leads.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
+  const leadsDoPeriodo = leadsDoFunil.filter((item) => limitePeriodo === null || +new Date(item.atualizado_em) >= limitePeriodo);
   const codigosDoQuadro = new Set(etapasDoQuadro.map((etapa) => etapa.codigo));
   const leadsDoQuadro = leadsDoPeriodo.filter((item) => codigosDoQuadro.has(item.etapa));
   const leadsVisiveisNoQuadro = leadsDoQuadro.filter((item) => (temperaturaQuadro === "todas" || temperaturaDoLead(item) === temperaturaQuadro) && (!termoQuadro || `${item.nome} ${item.telefone ?? ""} ${item.origem_negocio_id} ${item.interesse ?? ""}`.toLocaleLowerCase("pt-BR").includes(termoQuadro)));
   const foraDoQuadro = leadsDoPeriodo.length - leadsDoQuadro.length;
-  const ganhos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "ganho");
-  const perdidos = negociosVinculados.filter((item) => item.status.toLocaleLowerCase("pt-BR") === "perdido");
+  const ganhos = negociosVinculados.filter((item) => idsDoFunil.has(item.funil_lead_id) && item.status.toLocaleLowerCase("pt-BR") === "ganho");
+  const perdidos = negociosVinculados.filter((item) => idsDoFunil.has(item.funil_lead_id) && item.status.toLocaleLowerCase("pt-BR") === "perdido");
 
   useEffect(() => {
     if (!menuCardId) return;
@@ -449,9 +459,10 @@ export function Funil2Workspace({ accessToken, profile }: { accessToken: string;
           <span className="f2-eyebrow">Funil</span>
           <h1>{rotulosAba[aba][0]}</h1>
           <p>{rotulosAba[aba][1]}</p>
-          {podeVerAlphaville && <div className="f2-funil-troca" role="tablist" aria-label="Trilha do funil">
+          {(podeVerAlphaville || idsLeadsRecentes.size > 0) && <div className="f2-funil-troca" role="tablist" aria-label="Trilha do funil">
             <button type="button" role="tab" aria-selected={funilAtivo === "principal"} className={funilAtivo === "principal" ? "ativo" : ""} onClick={() => setFunilAtivo("principal")}>Funil principal</button>
-            <button type="button" role="tab" aria-selected={funilAtivo === "alphaville"} className={funilAtivo === "alphaville" ? "ativo" : ""} onClick={() => setFunilAtivo("alphaville")}>Alphaville</button>
+            {podeVerAlphaville && <button type="button" role="tab" aria-selected={funilAtivo === "alphaville"} className={funilAtivo === "alphaville" ? "ativo" : ""} onClick={() => setFunilAtivo("alphaville")}>Alphaville</button>}
+            {idsLeadsRecentes.size > 0 && <button type="button" role="tab" aria-selected={funilAtivo === "recentes_10_dias"} className={funilAtivo === "recentes_10_dias" ? "ativo" : ""} onClick={() => setFunilAtivo("recentes_10_dias")}>Últimos 10 dias · {idsLeadsRecentes.size}</button>}
           </div>}
         </div>
         <div className="f2-topo-acoes">
